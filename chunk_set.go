@@ -1,22 +1,22 @@
 package godless
 
-type CvrdtChunkSet struct {
+type ChunkSet struct {
 	Chunks []Chunk
 }
 
-func (set *CvrdtChunkSet) Join(other *CvrdtChunkSet) *CvrdtChunkSet {
-	ret := &CvrdtChunkSet{}
+func (set *ChunkSet) Join(other *ChunkSet) *ChunkSet {
+	ret := &ChunkSet{}
 	ret.joinSelf(set)
 	ret.joinSelf(other)
 	return ret
 }
 
-func (set *CvrdtChunkSet) joinSelf(other *CvrdtChunkSet) {
+func (set *ChunkSet) joinSelf(other *ChunkSet) {
 	set.Chunks = uniqChunks(append(set.Chunks, other.Chunks...))
 }
 
-func (set *CvrdtChunkSet) Validate(checker ChunkValidator) (*CvrdtChunkSet, []InvalidChunk) {
-	ret := &CvrdtChunkSet{}
+func (set *ChunkSet) Validate(checker ChunkValidator) (*ChunkSet, []InvalidChunk) {
+	ret := &ChunkSet{}
 	invalid := ret.validateSelf(checker)
 	return ret, invalid
 }
@@ -27,7 +27,7 @@ type InvalidChunk struct {
 	Error error
 }
 
-func (set *CvrdtChunkSet) validateSelf(checker ChunkValidator) []InvalidChunk {
+func (set *ChunkSet) validateSelf(checker ChunkValidator) []InvalidChunk {
 	ret := []InvalidChunk{}
 
 	for _, ch := range set.Chunks {
