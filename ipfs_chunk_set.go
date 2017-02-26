@@ -1,6 +1,7 @@
 package godless
 
 import (
+	"bytes"
 	"encoding/gob"
 	"io/ioutil"
 	"log"
@@ -55,7 +56,12 @@ func (ics *IpfsChunkSet) LoadTraverse(f func (*IpfsChunkSet)) error {
 
 // Load chunks over IPFS
 func (ics *IpfsChunkSet) Load() error {
+	if ics.FilePath == "" {
+		panic("Tried to load IpfsChunkSet with empty FilePath")
+	}
+
 	if ics.loaded {
+		log.Printf("WARN IpfsChunkSet already loaded from: '%v'", ics.FilePath)
 		return nil
 	}
 
@@ -97,5 +103,43 @@ func (ics *IpfsChunkSet) Load() error {
 	}
 
 	ics.loaded = true
+	return nil
+}
+
+// Write chunks to IPFS
+func (ics *IpfsChunkSet) Persist() error {
+	if ics.loaded {
+		log.Printf("WARN persisting loaded IpfsChunkset at: %v", ics.FilePath)
+	}
+
+	if ics.FilePath != "" {
+		log.Printf("WARN IpfsChunkSet already persisted at: %v", ics.FilePath)
+		return nil
+	}
+
+	part := &IpfsChunkSetRecord{}
+	part.ChunkSet = ics.ChunkSet
+
+	part.Children = make([]IpfsPath, len(ics.Children))
+	for i, child := range ics.Children {
+		part.Children[i] = child.FilePath
+	}
+
+	buff := bytes.Buffer{}
+	enc := gob.NewEncoder(&buff)
+	err := enc.Encode(part)
+
+	if err != nil {
+		return errors.Wrap(err, "Error encoding IpfsChunkSet Gob")
+	}
+
+	addr, sherr := ics.FilePeer.Shell.Add(&buff)
+
+	if sherr != nil {
+		return errors.Wrap(err, "Error adding IpfsChunkSet to Ipfs")
+	}
+
+	ics.FilePath = IpfsPath(addr)
+
 	return nil
 }
