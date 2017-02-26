@@ -1,7 +1,12 @@
 package godless
 
+import (
+	"fmt"
+	"github.com/pkg/errors"
+)
+
 type SemiLattice interface {
-	Join(other SemiLattice) SemiLattice
+	Join(other SemiLattice) (SemiLattice, error)
 }
 
 // Semi-lattice type that implements our storage
@@ -9,28 +14,34 @@ type Namespace struct {
 	Objects map[string]Object
 }
 
-func (ns *Namespace) JoinNamespace(other *Namespace) *Namespace {
+func (ns *Namespace) JoinNamespace(other *Namespace) (*Namespace, error) {
 	out := map[string]Object{}
 
 	for k, v := range ns.Objects {
 		otherv, present := other.Objects[k]
 
 		if present {
-			out[k] = v.JoinObject(otherv)
+			joined, err := v.JoinObject(otherv)
+
+			if err != nil {
+				return nil, errors.Wrap(err, "Error in Namespace join")
+			}
+
+			out[k] = joined
 		} else {
 			out[k] = v
 		}
 	}
 
-	return &Namespace{Objects: out}
+	return &Namespace{Objects: out}, nil
 }
 
-func (ns *Namespace) Join(other SemiLattice) SemiLattice {
+func (ns *Namespace) Join(other SemiLattice) (SemiLattice, error) {
 	if ons, ok := other.(*Namespace); ok {
 		return ns.JoinNamespace(ons)
 	}
 
-	panic("expected Set")
+	return nil, errors.New("Expected *Namespace in Join")
 }
 
 type ObjType uint8
@@ -46,22 +57,30 @@ type Object struct {
 	Obj SemiLattice
 }
 
-func (o Object) JoinObject(other Object) Object {
+func (o Object) JoinObject(other Object) (Object, error) {
 	if o.Type != other.Type {
-		panic("Unexpected Object types")
+		return Object{}, fmt.Errorf("Expected Object of type '%v' but got '%v'", o.Type, other.Type)
 	}
 
-	return Object{
-		Type: o.Type,
-		Obj: o.Obj.Join(other.Obj),
+	joined, err := o.Obj.Join(other.Obj)
+
+	if err != nil {
+		return Object{}, err
 	}
+
+	out := Object{
+		Type: o.Type,
+		Obj: joined,
+	}
+
+	return out, nil
 }
 
-func (o Object) Join(other SemiLattice) SemiLattice {
+func (o Object) Join(other SemiLattice) (SemiLattice, error) {
 	otherobj, ok := other.(Object)
 
 	if !ok {
-		panic("Expected Object")
+		return nil, errors.New("Expected Object in Join")
 	}
 
 	return o.JoinObject(otherobj)
@@ -77,12 +96,12 @@ func (set Set) JoinSet(other Set) Set {
 	}
 }
 
-func (set Set) Join(other SemiLattice) SemiLattice {
+func (set Set) Join(other SemiLattice) (SemiLattice, error) {
 	if os, ok := other.(Set); ok {
-		return set.JoinSet(os)
+		return set.JoinSet(os), nil
 	}
 
-	panic("expected Set")
+	return nil, errors.New("Expected Set in Join")
 }
 
 // TODO ensure is always grow-only
@@ -104,10 +123,10 @@ func (m Map) JoinMap(other Map) Map {
 	return Map{Members: out}
 }
 
-func (m Map) Join(other SemiLattice) SemiLattice {
+func (m Map) Join(other SemiLattice) (SemiLattice, error) {
 	if om, ok := other.(Map); ok {
-		return m.JoinMap(om)
+		return m.JoinMap(om), nil
 	}
 
-	panic("expected Map")
+	return nil, errors.New("Expected Map in Join")
 }

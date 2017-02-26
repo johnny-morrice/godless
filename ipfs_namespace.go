@@ -24,8 +24,15 @@ type IpfsNamespaceRecord struct {
 func (ns *IpfsNamespace) LoadAll() (*Namespace, error) {
 	out := &Namespace{}
 
-	err := ns.LoadTraverse(func (child *IpfsNamespace) {
-		out = out.JoinNamespace(child.Namespace)
+	err := ns.LoadTraverse(func (child *IpfsNamespace) error {
+		joined, joinerr := out.JoinNamespace(child.Namespace)
+
+		if joinerr != nil {
+			return joinerr
+		}
+
+		out = joined
+		return nil
 	})
 
 	if err != nil {
@@ -35,7 +42,7 @@ func (ns *IpfsNamespace) LoadAll() (*Namespace, error) {
 	return out, nil
 }
 
-func (ns *IpfsNamespace) LoadTraverse(f func (*IpfsNamespace)) error {
+func (ns *IpfsNamespace) LoadTraverse(f func (*IpfsNamespace) error) error {
 	stack := make([]*IpfsNamespace, 1)
 	stack[0] = ns
 
@@ -47,7 +54,11 @@ func (ns *IpfsNamespace) LoadTraverse(f func (*IpfsNamespace)) error {
 			return errors.Wrap(err, "Error in IpfsNamespace LoadTraverse")
 		}
 
-		f(current)
+		err = f(current)
+
+		if err != nil {
+			return errors.Wrap(err, "Error in IpfsNamespace traversal")
+		}
 		stack = append(stack, current.Children...)
 	}
 
@@ -55,6 +66,7 @@ func (ns *IpfsNamespace) LoadTraverse(f func (*IpfsNamespace)) error {
 }
 
 // Load chunks over IPFS
+// TODO opportunity to query IPFS in parallel?
 func (ns *IpfsNamespace) Load() error {
 	if ns.FilePath == "" {
 		panic("Tried to load IpfsNamespace with empty FilePath")
