@@ -7,6 +7,10 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// TODO we're not looking to serve the whole chunkset over HTTP
+// instead we'll serve an IPFS address that points to our current view of the graph.
+
+
 type ChunkMux struct {
 	Sets map[string]*ChunkSet
 }
