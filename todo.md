@@ -1,5 +1,10 @@
 # TODO
 
 * Cobra commands
-* Send new IPFS chunkset to server (HTTP/UDP)
-* Send IPFS chunksets between servers (HTTP/UDP)
+* Cobra - launch server
+* Cobra - send chunk to server (with given capabilities)
+* Cobra - read chunks from server
+* WebService to reveal capabilities
+* /namespace
+* /ipfs/namespace
+* Support for non-IPFS connected peers
