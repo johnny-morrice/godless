@@ -104,20 +104,26 @@ func (set Set) Join(other SemiLattice) (SemiLattice, error) {
 	return nil, errors.New("Expected Set in Join")
 }
 
-// TODO ensure is always grow-only
 type Map struct {
-	Members map[string]string
+	Members map[string][]string
 }
 
 func (m Map) JoinMap(other Map) Map {
-	out := map[string]string{}
+	out := map[string][]string{}
 
 	for k, v := range m.Members {
 		out[k] = v
 	}
 
 	for k, v := range other.Members {
-		out[k] = v
+		initv, present := m.Members[k]
+
+		if present {
+			out[k] = append(initv, v...)
+		} else {
+			out[k] = v
+		}
+
 	}
 
 	return Map{Members: out}
