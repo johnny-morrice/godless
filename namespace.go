@@ -14,6 +14,12 @@ type Namespace struct {
 	Objects map[string]Object
 }
 
+func NewNamespace() *Namespace {
+	return &Namespace{
+		Objects: map[string]Object{},
+	}
+}
+
 func (ns *Namespace) JoinNamespace(other *Namespace) (*Namespace, error) {
 	build := map[string]Object{}
 

@@ -159,6 +159,7 @@ type keyValueStore struct {
 func (kv *keyValueStore) transact(f kvTransform) error {
 	f(kv.Namespace)
 
+	// TODO we don't *have* to persist immediately.
 	if kv.Namespace.dirty {
 		next, err := kv.Namespace.Persist()
 

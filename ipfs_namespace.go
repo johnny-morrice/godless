@@ -9,10 +9,12 @@ import (
 	"github.com/pkg/errors"
 )
 
-// TODO unload stored nodes - garbage collection.
 type IpfsNamespace struct {
 	loaded bool
 	dirty bool
+
+	queryCache *Namespace
+	updateCache *Namespace
 
 	FilePeer *IpfsPeer
 	FilePath IpfsPath
@@ -25,8 +27,37 @@ type IpfsNamespaceRecord struct {
 	Children []IpfsPath
 }
 
+func LoadIpfsNamespace(filePeer *IpfsPeer, filePath IpfsPath) (*IpfsNamespace, error) {
+	ns := &IpfsNamespace{}
+	ns.FilePeer = filePeer
+	ns.FilePath = filePath
+	ns.queryCache = NewNamespace()
+	ns.updateCache = NewNamespace()
+	ns.Namespace = NewNamespace()
+	ns.Children = []*IpfsNamespace{}
+
+	err := ns.cacheChildNamespaces()
+
+	if err != nil {
+		return nil, errors.Wrap(err, fmt.Sprintf("Error loading namespace at '%v'", filePath))
+	}
+
+	return ns, nil
+}
+
+func PersistNewIpfsNamespace(filePeer *IpfsPeer, namespace *Namespace) (*IpfsNamespace, error) {
+	ns := &IpfsNamespace{}
+	ns.FilePeer = filePeer
+	ns.queryCache = NewNamespace()
+	ns.updateCache = namespace
+	ns.Namespace = NewNamespace()
+	ns.Children = []*IpfsNamespace{}
+
+	return ns.Persist()
+}
+
 func (ns *IpfsNamespace) GetMap(namespaceKey string) (Map, error) {
-	obj, err := ns.lazyGetObject(namespaceKey)
+	obj, err := ns.loadObject(namespaceKey)
 
 	if err != nil {
 		return Map{}, errors.Wrap(err, "GetMap failed")
@@ -62,7 +93,7 @@ func (ns *IpfsNamespace) JoinMap(namespaceKey string, update map[string][]string
 		Obj: Map{Members: update},
 	}
 
-	err := ns.Namespace.JoinObject(namespaceKey, newObj)
+	err := ns.updateCache.JoinObject(namespaceKey, newObj)
 
 	if err != nil {
 		return errors.Wrap(err, "AddMapValues failed")
@@ -74,7 +105,7 @@ func (ns *IpfsNamespace) JoinMap(namespaceKey string, update map[string][]string
 }
 
 func (ns *IpfsNamespace) GetSet(namespaceKey string) (Set, error) {
-	obj, err := ns.lazyGetObject(namespaceKey)
+	obj, err := ns.loadObject(namespaceKey)
 
 	if err != nil {
 		return Set{}, errors.Wrap(err, "GetSet failed")
@@ -94,7 +125,7 @@ func (ns *IpfsNamespace) JoinSet(namespaceKey string, values []string) error {
 		Obj: Set{Members: values},
 	}
 
-	err := ns.Namespace.JoinObject(namespaceKey, newObj)
+	err := ns.updateCache.JoinObject(namespaceKey, newObj)
 
 	if err != nil {
 		return errors.Wrap(err, "AddSetValues failed")
@@ -105,36 +136,55 @@ func (ns *IpfsNamespace) JoinSet(namespaceKey string, values []string) error {
 	return nil
 }
 
-func (ns *IpfsNamespace) lazyGetObject(namespaceKey string) (Object, error) {
-	// TODO implement
-	return Object{}, nil
-}
+func (ns *IpfsNamespace) loadObject(namespaceKey string) (Object, error) {
+	old, oldPresent := ns.queryCache.Objects[namespaceKey]
+	new, newPresent := ns.updateCache.Objects[namespaceKey]
+	out := Object{}
 
-func (ns *IpfsNamespace) LoadAll() (*Namespace, error) {
-	out := &Namespace{}
+	if !newPresent && !oldPresent {
+		return Object{}, fmt.Errorf("No such object: %v", namespaceKey)
+	}
 
-	err := ns.LoadTraverse(func (child *IpfsNamespace) (bool, error) {
-		joined, joinerr := out.JoinNamespace(child.Namespace)
+	if oldPresent {
+		out = old
+	}
 
-		if joinerr != nil {
-			return true, joinerr
+	if newPresent {
+		joined, err := new.JoinObject(old)
+
+		if err != nil {
+			return Object{}, errors.Wrap(err, fmt.Sprintf("loadObject failed for '%v'", namespaceKey))
 		}
 
 		out = joined
-		return false, nil
-	})
-
-	if err != nil {
-		return nil, errors.Wrap(err, "Error in IpfsNamespace LoadAll")
 	}
 
 	return out, nil
 }
 
+func (ns *IpfsNamespace) cacheChildNamespaces() error {
+	err := ns.loadTraverse(func (child *IpfsNamespace) (bool, error) {
+		joined, joinerr := ns.queryCache.JoinNamespace(child.Namespace)
+
+		if joinerr != nil {
+			return true, joinerr
+		}
+
+		ns.queryCache = joined
+		return false, nil
+	})
+
+	if err != nil {
+		return errors.Wrap(err, "Error in IpfsNamespace LoadAll")
+	}
+
+	return nil
+}
+
 // Return whether to abort early, and any error.
 type IpfsNamespaceVisitor func (*IpfsNamespace) (bool, error)
 
-func (ns *IpfsNamespace) LoadTraverse(f IpfsNamespaceVisitor) error {
+func (ns *IpfsNamespace) loadTraverse(f IpfsNamespaceVisitor) error {
 	stack := make([]*IpfsNamespace, 1)
 	stack[0] = ns
 
@@ -143,7 +193,7 @@ func (ns *IpfsNamespace) LoadTraverse(f IpfsNamespaceVisitor) error {
 		err := current.load()
 
 		if err != nil {
-			return errors.Wrap(err, "Error in IpfsNamespace LoadTraverse")
+			return errors.Wrap(err, "Error in IpfsNamespace loadTraverse")
 		}
 
 		abort, visiterr := f(current)
@@ -215,7 +265,8 @@ func (ns *IpfsNamespace) load() error {
 	return nil
 }
 
-// Write namespace to IPFS and return a new namespace that is its parent.
+// Write pending changes to IPFS and return the new parent namespace.
+// TODO allow child namespace merges
 func (ns *IpfsNamespace) Persist() (*IpfsNamespace, error) {
 	if !ns.dirty {
 		log.Printf("WARN persiting unchanged IpfsNamespace at: %v", ns.FilePath)
@@ -223,11 +274,13 @@ func (ns *IpfsNamespace) Persist() (*IpfsNamespace, error) {
 	}
 
 	part := &IpfsNamespaceRecord{}
-	part.Namespace = ns.Namespace
+	part.Namespace = ns.updateCache
 
-	part.Children = make([]IpfsPath, len(ns.Children))
-	for i, child := range ns.Children {
-		part.Children[i] = child.FilePath
+	// If this is the first namespace in the chain, don't save children.
+	// TODO become parent of multiple children.
+	if ns.FilePath != "" {
+		part.Children = make([]IpfsPath, 1)
+		part.Children[0] = ns.FilePath
 	}
 
 	buff := bytes.Buffer{}
@@ -248,7 +301,17 @@ func (ns *IpfsNamespace) Persist() (*IpfsNamespace, error) {
 	out.loaded = true
 	out.FilePeer = ns.FilePeer
 	out.FilePath = IpfsPath(addr)
-	out.Namespace = &Namespace{Objects: map[string]Object{}}
+	out.Namespace = ns.updateCache
+	out.updateCache = NewNamespace()
+
+	// Join query cache
+	cache, jerr := ns.queryCache.JoinNamespace(ns.updateCache)
+
+	if jerr != nil {
+		return nil, errors.Wrap(err, "Error joining new parent query cache")
+	}
+
+	out.queryCache = cache
 	out.Children = []*IpfsNamespace{ns}
 
 	return out, nil
