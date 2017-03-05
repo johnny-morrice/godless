@@ -52,17 +52,17 @@ func (service *IpfsNamespaceService) joinSet(rw http.ResponseWriter, req *http.R
 
 func sendResponse(rw http.ResponseWriter, resp KvResponse) {
 	if resp.Err != nil {
-		err := sendJson(rw, resp.Val)
-		log.Printf("Error sending JSON: %v", err)
+		err := sendGob(rw, resp.Val)
+		log.Printf("Error sending gob: %v", err)
 	}
 }
 
-func sendJson(rw http.ResponseWriter, encodee interface{}) error {
+func sendGob(rw http.ResponseWriter, gobber interface{}) error {
 	// Encode gob into buffer first to check for encoding errors.
 	// TODO is that actually a good idea?
 	buff := bytes.Buffer{}
 	enc := gob.NewEncoder(&buff)
-	encerr := enc.Encode(encodee)
+	encerr := enc.Encode(gobber)
 
 	if encerr != nil {
 		panic(fmt.Sprintf("BUG encoding error: %v", encerr))
@@ -72,7 +72,7 @@ func sendJson(rw http.ResponseWriter, encodee interface{}) error {
 	_, senderr := rw.Write(buff.Bytes())
 
 	if senderr != nil {
-		return errors.Wrap(senderr, "sendJson failed")
+		return errors.Wrap(senderr, "sendGob failed")
 	}
 
 	return nil
