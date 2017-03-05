@@ -12,6 +12,8 @@ import (
 // TODO unload stored nodes - garbage collection.
 type IpfsNamespace struct {
 	loaded bool
+	dirty bool
+
 	FilePeer *IpfsPeer
 	FilePath IpfsPath
 	Namespace *Namespace
@@ -55,13 +57,9 @@ func (ns *IpfsNamespace) GetMapValues(namespaceKey string, mapKey string) ([]str
 	return vs, nil
 }
 
-func (ns *IpfsNamespace) AddMapValues(namespaceKey string, mapKey string, values []string) error {
-	members := map[string][]string{
-		mapKey: values,
-	}
-
+func (ns *IpfsNamespace) JoinMap(namespaceKey string, update map[string][]string) error {
 	newObj := Object{
-		Obj: Map{Members: members},
+		Obj: Map{Members: update},
 	}
 
 	err := ns.Namespace.JoinObject(namespaceKey, newObj)
@@ -69,6 +67,8 @@ func (ns *IpfsNamespace) AddMapValues(namespaceKey string, mapKey string, values
 	if err != nil {
 		return errors.Wrap(err, "AddMapValues failed")
 	}
+
+	ns.dirty = true
 
 	return nil
 }
@@ -89,7 +89,7 @@ func (ns *IpfsNamespace) GetSet(namespaceKey string) (Set, error) {
 	return out, nil
 }
 
-func (ns *IpfsNamespace) AddSetValues(namespaceKey string, values []string) error {
+func (ns *IpfsNamespace) JoinSet(namespaceKey string, values []string) error {
 	newObj := Object{
 		Obj: Set{Members: values},
 	}
@@ -99,6 +99,8 @@ func (ns *IpfsNamespace) AddSetValues(namespaceKey string, values []string) erro
 	if err != nil {
 		return errors.Wrap(err, "AddSetValues failed")
 	}
+
+	ns.dirty = true
 
 	return nil
 }
@@ -138,7 +140,7 @@ func (ns *IpfsNamespace) LoadTraverse(f IpfsNamespaceVisitor) error {
 
 	for i := 0 ; i < len(stack); i++ {
 		current := stack[i]
-		err := current.Load()
+		err := current.load()
 
 		if err != nil {
 			return errors.Wrap(err, "Error in IpfsNamespace LoadTraverse")
@@ -162,7 +164,7 @@ func (ns *IpfsNamespace) LoadTraverse(f IpfsNamespaceVisitor) error {
 
 // Load chunks over IPFS
 // TODO opportunity to query IPFS in parallel?
-func (ns *IpfsNamespace) Load() error {
+func (ns *IpfsNamespace) load() error {
 	if ns.FilePath == "" {
 		panic("Tried to load IpfsNamespace with empty FilePath")
 	}
@@ -213,15 +215,11 @@ func (ns *IpfsNamespace) Load() error {
 	return nil
 }
 
-// Write chunks to IPFS
-func (ns *IpfsNamespace) Persist() error {
-	if ns.loaded {
-		log.Printf("WARN persisting loaded IpfsNamespace at: %v", ns.FilePath)
-	}
-
-	if ns.FilePath != "" {
-		log.Printf("WARN IpfsNamespace already persisted at: %v", ns.FilePath)
-		return nil
+// Write namespace to IPFS and return a new namespace that is its parent.
+func (ns *IpfsNamespace) Persist() (*IpfsNamespace, error) {
+	if !ns.dirty {
+		log.Printf("WARN persiting unchanged IpfsNamespace at: %v", ns.FilePath)
+		return nil, nil
 	}
 
 	part := &IpfsNamespaceRecord{}
@@ -237,16 +235,21 @@ func (ns *IpfsNamespace) Persist() error {
 	err := enc.Encode(part)
 
 	if err != nil {
-		return errors.Wrap(err, "Error encoding IpfsNamespace Gob")
+		return nil, errors.Wrap(err, "Error encoding IpfsNamespace Gob")
 	}
 
 	addr, sherr := ns.FilePeer.Shell.Add(&buff)
 
 	if sherr != nil {
-		return errors.Wrap(err, "Error adding IpfsNamespace to Ipfs")
+		return nil, errors.Wrap(err, "Error adding IpfsNamespace to Ipfs")
 	}
 
-	ns.FilePath = IpfsPath(addr)
+	out := &IpfsNamespace{}
+	out.loaded = true
+	out.FilePeer = ns.FilePeer
+	out.FilePath = IpfsPath(addr)
+	out.Namespace = &Namespace{Objects: map[string]Object{}}
+	out.Children = []*IpfsNamespace{ns}
 
-	return nil
+	return out, nil
 }

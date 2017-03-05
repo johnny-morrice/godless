@@ -20,7 +20,7 @@ func (service *IpfsNamespaceService) getMapValues(rw http.ResponseWriter, r *htt
 
 }
 
-func (service *IpfsNamespaceService) addMapValues(rw http.ResponseWriter, r *http.Request) {
+func (service *IpfsNamespaceService) joinMap(rw http.ResponseWriter, r *http.Request) {
 
 }
 
@@ -28,7 +28,7 @@ func (service *IpfsNamespaceService) getSet(rw http.ResponseWriter, r *http.Requ
 
 }
 
-func (service *IpfsNamespaceService) addSetValues(rw http.ResponseWriter, r *http.Request) {
+func (service *IpfsNamespaceService) joinSet(rw http.ResponseWriter, r *http.Request) {
 
 }
 
