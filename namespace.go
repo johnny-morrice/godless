@@ -66,24 +66,12 @@ func (ns *Namespace) JoinObject(key string, obj Object) error {
 	return nil
 }
 
-// type ObjType uint8
-//
-// const (
-// 	SET = ObjType(iota)
-// 	MAP
-// )
-
 // TODO improved type validation
 type Object struct {
-	// Type ObjType
 	Obj SemiLattice
 }
 
 func (o Object) JoinObject(other Object) (Object, error) {
-	// if o.Type != other.Type {
-	// 	return Object{}, fmt.Errorf("Expected Object of type '%v' but got '%v'", o.Type, other.Type)
-	// }
-
 	// Zero value makes join easy
 	zero := Object{}
 	if other.Obj == zero {
@@ -97,7 +85,6 @@ func (o Object) JoinObject(other Object) (Object, error) {
 	}
 
 	out := Object{
-		// Type: o.Type,
 		Obj: joined,
 	}
 
