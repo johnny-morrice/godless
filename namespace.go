@@ -2,7 +2,6 @@ package godless
 
 import (
 	"crypto/sha256"
-	"fmt"
 	"github.com/pkg/errors"
 )
 
@@ -49,22 +48,40 @@ func (ns *Namespace) Join(other SemiLattice) (SemiLattice, error) {
 	return nil, errors.New("Expected *Namespace in Join")
 }
 
-type ObjType uint8
+func (ns *Namespace) JoinObject(key string, obj Object) error {
+	joined, err := obj.JoinObject(ns.Objects[key])
 
-const (
-	SET = ObjType(iota)
-	MAP
-)
+	if err != nil {
+		return errors.Wrap(err, "Namespace JoinObject failed")
+	}
+
+	ns.Objects[key] = joined
+
+	return nil
+}
+
+// type ObjType uint8
+//
+// const (
+// 	SET = ObjType(iota)
+// 	MAP
+// )
 
 // TODO improved type validation
 type Object struct {
-	Type ObjType
+	// Type ObjType
 	Obj SemiLattice
 }
 
 func (o Object) JoinObject(other Object) (Object, error) {
-	if o.Type != other.Type {
-		return Object{}, fmt.Errorf("Expected Object of type '%v' but got '%v'", o.Type, other.Type)
+	// if o.Type != other.Type {
+	// 	return Object{}, fmt.Errorf("Expected Object of type '%v' but got '%v'", o.Type, other.Type)
+	// }
+
+	// Zero value makes join easy
+	zero := Object{}
+	if other.Obj == zero {
+		return o, nil
 	}
 
 	joined, err := o.Obj.Join(other.Obj)
@@ -74,7 +91,7 @@ func (o Object) JoinObject(other Object) (Object, error) {
 	}
 
 	out := Object{
-		Type: o.Type,
+		// Type: o.Type,
 		Obj: joined,
 	}
 
@@ -96,6 +113,11 @@ type Set struct {
 }
 
 func (set Set) JoinSet(other Set) Set {
+	// Handle zero value
+	if len(other.Members) == 0 {
+		return set
+	}
+
 	build := Set{
 		Members: append(set.Members, other.Members...),
 	}
@@ -119,6 +141,11 @@ type Map struct {
 }
 
 func (m Map) JoinMap(other Map) Map {
+	// Handle zero value
+	if len(other.Members) == 0 {
+		return m
+	}
+
 	build := map[string][]string{}
 
 	for k, v := range m.Members {

@@ -3,12 +3,12 @@ package godless
 import (
 	"bytes"
 	"encoding/gob"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"github.com/pkg/errors"
 )
 
-// TODO support lazy key lookup, loading from IPFS only on demand.
 // TODO unload stored nodes - garbage collection.
 type IpfsNamespace struct {
 	loaded bool
@@ -23,18 +23,103 @@ type IpfsNamespaceRecord struct {
 	Children []IpfsPath
 }
 
+func (ns *IpfsNamespace) GetMap(namespaceKey string) (Map, error) {
+	obj, err := ns.lazyGetObject(namespaceKey)
+
+	if err != nil {
+		return Map{}, errors.Wrap(err, "GetMap failed")
+	}
+
+	out, ok := obj.Obj.(Map)
+
+	if !ok {
+		return Map{}, fmt.Errorf("Not a Set: %v", namespaceKey)
+	}
+
+	return out, nil
+}
+
+func (ns *IpfsNamespace) GetMapValues(namespaceKey string, mapKey string) ([]string, error) {
+	m, err := ns.GetMap(namespaceKey)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "GetMapValues failed")
+	}
+
+	vs, present := m.Members[mapKey]
+
+	if !present {
+		return nil, fmt.Errorf("No values in map for: '%v'", mapKey)
+	}
+
+	return vs, nil
+}
+
+func (ns *IpfsNamespace) AddMapValues(namespaceKey string, mapKey string, values []string) error {
+	members := map[string][]string{
+		mapKey: values,
+	}
+
+	newObj := Object{
+		Obj: Map{Members: members},
+	}
+
+	err := ns.Namespace.JoinObject(namespaceKey, newObj)
+
+	if err != nil {
+		return errors.Wrap(err, "AddMapValues failed")
+	}
+
+	return nil
+}
+
+func (ns *IpfsNamespace) GetSet(namespaceKey string) (Set, error) {
+	obj, err := ns.lazyGetObject(namespaceKey)
+
+	if err != nil {
+		return Set{}, errors.Wrap(err, "GetSet failed")
+	}
+
+	out, ok := obj.Obj.(Set)
+
+	if !ok {
+		return Set{}, fmt.Errorf("Not a Set: %v", namespaceKey)
+	}
+
+	return out, nil
+}
+
+func (ns *IpfsNamespace) AddSetValues(namespaceKey string, values []string) error {
+	newObj := Object{
+		Obj: Set{Members: values},
+	}
+
+	err := ns.Namespace.JoinObject(namespaceKey, newObj)
+
+	if err != nil {
+		return errors.Wrap(err, "AddSetValues failed")
+	}
+
+	return nil
+}
+
+func (ns *IpfsNamespace) lazyGetObject(namespaceKey string) (Object, error) {
+	// TODO implement
+	return Object{}, nil
+}
+
 func (ns *IpfsNamespace) LoadAll() (*Namespace, error) {
 	out := &Namespace{}
 
-	err := ns.LoadTraverse(func (child *IpfsNamespace) error {
+	err := ns.LoadTraverse(func (child *IpfsNamespace) (bool, error) {
 		joined, joinerr := out.JoinNamespace(child.Namespace)
 
 		if joinerr != nil {
-			return joinerr
+			return true, joinerr
 		}
 
 		out = joined
-		return nil
+		return false, nil
 	})
 
 	if err != nil {
@@ -44,7 +129,10 @@ func (ns *IpfsNamespace) LoadAll() (*Namespace, error) {
 	return out, nil
 }
 
-func (ns *IpfsNamespace) LoadTraverse(f func (*IpfsNamespace) error) error {
+// Return whether to abort early, and any error.
+type IpfsNamespaceVisitor func (*IpfsNamespace) (bool, error)
+
+func (ns *IpfsNamespace) LoadTraverse(f IpfsNamespaceVisitor) error {
 	stack := make([]*IpfsNamespace, 1)
 	stack[0] = ns
 
@@ -56,11 +144,16 @@ func (ns *IpfsNamespace) LoadTraverse(f func (*IpfsNamespace) error) error {
 			return errors.Wrap(err, "Error in IpfsNamespace LoadTraverse")
 		}
 
-		err = f(current)
+		abort, visiterr := f(current)
 
-		if err != nil {
+		if visiterr != nil {
 			return errors.Wrap(err, "Error in IpfsNamespace traversal")
 		}
+
+		if abort {
+			return nil
+		}
+
 		stack = append(stack, current.Children...)
 	}
 
