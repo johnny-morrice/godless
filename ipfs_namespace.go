@@ -8,6 +8,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+// TODO support lazy key lookup, loading from IPFS only on demand.
+// TODO unload stored nodes - garbage collection.
 type IpfsNamespace struct {
 	loaded bool
 	FilePeer *IpfsPeer
