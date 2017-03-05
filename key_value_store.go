@@ -25,6 +25,14 @@ type KvQuery struct {
 	Response chan KvResponse
 }
 
+func MakeKvQuery(opcode KvOpCode, value interface{}) KvQuery {
+	return KvQuery{
+		OpCode: opcode,
+		Val: value,
+		Response: make(chan KvResponse),
+	}
+}
+
 type KvSetJoin struct {
 	NamespaceKey string
 	Values []string

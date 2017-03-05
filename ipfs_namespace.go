@@ -31,9 +31,9 @@ func LoadIpfsNamespace(filePeer *IpfsPeer, filePath IpfsPath) (*IpfsNamespace, e
 	ns := &IpfsNamespace{}
 	ns.FilePeer = filePeer
 	ns.FilePath = filePath
-	ns.queryCache = NewNamespace()
-	ns.updateCache = NewNamespace()
-	ns.Namespace = NewNamespace()
+	ns.queryCache = MakeNamespace()
+	ns.updateCache = MakeNamespace()
+	ns.Namespace = MakeNamespace()
 	ns.Children = []*IpfsNamespace{}
 
 	err := ns.cacheChildNamespaces()
@@ -48,9 +48,9 @@ func LoadIpfsNamespace(filePeer *IpfsPeer, filePath IpfsPath) (*IpfsNamespace, e
 func PersistNewIpfsNamespace(filePeer *IpfsPeer, namespace *Namespace) (*IpfsNamespace, error) {
 	ns := &IpfsNamespace{}
 	ns.FilePeer = filePeer
-	ns.queryCache = NewNamespace()
+	ns.queryCache = MakeNamespace()
 	ns.updateCache = namespace
-	ns.Namespace = NewNamespace()
+	ns.Namespace = MakeNamespace()
 	ns.Children = []*IpfsNamespace{}
 
 	return ns.Persist()
@@ -302,7 +302,7 @@ func (ns *IpfsNamespace) Persist() (*IpfsNamespace, error) {
 	out.FilePeer = ns.FilePeer
 	out.FilePath = IpfsPath(addr)
 	out.Namespace = ns.updateCache
-	out.updateCache = NewNamespace()
+	out.updateCache = MakeNamespace()
 
 	// Join query cache
 	cache, jerr := ns.queryCache.JoinNamespace(ns.updateCache)

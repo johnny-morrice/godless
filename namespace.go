@@ -14,7 +14,7 @@ type Namespace struct {
 	Objects map[string]Object
 }
 
-func NewNamespace() *Namespace {
+func MakeNamespace() *Namespace {
 	return &Namespace{
 		Objects: map[string]Object{},
 	}
