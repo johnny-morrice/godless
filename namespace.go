@@ -1,6 +1,7 @@
 package godless
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"github.com/pkg/errors"
 )
@@ -15,10 +16,14 @@ type Namespace struct {
 }
 
 func (ns *Namespace) JoinNamespace(other *Namespace) (*Namespace, error) {
-	out := map[string]Object{}
+	build := map[string]Object{}
 
 	for k, v := range ns.Objects {
-		otherv, present := other.Objects[k]
+		build[k] = v
+	}
+
+	for k, otherv := range other.Objects {
+		v, present := ns.Objects[k]
 
 		if present {
 			joined, err := v.JoinObject(otherv)
@@ -27,13 +32,13 @@ func (ns *Namespace) JoinNamespace(other *Namespace) (*Namespace, error) {
 				return nil, errors.Wrap(err, "Error in Namespace join")
 			}
 
-			out[k] = joined
+			build[k] = joined
 		} else {
-			out[k] = v
+			build[k] = otherv
 		}
 	}
 
-	return &Namespace{Objects: out}, nil
+	return &Namespace{Objects: build}, nil
 }
 
 func (ns *Namespace) Join(other SemiLattice) (SemiLattice, error) {
@@ -91,9 +96,10 @@ type Set struct {
 }
 
 func (set Set) JoinSet(other Set) Set {
-	return Set{
+	build := Set{
 		Members: append(set.Members, other.Members...),
 	}
+	return build.uniq()
 }
 
 func (set Set) Join(other SemiLattice) (SemiLattice, error) {
@@ -104,29 +110,34 @@ func (set Set) Join(other SemiLattice) (SemiLattice, error) {
 	return nil, errors.New("Expected Set in Join")
 }
 
+func (set Set) uniq() Set {
+	return Set{Members: uniq256(set.Members)}
+}
+
 type Map struct {
 	Members map[string][]string
 }
 
 func (m Map) JoinMap(other Map) Map {
-	out := map[string][]string{}
+	build := map[string][]string{}
 
 	for k, v := range m.Members {
-		out[k] = v
+		build[k] = v
 	}
 
 	for k, v := range other.Members {
 		initv, present := m.Members[k]
 
 		if present {
-			out[k] = append(initv, v...)
+			build[k] = append(initv, v...)
 		} else {
-			out[k] = v
+			build[k] = v
 		}
 
 	}
 
-	return Map{Members: out}
+	ret := Map{Members: build}
+	return ret.uniq()
 }
 
 func (m Map) Join(other SemiLattice) (SemiLattice, error) {
@@ -135,4 +146,34 @@ func (m Map) Join(other SemiLattice) (SemiLattice, error) {
 	}
 
 	return nil, errors.New("Expected Map in Join")
+}
+
+func (m Map) uniq() Map {
+	build := map[string][]string{}
+	for k, vs := range m.Members {
+		build[k] = uniq256(vs)
+	}
+
+	return Map{Members: build}
+}
+
+// uniq256 deduplicates a slice of strings using sha256.
+func uniq256(dups []string) []string {
+	dedup := map[[sha256.Size]byte]string{}
+
+	for _, s := range dups {
+		bs := []byte(s)
+		k := sha256.Sum256(bs)
+		if _, present := dedup[k]; !present {
+			dedup[k] = s
+		}
+	}
+
+	out := []string{}
+
+	for _, v := range dedup {
+		out = append(out, v)
+	}
+
+	return out
 }
