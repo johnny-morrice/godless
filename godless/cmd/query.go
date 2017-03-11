@@ -36,6 +36,12 @@ var queryCmd = &cobra.Command{
 	},
 }
 
+var query string
+var analyse bool
+
 func init() {
 	RootCmd.AddCommand(queryCmd)
+
+	queryCmd.Flags().StringVar(&query, "query", "", "Godless NOSQL query text")
+	queryCmd.Flags().BoolVar(&analyse, "analyse", false, "Analyse query")
 }
