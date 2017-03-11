@@ -47,7 +47,8 @@ var queryCmd = &cobra.Command{
 		}
 
 		if analyse {
-			fmt.Printf("Query analysis:\n\n%s\n\n", query.Analyse())
+			format := "Query analysis for:\n\n%s\n\n%v\n\n"
+			fmt.Printf(format, source, query.Analyse())
 			fmt.Println("Syntax tree:\n\n")
 			query.Parser.PrintSyntaxTree()
 		}

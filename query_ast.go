@@ -9,24 +9,34 @@ import (
 type QueryAST struct {
 	Command string
 	TableKey string
-	Select QuerySelectAST
-	Join QueryJoinAST
+	Select QuerySelectAST `json:",omitempty"`
+	Join QueryJoinAST `json:",omitempty"`
 
 	whereStack []*QueryWhereAST
 }
 
-func (ast *QueryAST) InitWhere() {
+func (ast *QueryAST) initWhere() {
 	where := &QueryWhereAST{
 		Command: "and",
 	}
-	ast.Select.Where = where
+
 	ast.whereStack = []*QueryWhereAST{where}
 }
 
 func (ast *QueryAST) PushWhere() {
 	where := &QueryWhereAST{}
-	lastWhere := ast.peekWhere()
-	lastWhere.Clauses = append(lastWhere.Clauses, where)
+
+	if len(ast.whereStack) == 0 {
+		if ast.Select.Where != nil {
+			panic("BUG invalid stack")
+		}
+		
+		ast.Select.Where = where
+	} else {
+		lastWhere := ast.peekWhere()
+		lastWhere.Clauses = append(lastWhere.Clauses, where)
+	}
+
 	ast.whereStack = append(ast.whereStack, where)
 }
 
@@ -130,7 +140,7 @@ func (ast *QueryJoinAST) Compile() (QueryJoin, error) {
 }
 
 type QuerySelectAST struct {
-	Where *QueryWhereAST
+	Where *QueryWhereAST `json:",omitempty"`
 	Limit string
 }
 
@@ -162,8 +172,8 @@ func (ast *QuerySelectAST) Compile() (QuerySelect, error) {
 
 type QueryWhereAST struct {
 	Command string
-	Clauses []*QueryWhereAST
-	Predicate *QueryPredicateAST
+	Clauses []*QueryWhereAST `json:",omitempty"`
+	Predicate *QueryPredicateAST `json:",omitempty"`
 }
 
 func (ast *QueryWhereAST) Compile() (QueryWhere, error) {

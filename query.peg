@@ -10,7 +10,7 @@ SelectKey <- < Key > { p.SetTableName(buffer[begin:end]) }
 
 Limit <- 'limit' MustSpacing < PositiveInteger > { p.SetLimit(buffer[begin:end])}
 
-Where <- 'where' { p.InitWhere() } MustSpacing WhereClause
+Where <- 'where' MustSpacing WhereClause
 WhereClause <- { p.PushWhere() } ( AndClause / OrClause / PredicateClause ) { p.PopWhere() }
 AndClause <- 'and' { p.SetWhereCommand("and") } Spacing '(' Spacing WhereClause Spacing (',' Spacing WhereClause Spacing )* ')'
 OrClause <- 'or' { p.SetWhereCommand("or") } Spacing '(' Spacing WhereClause Spacing (',' Spacing WhereClause Spacing)* ')'
