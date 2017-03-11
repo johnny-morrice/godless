@@ -24,6 +24,8 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+
+	"github.com/johnny-morrice/godless"
 )
 
 // queryCmd represents the query command
@@ -32,16 +34,24 @@ var queryCmd = &cobra.Command{
 	Short: "Query a godless server",
 	Long: `Send a query to a godless server over HTTP.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("query called")
+		if analyse {
+			query, err := godless.ParseQuery(source)
+
+			if err != nil {
+				die(err)
+			}
+
+			fmt.Printf("Query analysis:\n%s", query.Analyse())
+		}
 	},
 }
 
-var query string
+var source string
 var analyse bool
 
 func init() {
 	RootCmd.AddCommand(queryCmd)
 
-	queryCmd.Flags().StringVar(&query, "query", "", "Godless NOSQL query text")
+	queryCmd.Flags().StringVar(&source, "query", "", "Godless NOSQL query text")
 	queryCmd.Flags().BoolVar(&analyse, "analyse", false, "Analyse query")
 }

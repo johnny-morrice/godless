@@ -7,7 +7,8 @@ import (
 type QueryOpCode uint16
 
 const (
-	SELECT = QueryOpCode(iota)
+	QUERY_NOP = QueryOpCode(iota)
+	SELECT
 	JOIN
 )
 
@@ -26,22 +27,19 @@ type QuerySelect struct {
 	TableKey string
 	RowKeys []string
 	Where QueryWhere
+	Limit uint
 }
 
 type QueryWhereOpCode uint16
 
 const (
-	AND = QueryOpCode(iota)
+	WHERE_NOP = QueryOpCode(iota)
+	AND
 	OR
 	PREDICATE
 )
 
 type QueryWhere struct {
-	QueryWhereClause
-	Limit uint
-}
-
-type QueryWhereClause struct {
 	OpCode QueryOpCode
 	Clauses []QueryWhere
 	Predicate QueryPredicate
@@ -50,7 +48,8 @@ type QueryWhereClause struct {
 type QueryPredicateOpCode uint16
 
 const (
-	STR_EQ = QueryPredicateOpCode(iota)
+	PREDICATE_NOP = QueryPredicateOpCode(iota)
+	STR_EQ
 	STR_NEQ
 	STR_EMPTY
 	STR_NEMPTY
@@ -81,6 +80,10 @@ type QueryPredicate struct {
 
 func ParseQuery(source string) (*Query, error) {
 	return nil, errors.New("Not implemented")
+}
+
+func (query *Query) Analyse() string {
+	return ""
 }
 
 func (query *Query) Run(kvq KvQuery, ns *IpfsNamespace) {

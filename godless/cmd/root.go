@@ -49,6 +49,11 @@ func Execute() {
 	}
 }
 
+func die(err error) {
+	fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+	os.Exit(1)
+}
+
 func init() {
 	cobra.OnInitialize(initConfig)
 
