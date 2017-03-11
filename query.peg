@@ -12,8 +12,8 @@ Limit <- 'limit' MustSpacing < PositiveInteger > { p.SetLimit(buffer[begin:end])
 
 Where <- 'where' { p.InitWhere() } MustSpacing WhereClause
 WhereClause <- { p.PushWhere() } ( AndClause / OrClause / PredicateClause ) { p.PopWhere() }
-AndClause <- 'and' Spacing '(' Spacing WhereClause Spacing (',' Spacing WhereClause Spacing )* ')'
-OrClause <- 'or' Spacing '(' Spacing WhereClause Spacing (',' Spacing WhereClause Spacing)* ')'
+AndClause <- 'and' { p.SetWhereCommand("and") } Spacing '(' Spacing WhereClause Spacing (',' Spacing WhereClause Spacing )* ')'
+OrClause <- 'or' { p.SetWhereCommand("or") } Spacing '(' Spacing WhereClause Spacing (',' Spacing WhereClause Spacing)* ')'
 PredicateClause <- { p.InitPredicate() } Predicate Spacing '(' Spacing PredicateValue (',' Spacing PredicateValue Spacing)* ')'
 Predicate <- < ('str_eq' / 'str_neq') > { p.SetPredicateCommand(buffer[begin:end]) }
 PredicateValue <- (PredicateRowKey / PredicateKey / PredicateLiteralValue)

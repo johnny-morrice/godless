@@ -116,7 +116,7 @@ func CompileQuery(source string) (*Query, error) {
 }
 
 func (query *Query) Analyse() string {
-	return prettyPrintJson(query)
+	return fmt.Sprintf("Compiled:\n\n%v\n\nAST:\n\n%v", prettyPrintJson(query), prettyPrintJson(query.AST))
 }
 
 func (query *Query) Run(kvq KvQuery, ns *IpfsNamespace) {

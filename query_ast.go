@@ -34,6 +34,11 @@ func (ast *QueryAST) PopWhere() {
 	ast.whereStack = ast.whereStack[:len(ast.whereStack) - 1]
 }
 
+func (ast *QueryAST) SetWhereCommand(command string) {
+	lastWhere := ast.peekWhere()
+	lastWhere.Command = command
+}
+
 func (ast *QueryAST) peekWhere() *QueryWhereAST {
 	if (len(ast.whereStack) == 0) {
 		panic("BUG where stack empty!")
@@ -238,5 +243,5 @@ func (ast *QueryPredicateAST) Compile() (QueryPredicate, error) {
 	predicate.Literals = ast.Literals
 	predicate.IncludeRowKey = ast.IncludeRowKey
 
-	return QueryPredicate{}, nil
+	return predicate, nil
 }
