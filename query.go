@@ -4,6 +4,8 @@ package godless
 
 import (
 	"encoding/json"
+	"fmt"
+	"os"
 	"github.com/pkg/errors"
 )
 
@@ -87,8 +89,11 @@ func CompileQuery(source string) (*Query, error) {
 	parser.Pretty = true
 	parser.Init()
 
-
 	if err := parser.Parse(); err != nil {
+		if __DEBUG {
+			parser.PrintSyntaxTree()
+		}
+
 		return nil, errors.Wrap(err, "Query parse failed")
 	}
 
@@ -98,8 +103,10 @@ func CompileQuery(source string) (*Query, error) {
 
 	if err != nil {
 		if __DEBUG {
+			fmt.Fprintf(os.Stderr, "AST:\n\n%s\n\n", prettyPrintJson(parser.QueryAST))
 			parser.PrintSyntaxTree()
 		}
+
 		return nil, errors.Wrap(err, "Query compile failed")
 	}
 
@@ -109,14 +116,18 @@ func CompileQuery(source string) (*Query, error) {
 }
 
 func (query *Query) Analyse() string {
-	bs, err := json.MarshalIndent(query, "", " ")
-
-	if err != nil {
-		panic(errors.Wrap(err, "BUG analyse query failed"))
-	}
-	return string(bs)
+	return prettyPrintJson(query)
 }
 
 func (query *Query) Run(kvq KvQuery, ns *IpfsNamespace) {
 
+}
+
+func prettyPrintJson(jsonable interface{}) string {
+	bs, err := json.MarshalIndent(jsonable, "", " ")
+
+	if err != nil {
+		panic(errors.Wrap(err, "BUG prettyPrintJson failed"))
+	}
+	return string(bs)
 }

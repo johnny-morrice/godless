@@ -16,7 +16,9 @@ type QueryAST struct {
 }
 
 func (ast *QueryAST) InitWhere() {
-	where := &QueryWhereAST{}
+	where := &QueryWhereAST{
+		Command: "and",
+	}
 	ast.Select.Where = where
 	ast.whereStack = []*QueryWhereAST{where}
 }
@@ -42,6 +44,7 @@ func (ast *QueryAST) peekWhere() *QueryWhereAST {
 
 func (ast *QueryAST) InitPredicate() {
 	where := ast.peekWhere()
+	where.Command = "predicate"
 	where.Predicate = &QueryPredicateAST{}
 }
 
@@ -179,7 +182,7 @@ func (ast *QueryWhereAST) Compile() (QueryWhere, error) {
 
 		where.Clauses = clauses
 		where.OpCode = OR
-	} else if ast.Command == "" && ast.Predicate != nil {
+	} else if ast.Command == "predicate" && ast.Predicate != nil {
 		predicate, err := ast.Predicate.Compile()
 
 		if err != nil {
