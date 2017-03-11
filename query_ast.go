@@ -15,14 +15,6 @@ type QueryAST struct {
 	whereStack []*QueryWhereAST
 }
 
-func (ast *QueryAST) initWhere() {
-	where := &QueryWhereAST{
-		Command: "and",
-	}
-
-	ast.whereStack = []*QueryWhereAST{where}
-}
-
 func (ast *QueryAST) PushWhere() {
 	where := &QueryWhereAST{}
 
@@ -30,7 +22,7 @@ func (ast *QueryAST) PushWhere() {
 		if ast.Select.Where != nil {
 			panic("BUG invalid stack")
 		}
-		
+
 		ast.Select.Where = where
 	} else {
 		lastWhere := ast.peekWhere()
