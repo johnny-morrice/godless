@@ -1,0 +1,28 @@
+package godless
+
+type QueryParser Peg {
+	QueryAST
+}
+
+Grammar	<- Spacing Select { p.AddSelect() } !.
+Select <- 'select' MustSpacing SelectKey (MustSpacing Where / MustSpacing Limit)?
+SelectKey <- < Key > { p.SetTableName(buffer[begin:end]) }
+
+Limit <- 'limit' MustSpacing < PositiveInteger > { p.SetLimit(buffer[begin:end])}
+
+Where <- 'where' { p.InitWhere() } MustSpacing WhereClause
+WhereClause <- { p.PushWhere() } ( AndClause / OrClause / PredicateClause ) { p.PopWhere() }
+AndClause <- 'and' Spacing '(' WhereClause Spacing (',' Spacing WhereClause Spacing )* ')'
+OrClause <- 'or' Spacing '(' WhereClause Spacing (',' Spacing WhereClause Spacing)* ')'
+PredicateClause <- { p.InitPredicate() } Predicate Spacing '(' PredicateValue (',' Spacing PredicateValue Spacing)* ')'
+Predicate <- < 'str_eq' / 'str_neq' > { p.SetPredicateCommand(buffer[begin:end]) }
+PredicateValue <- (PredicateRowKey / PredicateKey / PredicateLiteralValue)
+PredicateRowKey <- '$key' { p.UsePredicateRowKey() }
+PredicateKey <- < Key > { p.AddPredicateKey(buffer[begin:end]) }
+PredicateLiteralValue <- ['] < [^']* > ['] { p.AddPredicateLiteral(buffer[begin:end])}
+
+PositiveInteger <- [1-9] [0-9]*
+Key <- (Escape / [a-zA-Z0-9])+
+Escape <- '\\' ['\"?\\abfnrtv]
+MustSpacing <- ( ' ' / '\t' / '\n' )+
+Spacing <- ( ' ' / '\t' / '\n' )*

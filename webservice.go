@@ -28,7 +28,7 @@ func (service *KeyValueService) Handler() http.Handler {
 
 func (service *KeyValueService) query(rw http.ResponseWriter, req *http.Request) {
 	queryText := req.FormValue("query")
-	query, err := ParseQuery(queryText)
+	query, err := CompileQuery(queryText)
 
 	if err != nil {
 		invalidRequest(rw, err)

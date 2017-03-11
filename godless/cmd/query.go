@@ -34,14 +34,22 @@ var queryCmd = &cobra.Command{
 	Short: "Query a godless server",
 	Long: `Send a query to a godless server over HTTP.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if analyse {
-			query, err := godless.ParseQuery(source)
+		var query *godless.Query
+
+		if source != "" {
+			q, err := godless.CompileQuery(source)
 
 			if err != nil {
 				die(err)
 			}
 
-			fmt.Printf("Query analysis:\n%s", query.Analyse())
+			query = q
+		}
+
+		if analyse {
+			fmt.Printf("Query analysis:\n\n%s\n\n", query.Analyse())
+			fmt.Println("Syntax tree:\n\n")
+			query.Parser.PrintSyntaxTree()
 		}
 	},
 }

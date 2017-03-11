@@ -1,6 +1,9 @@
 package godless
 
+//go:generate peg -switch -inline query.peg
+
 import (
+	"encoding/json"
 	"github.com/pkg/errors"
 )
 
@@ -13,36 +16,36 @@ const (
 )
 
 type Query struct {
-	OpCode QueryOpCode
-	Update QueryUpdate
-	Select QuerySelect
+	AST *QueryAST `json:"-"`
+	Parser *QueryParser `json:"-"`
+	OpCode QueryOpCode `json:",omitempty"`
+	TableKey string
+	Join QueryJoin `json:",omitempty"`
+	Select QuerySelect `json:",omitempty"`
 }
 
-type QueryUpdate struct {
-	TableKey string
-	Rows []Row
+type QueryJoin struct {
+	Rows []Row `json:",omitempty"`
 }
 
 type QuerySelect struct {
-	TableKey string
-	RowKeys []string
-	Where QueryWhere
-	Limit uint
+	Where QueryWhere `json:",omitempty"`
+	Limit uint `json:",omitempty"`
 }
 
 type QueryWhereOpCode uint16
 
 const (
-	WHERE_NOP = QueryOpCode(iota)
+	WHERE_NOOP = QueryWhereOpCode(iota)
 	AND
 	OR
 	PREDICATE
 )
 
 type QueryWhere struct {
-	OpCode QueryOpCode
-	Clauses []QueryWhere
-	Predicate QueryPredicate
+	OpCode QueryWhereOpCode `json:",omitempty"`
+	Clauses []QueryWhere `json:",omitempty"`
+	Predicate QueryPredicate `json:",omitempty"`
 }
 
 type QueryPredicateOpCode uint16
@@ -51,9 +54,9 @@ const (
 	PREDICATE_NOP = QueryPredicateOpCode(iota)
 	STR_EQ
 	STR_NEQ
-	STR_EMPTY
-	STR_NEMPTY
 	// TODO flesh these out
+	// STR_EMPTY
+	// STR_NEMPTY
 	// STR_GT
 	// STR_LT
 	// STR_GTE
@@ -73,17 +76,45 @@ const (
 )
 
 type QueryPredicate struct {
-	OpCode QueryPredicateOpCode
-	Keys []string
-	Literals []string
+	OpCode QueryPredicateOpCode `json:",omitempty"`
+	Keys []string `json:",omitempty"`
+	Literals []string `json:",omitempty"`
+	IncludeRowKey bool `json:",omitempty"`
 }
 
-func ParseQuery(source string) (*Query, error) {
-	return nil, errors.New("Not implemented")
+func CompileQuery(source string) (*Query, error) {
+	parser := &QueryParser{Buffer: source}
+	parser.Pretty = true
+	parser.Init()
+
+
+	if err := parser.Parse(); err != nil {
+		return nil, errors.Wrap(err, "Query parse failed")
+	}
+
+	parser.Execute()
+
+	query, err := parser.QueryAST.Compile()
+
+	if err != nil {
+		if __DEBUG {
+			parser.PrintSyntaxTree()
+		}
+		return nil, errors.Wrap(err, "Query compile failed")
+	}
+
+	query.Parser = parser
+
+	return query, nil
 }
 
 func (query *Query) Analyse() string {
-	return ""
+	bs, err := json.MarshalIndent(query, "", " ")
+
+	if err != nil {
+		panic(errors.Wrap(err, "BUG analyse query failed"))
+	}
+	return string(bs)
 }
 
 func (query *Query) Run(kvq KvQuery, ns *IpfsNamespace) {
