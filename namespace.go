@@ -2,6 +2,7 @@ package godless
 
 import (
 	"crypto/sha256"
+	"fmt"
 	"github.com/pkg/errors"
 )
 
@@ -11,27 +12,25 @@ type SemiLattice interface {
 
 // Semi-lattice type that implements our storage
 type Namespace struct {
-	Objects map[string]Object
+	Tables map[string]Table
 }
 
 func MakeNamespace() *Namespace {
 	return &Namespace{
-		Objects: map[string]Object{},
+		Tables: map[string]Table{},
 	}
 }
 
 func (ns *Namespace) JoinNamespace(other *Namespace) (*Namespace, error) {
-	build := map[string]Object{}
+	build := map[string]Table{}
 
-	for k, v := range ns.Objects {
+	for k, v := range ns.Tables {
 		build[k] = v
 	}
 
-	for k, otherv := range other.Objects {
-		v, present := ns.Objects[k]
-
-		if present {
-			joined, err := v.JoinObject(otherv)
+	for k, otherv := range other.Tables {
+		if v, present := ns.Tables[k]; present {
+			joined, err := v.JoinTable(otherv)
 
 			if err != nil {
 				return nil, errors.Wrap(err, "Error in Namespace join")
@@ -43,7 +42,7 @@ func (ns *Namespace) JoinNamespace(other *Namespace) (*Namespace, error) {
 		}
 	}
 
-	return &Namespace{Objects: build}, nil
+	return &Namespace{Tables: build}, nil
 }
 
 func (ns *Namespace) Join(other SemiLattice) (SemiLattice, error) {
@@ -54,127 +53,76 @@ func (ns *Namespace) Join(other SemiLattice) (SemiLattice, error) {
 	return nil, errors.New("Expected *Namespace in Join")
 }
 
-func (ns *Namespace) JoinObject(key string, obj Object) error {
-	joined, err := obj.JoinObject(ns.Objects[key])
+func (ns *Namespace) JoinTable(key string, table Table) error {
+	joined, err := table.JoinTable(ns.Tables[key])
 
 	if err != nil {
-		return errors.Wrap(err, "Namespace JoinObject failed")
+		return errors.Wrap(err, "Namespace JoinTable failed")
 	}
 
-	ns.Objects[key] = joined
+	ns.Tables[key] = joined
 
 	return nil
 }
 
-// TODO improved type validation
-type Object struct {
-	Obj SemiLattice
+func (ns *Namespace) GetTable(key string) (Table, error) {
+	if table, present := ns.Tables[key]; present {
+		return table, nil
+	} else {
+		return Table{}, fmt.Errorf("No such table in namespace '%v'", key)
+	}
 }
 
-func (o Object) JoinObject(other Object) (Object, error) {
-	// Zero value makes join easy
-	zero := Object{}
-	if other.Obj == zero {
-		return o, nil
+// TODO improved type validation
+type Table struct {
+	Rows map[string]Row
+}
+
+func (t Table) JoinTable(other Table) (Table, error) {
+	out := Table{
+		Rows: map[string]Row{},
 	}
 
-	joined, err := o.Obj.Join(other.Obj)
-
-	if err != nil {
-		return Object{}, err
-	}
-
-	out := Object{
-		Obj: joined,
+	for k, v := range t.Rows {
+		if othv, present := other.Rows[k]; present {
+			jrow := v.JoinRow(othv)
+			out.Rows[k] = jrow
+		} else {
+			out.Rows[k] = v
+		}
 	}
 
 	return out, nil
 }
 
-func (o Object) Join(other SemiLattice) (SemiLattice, error) {
-	otherobj, ok := other.(Object)
+func (t Table) Join(other SemiLattice) (SemiLattice, error) {
+	otherobj, ok := other.(Table)
 
 	if !ok {
-		return nil, errors.New("Expected Object in Join")
+		return nil, errors.New("Expected Table in Join")
 	}
 
-	return o.JoinObject(otherobj)
+	return t.JoinTable(otherobj)
 }
 
-type Set struct {
-	Members []string
+type Row struct {
+	Entries map[string][]string
 }
 
-func (set Set) JoinSet(other Set) Set {
-	// Handle zero value
-	if len(other.Members) == 0 {
-		return set
+func (row Row) JoinRow(other Row) Row {
+	out := Row{
+		Entries: map[string][]string{},
 	}
 
-	build := Set{
-		Members: append(set.Members, other.Members...),
-	}
-	return build.uniq()
-}
-
-func (set Set) Join(other SemiLattice) (SemiLattice, error) {
-	if os, ok := other.(Set); ok {
-		return set.JoinSet(os), nil
-	}
-
-	return nil, errors.New("Expected Set in Join")
-}
-
-func (set Set) uniq() Set {
-	return Set{Members: uniq256(set.Members)}
-}
-
-type Map struct {
-	Members map[string][]string
-}
-
-func (m Map) JoinMap(other Map) Map {
-	// Handle zero value
-	if len(other.Members) == 0 {
-		return m
-	}
-
-	build := map[string][]string{}
-
-	for k, v := range m.Members {
-		build[k] = v
-	}
-
-	for k, v := range other.Members {
-		initv, present := m.Members[k]
-
-		if present {
-			build[k] = append(initv, v...)
+	for k, v := range row.Entries {
+		if othv, present := other.Entries[k]; present {
+			out.Entries[k] = append(v, othv...)
 		} else {
-			build[k] = v
+			out.Entries[k] = v
 		}
-
 	}
 
-	ret := Map{Members: build}
-	return ret.uniq()
-}
-
-func (m Map) Join(other SemiLattice) (SemiLattice, error) {
-	if om, ok := other.(Map); ok {
-		return m.JoinMap(om), nil
-	}
-
-	return nil, errors.New("Expected Map in Join")
-}
-
-func (m Map) uniq() Map {
-	build := map[string][]string{}
-	for k, vs := range m.Members {
-		build[k] = uniq256(vs)
-	}
-
-	return Map{Members: build}
+	return out
 }
 
 // uniq256 deduplicates a slice of strings using sha256.
