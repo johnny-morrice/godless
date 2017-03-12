@@ -9,8 +9,8 @@ Query <- Spacing (Select { p.AddSelect() } / Join { p.AddJoin() }) !.
 Join <- 'join' MustSpacing JoinKey MustSpacing 'rows' MustSpacing JoinRow (Spacing JoinRow)* Spacing
 JoinKey <- < Key > { p.SetTableName(buffer[begin:end]) }
 JoinRow <- { p.AddJoinRow() } '(' Spacing KeyJoin Spacing ( ',' Spacing ValueJoin Spacing ) * ')'
-KeyJoin <- '@key' Spacing '=' Spacing ('?' ['] < Literal > ['] / < Key > ) { p.SetJoinRowKey(buffer[begin:end]) }
-ValueJoin <- (< Key > / '?' ['] < Literal > ['] ) { p.SetJoinKey(buffer[begin:end]) } Spacing '=' Spacing ['] < Literal > ['] { p.SetJoinValue(buffer[begin:end]) }
+KeyJoin <- '@key' Spacing '=' Spacing ('@' ['] < Literal > ['] / < Key > ) { p.SetJoinRowKey(buffer[begin:end]) }
+ValueJoin <- (< Key > / '@' ['] < Literal > ['] ) { p.SetJoinKey(buffer[begin:end]) } Spacing '=' Spacing ['] < Literal > ['] { p.SetJoinValue(buffer[begin:end]) }
 
 Select <- 'select' MustSpacing SelectKey (MustSpacing Where)? (MustSpacing Limit)?
 SelectKey <- < Key > { p.SetTableName(buffer[begin:end]) }
@@ -25,7 +25,7 @@ PredicateClause <- { p.InitPredicate() } Predicate Spacing '(' Spacing Predicate
 Predicate <- < ('str_eq' / 'str_neq') > { p.SetPredicateCommand(buffer[begin:end]) }
 PredicateValue <- (PredicateRowKey / PredicateKey / PredicateLiteralValue)
 PredicateRowKey <- '@key' { p.UsePredicateRowKey() }
-PredicateKey <- (< Key > / '?' ['] < Literal > ['] ) { p.AddPredicateKey(buffer[begin:end]) } 
+PredicateKey <- (< Key > / '@' ['] < Literal > ['] ) { p.AddPredicateKey(buffer[begin:end]) }
 PredicateLiteralValue <- ['] < Literal > ['] { p.AddPredicateLiteral(buffer[begin:end])}
 
 Literal <- (Escape / [^'])*
