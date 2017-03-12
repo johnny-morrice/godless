@@ -4,7 +4,14 @@ type QueryParser Peg {
 	QueryAST
 }
 
-Query <- Spacing Select { p.AddSelect() } !.
+Query <- Spacing (Select { p.AddSelect() } / Join { p.AddJoin() }) !.
+
+Join <- 'join' MustSpacing JoinKey MustSpacing 'rows' MustSpacing JoinRow (Spacing JoinRow)* Spacing
+JoinKey <- < Key > { p.SetTableName(buffer[begin:end]) }
+JoinRow <- { p.AddJoinRow() } '(' Spacing KeyJoin Spacing ( ',' Spacing ValueJoin Spacing ) * ')'
+KeyJoin <- '@key' Spacing '=' Spacing < Key > { p.SetJoinRowKey(buffer[begin:end]) }
+ValueJoin <- < Key > { p.SetJoinKey(buffer[begin:end]) } Spacing '=' Spacing ['] < Literal > ['] { p.SetJoinValue(buffer[begin:end]) }
+
 Select <- 'select' MustSpacing SelectKey (MustSpacing Where)? (MustSpacing Limit)?
 SelectKey <- < Key > { p.SetTableName(buffer[begin:end]) }
 
@@ -19,8 +26,9 @@ Predicate <- < ('str_eq' / 'str_neq') > { p.SetPredicateCommand(buffer[begin:end
 PredicateValue <- (PredicateRowKey / PredicateKey / PredicateLiteralValue)
 PredicateRowKey <- '@key' { p.UsePredicateRowKey() }
 PredicateKey <- < Key > { p.AddPredicateKey(buffer[begin:end]) }
-PredicateLiteralValue <- ['] < [^']* > ['] { p.AddPredicateLiteral(buffer[begin:end])}
+PredicateLiteralValue <- ['] < Literal > ['] { p.AddPredicateLiteral(buffer[begin:end])}
 
+Literal <- (Escape / [^'])*
 PositiveInteger <- [1-9] [0-9]*
 Key <- (Escape / [a-zA-Z0-9])+
 Escape <- '\\' ['\"?\\abfnrtv]

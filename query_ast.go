@@ -3,6 +3,7 @@ package godless
 import (
 	"fmt"
 	"strconv"
+	"regexp"
 	"github.com/pkg/errors"
 )
 
@@ -13,6 +14,32 @@ type QueryAST struct {
 	Join QueryJoinAST `json:",omitempty"`
 
 	whereStack []*QueryWhereAST
+	lastRowJoinKey string
+	lastRowJoin *QueryRowJoinAST
+}
+
+func (ast *QueryAST) AddJoin() {
+	ast.Command = "join"
+}
+
+func (ast *QueryAST) AddJoinRow() {
+	row := &QueryRowJoinAST{
+		Values: map[string]string{},
+	}
+	ast.Join.Rows = append(ast.Join.Rows, row)
+	ast.lastRowJoin = row
+}
+
+func (ast *QueryAST) SetJoinRowKey(key string) {
+	ast.lastRowJoin.RowKey = key
+}
+
+func (ast *QueryAST) SetJoinKey(key string) {
+	ast.lastRowJoinKey = key
+}
+
+func (ast *QueryAST) SetJoinValue(value string) {
+	ast.lastRowJoin.Values[ast.lastRowJoinKey] = value
 }
 
 func (ast *QueryAST) PushWhere() {
@@ -120,16 +147,36 @@ func (ast *QueryAST) Compile() (*Query, error) {
 }
 
 type QueryJoinAST struct {
-	Rows []Row
+	Rows []*QueryRowJoinAST `json:",omitempty"`
 }
 
 func (ast *QueryJoinAST) Compile() (QueryJoin, error) {
+	rows := make([]QueryRowJoin, len(ast.Rows))
+
+	for i, r := range ast.Rows {
+		unquoted, err := unquoteMap(r.Values)
+
+		if err != nil {
+			return QueryJoin{}, errors.Wrap(err, "Error compiling join")
+		}
+
+		rows[i] = QueryRowJoin{RowKey: r.RowKey, Values: unquoted,}
+	}
+
 	qjoin := QueryJoin{
-		Rows: ast.Rows,
+		Rows: rows,
 	}
 
 	return qjoin, nil
 }
+
+
+type QueryRowJoinAST struct {
+	RowKey string
+	Values map[string]string `json:",omitempty"`
+}
+
+
 
 type QuerySelectAST struct {
 	Where *QueryWhereAST `json:",omitempty"`
@@ -241,9 +288,66 @@ func (ast *QueryPredicateAST) Compile() (QueryPredicate, error) {
 		return QueryPredicate{}, fmt.Errorf("BUG unsupported predicate '%v'", ast.Command)
 	}
 
+	literals, err := unquoteAll(ast.Literals)
+
+	if err != nil {
+		return QueryPredicate{}, errors.Wrap(err, "Error compiling predicate")
+	}
+
 	predicate.Keys = ast.Keys
-	predicate.Literals = ast.Literals
+	predicate.Literals = literals
 	predicate.IncludeRowKey = ast.IncludeRowKey
 
 	return predicate, nil
+}
+
+func unquoteAll(values []string) ([]string, error) {
+	quoted := make([]string, len(values))
+
+	for i, v := range values {
+		q, err := unquote(v)
+
+		if err != nil {
+			return nil, err
+		}
+
+		quoted[i] = q
+	}
+
+	return quoted, nil
+}
+
+func unquoteMap(values map[string]string) (map[string]string, error) {
+	quoted := map[string]string{}
+
+	for k, v := range values {
+		q, err := unquote(v)
+
+		if err != nil {
+			return nil, err
+		}
+
+		quoted[k] = q
+	}
+
+	return quoted, nil
+}
+
+func unquote(value string) (string, error) {
+	regex, regerr := regexp.Compile("\\\\'")
+
+	if regerr != nil {
+		return "", errors.Wrap(regerr, "BUG regex compile failed in string unquote")
+	}
+
+	desingled := string(regex.ReplaceAll([]byte(value), []byte("'")))
+
+	dquote := fmt.Sprintf("\"%v\"", desingled)
+	quoted, err := strconv.Unquote(dquote)
+
+	if err != nil {
+		return "", errors.Wrap(err, fmt.Sprintf("Invalid string escape: '%v'", desingled))
+	}
+
+	return quoted, nil
 }

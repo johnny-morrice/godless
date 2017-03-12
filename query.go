@@ -27,7 +27,12 @@ type Query struct {
 }
 
 type QueryJoin struct {
-	Rows []Row `json:",omitempty"`
+	Rows []QueryRowJoin `json:",omitempty"`
+}
+
+type QueryRowJoin struct {
+	RowKey string
+	Values map[string]string `json:",omitempty"`
 }
 
 type QuerySelect struct {
