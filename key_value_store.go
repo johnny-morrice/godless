@@ -1,8 +1,6 @@
 package godless
 
 import (
-	"log"
-
 	"github.com/pkg/errors"
 )
 
@@ -43,7 +41,7 @@ func LaunchKeyValueStore(ns *IpfsNamespace) (chan<-KvQuery, <-chan error) {
 			err := kv.transact(kvq)
 
 			if err != nil {
-				log.Printf("ERROR key value store died with: %v")
+				logerr("key value store died with: %v", err)
 				errch<- errors.Wrap(err, "Key value store died")
 				return
 			}

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/gob"
 	"io/ioutil"
-	"log"
 	"github.com/pkg/errors"
 )
 
@@ -47,6 +46,7 @@ func PersistNewIpfsNamespace(filePeer *IpfsPeer, namespace *Namespace) (*IpfsNam
 	ns.FilePeer = filePeer
 	ns.updateCache = namespace
 	ns.Namespace = MakeNamespace()
+	ns.dirty = true
 	ns.Children = []*IpfsNamespace{}
 
 	return ns.Persist()
@@ -87,11 +87,11 @@ func (ns *IpfsNamespace) loadTraverse(f IpfsNamespaceVisitor) error {
 // TODO opportunity to query IPFS in parallel?
 func (ns *IpfsNamespace) load() error {
 	if ns.FilePath == "" {
-		panic("Tried to load IpfsNamespace with empty FilePath")
+		logdie("tried to load IpfsNamespace with empty FilePath")
 	}
 
 	if ns.loaded {
-		log.Printf("WARN IpfsNamespace already loaded from: '%v'", ns.FilePath)
+		logwarn("IpfsNamespace already loaded from: '%v'", ns.FilePath)
 		return nil
 	}
 
@@ -111,11 +111,11 @@ func (ns *IpfsNamespace) load() error {
 	remainder, drainerr := ioutil.ReadAll(reader)
 
 	if (drainerr != nil) {
-		log.Printf("WARN error draining reader: %v", drainerr)
+		logwarn("error draining reader: %v", drainerr)
 	}
 
 	if len(remainder) != 0 {
-		log.Printf("WARN remaining bits after gob: %v", remainder)
+		logwarn("remaining bits after gob: %v", remainder)
 	}
 
 	ns.Namespace = part.Namespace
@@ -140,7 +140,7 @@ func (ns *IpfsNamespace) load() error {
 // TODO allow child namespace merges
 func (ns *IpfsNamespace) Persist() (*IpfsNamespace, error) {
 	if !ns.dirty {
-		log.Printf("WARN persiting unchanged IpfsNamespace at: %v", ns.FilePath)
+		logwarn("persisting unchanged IpfsNamespace at: %v", ns.FilePath)
 		return nil, nil
 	}
 
@@ -167,6 +167,7 @@ func (ns *IpfsNamespace) Persist() (*IpfsNamespace, error) {
 	if sherr != nil {
 		return nil, errors.Wrap(err, "Error adding IpfsNamespace to Ipfs")
 	}
+
 
 	out := &IpfsNamespace{}
 	out.loaded = true

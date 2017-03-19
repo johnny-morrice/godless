@@ -34,10 +34,10 @@ var cfgFile string
 var RootCmd = &cobra.Command{
 	Use:   "godless",
 	Short: "A distributed database for IPFS",
-	Long: `Godless is a distributed NOSQL database using Consistent
-	Replicated Data Types and the Interplanetary File System.
+	Long: `Godless is a distributed NoSQL database using Consistent Replicated
+	Data Types and the Interplanetary File System.
 
-	It supports lazy loading of resources from remote IPFS pages.`,
+	It supports lazy loading of resources from remote IPFS peers.`,
 }
 
 // Execute adds all child commands to the root command sets flags appropriately.

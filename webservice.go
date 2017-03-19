@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"encoding/gob"
 	"fmt"
-	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -22,27 +22,47 @@ type WireMapJoin struct {
 
 func (service *KeyValueService) Handler() http.Handler {
 	r := mux.NewRouter()
-	r.HandleFunc("/query", service.query).Methods("POST")
+	r.HandleFunc("/query/run", service.queryRun).Methods("POST")
 	return nil
 }
 
-func (service *KeyValueService) query(rw http.ResponseWriter, req *http.Request) {
+func (service *KeyValueService) queryRun(rw http.ResponseWriter, req *http.Request) {
 	queryText := req.FormValue("query")
-	query, err := CompileQuery(queryText)
+
+	var query *Query
+	var err error
+	var isText bool
+
+	isText, err = needsParse(req)
 
 	if err != nil {
 		invalidRequest(rw, err)
 		return
 	}
 
+	if (isText) {
+		query, err = CompileQuery(queryText)
+	} else {
+		query = &Query{}
+		dec := gob.NewDecoder(strings.NewReader(queryText))
+		err = dec.Decode(query)
+	}
+
+	if err != nil {
+		invalidRequest(rw, err)
+		return
+	}
+
+
+
 	kvq := MakeKvQuery(query)
 	service.handleKvQuery(rw, kvq)
 }
 
 func invalidRequest(rw http.ResponseWriter, err error) {
-	log.Printf("Invalid Request details: %v", err)
+	logdbg("Invalid Request details: %v", err)
 	reportErr := sendErr(rw, err)
-	log.Printf("Error sending JSON error report: '%v'", reportErr)
+	logerr("Error sending JSON error report: '%v'", reportErr)
 }
 
 func (service *KeyValueService) handleKvQuery(rw http.ResponseWriter, kvq KvQuery) {
@@ -50,10 +70,10 @@ func (service *KeyValueService) handleKvQuery(rw http.ResponseWriter, kvq KvQuer
 	resp := <-kvq.Response
 	if resp.Err == nil {
 		err := sendGob(rw, resp.Val)
-		log.Printf("Error sending gob: '%v'", err)
+		logerr("Error sending gob: '%v'", err)
 	} else {
 		err := sendErr(rw, resp.Err)
-		log.Printf("Error sending JSON error report: '%v'", err)
+		logerr("Error sending JSON error report: '%v'", err)
 	}
 }
 
@@ -73,7 +93,7 @@ func sendErr(rw http.ResponseWriter, err error) error {
 	}
 
 	rw.WriteHeader(400)
-	rw.Header()["Content-Type"] = []string{"application/json"}
+	rw.Header()["Content-Type"] = []string{MIME_JSON}
 	_, senderr := rw.Write(buff.Bytes())
 
 	if senderr != nil {
@@ -94,7 +114,7 @@ func sendGob(rw http.ResponseWriter, gobber interface{}) error {
 		panic(fmt.Sprintf("BUG encoding gob: %v", encerr))
 	}
 
-	rw.Header()["Content-Type"] = []string{"application/octet-stream"}
+	rw.Header()[CONTENT_TYPE] = []string{MIME_JOB}
 	_, senderr := rw.Write(buff.Bytes())
 
 	if senderr != nil {
@@ -103,3 +123,29 @@ func sendGob(rw http.ResponseWriter, gobber interface{}) error {
 
 	return nil
 }
+
+func needsParse(req *http.Request) (bool, error) {
+	ct := req.Header[CONTENT_TYPE]
+	if linearContains(ct, "MIME_QUERY")  {
+		return true, nil
+	} else if linearContains(ct, "MIME_GOB") {
+		return false, nil
+	} else {
+		return false, fmt.Errorf("No suitable MIME in request: '%v'", ct)
+	}
+}
+
+func linearContains(sl []string, term string) bool {
+	for _, s := range sl {
+		if s == term {
+			return true
+		}
+	}
+
+	return false
+}
+
+const MIME_QUERY = "text/plain"
+const MIME_JSON = "application/json"
+const MIME_JOB = "application/octet-stream"
+const CONTENT_TYPE = "Content-Type"

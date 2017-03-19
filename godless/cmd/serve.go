@@ -21,9 +21,8 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
+	lib "github.com/johnny-morrice/godless"
 )
 
 // serveCmd represents the serve command
@@ -32,10 +31,56 @@ var serveCmd = &cobra.Command{
 	Short: "Run a Godless server",
 	Long: `A godless server listens to queries over HTTP.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("serve called")
+		var err error
+		var ipfsNamespace *lib.IpfsNamespace
+		var queryChan chan<- lib.KvQuery
+		var stopch chan<- interface{}
+
+		peer := lib.MakeIpfsPeer(peerUrl)
+		err = peer.Connect()
+
+		if err != nil {
+			die(err)
+		}
+
+		if hash == "" {
+			namespace := lib.MakeNamespace()
+			ipfsNamespace, err = lib.PersistNewIpfsNamespace(peer, namespace)
+		} else {
+			ipfsNamespace, err = lib.LoadIpfsNamespace(peer, lib.IpfsPath(hash))
+		}
+
+		if err != nil {
+			die(err)
+		}
+
+		queryChan, errch := lib.LaunchKeyValueStore(ipfsNamespace)
+
+		service := &lib.KeyValueService{
+			Query: queryChan,
+		}
+
+		stopch, err = lib.Serve(addr, service.Handler())
+
+		if err != nil {
+			die(err)
+		}
+
+		err = <-errch
+		stopch<- nil
+
+		die(err)
 	},
 }
 
+var addr string
+var hash string
+var peerUrl string
+
 func init() {
 	RootCmd.AddCommand(serveCmd)
+
+	serveCmd.Flags().StringVar(&addr, "address", "localhost:8085", "Listen address for server")
+	serveCmd.Flags().StringVar(&hash, "hash", "", "IPFS hash of namespace head")
+	serveCmd.Flags().StringVar(&peerUrl, "peer", "http://localhost:5001", "IPFS peer URL")
 }
