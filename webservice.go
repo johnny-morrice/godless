@@ -25,8 +25,8 @@ type ApiError struct {
 
 func (service *KeyValueService) Handler() http.Handler {
 	r := mux.NewRouter()
-	r.HandleFunc("/query/run", service.queryRun).Methods("POST")
-	return nil
+	r.HandleFunc("/api/query/run", service.queryRun)
+	return r
 }
 
 func (service *KeyValueService) queryRun(rw http.ResponseWriter, req *http.Request) {
@@ -70,12 +70,15 @@ func invalidRequest(rw http.ResponseWriter, err error) {
 func (service *KeyValueService) handleKvQuery(rw http.ResponseWriter, kvq KvQuery) {
 	service.Query<- kvq
 	resp := <-kvq.Response
+	var err error
 	if resp.Err == nil {
-		err := sendGob(rw, resp.Val)
-		logerr("Error sending gob: '%v'", err)
+		err = sendGob(rw, resp.Val)
 	} else {
-		err := sendErr(rw, resp.Err)
-		logerr("Error sending JSON error report: '%v'", err)
+		err = sendErr(rw, resp.Err)
+	}
+
+	if err != nil {
+		logerr("Error sending response: %v", err)
 	}
 }
 
@@ -124,9 +127,9 @@ func sendGob(rw http.ResponseWriter, gobber *ApiResponse) error {
 
 func needsParse(req *http.Request) (bool, error) {
 	ct := req.Header[CONTENT_TYPE]
-	if linearContains(ct, "MIME_QUERY")  {
+	if linearContains(ct, MIME_QUERY)  {
 		return true, nil
-	} else if linearContains(ct, "MIME_GOB") {
+	} else if linearContains(ct, MIME_GOB) {
 		return false, nil
 	} else {
 		return false, fmt.Errorf("No suitable MIME in request: '%v'", ct)

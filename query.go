@@ -125,7 +125,7 @@ func (query *Query) Analyse() string {
 }
 
 func (query *Query) Run(kvq KvQuery, ns *IpfsNamespace) {
-
+	kvq.writeResponse(nil, errors.New("query run not implemented"))
 }
 
 func prettyPrintJson(jsonable interface{}) string {

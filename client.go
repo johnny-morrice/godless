@@ -3,6 +3,7 @@ package godless
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"io"
 	"strings"
@@ -38,7 +39,9 @@ func (client *Client) SendQuery(query *Query) (*ApiResponse, error) {
 }
 
 func (client *Client) Post(bodyType string, body io.Reader) (*ApiResponse, error) {
-	addr := fmt.Sprintf("%s/query/run", client.Addr)
+	addr := fmt.Sprintf("http://%s/api/query/run", client.Addr)
+	logdbg("HTTP POST to %v", addr)
+
 	resp, err := client.Http.Post(addr, bodyType, body)
 
 	if err != nil {
@@ -57,12 +60,25 @@ func (client *Client) Post(bodyType string, body io.Reader) (*ApiResponse, error
 		} else {
 			return nil, incorrectContentType(resp.StatusCode, ct)
 		}
-	} else {
+	} else if resp.StatusCode == 500 {
 		if linearContains(ct, MIME_GOB) {
 			apierr = &ApiError{}
 			err = dejson(apierr, resp.Body)
 		} else {
 			return nil, incorrectContentType(resp.StatusCode, ct)
+		}
+	} else {
+		if linearContains(ct, "text/plain; charset=utf-8") {
+			all, err := ioutil.ReadAll(resp.Body)
+
+			if err != nil {
+				logwarn("Failed to read response body")
+				return nil, fmt.Errorf("Unexpected API response (%v): %v", resp.StatusCode, ct)
+			}
+
+			return nil, fmt.Errorf("Unexpected API response (%v): \n\n%v", resp.StatusCode, string(all))
+		} else {
+			return nil, fmt.Errorf("Unexpected API response (%v): %v", resp.StatusCode, ct)
 		}
 	}
 

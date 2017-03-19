@@ -168,6 +168,7 @@ func (ns *IpfsNamespace) Persist() (*IpfsNamespace, error) {
 		return nil, errors.Wrap(err, "Error adding IpfsNamespace to Ipfs")
 	}
 
+	logdbg("Persisted Namespace at: %v", addr)
 
 	out := &IpfsNamespace{}
 	out.loaded = true

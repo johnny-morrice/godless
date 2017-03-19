@@ -25,5 +25,5 @@ func logdie(msg string, args ...interface{}) {
 }
 
 func logMsg(level, msg string, args ...interface{}) {
-	log.Print(fmt.Sprintf("%v %v", level, msg), args)
+	log.Print(fmt.Sprintf(fmt.Sprintf("%v %v", level, msg), args...))
 }
