@@ -2,8 +2,6 @@ package godless
 
 import (
 	"bytes"
-	"encoding/json"
-	"encoding/gob"
 	"fmt"
 	"net/http"
 	"strings"
@@ -16,8 +14,13 @@ type KeyValueService struct {
 	Query chan<- KvQuery
 }
 
-type WireMapJoin struct {
-	Val map[string][]string
+type ApiResponse struct {
+	Msg string
+	QueryId string
+}
+
+type ApiError struct {
+	Err string
 }
 
 func (service *KeyValueService) Handler() http.Handler {
@@ -44,8 +47,7 @@ func (service *KeyValueService) queryRun(rw http.ResponseWriter, req *http.Reque
 		query, err = CompileQuery(queryText)
 	} else {
 		query = &Query{}
-		dec := gob.NewDecoder(strings.NewReader(queryText))
-		err = dec.Decode(query)
+		degob(query, strings.NewReader(queryText))
 	}
 
 	if err != nil {
@@ -78,15 +80,12 @@ func (service *KeyValueService) handleKvQuery(rw http.ResponseWriter, kvq KvQuer
 }
 
 func sendErr(rw http.ResponseWriter, err error) error {
-	message := struct{
-		ErrorMessage string
-	}{
-		ErrorMessage: err.Error(),
+	message := ApiError{
+		Err: err.Error(),
 	}
 
 	buff := bytes.Buffer{}
-	enc := json.NewEncoder(&buff)
-	encerr := enc.Encode(&message)
+	encerr := tojson(&message, &buff)
 
 	if encerr != nil {
 		panic(fmt.Sprintf("Bug encoding json error message: '%v'; ", err, encerr))
@@ -103,18 +102,17 @@ func sendErr(rw http.ResponseWriter, err error) error {
 	return nil
 }
 
-func sendGob(rw http.ResponseWriter, gobber interface{}) error {
+func sendGob(rw http.ResponseWriter, gobber *ApiResponse) error {
 	// Encode gob into buffer first to check for encoding errors.
 	// TODO is that actually a good idea?
-	buff := bytes.Buffer{}
-	enc := gob.NewEncoder(&buff)
-	encerr := enc.Encode(gobber)
+	buff := &bytes.Buffer{}
+	encerr := togob(gobber, buff)
 
 	if encerr != nil {
 		panic(fmt.Sprintf("BUG encoding gob: %v", encerr))
 	}
 
-	rw.Header()[CONTENT_TYPE] = []string{MIME_JOB}
+	rw.Header()[CONTENT_TYPE] = []string{MIME_GOB}
 	_, senderr := rw.Write(buff.Bytes())
 
 	if senderr != nil {
@@ -144,8 +142,3 @@ func linearContains(sl []string, term string) bool {
 
 	return false
 }
-
-const MIME_QUERY = "text/plain"
-const MIME_JSON = "application/json"
-const MIME_JOB = "application/octet-stream"
-const CONTENT_TYPE = "Content-Type"

@@ -25,7 +25,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/johnny-morrice/godless"
+	lib "github.com/johnny-morrice/godless"
 )
 
 // queryCmd represents the query command
@@ -34,10 +34,12 @@ var queryCmd = &cobra.Command{
 	Short: "Query a godless server",
 	Long: `Send a query to a godless server over HTTP.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		var query *godless.Query
+		var query *lib.Query
 
-		if source != "" {
-			q, err := godless.CompileQuery(source)
+		client := lib.MakeClient(serverAddr)
+
+		if source != "" || analyse {
+			q, err := lib.CompileQuery(source)
 
 			if err != nil {
 				die(err)
@@ -52,15 +54,33 @@ var queryCmd = &cobra.Command{
 			fmt.Println("Syntax tree:\n\n")
 			query.Parser.PrintSyntaxTree()
 		}
+
+		var err error
+		var response *lib.ApiResponse
+		if noparse {
+			response, err = client.SendRawQuery(source)
+		} else {
+			response, err = client.SendQuery(query)
+		}
+
+		if err != nil {
+			die(err)
+		}
+
+		fmt.Printf("Query (%v) response:\n\n%s", response.QueryId, response.Msg)
 	},
 }
 
 var source string
 var analyse bool
+var noparse bool
+var serverAddr string
 
 func init() {
 	RootCmd.AddCommand(queryCmd)
 
-	queryCmd.Flags().StringVar(&source, "query", "", "Godless NOSQL query text")
+	queryCmd.Flags().StringVar(&source, "query", "", "Godless NoSQL query text")
 	queryCmd.Flags().BoolVar(&analyse, "analyse", false, "Analyse query")
+	queryCmd.Flags().BoolVar(&noparse, "noparse", false, "Send raw query text to server.")
+	queryCmd.Flags().StringVar(&serverAddr, "server", "localhost:8085", "Server address")
 }

@@ -16,7 +16,7 @@ func MakeKvQuery(query *Query) KvQuery {
 	}
 }
 
-func (kvq KvQuery) writeResponse(val interface{}, err error) {
+func (kvq KvQuery) writeResponse(val *ApiResponse, err error) {
 	kvq.Response<- KvResponse{
 		Err: err,
 		Val: val,
@@ -25,8 +25,7 @@ func (kvq KvQuery) writeResponse(val interface{}, err error) {
 
 type KvResponse struct {
 	Err error
-	// Figure out a proper interface type for this.
-	Val interface{}
+	Val *ApiResponse
 }
 
 func LaunchKeyValueStore(ns *IpfsNamespace) (chan<-KvQuery, <-chan error) {
