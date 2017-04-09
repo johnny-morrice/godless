@@ -26,6 +26,24 @@ type Query struct {
 	Select QuerySelect `json:",omitempty"`
 }
 
+type QueryVisitor interface {
+	VisitOpCode(QueryOpCode)
+	VisitAST(*QueryAST)
+	VisitParser(*QueryParser)
+	VisitTableKey(string)
+	VisitJoin(*QueryJoin)
+	VisitRowJoin(int, *QueryRowJoin)
+	VisitSelect(*QuerySelect)
+	VisitWhere(int, *QueryWhere)
+	VisitWhereOpCode(QueryWhereOpCode)
+	LeaveWhere(*QueryWhere)
+	VisitPredicate(*QueryPredicate)
+}
+
+type QueryResult interface {
+	WriteQueryResult(KvQuery)
+}
+
 type QueryJoin struct {
 	Rows []QueryRowJoin `json:",omitempty"`
 }
@@ -125,7 +143,81 @@ func (query *Query) Analyse() string {
 }
 
 func (query *Query) Run(kvq KvQuery, ns *IpfsNamespace) {
-	kvq.writeResponse(nil, errors.New("query run not implemented"))
+	var result QueryResult
+
+	switch query.OpCode {
+	case JOIN:
+		visitor := &QueryJoinVisitor{Namespace: ns}
+		query.Visit(visitor)
+		result = visitor
+	case SELECT:
+		visitor := &QuerySelectVisitor{Namespace: ns}
+		query.Visit(visitor)
+		result = visitor
+	default:
+		query.opcodePanic()
+	}
+
+	result.WriteQueryResult(kvq)
+}
+
+type whereFrame struct {
+	visited bool
+	position int
+	where *QueryWhere
+}
+
+func (query *Query) Visit(visitor QueryVisitor) {
+	visitor.VisitOpCode(query.OpCode)
+	visitor.VisitAST(query.AST)
+	visitor.VisitParser(query.Parser)
+	visitor.VisitTableKey(query.TableKey)
+
+	switch query.OpCode {
+	case JOIN:
+		visitor.VisitJoin(&query.Join)
+		for i, row := range query.Join.Rows {
+			visitor.VisitRowJoin(i, &row)
+		}
+	case SELECT:
+		visitor.VisitSelect(&query.Select)
+
+		whereStack := []whereFrame{
+			whereFrame{where: &query.Select.Where},
+		}
+
+		for i := 0; len(whereStack) > 0; {
+			top := whereStack[len(whereStack) - 1]
+			topWhere := top.where
+
+			if top.visited {
+				visitor.LeaveWhere(topWhere)
+				whereStack = whereStack[:len(whereStack) - 1]
+				i--
+			} else {
+				visitor.VisitWhere(top.position, topWhere)
+				visitor.VisitWhereOpCode(topWhere.OpCode)
+				visitor.VisitPredicate(&topWhere.Predicate)
+				clauses := topWhere.Clauses;
+				clauseCount := len(clauses)
+				for j := clauseCount - 1; j >= 0; j-- {
+					next := whereFrame{
+						where: &clauses[j],
+						position: j,
+					}
+					whereStack = append(whereStack, next)
+				}
+				top.visited = true
+				i += clauseCount
+			}
+		}
+	default:
+		query.opcodePanic()
+	}
+}
+
+func (query *Query) opcodePanic() {
+	panic(fmt.Sprintf("Unknown QueryOpcode: %v", query.OpCode))
 }
 
 func prettyPrintJson(jsonable interface{}) string {
