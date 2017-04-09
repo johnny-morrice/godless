@@ -23,6 +23,14 @@ func (kvq KvQuery) writeResponse(val *ApiResponse, err error) {
 	}
 }
 
+func (kvq KvQuery) reportError(err error) {
+	kvq.writeResponse(nil, err)
+}
+
+func (kvq KvQuery) reportSuccess(val *ApiResponse) {
+	kvq.writeResponse(val, nil)
+}
+
 type KvResponse struct {
 	Err error
 	Val *ApiResponse
@@ -58,7 +66,7 @@ type keyValueStore struct {
 func (kv *keyValueStore) transact(kvq KvQuery) error {
 	kvq.Query.Run(kvq, kv.Namespace)
 
-	if kv.Namespace.dirty {
+	if kv.Namespace.Update.IsEmpty() {
 		next, err := kv.Namespace.Persist()
 
 		if err != nil {

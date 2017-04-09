@@ -40,8 +40,8 @@ type QueryVisitor interface {
 	VisitPredicate(*QueryPredicate)
 }
 
-type QueryResult interface {
-	WriteQueryResult(KvQuery)
+type QueryRun interface {
+	RunQuery(KvQuery)
 }
 
 type QueryJoin struct {
@@ -143,22 +143,22 @@ func (query *Query) Analyse() string {
 }
 
 func (query *Query) Run(kvq KvQuery, ns *IpfsNamespace) {
-	var result QueryResult
+	var runner QueryRun
 
 	switch query.OpCode {
 	case JOIN:
 		visitor := &QueryJoinVisitor{Namespace: ns}
 		query.Visit(visitor)
-		result = visitor
+		runner = visitor
 	case SELECT:
 		visitor := &QuerySelectVisitor{Namespace: ns}
 		query.Visit(visitor)
-		result = visitor
+		runner = visitor
 	default:
 		query.opcodePanic()
 	}
 
-	result.WriteQueryResult(kvq)
+	runner.RunQuery(kvq)
 }
 
 type whereFrame struct {

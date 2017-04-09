@@ -9,12 +9,11 @@ import (
 
 type IpfsNamespace struct {
 	loaded bool
-	dirty bool
-
-	updateCache *Namespace
+	Update *Namespace
 
 	FilePeer *IpfsPeer
 	FilePath IpfsPath
+	// Breaking 12 factor rule in caching namespace...
 	Namespace *Namespace
 	Children []*IpfsNamespace
 }
@@ -28,7 +27,7 @@ func LoadIpfsNamespace(filePeer *IpfsPeer, filePath IpfsPath) (*IpfsNamespace, e
 	ns := &IpfsNamespace{}
 	ns.FilePeer = filePeer
 	ns.FilePath = filePath
-	ns.updateCache = MakeNamespace()
+	ns.Update = MakeNamespace()
 	ns.Namespace = MakeNamespace()
 	ns.Children = []*IpfsNamespace{}
 
@@ -44,12 +43,23 @@ func LoadIpfsNamespace(filePeer *IpfsPeer, filePath IpfsPath) (*IpfsNamespace, e
 func PersistNewIpfsNamespace(filePeer *IpfsPeer, namespace *Namespace) (*IpfsNamespace, error) {
 	ns := &IpfsNamespace{}
 	ns.FilePeer = filePeer
-	ns.updateCache = namespace
+	ns.Update = namespace
 	ns.Namespace = MakeNamespace()
-	ns.dirty = true
 	ns.Children = []*IpfsNamespace{}
 
 	return ns.Persist()
+}
+
+func (ns *IpfsNamespace) JoinTable(tableKey string, table Table) error {
+	joined, joinerr := ns.Update.JoinTable(tableKey, table)
+
+	if joinerr != nil {
+		return errors.Wrap(joinerr, "IpfsNamespace.JoinTable failed")
+	}
+
+	ns.Update = joined
+
+	return nil
 }
 
 // Return whether to abort early, and any error.
@@ -139,13 +149,8 @@ func (ns *IpfsNamespace) load() error {
 // Write pending changes to IPFS and return the new parent namespace.
 // TODO allow child namespace merges
 func (ns *IpfsNamespace) Persist() (*IpfsNamespace, error) {
-	if !ns.dirty {
-		logwarn("persisting unchanged IpfsNamespace at: %v", ns.FilePath)
-		return nil, nil
-	}
-
 	part := &IpfsNamespaceRecord{}
-	part.Namespace = ns.updateCache
+	part.Namespace = ns.Update
 
 	// If this is the first namespace in the chain, don't save children.
 	// TODO become parent of multiple children.
@@ -174,8 +179,8 @@ func (ns *IpfsNamespace) Persist() (*IpfsNamespace, error) {
 	out.loaded = true
 	out.FilePeer = ns.FilePeer
 	out.FilePath = IpfsPath(addr)
-	out.Namespace = ns.updateCache
-	out.updateCache = MakeNamespace()
+	out.Namespace = ns.Update
+	out.Update = MakeNamespace()
 	out.Children = []*IpfsNamespace{ns}
 
 	return out, nil

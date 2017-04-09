@@ -4,7 +4,7 @@ type QuerySelectVisitor struct {
 	Namespace *IpfsNamespace
 }
 
-func (visitor *QuerySelectVisitor) WriteQueryResult(kv KvQuery) {
+func (visitor *QuerySelectVisitor) RunQuery(kv KvQuery) {
 
 }
 

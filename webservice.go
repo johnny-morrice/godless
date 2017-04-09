@@ -19,6 +19,8 @@ type ApiResponse struct {
 	QueryId string
 }
 
+var RESPONSE_OK ApiResponse = ApiResponse{Msg: "ok"}
+
 type ApiError struct {
 	Err string
 }
