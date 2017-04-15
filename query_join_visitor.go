@@ -6,15 +6,21 @@ import (
 )
 
 type QueryJoinVisitor struct {
+	noSelectVisitor
+	noDebugVisitor
+	errorCollectVisitor
 	Namespace *IpfsNamespace
 	tableKey string
 	table Table
-	err error
+}
+
+func MakeQueryJoinVisitor(ns *IpfsNamespace) *QueryJoinVisitor {
+	return &QueryJoinVisitor{Namespace: ns}
 }
 
 func (visitor *QueryJoinVisitor) RunQuery(kv KvQuery) {
-	if visitor.err != nil {
-		kv.reportError(visitor.err)
+	if visitor.hasError() {
+		visitor.reportError(kv)
 		return
 	}
 
@@ -38,14 +44,8 @@ func (visitor *QueryJoinVisitor) VisitOpCode(opCode QueryOpCode) {
 	}
 }
 
-func (visitor *QueryJoinVisitor) VisitAST(*QueryAST) {
-}
-
-func (visitor *QueryJoinVisitor) VisitParser(*QueryParser) {
-}
-
 func (visitor *QueryJoinVisitor) VisitTableKey(tableKey string) {
-	if visitor.err != nil {
+	if visitor.hasError() {
 		return
 	}
 
@@ -56,7 +56,7 @@ func (visitor *QueryJoinVisitor) VisitJoin(*QueryJoin) {
 }
 
 func (visitor *QueryJoinVisitor) VisitRowJoin(position int, rowJoin *QueryRowJoin) {
-	if visitor.err != nil {
+	if visitor.hasError() {
 		return
 	}
 
@@ -69,24 +69,9 @@ func (visitor *QueryJoinVisitor) VisitRowJoin(position int, rowJoin *QueryRowJoi
 	joined, err := visitor.table.JoinRow(rowJoin.RowKey, row)
 
 	if err != nil {
-		visitor.err = errors.Wrap(err, fmt.Sprintf("VisitRowJoin failed at position %v", position))
+		visitor.collectError(errors.Wrap(err, fmt.Sprintf("VisitRowJoin failed at position %v", position)))
 		return
 	}
 
 	visitor.table = joined
-}
-
-func (visitor *QueryJoinVisitor) VisitSelect(*QuerySelect) {
-}
-
-func (visitor *QueryJoinVisitor) VisitWhere(int, *QueryWhere) {
-}
-
-func (visitor *QueryJoinVisitor) VisitWhereOpCode(QueryWhereOpCode) {
-}
-
-func (visitor *QueryJoinVisitor) LeaveWhere(*QueryWhere) {
-}
-
-func (visitor *QueryJoinVisitor) VisitPredicate(*QueryPredicate) {
 }

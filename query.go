@@ -26,7 +26,14 @@ type Query struct {
 	Select QuerySelect `json:",omitempty"`
 }
 
+type whereVisitor interface {
+	VisitWhere(int, *QueryWhere)
+	LeaveWhere(*QueryWhere)
+	VisitPredicate(*QueryPredicate)
+}
+
 type QueryVisitor interface {
+	whereVisitor
 	VisitOpCode(QueryOpCode)
 	VisitAST(*QueryAST)
 	VisitParser(*QueryParser)
@@ -34,10 +41,6 @@ type QueryVisitor interface {
 	VisitJoin(*QueryJoin)
 	VisitRowJoin(int, *QueryRowJoin)
 	VisitSelect(*QuerySelect)
-	VisitWhere(int, *QueryWhere)
-	VisitWhereOpCode(QueryWhereOpCode)
-	LeaveWhere(*QueryWhere)
-	VisitPredicate(*QueryPredicate)
 }
 
 type QueryRun interface {
@@ -107,6 +110,11 @@ type QueryPredicate struct {
 	IncludeRowKey bool `json:",omitempty"`
 }
 
+func (pred QueryPredicate) match(tableKey string, r Row) bool {
+	// TODO
+	return false;
+}
+
 func CompileQuery(source string) (*Query, error) {
 	parser := &QueryParser{Buffer: source}
 	parser.Pretty = true
@@ -147,11 +155,11 @@ func (query *Query) Run(kvq KvQuery, ns *IpfsNamespace) {
 
 	switch query.OpCode {
 	case JOIN:
-		visitor := &QueryJoinVisitor{Namespace: ns}
+		visitor := MakeQueryJoinVisitor(ns)
 		query.Visit(visitor)
 		runner = visitor
 	case SELECT:
-		visitor := &QuerySelectVisitor{Namespace: ns}
+		visitor := MakeQuerySelectVisitor(ns)
 		query.Visit(visitor)
 		runner = visitor
 	default:
@@ -161,11 +169,7 @@ func (query *Query) Run(kvq KvQuery, ns *IpfsNamespace) {
 	runner.RunQuery(kvq)
 }
 
-type whereFrame struct {
-	visited bool
-	position int
-	where *QueryWhere
-}
+
 
 func (query *Query) Visit(visitor QueryVisitor) {
 	visitor.VisitOpCode(query.OpCode)
@@ -182,35 +186,8 @@ func (query *Query) Visit(visitor QueryVisitor) {
 	case SELECT:
 		visitor.VisitSelect(&query.Select)
 
-		whereStack := []whereFrame{
-			whereFrame{where: &query.Select.Where},
-		}
-
-		for i := 0; len(whereStack) > 0; {
-			top := whereStack[len(whereStack) - 1]
-			topWhere := top.where
-
-			if top.visited {
-				visitor.LeaveWhere(topWhere)
-				whereStack = whereStack[:len(whereStack) - 1]
-				i--
-			} else {
-				visitor.VisitWhere(top.position, topWhere)
-				visitor.VisitWhereOpCode(topWhere.OpCode)
-				visitor.VisitPredicate(&topWhere.Predicate)
-				clauses := topWhere.Clauses;
-				clauseCount := len(clauses)
-				for j := clauseCount - 1; j >= 0; j-- {
-					next := whereFrame{
-						where: &clauses[j],
-						position: j,
-					}
-					whereStack = append(whereStack, next)
-				}
-				top.visited = true
-				i += clauseCount
-			}
-		}
+		stack := makeWhereStack(&query.Select.Where)
+		stack.visit(visitor)
 	default:
 		query.opcodePanic()
 	}

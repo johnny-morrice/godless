@@ -81,6 +81,12 @@ type Table struct {
 	Rows map[string]Row
 }
 
+func (t Table) Foreachrow(f func (rowKey string, r Row)) {
+	for k, r := range t.Rows {
+		f(k, r)
+	}
+}
+
 func (t Table) Copy() Table {
 	out := Table{Rows: map[string]Row{}}
 
