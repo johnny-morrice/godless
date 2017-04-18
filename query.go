@@ -1,6 +1,6 @@
 package godless
 //go:generate peg -switch -inline query.peg
-//go:generate mockgen -source=query.go -destination=mock/mock_query.go -imports lib=github.com/johnny-morrice/godless
+//go:generate mockgen -destination mock/mock_query.go -imports lib=github.com/johnny-morrice/godless -self_package lib github.com/johnny-morrice/godless QueryVisitor
 
 import (
 	"encoding/json"
@@ -53,7 +53,7 @@ type QueryJoin struct {
 
 type QueryRowJoin struct {
 	RowKey string
-	Values map[string]string `json:",omitempty"`
+	Entries map[string]string `json:",omitempty"`
 }
 
 type QuerySelect struct {
@@ -202,7 +202,7 @@ func (query *Query) Visit(visitor QueryVisitor) {
 }
 
 func (query *Query) opcodePanic() {
-	panic(fmt.Sprintf("Unknown QueryOpcode: %v", query.OpCode))
+	panic(fmt.Sprintf("Unknown Query OpCode: %v", query.OpCode))
 }
 
 func prettyPrintJson(jsonable interface{}) string {

@@ -62,7 +62,7 @@ func (visitor *QueryJoinVisitor) VisitRowJoin(position int, rowJoin *QueryRowJoi
 
 	row := Row{Entries: map[string][]string{}}
 
-	for k, entry := range rowJoin.Values {
+	for k, entry := range rowJoin.Entries {
 		row.Entries[k] = []string{entry}
 	}
 

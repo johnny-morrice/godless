@@ -47,7 +47,7 @@ func (visitor *errorCollectVisitor) collectError(err error) {
 		if visitor.err == nil {
 			visitor.err = err
 		} else {
-			visitor.err = errors.Wrapf(err, "%v\n", visitor.err) 
+			visitor.err = errors.Wrapf(err, "%v\n", visitor.err)
 		}
 
 }
@@ -73,16 +73,17 @@ func makeWhereStack(where *QueryWhere) *whereStack{
 func (stack *whereStack) visit(visitor whereVisitor) {
 	for i := 0; len(stack.stk) > 0; {
 		head := &stack.stk[len(stack.stk) - 1]
-		tipWhere := head.where
+		headWhere := head.where
 
 		if stack.isMarked() {
-			visitor.LeaveWhere(tipWhere)
+			visitor.LeaveWhere(headWhere)
 			stack.pop()
 			i--
 		} else {
-			visitor.VisitWhere(head.position, tipWhere)
-			visitor.VisitPredicate(&tipWhere.Predicate)
-			clauses := tipWhere.Clauses;
+			visitor.VisitWhere(head.position, headWhere)
+			visitor.VisitPredicate(&headWhere.Predicate)
+			stack.mark()
+			clauses := headWhere.Clauses;
 			clauseCount := len(clauses)
 			for j := clauseCount - 1; j >= 0; j-- {
 				next := whereFrame{
@@ -92,7 +93,6 @@ func (stack *whereStack) visit(visitor whereVisitor) {
 				stack.push(next)
 			}
 			i += clauseCount
-			stack.mark()
 		}
 	}
 }

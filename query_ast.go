@@ -160,7 +160,7 @@ func (ast *QueryJoinAST) Compile() (QueryJoin, error) {
 			return QueryJoin{}, errors.Wrap(err, "Error compiling join")
 		}
 
-		rows[i] = QueryRowJoin{RowKey: r.RowKey, Values: unquoted,}
+		rows[i] = QueryRowJoin{RowKey: r.RowKey, Entries: unquoted,}
 	}
 
 	qjoin := QueryJoin{
