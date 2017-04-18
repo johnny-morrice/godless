@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type IpfsNamespace struct {
+type ipfsNamespace struct {
 	loaded bool
 	Update *Namespace
 
@@ -15,21 +15,21 @@ type IpfsNamespace struct {
 	FilePath IpfsPath
 	// Breaking 12 factor rule in caching namespace...
 	Namespace *Namespace
-	Children []*IpfsNamespace
+	Children []*ipfsNamespace
 }
 
-type IpfsNamespaceRecord struct {
+type ipfsNamespaceRecord struct {
 	Namespace *Namespace
 	Children []IpfsPath
 }
 
-func LoadIpfsNamespace(filePeer *IpfsPeer, filePath IpfsPath) (*IpfsNamespace, error) {
-	ns := &IpfsNamespace{}
+func LoadIPFSNamespace(filePeer *IpfsPeer, filePath IpfsPath) (KvNamespace, error) {
+	ns := &ipfsNamespace{}
 	ns.FilePeer = filePeer
 	ns.FilePath = filePath
 	ns.Update = MakeNamespace()
 	ns.Namespace = MakeNamespace()
-	ns.Children = []*IpfsNamespace{}
+	ns.Children = []*ipfsNamespace{}
 
 	err := ns.load()
 
@@ -40,17 +40,17 @@ func LoadIpfsNamespace(filePeer *IpfsPeer, filePath IpfsPath) (*IpfsNamespace, e
 	return ns, nil
 }
 
-func PersistNewIpfsNamespace(filePeer *IpfsPeer, namespace *Namespace) (*IpfsNamespace, error) {
-	ns := &IpfsNamespace{}
+func PersistNewIPFSNamespace(filePeer *IpfsPeer, namespace *Namespace) (KvNamespace, error) {
+	ns := &ipfsNamespace{}
 	ns.FilePeer = filePeer
 	ns.Update = namespace
 	ns.Namespace = MakeNamespace()
-	ns.Children = []*IpfsNamespace{}
+	ns.Children = []*ipfsNamespace{}
 
-	return ns.persistIpfs()
+	return ns.Persist()
 }
 
-func (ns *IpfsNamespace) RunKvQuery(kvq KvQuery) {
+func (ns *ipfsNamespace) RunKvQuery(kvq KvQuery) {
 	query := kvq.Query
 	var runner QueryRun
 
@@ -70,15 +70,15 @@ func (ns *IpfsNamespace) RunKvQuery(kvq KvQuery) {
 	runner.RunQuery(kvq)
 }
 
-func (ns *IpfsNamespace) IsChanged() bool {
+func (ns *ipfsNamespace) IsChanged() bool {
 	return !ns.Namespace.IsEmpty()
 }
 
-func (ns *IpfsNamespace) JoinTable(tableKey string, table Table) error {
+func (ns *ipfsNamespace) JoinTable(tableKey string, table Table) error {
 	joined, joinerr := ns.Update.JoinTable(tableKey, table)
 
 	if joinerr != nil {
-		return errors.Wrap(joinerr, "IpfsNamespace.JoinTable failed")
+		return errors.Wrap(joinerr, "ipfsNamespace.JoinTable failed")
 	}
 
 	ns.Update = joined
@@ -86,12 +86,12 @@ func (ns *IpfsNamespace) JoinTable(tableKey string, table Table) error {
 	return nil
 }
 
-func (ns *IpfsNamespace) NamespaceLeaf() *Namespace {
+func (ns *ipfsNamespace) NamespaceLeaf() *Namespace {
 	return ns.Namespace
 }
 
-func (ns *IpfsNamespace) LoadTraverse(f RemoteNamespaceReader) error {
-	stack := make([]*IpfsNamespace, 1)
+func (ns *ipfsNamespace) LoadTraverse(f RemoteNamespaceReader) error {
+	stack := make([]*ipfsNamespace, 1)
 	stack[0] = ns
 
 	for i := 0 ; i < len(stack); i++ {
@@ -99,14 +99,14 @@ func (ns *IpfsNamespace) LoadTraverse(f RemoteNamespaceReader) error {
 		err := current.load()
 
 		if err != nil {
-			return errors.Wrap(err, "Error in IpfsNamespace loadTraverse")
+			return errors.Wrap(err, "Error in ipfsNamespace loadTraverse")
 		}
 
 		leaf := current.NamespaceLeaf()
 		abort, visiterr := f.ReadNamespace(leaf)
 
 		if visiterr != nil {
-			return errors.Wrap(err, "Error in IpfsNamespace traversal")
+			return errors.Wrap(err, "Error in ipfsNamespace traversal")
 		}
 
 		if abort {
@@ -121,26 +121,26 @@ func (ns *IpfsNamespace) LoadTraverse(f RemoteNamespaceReader) error {
 
 // Load chunks over IPFS
 // TODO opportunity to query IPFS in parallel?
-func (ns *IpfsNamespace) load() error {
+func (ns *ipfsNamespace) load() error {
 	if ns.FilePath == "" {
-		logdie("tried to load IpfsNamespace with empty FilePath")
+		logdie("tried to load ipfsNamespace with empty FilePath")
 	}
 
 	if ns.loaded {
-		logwarn("IpfsNamespace already loaded from: '%v'", ns.FilePath)
+		logwarn("ipfsNamespace already loaded from: '%v'", ns.FilePath)
 		return nil
 	}
 
 	reader, err := ns.FilePeer.Shell.Cat(string(ns.FilePath))
 
 	if err != nil {
-		return errors.Wrap(err, "Error in IpfsNamespace Cat")
+		return errors.Wrap(err, "Error in ipfsNamespace Cat")
 	}
 
 	defer reader.Close()
 
 	dec := gob.NewDecoder(reader)
-	part := &IpfsNamespaceRecord{}
+	part := &ipfsNamespaceRecord{}
 	err = dec.Decode(part)
 
 	// According to IPFS binding docs we must drain the reader.
@@ -155,17 +155,17 @@ func (ns *IpfsNamespace) load() error {
 	}
 
 	ns.Namespace = part.Namespace
-	ns.Children = make([]*IpfsNamespace, len(part.Children))
+	ns.Children = make([]*ipfsNamespace, len(part.Children))
 
 	for i, file := range part.Children {
-		child := &IpfsNamespace{}
+		child := &ipfsNamespace{}
 		child.FilePath = file
 		child.FilePeer = ns.FilePeer
 		ns.Children[i] = child
 	}
 
 	if err != nil {
-		return errors.Wrap(err, "Error decoding IpfsNamespace Gob")
+		return errors.Wrap(err, "Error decoding ipfsNamespace Gob")
 	}
 
 	ns.loaded = true
@@ -173,12 +173,8 @@ func (ns *IpfsNamespace) load() error {
 }
 
 // Write pending changes to IPFS and return the new parent namespace.
-func (ns *IpfsNamespace) Persist() (KvNamespace, error) {
-	return ns.persistIpfs()
-}
-
-func (ns *IpfsNamespace) persistIpfs() (*IpfsNamespace, error) {
-	part := &IpfsNamespaceRecord{}
+func (ns *ipfsNamespace) Persist() (KvNamespace, error) {
+	part := &ipfsNamespaceRecord{}
 	part.Namespace = ns.Update
 
 	// If this is the first namespace in the chain, don't save children.
@@ -193,24 +189,24 @@ func (ns *IpfsNamespace) persistIpfs() (*IpfsNamespace, error) {
 	err := enc.Encode(part)
 
 	if err != nil {
-		return nil, errors.Wrap(err, "Error encoding IpfsNamespace Gob")
+		return nil, errors.Wrap(err, "Error encoding ipfsNamespace Gob")
 	}
 
 	addr, sherr := ns.FilePeer.Shell.Add(&buff)
 
 	if sherr != nil {
-		return nil, errors.Wrap(err, "Error adding IpfsNamespace to Ipfs")
+		return nil, errors.Wrap(err, "Error adding ipfsNamespace to Ipfs")
 	}
 
 	logdbg("Persisted Namespace at: %v", addr)
 
-	out := &IpfsNamespace{}
+	out := &ipfsNamespace{}
 	out.loaded = true
 	out.FilePeer = ns.FilePeer
 	out.FilePath = IpfsPath(addr)
 	out.Namespace = ns.Update
 	out.Update = MakeNamespace()
-	out.Children = []*IpfsNamespace{ns}
+	out.Children = []*ipfsNamespace{ns}
 
 	return out, nil
 }

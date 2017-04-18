@@ -32,7 +32,7 @@ var serveCmd = &cobra.Command{
 	Long: `A godless server listens to queries over HTTP.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		var err error
-		var ipfsNamespace *lib.IpfsNamespace
+		var kvNamespace lib.KvNamespace
 		var stopch chan<- interface{}
 
 		peer := lib.MakeIpfsPeer(peerUrl)
@@ -44,16 +44,16 @@ var serveCmd = &cobra.Command{
 
 		if hash == "" {
 			namespace := lib.MakeNamespace()
-			ipfsNamespace, err = lib.PersistNewIpfsNamespace(peer, namespace)
+			kvNamespace, err = lib.PersistNewIPFSNamespace(peer, namespace)
 		} else {
-			ipfsNamespace, err = lib.LoadIpfsNamespace(peer, lib.IpfsPath(hash))
+			kvNamespace, err = lib.LoadIPFSNamespace(peer, lib.IpfsPath(hash))
 		}
 
 		if err != nil {
 			die(err)
 		}
 
-		api, errch := lib.LaunchKeyValueStore(ipfsNamespace)
+		api, errch := lib.LaunchKeyValueStore(kvNamespace)
 
 		service := &lib.KeyValueService{
 			API: api,
