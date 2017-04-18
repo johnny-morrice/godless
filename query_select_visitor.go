@@ -15,7 +15,7 @@ type QuerySelectVisitor struct {
 	crit *rowCriteria
 }
 
-func MakeQuerySelectVisitor(namespace *ipfsNamespace) *QuerySelectVisitor {
+func MakeQuerySelectVisitor(namespace RemoteNamespaceTree) *QuerySelectVisitor {
 	return &QuerySelectVisitor{
 		Namespace: namespace,
 		crit: &rowCriteria{},

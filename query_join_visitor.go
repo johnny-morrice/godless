@@ -15,7 +15,7 @@ type QueryJoinVisitor struct {
 	table Table
 }
 
-func MakeQueryJoinVisitor(ns *ipfsNamespace) *QueryJoinVisitor {
+func MakeQueryJoinVisitor(ns RemoteNamespaceTree) *QueryJoinVisitor {
 	return &QueryJoinVisitor{Namespace: ns}
 }
 
