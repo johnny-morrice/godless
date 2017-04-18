@@ -62,10 +62,11 @@ func (ns *IpfsNamespace) JoinTable(tableKey string, table Table) error {
 	return nil
 }
 
-// Return whether to abort early, and any error.
-type IpfsNamespaceVisitor func (*IpfsNamespace) (bool, error)
+func (ns *IpfsNamespace) NamespaceLeaf() *Namespace {
+	return ns.Namespace
+}
 
-func (ns *IpfsNamespace) loadTraverse(f IpfsNamespaceVisitor) error {
+func (ns *IpfsNamespace) LoadTraverse(f RemoteNamespaceReader) error {
 	stack := make([]*IpfsNamespace, 1)
 	stack[0] = ns
 
@@ -77,7 +78,8 @@ func (ns *IpfsNamespace) loadTraverse(f IpfsNamespaceVisitor) error {
 			return errors.Wrap(err, "Error in IpfsNamespace loadTraverse")
 		}
 
-		abort, visiterr := f(current)
+		leaf := current.NamespaceLeaf()
+		abort, visiterr := f.ReadNamespace(leaf)
 
 		if visiterr != nil {
 			return errors.Wrap(err, "Error in IpfsNamespace traversal")

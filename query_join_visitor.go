@@ -5,11 +5,12 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Specific to IPFS.  We can add more visitors later.
 type QueryJoinVisitor struct {
 	noSelectVisitor
 	noDebugVisitor
 	errorCollectVisitor
-	Namespace *IpfsNamespace
+	Namespace RemoteNamespaceTree
 	tableKey string
 	table Table
 }

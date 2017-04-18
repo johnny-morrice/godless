@@ -6,11 +6,12 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Specific to IPFS.  We can add more visitors later.
 type QuerySelectVisitor struct {
 	noJoinVisitor
 	noDebugVisitor
 	errorCollectVisitor
-	Namespace *IpfsNamespace
+	Namespace RemoteNamespaceTree
 	crit *rowCriteria
 }
 
@@ -31,7 +32,8 @@ func (visitor *QuerySelectVisitor) RunQuery(kv KvQuery) {
 		panic("didn't visit query")
 	}
 
-	err := visitor.Namespace.loadTraverse(visitor.crit.selectMatching)
+	lambda := RemoteNamespaceLambda(visitor.crit.selectMatching)
+	err := visitor.Namespace.LoadTraverse(lambda)
 
 	if err != nil {
 		visitor.collectError(err)
@@ -84,7 +86,7 @@ type rowCriteria struct {
 	rootWhere *QueryWhere
 }
 
-func (crit *rowCriteria) selectMatching(namespace *IpfsNamespace) (bool, error) {
+func (crit *rowCriteria) selectMatching(namespace *Namespace) (bool, error) {
 	remaining := crit.limit - crit.count
 
 	if remaining < 0 {
@@ -109,10 +111,10 @@ func (crit *rowCriteria) selectMatching(namespace *IpfsNamespace) (bool, error) 
 	return false, nil
 }
 
-func (crit *rowCriteria) findRows(ipfsns *IpfsNamespace) []Row {
+func (crit *rowCriteria) findRows(namespace *Namespace) []Row {
 	out := []Row{}
 
-	table, present := ipfsns.Namespace.Tables[crit.tableKey]
+	table, present := namespace.Tables[crit.tableKey]
 
 	if !present {
 		return out
