@@ -6,42 +6,35 @@ import (
 
 type KvQuery struct {
 	Query *Query
-	Response chan KvResponse
+	Response chan APIResponse
 }
 
 func MakeKvQuery(query *Query) KvQuery {
 	return KvQuery{
 		Query: query,
-		Response: make(chan KvResponse),
+		Response: make(chan APIResponse),
 	}
 }
 
-func (kvq KvQuery) writeResponse(val *ApiResponse, err error) {
-	kvq.Response<- KvResponse{
-		Err: err,
-		Val: val,
-	}
+func (kvq KvQuery) writeResponse(val APIResponse) {
+	kvq.Response<- val
 }
 
 func (kvq KvQuery) reportError(err error) {
-	kvq.writeResponse(nil, err)
+	kvq.writeResponse(APIResponse{Err: err})
 }
 
-func (kvq KvQuery) reportSuccess(val *ApiResponse) {
-	kvq.writeResponse(val, nil)
+func (kvq KvQuery) reportSuccess(val APIResponse) {
+	kvq.writeResponse(val)
 }
 
-type KvResponse struct {
-	Err error
-	Val *ApiResponse
-}
-
-func LaunchKeyValueStore(ns *IpfsNamespace) (chan<-KvQuery, <-chan error) {
+func LaunchKeyValueStore(ns *IpfsNamespace) (QueryAPIService, <-chan error) {
 	interact := make(chan KvQuery)
 	errch := make(chan error, 1)
 
 	kv := &keyValueStore{
-		Namespace: ns,
+		namespace: ns,
+		input: interact,
 	}
 	go func() {
 		for kvq := range interact {
@@ -55,25 +48,40 @@ func LaunchKeyValueStore(ns *IpfsNamespace) (chan<-KvQuery, <-chan error) {
 		}
 	}()
 
-	return interact, errch
+	return kv, errch
 }
 
 
 type keyValueStore struct {
-	Namespace *IpfsNamespace
+	namespace *IpfsNamespace
+	input chan<- KvQuery
+}
+
+func (kv *keyValueStore) RunQuery(query *Query) (<-chan APIResponse, error) {
+	if err := query.Validate(); err != nil {
+		return nil, err
+	}
+
+	kvq := MakeKvQuery(query)
+
+	go func() {
+		kv.input<- kvq
+	}()
+
+	return kvq.Response, nil
 }
 
 func (kv *keyValueStore) transact(kvq KvQuery) error {
-	kvq.Query.Run(kvq, kv.Namespace)
+	kvq.Query.Run(kvq, kv.namespace)
 
-	if kv.Namespace.Update.IsEmpty() {
-		next, err := kv.Namespace.Persist()
+	if kv.namespace.Update.IsEmpty() {
+		next, err := kv.namespace.Persist()
 
 		if err != nil {
 			return errors.Wrap(err, "KeyValueStore persist failed")
 		}
 
-		kv.Namespace = next
+		kv.namespace = next
 	}
 
 	return nil

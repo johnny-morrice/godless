@@ -60,7 +60,7 @@ var queryCmd = &cobra.Command{
 		}
 
 		var err error
-		var response *lib.ApiResponse
+		var response *lib.APIResponse
 		if noparse {
 			response, err = client.SendRawQuery(source)
 		} else {

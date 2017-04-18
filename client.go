@@ -23,11 +23,11 @@ func MakeClient(addr string) *Client {
 	}
 }
 
-func (client *Client) SendRawQuery(source string) (*ApiResponse, error) {
+func (client *Client) SendRawQuery(source string) (*APIResponse, error) {
 	return client.Post(MIME_QUERY, strings.NewReader(source))
 }
 
-func (client *Client) SendQuery(query *Query) (*ApiResponse, error) {
+func (client *Client) SendQuery(query *Query) (*APIResponse, error) {
 	validerr := query.Validate()
 
 	if validerr != nil {
@@ -44,7 +44,7 @@ func (client *Client) SendQuery(query *Query) (*ApiResponse, error) {
 	return client.Post(MIME_GOB, buff)
 }
 
-func (client *Client) Post(bodyType string, body io.Reader) (*ApiResponse, error) {
+func (client *Client) Post(bodyType string, body io.Reader) (*APIResponse, error) {
 	addr := fmt.Sprintf("http://%s/api/query/run", client.Addr)
 	logdbg("HTTP POST to %v", addr)
 
@@ -56,20 +56,19 @@ func (client *Client) Post(bodyType string, body io.Reader) (*ApiResponse, error
 
 	defer resp.Body.Close()
 
-	var apiresp *ApiResponse
-	var apierr *ApiError
+	var apiresp *APIResponse
 	ct := resp.Header[CONTENT_TYPE]
 	if resp.StatusCode == 200 {
 		if linearContains(ct, MIME_GOB) {
-			apiresp = &ApiResponse{}
+			apiresp = &APIResponse{}
 			err = degob(apiresp, resp.Body)
 		} else {
 			return nil, incorrectContentType(resp.StatusCode, ct)
 		}
 	} else if resp.StatusCode == 500 {
 		if linearContains(ct, MIME_GOB) {
-			apierr = &ApiError{}
-			err = dejson(apierr, resp.Body)
+			apiresp = &APIResponse{}
+			err = degob(apiresp, resp.Body)
 		} else {
 			return nil, incorrectContentType(resp.StatusCode, ct)
 		}
@@ -92,12 +91,10 @@ func (client *Client) Post(bodyType string, body io.Reader) (*ApiResponse, error
 		return nil, errors.Wrap(err, "Error decoding API response")
 	}
 
-	if apiresp != nil {
+	if apiresp.Err == nil {
 		return apiresp, nil
-	} else if apierr != nil {
-		return nil, fmt.Errorf("API error: %v", apierr.Err)
 	} else {
-		panic("bug")
+		return nil, errors.Wrap(apiresp.Err, "API returned error")
 	}
 }
 

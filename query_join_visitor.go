@@ -36,7 +36,7 @@ func (visitor *QueryJoinVisitor) RunQuery(kv KvQuery) {
 		return
 	}
 
-	kv.reportSuccess(&RESPONSE_OK)
+	kv.reportSuccess(RESPONSE_OK)
 }
 
 func (visitor *QueryJoinVisitor) VisitOpCode(opCode QueryOpCode) {

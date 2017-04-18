@@ -11,18 +11,7 @@ import (
 )
 
 type KeyValueService struct {
-	Query chan<- KvQuery
-}
-
-type ApiResponse struct {
-	Msg string
-	QueryId string
-}
-
-var RESPONSE_OK ApiResponse = ApiResponse{Msg: "ok"}
-
-type ApiError struct {
-	Err string
+	API QueryAPIService
 }
 
 func (service *KeyValueService) Handler() http.Handler {
@@ -57,15 +46,7 @@ func (service *KeyValueService) queryRun(rw http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	err = query.Validate()
-
-	if err != nil {
-		invalidRequest(rw, err)
-		return
-	}
-
-	kvq := MakeKvQuery(query)
-	service.handleKvQuery(rw, kvq)
+	service.runQuery(rw, query)
 }
 
 func invalidRequest(rw http.ResponseWriter, err error) {
@@ -74,15 +55,17 @@ func invalidRequest(rw http.ResponseWriter, err error) {
 	logerr("Error sending JSON error report: '%v'", reportErr)
 }
 
-func (service *KeyValueService) handleKvQuery(rw http.ResponseWriter, kvq KvQuery) {
-	service.Query<- kvq
-	resp := <-kvq.Response
-	var err error
-	if resp.Err == nil {
-		err = sendGob(rw, resp.Val)
-	} else {
-		err = sendErr(rw, resp.Err)
+func (service *KeyValueService) runQuery(rw http.ResponseWriter, query *Query) {
+	respch, err := service.API.RunQuery(query)
+
+	if err != nil {
+		invalidRequest(rw, err)
+		return
 	}
+
+	resp := <-respch
+
+	err = sendGob(rw, resp)
 
 	if err != nil {
 		logerr("Error sending response: %v", err)
@@ -90,8 +73,8 @@ func (service *KeyValueService) handleKvQuery(rw http.ResponseWriter, kvq KvQuer
 }
 
 func sendErr(rw http.ResponseWriter, err error) error {
-	message := ApiError{
-		Err: err.Error(),
+	message := APIResponse{
+		Err: err,
 	}
 
 	buff := bytes.Buffer{}
@@ -112,7 +95,7 @@ func sendErr(rw http.ResponseWriter, err error) error {
 	return nil
 }
 
-func sendGob(rw http.ResponseWriter, gobber *ApiResponse) error {
+func sendGob(rw http.ResponseWriter, gobber interface{}) error {
 	// Encode gob into buffer first to check for encoding errors.
 	// TODO is that actually a good idea?
 	buff := &bytes.Buffer{}

@@ -54,10 +54,10 @@ var serveCmd = &cobra.Command{
 			die(err)
 		}
 
-		queryChan, errch := lib.LaunchKeyValueStore(ipfsNamespace)
+		api, errch := lib.LaunchKeyValueStore(ipfsNamespace)
 
 		service := &lib.KeyValueService{
-			Query: queryChan,
+			API: api,
 		}
 
 		stopch, err = lib.Serve(addr, service.Handler())
