@@ -4,6 +4,12 @@ import (
 	"github.com/pkg/errors"
 )
 
+type KvNamespace interface {
+	RunKvQuery(KvQuery)
+	IsChanged() bool
+	Persist() (KvNamespace, error)
+}
+
 type KvQuery struct {
 	Query *Query
 	Response chan APIResponse
@@ -28,7 +34,7 @@ func (kvq KvQuery) reportSuccess(val APIResponse) {
 	kvq.writeResponse(val)
 }
 
-func LaunchKeyValueStore(ns *IpfsNamespace) (QueryAPIService, <-chan error) {
+func LaunchKeyValueStore(ns KvNamespace) (QueryAPIService, <-chan error) {
 	interact := make(chan KvQuery)
 	errch := make(chan error, 1)
 
@@ -53,7 +59,7 @@ func LaunchKeyValueStore(ns *IpfsNamespace) (QueryAPIService, <-chan error) {
 
 
 type keyValueStore struct {
-	namespace *IpfsNamespace
+	namespace KvNamespace
 	input chan<- KvQuery
 }
 
@@ -72,9 +78,9 @@ func (kv *keyValueStore) RunQuery(query *Query) (<-chan APIResponse, error) {
 }
 
 func (kv *keyValueStore) transact(kvq KvQuery) error {
-	kvq.Query.Run(kvq, kv.namespace)
+	kv.namespace.RunKvQuery(kvq)
 
-	if kv.namespace.Update.IsEmpty() {
+	if kv.namespace.IsChanged() {
 		next, err := kv.namespace.Persist()
 
 		if err != nil {

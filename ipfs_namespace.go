@@ -47,7 +47,31 @@ func PersistNewIpfsNamespace(filePeer *IpfsPeer, namespace *Namespace) (*IpfsNam
 	ns.Namespace = MakeNamespace()
 	ns.Children = []*IpfsNamespace{}
 
-	return ns.Persist()
+	return ns.persistIpfs()
+}
+
+func (ns *IpfsNamespace) RunKvQuery(kvq KvQuery) {
+	query := kvq.Query
+	var runner QueryRun
+
+	switch query.OpCode {
+	case JOIN:
+		visitor := MakeQueryJoinVisitor(ns)
+		query.Visit(visitor)
+		runner = visitor
+	case SELECT:
+		visitor := MakeQuerySelectVisitor(ns)
+		query.Visit(visitor)
+		runner = visitor
+	default:
+		query.opcodePanic()
+	}
+
+	runner.RunQuery(kvq)
+}
+
+func (ns *IpfsNamespace) IsChanged() bool {
+	return !ns.Namespace.IsEmpty()
 }
 
 func (ns *IpfsNamespace) JoinTable(tableKey string, table Table) error {
@@ -149,8 +173,11 @@ func (ns *IpfsNamespace) load() error {
 }
 
 // Write pending changes to IPFS and return the new parent namespace.
-// TODO allow child namespace merges
-func (ns *IpfsNamespace) Persist() (*IpfsNamespace, error) {
+func (ns *IpfsNamespace) Persist() (KvNamespace, error) {
+	return ns.persistIpfs()
+}
+
+func (ns *IpfsNamespace) persistIpfs() (*IpfsNamespace, error) {
 	part := &IpfsNamespaceRecord{}
 	part.Namespace = ns.Update
 

@@ -33,7 +33,6 @@ var serveCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		var err error
 		var ipfsNamespace *lib.IpfsNamespace
-		var queryChan chan<- lib.KvQuery
 		var stopch chan<- interface{}
 
 		peer := lib.MakeIpfsPeer(peerUrl)

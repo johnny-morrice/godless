@@ -158,27 +158,6 @@ func (query *Query) Validate() error {
 	return validator.err
 }
 
-func (query *Query) Run(kvq KvQuery, ns *IpfsNamespace) {
-	var runner QueryRun
-
-	switch query.OpCode {
-	case JOIN:
-		visitor := MakeQueryJoinVisitor(ns)
-		query.Visit(visitor)
-		runner = visitor
-	case SELECT:
-		visitor := MakeQuerySelectVisitor(ns)
-		query.Visit(visitor)
-		runner = visitor
-	default:
-		query.opcodePanic()
-	}
-
-	runner.RunQuery(kvq)
-}
-
-
-
 func (query *Query) Visit(visitor QueryVisitor) {
 	visitor.VisitOpCode(query.OpCode)
 	visitor.VisitAST(query.AST)
