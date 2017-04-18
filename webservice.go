@@ -57,7 +57,12 @@ func (service *KeyValueService) queryRun(rw http.ResponseWriter, req *http.Reque
 		return
 	}
 
+	err = query.Validate()
 
+	if err != nil {
+		invalidRequest(rw, err)
+		return
+	}
 
 	kvq := MakeKvQuery(query)
 	service.handleKvQuery(rw, kvq)

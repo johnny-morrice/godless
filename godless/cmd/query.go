@@ -55,6 +55,10 @@ var queryCmd = &cobra.Command{
 			query.Parser.PrintSyntaxTree()
 		}
 
+		if query == nil {
+			return
+		}
+
 		var err error
 		var response *lib.ApiResponse
 		if noparse {

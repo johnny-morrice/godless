@@ -1,5 +1,9 @@
 package godless
 
+import (
+	"github.com/pkg/errors"
+)
+
 type noSelectVisitor struct {}
 
 func (visitor *noSelectVisitor) VisitSelect(*QuerySelect) {
@@ -40,12 +44,17 @@ func (visitor *errorCollectVisitor) hasError() bool {
 }
 
 func (visitor *errorCollectVisitor) collectError(err error) {
-		visitor.err = err
+		if visitor.err == nil {
+			visitor.err = err
+		} else {
+			visitor.err = errors.Wrapf(err, "%v\n", visitor.err) 
+		}
+
 }
 
 func (visitor *errorCollectVisitor) reportError(kv KvQuery) {
 	if visitor.err != nil {
-		panic("No error too report")
+		panic("No error to report")
 	}
 
 	kv.reportError(visitor.err)
@@ -63,15 +72,15 @@ func makeWhereStack(where *QueryWhere) *whereStack{
 
 func (stack *whereStack) visit(visitor whereVisitor) {
 	for i := 0; len(stack.stk) > 0; {
-		tip := &stack.stk[len(stack.stk) - 1]
-		tipWhere := tip.where
+		head := &stack.stk[len(stack.stk) - 1]
+		tipWhere := head.where
 
 		if stack.isMarked() {
 			visitor.LeaveWhere(tipWhere)
 			stack.pop()
 			i--
 		} else {
-			visitor.VisitWhere(tip.position, tipWhere)
+			visitor.VisitWhere(head.position, tipWhere)
 			visitor.VisitPredicate(&tipWhere.Predicate)
 			clauses := tipWhere.Clauses;
 			clauseCount := len(clauses)
@@ -89,9 +98,9 @@ func (stack *whereStack) visit(visitor whereVisitor) {
 }
 
 func (stack *whereStack) pop() whereFrame {
-	tip := stack.stk[len(stack.stk) - 1]
+	head := stack.stk[len(stack.stk) - 1]
 	stack.stk = stack.stk[:len(stack.stk) - 1]
-	return tip
+	return head
 }
 
 func (stack *whereStack) push(frame whereFrame) {
@@ -99,8 +108,8 @@ func (stack *whereStack) push(frame whereFrame) {
 }
 
 func (stack *whereStack) mark() {
-	tip := &stack.stk[len(stack.stk) - 1]
-	tip.mark = true
+	head := &stack.stk[len(stack.stk) - 1]
+	head.mark = true
 }
 
 func (stack *whereStack) isMarked() bool {

@@ -121,8 +121,8 @@ func (crit *rowCriteria) findRows(ipfsns *IpfsNamespace) []Row {
 	table.Foreachrow(func (rowKey string, r Row) {
 		eval := makeSelectEvalTree(rowKey, r)
 		where := makeWhereStack(crit.rootWhere)
-		where.visit(eval)
-		if eval.evaluate() {
+
+		if eval.evaluate(where) {
 			out = append(out, r)
 		}
 	})
@@ -151,7 +151,7 @@ const (
 )
 
 type expr struct {
-	opCode exprOpCode
+	state exprOpCode
 	children []*expr
 	source *QueryWhere
 }
@@ -163,17 +163,34 @@ func makeSelectEvalTree(rowKey string, row Row) *selectEvalTree {
 	}
 }
 
-func (eval *selectEvalTree) evaluate() bool {
-	return false
+func (eval *selectEvalTree) evaluate(stk *whereStack) bool {
+	stk.visit(eval)
+
+	if len(eval.stk) != 0 {
+		panic("Eval stack remains after visit")
+	}
+
+	if eval.root == nil {
+		panic("No root for eval stack")
+	}
+
+	switch eval.root.state {
+	case EXPR_TRUE:
+		return true
+	case EXPR_FALSE:
+		return false
+	default:
+		panic("Unevaluated eval root")
+	}
 }
 
 // TODO shortcircuit eval optimisation.
 func (eval *selectEvalTree) evalWhere(where *QueryWhere) *expr {
 	switch where.OpCode {
 	case AND:
-		return &expr{opCode: EXPR_AND}
+		return &expr{state: EXPR_AND}
 	case OR:
-		return &expr{opCode: EXPR_OR}
+		return &expr{state: EXPR_OR}
 	case PREDICATE:
 		return eval.evalPred(where)
 	default:
@@ -201,7 +218,7 @@ func (eval *selectEvalTree) evalPred(where *QueryWhere) *expr {
 			entries = append(entries, values)
 		} else {
 			// No key = no match.
-			return &expr{source: where, opCode: EXPR_FALSE}
+			return &expr{source: where, state: EXPR_FALSE}
 		}
 	}
 
@@ -216,16 +233,17 @@ func (eval *selectEvalTree) evalPred(where *QueryWhere) *expr {
 	}
 
 	if isMatch {
-		return &expr{source: where, opCode: EXPR_TRUE}
+		return &expr{source: where, state: EXPR_TRUE}
 	}
 
-	return &expr{source: where, opCode: EXPR_FALSE}
+	return &expr{source: where, state: EXPR_FALSE}
 }
 
 func (eval *selectEvalTree) str_eq(prefix []string, entries [][]string) bool {
 	m, err := eval.matcher(prefix, entries)
 
 	if err != nil {
+		// TODO log error?
 		return false
 	}
 
@@ -311,16 +329,47 @@ func (eval *selectEvalTree) VisitWhere(position int, where *QueryWhere) {
 		eval.root = e
 		eval.stk = []*expr{eval.root}
 	} else {
-		tip := eval.peek()
-		tip.children = append(tip.children, e)
+		head := eval.peek()
+		head.children = append(head.children, e)
 	}
 }
 
 func (eval *selectEvalTree) LeaveWhere(where *QueryWhere) {
-	oldtip := eval.pop()
+	head := eval.pop()
 
-	if oldtip.source != where {
-		panic("expr stack corruption")
+	if head.source != where {
+		panic(fmt.Sprintf("expr stack corruption, 'head' %v but 'where' %v", head, where))
+	}
+
+	switch head.state {
+	case EXPR_AND:
+		for _, child := range head.children {
+			switch child.state {
+			case EXPR_TRUE:
+				// Do nothing.
+			case EXPR_FALSE:
+				head.state = EXPR_FALSE
+			default:
+				panic(fmt.Sprintf("Unevaluated expr: %v", child))
+			}
+		}
+	case EXPR_OR:
+		for _, child := range head.children {
+			switch child.state {
+			case EXPR_TRUE:
+				head.state = EXPR_TRUE
+				break
+			case EXPR_FALSE:
+				// Do nothing;
+			default:
+				panic(fmt.Sprintf("Unevaluated expr: %v", child))
+			}
+		}
+	case EXPR_TRUE:
+	case EXPR_FALSE:
+		// Do nothing
+	default:
+		panic(fmt.Sprintf("Unknown state for expr: %v", head))
 	}
 }
 
@@ -333,9 +382,9 @@ func (eval *selectEvalTree) peek() *expr {
 }
 
 func (eval *selectEvalTree) pop() *expr {
-	tip := eval.peek()
+	head := eval.peek()
 	eval.stk = eval.stk[:len(eval.stk) - 1]
-	return tip
+	return head
 }
 
 func (eval *selectEvalTree) push(e *expr) {

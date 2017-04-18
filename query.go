@@ -1,6 +1,6 @@
 package godless
-
 //go:generate peg -switch -inline query.peg
+//go:generate mockgen -source=query.go -destination=mock/mock_query.go -imports lib=github.com/johnny-morrice/godless
 
 import (
 	"encoding/json"
@@ -150,6 +150,14 @@ func (query *Query) Analyse() string {
 	return fmt.Sprintf("Compiled:\n\n%v\n\nAST:\n\n%v", prettyPrintJson(query), prettyPrintJson(query.AST))
 }
 
+func (query *Query) Validate() error {
+	validator := &queryValidator{}
+
+	query.Visit(validator)
+
+	return validator.err
+}
+
 func (query *Query) Run(kvq KvQuery, ns *IpfsNamespace) {
 	var runner QueryRun
 
@@ -204,4 +212,53 @@ func prettyPrintJson(jsonable interface{}) string {
 		panic(errors.Wrap(err, "BUG prettyPrintJson failed"))
 	}
 	return string(bs)
+}
+
+type queryValidator struct {
+	noDebugVisitor
+	errorCollectVisitor
+	noJoinVisitor
+}
+
+func (visitor *queryValidator) VisitOpCode(opCode QueryOpCode) {
+	switch opCode {
+	case SELECT:
+	case JOIN:
+		// Okay!
+	default:
+		visitor.collectError(errors.New(fmt.Sprintf("Invalid Query OpCode: %v", opCode)))
+	}
+}
+
+func (visitor *queryValidator) VisitTableKey(tableKey string) {
+	if tableKey == "" {
+		visitor.collectError(errors.New("Empty table key"))
+	}
+}
+
+func (visitor *queryValidator) VisitSelect(*QuerySelect) {
+}
+
+func (visitor *queryValidator) VisitWhere(position int, where *QueryWhere) {
+	switch where.OpCode {
+	case AND:
+	case OR:
+	case PREDICATE:
+		// Okay!
+	default:
+		visitor.collectError(errors.New(fmt.Sprintf("Unknown Where OpCode at position %v: %v", position, where)))
+	}
+}
+
+func (visitor *queryValidator) LeaveWhere(*QueryWhere) {
+}
+
+func (visitor *queryValidator) VisitPredicate(predicate *QueryPredicate) {
+	switch predicate.OpCode {
+	case STR_EQ:
+	case STR_NEQ:
+		// Okay!
+	default:
+		visitor.collectError(errors.New(fmt.Sprintf("Unknown Predicate OpCode: %v",predicate)))
+	}
 }

@@ -28,6 +28,12 @@ func (client *Client) SendRawQuery(source string) (*ApiResponse, error) {
 }
 
 func (client *Client) SendQuery(query *Query) (*ApiResponse, error) {
+	validerr := query.Validate()
+
+	if validerr != nil {
+		return nil, errors.Wrap(validerr, fmt.Sprintf("Cowardly refusing to send invalid query: %v", query))
+	}
+
 	buff := &bytes.Buffer{}
 	encerr := togob(query, buff)
 
