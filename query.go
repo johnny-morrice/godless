@@ -159,9 +159,9 @@ func (query *Query) Validate() error {
 }
 
 func (query *Query) Visit(visitor QueryVisitor) {
-	visitor.VisitOpCode(query.OpCode)
 	visitor.VisitAST(query.AST)
 	visitor.VisitParser(query.Parser)
+	visitor.VisitOpCode(query.OpCode)
 	visitor.VisitTableKey(query.TableKey)
 
 	switch query.OpCode {
