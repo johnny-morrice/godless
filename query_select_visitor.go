@@ -11,11 +11,11 @@ type QuerySelectVisitor struct {
 	noJoinVisitor
 	noDebugVisitor
 	errorCollectVisitor
-	Namespace RemoteNamespaceTree
+	Namespace NamespaceTree
 	crit *rowCriteria
 }
 
-func MakeQuerySelectVisitor(namespace RemoteNamespaceTree) *QuerySelectVisitor {
+func MakeQuerySelectVisitor(namespace NamespaceTree) *QuerySelectVisitor {
 	return &QuerySelectVisitor{
 		Namespace: namespace,
 		crit: &rowCriteria{},
@@ -32,7 +32,7 @@ func (visitor *QuerySelectVisitor) RunQuery(kv KvQuery) {
 		panic("didn't visit query")
 	}
 
-	lambda := RemoteNamespaceLambda(visitor.crit.selectMatching)
+	lambda := NamespaceTreeLambda(visitor.crit.selectMatching)
 	err := visitor.Namespace.LoadTraverse(lambda)
 
 	if err != nil {

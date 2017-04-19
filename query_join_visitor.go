@@ -10,12 +10,12 @@ type QueryJoinVisitor struct {
 	noSelectVisitor
 	noDebugVisitor
 	errorCollectVisitor
-	Namespace RemoteNamespaceTree
+	Namespace NamespaceTree
 	tableKey string
 	table Table
 }
 
-func MakeQueryJoinVisitor(ns RemoteNamespaceTree) *QueryJoinVisitor {
+func MakeQueryJoinVisitor(ns NamespaceTree) *QueryJoinVisitor {
 	return &QueryJoinVisitor{Namespace: ns}
 }
 

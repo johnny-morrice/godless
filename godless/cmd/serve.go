@@ -35,8 +35,9 @@ var serveCmd = &cobra.Command{
 		var kvNamespace lib.KvNamespace
 		var stopch chan<- interface{}
 
-		peer := lib.MakeIpfsPeer(peerUrl)
+		peer := lib.MakeIPFSPeer(peerUrl)
 		err = peer.Connect()
+		defer peer.Disconnect()
 
 		if err != nil {
 			die(err)
@@ -44,9 +45,11 @@ var serveCmd = &cobra.Command{
 
 		if hash == "" {
 			namespace := lib.MakeNamespace()
-			kvNamespace, err = lib.PersistNewIPFSNamespace(peer, namespace)
+			kvNamespace, err = lib.PersistNewRemoteNamespace(peer, namespace)
 		} else {
-			kvNamespace, err = lib.LoadIPFSNamespace(peer, lib.IpfsPath(hash))
+			// Usage is a bit funky!
+			index := lib.RemoteStoreIndex(lib.IPFSPath(hash))
+			kvNamespace, err = lib.LoadRemoteNamespace(peer, index)
 		}
 
 		if err != nil {
