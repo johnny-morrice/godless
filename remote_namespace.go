@@ -15,7 +15,7 @@ type remoteNamespace struct {
 	Children []*remoteNamespace
 }
 
-func LoadRemoteNamespace(Store RemoteStore, Index RemoteStoreIndex) (KvNamespace, error) {
+func LoadRemoteNamespace(Store RemoteStore, Index RemoteStoreIndex) (KvNamespaceTree, error) {
 	ns := &remoteNamespace{}
 	ns.Store = Store
 	ns.Index = Index
@@ -32,14 +32,20 @@ func LoadRemoteNamespace(Store RemoteStore, Index RemoteStoreIndex) (KvNamespace
 	return ns, nil
 }
 
-func PersistNewRemoteNamespace(Store RemoteStore, namespace *Namespace) (KvNamespace, error) {
+func PersistNewRemoteNamespace(Store RemoteStore, namespace *Namespace) (KvNamespaceTree, error) {
 	ns := &remoteNamespace{}
 	ns.Store = Store
 	ns.Update = namespace
 	ns.Namespace = MakeNamespace()
 	ns.Children = []*remoteNamespace{}
 
-	return ns.Persist()
+	kv, err := ns.Persist()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return kv.(*remoteNamespace), nil
 }
 
 func (ns *remoteNamespace) RunKvQuery(kvq KvQuery) {
@@ -98,7 +104,7 @@ func (ns *remoteNamespace) LoadTraverse(f NamespaceTreeReader) error {
 		abort, visiterr := f.ReadNamespace(leaf)
 
 		if visiterr != nil {
-			return errors.Wrap(err, "Error in remoteNamespace traversal")
+			return errors.Wrap(visiterr, "Error in remoteNamespace traversal")
 		}
 
 		if abort {
@@ -114,8 +120,8 @@ func (ns *remoteNamespace) LoadTraverse(f NamespaceTreeReader) error {
 // Load chunks over IPFS
 // TODO opportunity to query IPFS in parallel?
 func (ns *remoteNamespace) load() error {
-	if ns.Index == "" {
-		logdie("tried to load remoteNamespace with empty Index")
+	if ns.Index == nil {
+		panic("tried to load remoteNamespace with empty Index")
 	}
 
 	if ns.loaded {
@@ -150,8 +156,10 @@ func (ns *remoteNamespace) Persist() (KvNamespace, error) {
 
 	// If this is the first namespace in the chain, don't save children.
 	// TODO become parent of multiple children.
-	if ns.Index != "" {
-		part.Children[0] = []RemoteStoreIndex{ns.Index}
+	if ns.Index != nil {
+		part.Children = []RemoteStoreIndex{ns.Index}
+	} else {
+		part.Children = []RemoteStoreIndex{}
 	}
 
 	addr, err := ns.Store.Add(part)

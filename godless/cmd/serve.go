@@ -47,8 +47,7 @@ var serveCmd = &cobra.Command{
 			namespace := lib.MakeNamespace()
 			kvNamespace, err = lib.PersistNewRemoteNamespace(peer, namespace)
 		} else {
-			// Usage is a bit funky!
-			index := lib.RemoteStoreIndex(lib.IPFSPath(hash))
+			index := lib.IPFSPath(hash)
 			kvNamespace, err = lib.LoadRemoteNamespace(peer, index)
 		}
 

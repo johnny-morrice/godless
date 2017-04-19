@@ -89,5 +89,35 @@ func TestVisitSelect(t *testing.T) {
 	visitor.EXPECT().LeaveWhere(&selectQuery.Select.Where.Clauses[1])
 	visitor.EXPECT().LeaveWhere(&selectQuery.Select.Where)
 
+	// c1 := visitor.EXPECT().VisitTableKey("Table Key")
+	// c2 := visitor.EXPECT().VisitAST(nil)
+	// c3 := visitor.EXPECT().VisitParser(nil)
+	// c4 := visitor.EXPECT().VisitOpCode(lib.SELECT)
+	// c5 := visitor.EXPECT().VisitSelect(&selectQuery.Select)
+	// c6 := visitor.EXPECT().VisitWhere(0, &selectQuery.Select.Where)
+	// c7 := visitor.EXPECT().VisitPredicate(&selectQuery.Select.Where.Predicate)
+	// c8 := visitor.EXPECT().VisitWhere(0, &selectQuery.Select.Where.Clauses[0])
+	// c9 := visitor.EXPECT().VisitPredicate(&selectQuery.Select.Where.Clauses[0].Predicate)
+	// c10 := visitor.EXPECT().LeaveWhere(&selectQuery.Select.Where.Clauses[0])
+	// c11 := visitor.EXPECT().VisitWhere(1, &selectQuery.Select.Where.Clauses[1])
+	// c12 := visitor.EXPECT().VisitPredicate(&selectQuery.Select.Where.Clauses[1].Predicate)
+	// c13 := visitor.EXPECT().LeaveWhere(&selectQuery.Select.Where.Clauses[1])
+	// c14 := visitor.EXPECT().LeaveWhere(&selectQuery.Select.Where)
+	//
+	// gomock.InOrder(c1,
+	// 	c2,
+	// 	c3,
+	// 	c4,
+	// 	c5,
+	// 	c6,
+	// 	c7,
+	// 	c8,
+	// 	c9,
+	// 	c10,
+	// 	c11,
+	// 	c12,
+	// 	c13,
+	// 	c14)
+
 	selectQuery.Visit(visitor)
 }

@@ -14,6 +14,10 @@ import (
 
 type IPFSPath string
 
+func (path IPFSPath) Path() string {
+	return string(path)
+}
+
 type IPFSPeer struct {
 	Url string
 	Client *http.Client
@@ -79,7 +83,7 @@ func (peer *IPFSPeer) Add(record RemoteNamespaceRecord) (RemoteStoreIndex, error
 		return nil, errors.Wrap(err, "Error adding to IPFS")
 	}
 
-	return RemoteStoreIndex(path), nil
+	return RemoteStoreIndex(IPFSPath(path)), nil
 }
 
 func (peer *IPFSPeer) Cat(index RemoteStoreIndex) (RemoteNamespaceRecord, error) {
