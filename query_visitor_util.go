@@ -47,7 +47,7 @@ func (visitor *errorCollectVisitor) collectError(err error) {
 		if visitor.err == nil {
 			visitor.err = err
 		} else {
-			visitor.err = errors.Wrapf(err, "%v\n", visitor.err)
+			visitor.err = errors.Wrapf(err, "%v, and", visitor.err)
 		}
 
 }

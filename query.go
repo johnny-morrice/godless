@@ -175,6 +175,8 @@ func (query *Query) Visit(visitor QueryVisitor) {
 
 		stack := makeWhereStack(&query.Select.Where)
 		stack.visit(visitor)
+	case QUERY_NOP:
+		// Do nothing.
 	default:
 		query.opcodePanic()
 	}

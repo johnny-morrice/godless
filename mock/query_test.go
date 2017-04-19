@@ -1,10 +1,10 @@
 package mock_godless
 
 import (
+	"testing"
+
 	"github.com/golang/mock/gomock"
 	lib "github.com/johnny-morrice/godless"
-
-	"testing"
 )
 
 func TestVisitJoin(t *testing.T) {

@@ -2,6 +2,7 @@ package godless
 
 type QueryAPIService interface {
 	RunQuery(*Query) (<-chan APIResponse, error)
+	Close()
 }
 
 type APIResponse struct {

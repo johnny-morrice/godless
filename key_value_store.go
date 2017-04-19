@@ -1,5 +1,7 @@
 package godless
 
+//go:generate mockgen -destination mock/mock_key_value_store.go -imports lib=github.com/johnny-morrice/godless -self_package lib github.com/johnny-morrice/godless KvNamespace
+
 import (
 	"github.com/pkg/errors"
 )
@@ -44,14 +46,18 @@ func LaunchKeyValueStore(ns KvNamespace) (QueryAPIService, <-chan error) {
 	}
 	go func() {
 		for kvq := range interact {
+			logdbg("interacting...")
 			err := kv.transact(kvq)
 
 			if err != nil {
+				close(kvq.Response)
 				logerr("key value store died with: %v", err)
 				errch<- errors.Wrap(err, "Key value store died")
 				return
 			}
 		}
+
+		close(errch)
 	}()
 
 	return kv, errch
@@ -67,14 +73,15 @@ func (kv *keyValueStore) RunQuery(query *Query) (<-chan APIResponse, error) {
 	if err := query.Validate(); err != nil {
 		return nil, err
 	}
-
 	kvq := MakeKvQuery(query)
 
-	go func() {
-		kv.input<- kvq
-	}()
+	kv.input<- kvq
 
 	return kvq.Response, nil
+}
+
+func (kv *keyValueStore) Close() {
+	close(kv.input)
 }
 
 func (kv *keyValueStore) transact(kvq KvQuery) error {
