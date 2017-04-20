@@ -222,7 +222,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 	}
 }
 
-func TestRunQuerySelectFailure(t *testing.T) {
+func TestRunQuerySelectInvalid(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -286,7 +286,6 @@ func TestRunQuerySelectFailure(t *testing.T) {
 			t.Error("Expected response Err")
 		}
 	}
-
 }
 
 func rowsA() []lib.Row {

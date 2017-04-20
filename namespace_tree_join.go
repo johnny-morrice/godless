@@ -42,7 +42,7 @@ func (visitor *NamespaceTreeJoin) RunQuery() APIResponse {
 
 func (visitor *NamespaceTreeJoin) VisitOpCode(opCode QueryOpCode) {
 	if opCode != JOIN {
-		panic("Expected JOIN OpCode")
+		visitor.collectError(errors.New("Expected JOIN OpCode"))
 	}
 }
 
