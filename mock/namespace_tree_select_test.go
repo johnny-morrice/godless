@@ -65,7 +65,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 			OpCode: lib.SELECT,
 			TableKey: mainTableKey,
 			Select: lib.QuerySelect{
-				Limit: 1,
+				Limit: 2,
 				Where: whereA,
 			},
 		},
@@ -108,7 +108,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 	responseC.Rows = rowsC()
 
 	responseD := lib.RESPONSE_OK
-	responseD.Rows = rowsA()
+	responseD.Rows = rowsD()
 	var _ interface{} = responseD
 
 	expect := []lib.APIResponse{
@@ -129,7 +129,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		q.Visit(selector)
 		resp := selector.RunQuery()
 
-		if !reflect.DeepEqual(resp, expect[i]) {
+		if !apiResponseEq(resp, expect[i]) {
 			if resp.Rows == nil {
 				t.Error("resp.Rows was nil")
 			}
@@ -260,6 +260,10 @@ func rowsZ() []lib.Row {
 		lib.Row{
 			Entries: map[string][]string {
 				"Entry A": []string{"No", "Match"},
+			},
+		},
+		lib.Row{
+			Entries: map[string][]string {
 				"Entry C": []string{"No", "Match", "Here"},
 				"Entry D": []string{"Nada!"},
 			},
@@ -323,6 +327,34 @@ func mktable(name string, rows []lib.Row) lib.Table {
 	}
 
 	return table
+}
+
+func apiResponseEq(a, b lib.APIResponse) bool {
+	if a.Msg != b.Msg {
+		return false
+	}
+
+	if a.Err != b.Err {
+		return false
+	}
+
+	if len(a.Rows) != len(b.Rows) {
+		return false
+	}
+
+	for _, ar := range a.Rows {
+		found := false
+		for _, br := range b.Rows {
+			if reflect.DeepEqual(ar, br) {
+				found = true
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+
+	return true
 }
 
 const mainTableKey = "The Table"

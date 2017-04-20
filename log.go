@@ -3,6 +3,8 @@ package godless
 import (
 	"fmt"
 	"log"
+
+	"github.com/davecgh/go-spew/spew"
 )
 
 // Really basic logging helpers follow.
@@ -21,9 +23,9 @@ func logwarn(msg string, args ...interface{}) {
 
 func logdie(msg string, args ...interface{}) {
 	logMsg("FATAL", msg, args)
-	panic(fmt.Sprintf(msg, args))
+	panic(spew.Sprintf(msg, args))
 }
 
 func logMsg(level, msg string, args ...interface{}) {
-	log.Print(fmt.Sprintf(fmt.Sprintf("%v %v", level, msg), args...))
+	log.Print(spew.Sprintf(fmt.Sprintf("%v %v", level, msg), args...))
 }

@@ -175,7 +175,6 @@ func makeSelectEvalTree(rowKey string, row Row) *selectEvalTree {
 }
 
 func (eval *selectEvalTree) evaluate(stk *whereStack) bool {
-	logdbg("evaluating where stack")
 	stk.visit(eval)
 
 	if len(eval.stk) != 0 {
@@ -186,13 +185,15 @@ func (eval *selectEvalTree) evaluate(stk *whereStack) bool {
 		panic("No root for eval stack")
 	}
 
+	// logdbg("eval tree: %v", eval.root)
+
 	switch eval.root.state {
 	case EXPR_TRUE:
 		return true
 	case EXPR_FALSE:
 		return false
 	default:
-		panic("Unevaluated eval root")
+		panic(fmt.Sprintf("Unevaluated eval root: %v", eval.root))
 	}
 }
 
@@ -200,9 +201,9 @@ func (eval *selectEvalTree) evaluate(stk *whereStack) bool {
 func (eval *selectEvalTree) evalWhere(where *QueryWhere) *expr {
 	switch where.OpCode {
 	case AND:
-		return &expr{state: EXPR_AND}
+		return &expr{state: EXPR_AND, source: where}
 	case OR:
-		return &expr{state: EXPR_OR}
+		return &expr{state: EXPR_OR, source: where}
 	case PREDICATE:
 		return eval.evalPred(where)
 	default:
@@ -227,9 +228,11 @@ func (eval *selectEvalTree) evalPred(where *QueryWhere) *expr {
 		values, present := eval.row.Entries[key]
 
 		if present {
+			// logdbg("adding key to match")
 			entries = append(entries, values)
 		} else {
 			// No key = no match.
+			// logdbg("no key = no match for pred %v", pred)
 			return &expr{source: where, state: EXPR_FALSE}
 		}
 	}
@@ -342,6 +345,7 @@ func (eval *selectEvalTree) VisitWhere(position int, where *QueryWhere) {
 	} else {
 		head := eval.peek()
 		head.children = append(head.children, e)
+		eval.stk = append(eval.stk, e)
 	}
 }
 
@@ -349,33 +353,49 @@ func (eval *selectEvalTree) LeaveWhere(where *QueryWhere) {
 	head := eval.pop()
 
 	if head.source != where {
-		panic(fmt.Sprintf("expr stack corruption, 'head' %v but 'where' %v", head, where))
+		panic(fmt.Sprintf("expr stack corruption, 'head' %v but 'where' %v", head.source, where))
 	}
 
+	// logdbg("evaluating for %v children", len(head.children))
+	// TODO dupe code.
 	switch head.state {
 	case EXPR_AND:
+		// TODO should this be invalid?
+		if len(head.children) == 0 {
+			head.state = EXPR_FALSE
+			break
+		}
+
 		for _, child := range head.children {
 			switch child.state {
 			case EXPR_TRUE:
 				// Do nothing.
 			case EXPR_FALSE:
 				head.state = EXPR_FALSE
+				return
 			default:
 				panic(fmt.Sprintf("Unevaluated expr: %v", child))
 			}
 		}
+		head.state = EXPR_TRUE
 	case EXPR_OR:
+		if len(head.children) == 0 {
+			head.state = EXPR_FALSE
+			break
+		}
+
 		for _, child := range head.children {
 			switch child.state {
 			case EXPR_TRUE:
 				head.state = EXPR_TRUE
-				break
+				return
 			case EXPR_FALSE:
 				// Do nothing;
 			default:
 				panic(fmt.Sprintf("Unevaluated expr: %v", child))
 			}
 		}
+		head.state = EXPR_FALSE
 	case EXPR_TRUE:
 	case EXPR_FALSE:
 		// Do nothing
