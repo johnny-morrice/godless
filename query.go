@@ -222,6 +222,7 @@ func (visitor *queryValidator) VisitSelect(*QuerySelect) {
 
 func (visitor *queryValidator) VisitWhere(position int, where *QueryWhere) {
 	switch where.OpCode {
+	case WHERE_NOOP:
 	case AND:
 	case OR:
 	case PREDICATE:

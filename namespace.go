@@ -97,6 +97,16 @@ func (t Table) Copy() Table {
 	return out
 }
 
+func (t Table) AllRows() []Row {
+	out := []Row{}
+
+	for _, v := range t.Rows {
+		out = append(out, v)
+	}
+
+	return out
+}
+
 func (t Table) JoinTable(other Table) (Table, error) {
 	out := t.Copy()
 

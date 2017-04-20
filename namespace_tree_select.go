@@ -129,6 +129,10 @@ func (crit *rowCriteria) findRows(namespace *Namespace) []Row {
 		return out
 	}
 
+	if crit.rootWhere.OpCode == WHERE_NOOP {
+		return table.AllRows()
+	}
+
 	table.Foreachrow(func (rowKey string, r Row) {
 		eval := makeSelectEvalTree(rowKey, r)
 		where := makeWhereStack(crit.rootWhere)

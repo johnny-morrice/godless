@@ -8,6 +8,7 @@ import (
 	lib "github.com/johnny-morrice/godless"
 )
 
+// TODO should be okay for no where clause (return everything)
 func TestRunQuerySelectSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
