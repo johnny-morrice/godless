@@ -4,8 +4,8 @@
 
 1. remoteNamespace
 2. keyValueStore
-3. QuerySelectVisitor
-4. QueryJoinVisitor
+3. NamespaceTreeSelect
+4. NamespaceTreeJoin
 5. WebService
 6. Query (and parsing)
 

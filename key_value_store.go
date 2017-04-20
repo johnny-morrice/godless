@@ -24,6 +24,7 @@ func MakeKvQuery(query *Query) KvQuery {
 	}
 }
 
+// TODO these should make more general sense and be public.
 func (kvq KvQuery) writeResponse(val APIResponse) {
 	kvq.Response<- val
 }
@@ -46,7 +47,7 @@ func LaunchKeyValueStore(ns KvNamespace) (QueryAPIService, <-chan error) {
 	}
 	go func() {
 		for kvq := range interact {
-			logdbg("interacting...")
+			logdbg("Key Value API received query")
 			err := kv.transact(kvq)
 
 			if err != nil {

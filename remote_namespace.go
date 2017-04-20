@@ -48,24 +48,26 @@ func PersistNewRemoteNamespace(Store RemoteStore, namespace *Namespace) (KvNames
 	return kv.(*remoteNamespace), nil
 }
 
+// RunKvQuery will block until the result can be written to kvq.
 func (ns *remoteNamespace) RunKvQuery(kvq KvQuery) {
 	query := kvq.Query
 	var runner QueryRun
 
 	switch query.OpCode {
 	case JOIN:
-		visitor := MakeQueryJoinVisitor(ns)
+		visitor := MakeNamespaceTreeJoin(ns)
 		query.Visit(visitor)
 		runner = visitor
 	case SELECT:
-		visitor := MakeQuerySelectVisitor(ns)
+		visitor := MakeNamespaceTreeSelect(ns)
 		query.Visit(visitor)
 		runner = visitor
 	default:
 		query.opcodePanic()
 	}
 
-	runner.RunQuery(kvq)
+	response := runner.RunQuery()
+	kvq.writeResponse(response)
 }
 
 func (ns *remoteNamespace) IsChanged() bool {

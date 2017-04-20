@@ -8,7 +8,9 @@ type QueryAPIService interface {
 type APIResponse struct {
 	Err error
 	Msg string
+	Rows []Row
 	QueryId string
 }
 
 var RESPONSE_OK APIResponse = APIResponse{Msg: "ok"}
+var RESPONSE_FAIL APIResponse = APIResponse{Msg: "error"}

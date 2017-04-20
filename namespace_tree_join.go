@@ -5,8 +5,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Specific to IPFS.  We can add more visitors later.
-type QueryJoinVisitor struct {
+type NamespaceTreeJoin struct {
 	noSelectVisitor
 	noDebugVisitor
 	errorCollectVisitor
@@ -15,14 +14,16 @@ type QueryJoinVisitor struct {
 	table Table
 }
 
-func MakeQueryJoinVisitor(ns NamespaceTree) *QueryJoinVisitor {
-	return &QueryJoinVisitor{Namespace: ns}
+func MakeNamespaceTreeJoin(ns NamespaceTree) *NamespaceTreeJoin {
+	return &NamespaceTreeJoin{Namespace: ns}
 }
 
-func (visitor *QueryJoinVisitor) RunQuery(kv KvQuery) {
+func (visitor *NamespaceTreeJoin) RunQuery() APIResponse {
+	fail := RESPONSE_FAIL
+
 	if visitor.hasError() {
-		visitor.reportError(kv)
-		return
+		fail.Err = visitor.reportError()
+		return fail
 	}
 
 	if visitor.tableKey == "" {
@@ -32,20 +33,20 @@ func (visitor *QueryJoinVisitor) RunQuery(kv KvQuery) {
 	err := visitor.Namespace.JoinTable(visitor.tableKey, visitor.table)
 
 	if err != nil {
-		kv.reportError(errors.Wrap(err, "Run query failed"))
-		return
+		fail.Err = errors.Wrap(err, "NamespaceTreeJoin failed")
+		return fail
 	}
 
-	kv.reportSuccess(RESPONSE_OK)
+	return RESPONSE_OK
 }
 
-func (visitor *QueryJoinVisitor) VisitOpCode(opCode QueryOpCode) {
+func (visitor *NamespaceTreeJoin) VisitOpCode(opCode QueryOpCode) {
 	if opCode != JOIN {
 		panic("Expected JOIN OpCode")
 	}
 }
 
-func (visitor *QueryJoinVisitor) VisitTableKey(tableKey string) {
+func (visitor *NamespaceTreeJoin) VisitTableKey(tableKey string) {
 	if visitor.hasError() {
 		return
 	}
@@ -53,10 +54,10 @@ func (visitor *QueryJoinVisitor) VisitTableKey(tableKey string) {
 	visitor.tableKey = tableKey
 }
 
-func (visitor *QueryJoinVisitor) VisitJoin(*QueryJoin) {
+func (visitor *NamespaceTreeJoin) VisitJoin(*QueryJoin) {
 }
 
-func (visitor *QueryJoinVisitor) VisitRowJoin(position int, rowJoin *QueryRowJoin) {
+func (visitor *NamespaceTreeJoin) VisitRowJoin(position int, rowJoin *QueryRowJoin) {
 	if visitor.hasError() {
 		return
 	}

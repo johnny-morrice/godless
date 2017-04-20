@@ -6,8 +6,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Specific to IPFS.  We can add more visitors later.
-type QuerySelectVisitor struct {
+type NamespaceTreeSelect struct {
 	noJoinVisitor
 	noDebugVisitor
 	errorCollectVisitor
@@ -15,17 +14,20 @@ type QuerySelectVisitor struct {
 	crit *rowCriteria
 }
 
-func MakeQuerySelectVisitor(namespace NamespaceTree) *QuerySelectVisitor {
-	return &QuerySelectVisitor{
+func MakeNamespaceTreeSelect(namespace NamespaceTree) *NamespaceTreeSelect {
+	return &NamespaceTreeSelect{
 		Namespace: namespace,
-		crit: &rowCriteria{},
+		crit: &rowCriteria{
+			result: []Row{},
+		},
 	}
 }
 
-func (visitor *QuerySelectVisitor) RunQuery(kv KvQuery) {
+func (visitor *NamespaceTreeSelect) RunQuery() APIResponse {
+	fail := RESPONSE_FAIL
 	if visitor.hasError() {
-		visitor.reportError(kv)
-		return
+		fail.Err = visitor.reportError()
+		return fail
 	}
 
 	if !visitor.crit.isReady() {
@@ -36,12 +38,16 @@ func (visitor *QuerySelectVisitor) RunQuery(kv KvQuery) {
 	err := visitor.Namespace.LoadTraverse(lambda)
 
 	if err != nil {
-		visitor.collectError(err)
-		visitor.reportError(kv)
+		fail.Err = errors.Wrap(err, "NamespaceTreeSelect failed")
+		return fail
 	}
+
+	response := RESPONSE_OK
+	response.Rows = visitor.crit.result
+	return response
 }
 
-func (visitor *QuerySelectVisitor) VisitTableKey(tableKey string) {
+func (visitor *NamespaceTreeSelect) VisitTableKey(tableKey string) {
 	if visitor.hasError() {
 		return
 	}
@@ -49,13 +55,13 @@ func (visitor *QuerySelectVisitor) VisitTableKey(tableKey string) {
 	visitor.crit.tableKey = tableKey
 }
 
-func (visitor *QuerySelectVisitor) VisitOpCode(opCode QueryOpCode) {
+func (visitor *NamespaceTreeSelect) VisitOpCode(opCode QueryOpCode) {
 	if opCode != SELECT {
-		panic("Expected SELECT OpCode")
+		visitor.collectError(errors.New("Expected SELECT OpCode"))
 	}
 }
 
-func (visitor *QuerySelectVisitor) VisitSelect(qselect *QuerySelect) {
+func (visitor *NamespaceTreeSelect) VisitSelect(qselect *QuerySelect) {
 	if visitor.hasError() {
 		return
 	}
@@ -69,13 +75,13 @@ func (visitor *QuerySelectVisitor) VisitSelect(qselect *QuerySelect) {
 	visitor.crit.rootWhere = &qselect.Where
 }
 
-func (visitor *QuerySelectVisitor) VisitWhere(position int, where *QueryWhere) {
+func (visitor *NamespaceTreeSelect) VisitWhere(position int, where *QueryWhere) {
 }
 
-func (visitor *QuerySelectVisitor) LeaveWhere(where *QueryWhere) {
+func (visitor *NamespaceTreeSelect) LeaveWhere(where *QueryWhere) {
 }
 
-func (visitor *QuerySelectVisitor) VisitPredicate(predicate *QueryPredicate) {
+func (visitor *NamespaceTreeSelect) VisitPredicate(predicate *QueryPredicate) {
 }
 
 type rowCriteria struct {
@@ -108,6 +114,8 @@ func (crit *rowCriteria) selectMatching(namespace *Namespace) (bool, error) {
 
 	crit.result = append(crit.result, rows[:slurp]...)
 	crit.count = crit.count + slurp
+
+	logdbg("Found %v more results. Total: %v.  Limit: %v.", slurp, crit.count, crit.limit)
 	return false, nil
 }
 
@@ -117,6 +125,7 @@ func (crit *rowCriteria) findRows(namespace *Namespace) []Row {
 	table, present := namespace.Tables[crit.tableKey]
 
 	if !present {
+		logdbg("No table matching %v", crit.tableKey)
 		return out
 	}
 
@@ -166,6 +175,7 @@ func makeSelectEvalTree(rowKey string, row Row) *selectEvalTree {
 }
 
 func (eval *selectEvalTree) evaluate(stk *whereStack) bool {
+	logdbg("evaluating where stack")
 	stk.visit(eval)
 
 	if len(eval.stk) != 0 {
@@ -245,7 +255,7 @@ func (eval *selectEvalTree) str_eq(prefix []string, entries [][]string) bool {
 	m, err := eval.matcher(prefix, entries)
 
 	if err != nil {
-		// TODO log error?
+		// Don't log this case.
 		return false
 	}
 

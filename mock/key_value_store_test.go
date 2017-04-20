@@ -26,6 +26,7 @@ func TestRunQueryReadSuccess(t *testing.T) {
 				Predicate: lib.QueryPredicate{
 					OpCode: lib.STR_EQ,
 					Literals: []string{"Hi"},
+					Keys: []string{"Entry A"},
 				},
 			},
 		},
@@ -136,12 +137,12 @@ func TestRunQueryWriteFailure(t *testing.T) {
 	}
 
 	empty := lib.APIResponse{}
-	if r := <-resp; r != empty {
+	if r := <-resp; !reflect.DeepEqual(r, empty) {
 		t.Error("Non zero APIResponse")
 	}
 }
 
-// TODO Not really mock test: move to in-package unit tests.
+// No EXPECT but still valid mock: verifies no calls.
 func TestRunQueryInvalid(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()

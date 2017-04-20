@@ -44,7 +44,7 @@ type QueryVisitor interface {
 }
 
 type QueryRun interface {
-	RunQuery(KvQuery)
+	RunQuery() APIResponse
 }
 
 type QueryJoin struct {

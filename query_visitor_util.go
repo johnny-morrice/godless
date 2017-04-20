@@ -52,12 +52,12 @@ func (visitor *errorCollectVisitor) collectError(err error) {
 
 }
 
-func (visitor *errorCollectVisitor) reportError(kv KvQuery) {
-	if visitor.err != nil {
+func (visitor *errorCollectVisitor) reportError() error {
+	if visitor.err == nil {
 		panic("No error to report")
 	}
 
-	kv.reportError(visitor.err)
+	return visitor.err
 }
 
 type whereStack struct {
