@@ -60,7 +60,44 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		},
 	}
 
+	whereF := lib.QueryWhere{
+		OpCode: lib.PREDICATE,
+		Predicate: lib.QueryPredicate{
+			OpCode: lib.STR_EQ,
+			Literals: []string{"Train"},
+			Keys: []string{"Entry E"},
+		},
+	}
+
+	whereG := lib.QueryWhere{
+		OpCode: lib.PREDICATE,
+		Predicate: lib.QueryPredicate{
+			OpCode: lib.STR_EQ,
+			Literals: []string{"Bus"},
+			Keys: []string{"Entry E"},
+		},
+	}
+
+	whereH := lib.QueryWhere{
+		OpCode: lib.PREDICATE,
+		Predicate: lib.QueryPredicate{
+			OpCode: lib.STR_EQ,
+			Literals: []string{"Boat"},
+			Keys: []string{"Entry E"},
+		},
+	}
+
+	whereI := lib.QueryWhere{
+		OpCode: lib.PREDICATE,
+		Predicate: lib.QueryPredicate{
+			OpCode: lib.STR_EQ,
+			IncludeRowKey: true,
+			Literals: []string{"Row F0"},
+		},
+	}
+
 	queries := []*lib.Query{
+		// One result
 		&lib.Query{
 			OpCode: lib.SELECT,
 			TableKey: mainTableKey,
@@ -69,6 +106,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 				Where: whereA,
 			},
 		},
+		// Multiple results
 		&lib.Query{
 			OpCode: lib.SELECT,
 			TableKey: mainTableKey,
@@ -77,6 +115,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 				Where: whereB,
 			},
 		},
+		// STR_NEQ
 		&lib.Query{
 			OpCode: lib.SELECT,
 			TableKey: mainTableKey,
@@ -85,6 +124,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 				Where: whereC,
 			},
 		},
+		// AND
 		&lib.Query{
 			OpCode: lib.SELECT,
 			TableKey: mainTableKey,
@@ -94,6 +134,36 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 					OpCode: lib.AND,
 					Clauses: []lib.QueryWhere{whereD, whereE},
 				},
+			},
+		},
+		// OR
+		&lib.Query{
+			OpCode: lib.SELECT,
+			TableKey: mainTableKey,
+			Select: lib.QuerySelect{
+				Limit: 2,
+				Where: lib.QueryWhere{
+					OpCode: lib.OR,
+					Clauses: []lib.QueryWhere{whereF, whereG},
+				},
+			},
+		},
+		// No results
+		&lib.Query{
+			OpCode: lib.SELECT,
+			TableKey: mainTableKey,
+			Select: lib.QuerySelect{
+				Limit: 2,
+				Where: whereH,
+			},
+		},
+		// Row key
+		&lib.Query{
+			OpCode: lib.SELECT,
+			TableKey: mainTableKey,
+			Select: lib.QuerySelect{
+				Limit: 2,
+				Where: whereI,
 			},
 		},
 	}
@@ -109,13 +179,23 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 
 	responseD := lib.RESPONSE_OK
 	responseD.Rows = rowsD()
-	var _ interface{} = responseD
+
+	responseE := lib.RESPONSE_OK
+	responseE.Rows = rowsE()
+
+	responseF := lib.RESPONSE_OK
+
+	responseG := lib.RESPONSE_OK
+	responseG.Rows = rowsF()
 
 	expect := []lib.APIResponse{
 		responseA,
 		responseB,
 		responseC,
 		responseD,
+		responseE,
+		responseF,
+		responseG,
 	}
 
 	if len(queries) != len(expect) {
@@ -209,10 +289,6 @@ func TestRunQuerySelectFailure(t *testing.T) {
 
 }
 
-func TestRunQuerySelectFail(t *testing.T) {
-
-}
-
 func rowsA() []lib.Row {
 	return []lib.Row{
 		lib.Row{
@@ -255,6 +331,33 @@ func rowsD() []lib.Row {
 	}
 }
 
+func rowsE() []lib.Row {
+	return []lib.Row{
+		lib.Row{
+			Entries: map[string][]string {
+				"Entry E": []string{"Bus"},
+			},
+		},
+		lib.Row{
+			Entries: map[string][]string {
+				"Entry E": []string{"Train"},
+			},
+		},
+	}
+}
+
+func rowsF() []lib.Row {
+	return []lib.Row{
+		lib.Row{
+			Entries: map[string][]string {
+				"Entry F": []string{"This row", "rocks"},
+			},
+		},
+	}
+}
+
+
+// Non matching rows.
 func rowsZ() []lib.Row {
 	return []lib.Row{
 		lib.Row{
@@ -266,6 +369,11 @@ func rowsZ() []lib.Row {
 			Entries: map[string][]string {
 				"Entry C": []string{"No", "Match", "Here"},
 				"Entry D": []string{"Nada!"},
+			},
+		},
+		lib.Row{
+			Entries: map[string][]string {
+				"Entry E": []string{"Horse"},
 			},
 		},
 	}
@@ -287,6 +395,14 @@ func tableD() lib.Table {
 	return mktable("D", rowsD())
 }
 
+func tableE() lib.Table {
+	return mktable("E", rowsE())
+}
+
+func tableF() lib.Table {
+	return mktable("F", rowsF())
+}
+
 func tableZ() lib.Table {
 	return mktable("Z", rowsZ())
 }
@@ -302,6 +418,8 @@ func mkselectns() *lib.Namespace {
 		tableB(),
 		tableC(),
 		tableD(),
+		tableE(),
+		tableF(),
 		tableZ(),
 	}
 
@@ -323,7 +441,8 @@ func mktable(name string, rows []lib.Row) lib.Table {
 	}
 
 	for i, r := range rows {
-		table.Rows[fmt.Sprintf("Row %v%v", name, i)] = r
+		rowKey := fmt.Sprintf("Row %v%v", name, i)
+		table.Rows[rowKey] = r
 	}
 
 	return table
