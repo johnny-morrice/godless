@@ -236,6 +236,7 @@ func (visitor *queryValidator) LeaveWhere(*QueryWhere) {
 
 func (visitor *queryValidator) VisitPredicate(predicate *QueryPredicate) {
 	switch predicate.OpCode {
+	case PREDICATE_NOP:
 	case STR_EQ:
 	case STR_NEQ:
 		// Okay!

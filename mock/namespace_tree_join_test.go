@@ -60,6 +60,7 @@ func TestRunQueryJoinSuccess(t *testing.T) {
 			},
 		},
 	}
+	// TODO table equality matcher.
 	mock.EXPECT().JoinTable(mainTableKey, table).Return(nil)
 
 	joiner := lib.MakeNamespaceTreeJoin(mock)

@@ -59,6 +59,10 @@ var queryCmd = &cobra.Command{
 			return
 		}
 
+		if dryrun {
+			return
+		}
+
 		var err error
 		var response *lib.APIResponse
 		if noparse {
@@ -71,7 +75,14 @@ var queryCmd = &cobra.Command{
 			die(err)
 		}
 
-		fmt.Printf("Query (%v) response:\n\n%s", response.QueryId, response.Msg)
+		var json string
+		json, err = response.RenderJSON()
+
+		if err != nil {
+			die(err)
+		}
+
+		fmt.Println(json)
 	},
 }
 
@@ -79,10 +90,12 @@ var source string
 var analyse bool
 var noparse bool
 var serverAddr string
+var dryrun bool
 
 func init() {
 	RootCmd.AddCommand(queryCmd)
 
+	queryCmd.Flags().BoolVar(&dryrun, "dryrun", false, "Don't send query to server")
 	queryCmd.Flags().StringVar(&source, "query", "", "Godless NoSQL query text")
 	queryCmd.Flags().BoolVar(&analyse, "analyse", false, "Analyse query")
 	queryCmd.Flags().BoolVar(&noparse, "noparse", false, "Send raw query text to server.")

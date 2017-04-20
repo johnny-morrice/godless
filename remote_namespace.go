@@ -71,7 +71,7 @@ func (ns *remoteNamespace) RunKvQuery(kvq KvQuery) {
 }
 
 func (ns *remoteNamespace) IsChanged() bool {
-	return !ns.Namespace.IsEmpty()
+	return !ns.Update.IsEmpty()
 }
 
 func (ns *remoteNamespace) JoinTable(tableKey string, table Table) error {
@@ -156,12 +156,16 @@ func (ns *remoteNamespace) Persist() (KvNamespace, error) {
 	part := RemoteNamespaceRecord{}
 	part.Namespace = ns.Update
 
+		out := &remoteNamespace{}
+
 	// If this is the first namespace in the chain, don't save children.
 	// TODO become parent of multiple children.
 	if ns.Index != nil {
 		part.Children = []RemoteStoreIndex{ns.Index}
+		out.Children = []*remoteNamespace{ns}
 	} else {
 		part.Children = []RemoteStoreIndex{}
+		out.Children = []*remoteNamespace{}
 	}
 
 	addr, err := ns.Store.Add(part)
@@ -172,13 +176,11 @@ func (ns *remoteNamespace) Persist() (KvNamespace, error) {
 
 	logdbg("Persisted Namespace at: %v", addr)
 
-	out := &remoteNamespace{}
 	out.loaded = true
 	out.Store = ns.Store
 	out.Index = addr
 	out.Namespace = ns.Update
 	out.Update = MakeNamespace()
-	out.Children = []*remoteNamespace{ns}
 
 	return out, nil
 }

@@ -89,6 +89,7 @@ func (kv *keyValueStore) transact(kvq KvQuery) error {
 	kv.namespace.RunKvQuery(kvq)
 
 	if kv.namespace.IsChanged() {
+		logdbg("Persisting new namespace")
 		next, err := kv.namespace.Persist()
 
 		if err != nil {
@@ -96,6 +97,8 @@ func (kv *keyValueStore) transact(kvq KvQuery) error {
 		}
 
 		kv.namespace = next
+	} else {
+		logdbg("Namespace unchanged")
 	}
 
 	return nil

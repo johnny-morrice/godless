@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -21,8 +20,6 @@ func (service *KeyValueService) Handler() http.Handler {
 }
 
 func (service *KeyValueService) queryRun(rw http.ResponseWriter, req *http.Request) {
-	queryText := req.FormValue("query")
-
 	var query *Query
 	var err error
 	var isText bool
@@ -35,10 +32,16 @@ func (service *KeyValueService) queryRun(rw http.ResponseWriter, req *http.Reque
 	}
 
 	if (isText) {
-		query, err = CompileQuery(queryText)
+		buff := bytes.Buffer{}
+		_, err = buff.ReadFrom(req.Body)
+
+		if err != nil {
+			queryText := buff.String()
+			query, err = CompileQuery(queryText)
+		}
 	} else {
 		query = &Query{}
-		degob(query, strings.NewReader(queryText))
+		degob(query, req.Body)
 	}
 
 	if err != nil {
@@ -52,7 +55,9 @@ func (service *KeyValueService) queryRun(rw http.ResponseWriter, req *http.Reque
 func invalidRequest(rw http.ResponseWriter, err error) {
 	logdbg("Invalid Request details: %v", err)
 	reportErr := sendErr(rw, err)
-	logerr("Error sending JSON error report: '%v'", reportErr)
+	if reportErr != nil {
+		logerr("Error sending JSON error report: '%v'", reportErr)
+	}
 }
 
 func (service *KeyValueService) runQuery(rw http.ResponseWriter, query *Query) {
