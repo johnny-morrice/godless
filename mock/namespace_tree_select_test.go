@@ -2,7 +2,6 @@ package mock_godless
 
 import (
 	"fmt"
-	"reflect"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -460,13 +459,54 @@ func apiResponseEq(a, b lib.APIResponse) bool {
 		return false
 	}
 
-	for _, ar := range a.Rows {
+	if !rowsEq(a.Rows, b.Rows) {
+		return false
+	}
+
+	return true
+}
+
+func rowsEq(a, b []lib.Row) bool {
+	for _, ar := range a {
 		found := false
-		for _, br := range b.Rows {
-			if reflect.DeepEqual(ar, br) {
+		for _, br := range b {
+			if rowEq(ar, br) {
 				found = true
 			}
 		}
+		if !found {
+			return false
+		}
+	}
+
+	return true
+}
+
+func rowEq(a, b lib.Row) bool {
+	for ak, av := range a.Entries {
+		bv, present := b.Entries[ak]
+
+		if !present {
+			return false
+		}
+
+		if !entryEq(av, bv) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func entryEq(a, b []string) bool {
+	for _, av := range a {
+		found := false
+		for _, bv := range b {
+			if av == bv {
+				found = true
+			}
+		}
+
 		if !found {
 			return false
 		}

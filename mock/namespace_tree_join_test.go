@@ -60,8 +60,7 @@ func TestRunQueryJoinSuccess(t *testing.T) {
 			},
 		},
 	}
-	// TODO table equality matcher.
-	mock.EXPECT().JoinTable(mainTableKey, table).Return(nil)
+	mock.EXPECT().JoinTable(mainTableKey, mtchtable(table)).Return(nil)
 
 	joiner := lib.MakeNamespaceTreeJoin(mock)
 	query.Visit(joiner)
@@ -97,4 +96,48 @@ func TestRunQueryJoinInvalid(t *testing.T) {
 			t.Error("Expected response Err")
 		}
 	}
+}
+
+func mtchtable(t lib.Table) gomock.Matcher {
+	return tablematcher{t}
+}
+
+type tablematcher struct {
+	t lib.Table
+}
+
+func (tm tablematcher) String() string {
+	return "is matching Table"
+}
+
+func (tm tablematcher) Matches(v interface{}) bool {
+	other, ok := v.(lib.Table)
+
+	if !ok {
+		return false
+	}
+
+	return tableEq(tm.t, other)
+}
+
+func tableEq(a, b lib.Table) bool {
+	if len(a.Rows) != len(b.Rows) {
+		return false
+	}
+
+	// TODO funky.
+	same := true
+	a.Foreachrow(func (rkey string, arow lib.Row) {
+		brow, present := b.Rows[rkey]
+
+		if !present {
+			same = false
+		}
+
+		if !rowEq(arow, brow) {
+			same = false
+		}
+	})
+
+	return same
 }
