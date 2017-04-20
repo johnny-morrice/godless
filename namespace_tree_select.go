@@ -288,24 +288,23 @@ func (eval *selectEvalTree) str_neq(prefix []string, entries [][]string) bool {
 		return false
 	}
 
-	neqprefix := false
+	pfxmatch := 0
 	for _, pfx := range prefix {
-		if pfx != m {
-			neqprefix = true
+		if pfx == m {
+			pfxmatch++
 		}
 	}
 
-	neqentries := false
+	entrymatch := 0
 	for _, entry := range entries {
 		for _, val := range entry {
-			if val != m {
-				neqentries = true
-				break
+			if val == m {
+				entrymatch++
 			}
 		}
 	}
 
-	return neqprefix || neqentries
+	return !((pfxmatch > 0 && entrymatch > 0) || pfxmatch > 1 || entrymatch > 1)
 }
 
 // TODO need user concepts + crypto to narrow row match down.
