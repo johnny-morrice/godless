@@ -1,8 +1,9 @@
 # Things to do
 
 1. Unit tests
-2. Replication
-3. Functional & integration tests
+2. Namespace equality (get rid of hacky test eq functions)
+3. Replication
+4. Functional & integration tests
 
 I want to do the replication bit before writing integration tests via docker because I think the API might change.  As a one man project, doing it in this order is less costly.
 
