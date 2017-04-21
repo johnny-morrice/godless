@@ -5,10 +5,10 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/pkg/errors"
 	lib "github.com/johnny-morrice/godless"
 )
 
-// TODO should be okay for no where clause (return everything)
 func TestRunQuerySelectSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -166,6 +166,14 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 				Where: whereI,
 			},
 		},
+		// No where clause
+		&lib.Query{
+			OpCode: lib.SELECT,
+			TableKey: altTableKey,
+			Select: lib.QuerySelect{
+				Limit: 3,
+			},
+		},
 	}
 
 	responseA := lib.RESPONSE_OK
@@ -188,6 +196,9 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 	responseG := lib.RESPONSE_OK
 	responseG.Rows = rowsF()
 
+	responseH := lib.RESPONSE_OK
+	responseH.Rows = rowsG()
+
 	expect := []lib.APIResponse{
 		responseA,
 		responseB,
@@ -196,6 +207,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		responseE,
 		responseF,
 		responseG,
+		responseH,
 	}
 
 	if len(queries) != len(expect) {
@@ -219,6 +231,43 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 
 			t.Error("Case", i, "Expected", expect[i], "but receieved", resp)
 		}
+	}
+}
+
+func TestRunQuerySelectFailure(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mock := NewMockNamespaceTree(ctrl)
+
+	mock.EXPECT().LoadTraverse(gomock.Any()).Return(errors.New("Expected Error"))
+
+	failQuery := &lib.Query{
+		OpCode: lib.SELECT,
+		TableKey: mainTableKey,
+		Select: lib.QuerySelect{
+			Limit: 2,
+			Where: lib.QueryWhere{
+				OpCode: lib.PREDICATE,
+				Predicate: lib.QueryPredicate{
+					OpCode: lib.STR_EQ,
+					Literals: []string{"Hi"},
+					Keys: []string{"Entry A"},
+				},
+			},
+		},
+	}
+
+	selector := lib.MakeNamespaceTreeSelect(mock)
+	failQuery.Visit(selector)
+	resp := selector.RunQuery()
+
+	if resp.Msg != "error" {
+		t.Error("Expected Msg error but received", resp.Msg)
+	}
+
+	if resp.Err == nil {
+		t.Error("Expected response Err")
 	}
 }
 
@@ -355,6 +404,26 @@ func rowsF() []lib.Row {
 	}
 }
 
+func rowsG() []lib.Row {
+	return []lib.Row{
+		lib.Row{
+			Entries: map[string][]string {
+				"Entry Q": []string{"Hi", "Folks"},
+			},
+		},
+		lib.Row{
+			Entries: map[string][]string {
+				"Entry R": []string{"Wowzer"},
+			},
+		},
+		lib.Row{
+			Entries: map[string][]string {
+				"Entry S": []string{"Trumpet"},
+			},
+		},
+	}
+}
+
 
 // Non matching rows.
 func rowsZ() []lib.Row {
@@ -402,6 +471,10 @@ func tableF() lib.Table {
 	return mktable("F", rowsF())
 }
 
+func tableG() lib.Table {
+	return mktable("G", rowsG())
+}
+
 func tableZ() lib.Table {
 	return mktable("Z", rowsZ())
 }
@@ -412,7 +485,7 @@ func feedNamespace(ntr lib.NamespaceTreeReader) {
 
 func mkselectns() *lib.Namespace {
 	namespace := lib.MakeNamespace()
-	tables := []lib.Table{
+	mainTables := []lib.Table{
 		tableA(),
 		tableB(),
 		tableC(),
@@ -421,13 +494,23 @@ func mkselectns() *lib.Namespace {
 		tableF(),
 		tableZ(),
 	}
+	altTables := []lib.Table{
+		tableG(),
+	}
 
-	for _, t := range tables {
-		var err error
-		namespace, err = namespace.JoinTable(mainTableKey, t)
+	tables := map[string][]lib.Table{
+		mainTableKey: mainTables,
+		altTableKey: altTables,
+	}
 
-		if err != nil {
-			panic(err)
+	for tableKey, ts := range tables {
+		for _, t := range ts {
+			var err error
+			namespace, err = namespace.JoinTable(tableKey, t)
+
+			if err != nil {
+				panic(err)
+			}
 		}
 	}
 
@@ -517,3 +600,4 @@ func entryEq(a, b []string) bool {
 }
 
 const mainTableKey = "The Table"
+const altTableKey = "Another table"
