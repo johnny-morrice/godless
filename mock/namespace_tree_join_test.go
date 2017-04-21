@@ -4,6 +4,7 @@ package mock_godless
 import (
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/golang/mock/gomock"
 	lib "github.com/johnny-morrice/godless"
 )
@@ -68,6 +69,54 @@ func TestRunQueryJoinSuccess(t *testing.T) {
 
 	if !apiResponseEq(lib.RESPONSE_OK, resp) {
 		t.Error("Expected", lib.RESPONSE_OK, "but was", resp)
+	}
+}
+
+func TestRunQueryJoinFailure(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mock := NewMockNamespaceTree(ctrl)
+
+	failQuery := &lib.Query{
+		OpCode: lib.JOIN,
+		TableKey: mainTableKey,
+		Join: lib.QueryJoin{
+			Rows: []lib.QueryRowJoin{
+				lib.QueryRowJoin{
+					RowKey: "Row A",
+					Entries: map[string]string{
+						"Entry A": "Value A",
+						"Entry B": "Value B",
+					},
+				},
+			},
+		},
+	}
+
+	table := lib.Table{
+		Rows: map[string]lib.Row{
+			"Row A": lib.Row{
+				Entries: map[string][]string {
+					"Entry A": []string{"Value A"},
+					"Entry B": []string{"Value B"},
+				},
+			},
+		},
+	}
+
+	mock.EXPECT().JoinTable(mainTableKey, mtchtable(table)).Return(errors.New("Expected error"))
+
+	joiner := lib.MakeNamespaceTreeJoin(mock)
+	failQuery.Visit(joiner)
+	resp := joiner.RunQuery()
+
+	if resp.Msg != "error" {
+		t.Error("Expected Msg error but received", resp.Msg)
+	}
+
+	if resp.Err == nil {
+		t.Error("Expected response Err")
 	}
 }
 
