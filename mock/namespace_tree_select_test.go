@@ -339,88 +339,68 @@ func TestRunQuerySelectInvalid(t *testing.T) {
 
 func rowsA() []lib.Row {
 	return []lib.Row{
-		lib.Row{
-			Entries: map[string][]string {
-				// TODO use user concepts to match only the Hi.
-				"Entry A": []string{"Hi", "Hello"},
-			},
-		},
+		lib.MakeRow(map[string]lib.Entry {
+			// TODO use user concepts to match only the Hi.
+			"Entry A": lib.MakeEntry([]string{"Hi", "Hello"}),
+		}),
 	}
 }
 
 func rowsB() []lib.Row {
 	return []lib.Row{
-		lib.Row{
-			Entries: map[string][]string {
-				"Entry B": []string{"Hi", "Hello World"},
-			},
-		},
+		lib.MakeRow(map[string]lib.Entry {
+			"Entry B": lib.MakeEntry([]string{"Hi", "Hello World"}),
+		}),
 	}
 }
 
 func rowsC() []lib.Row {
 	return []lib.Row{
-		lib.Row{
-			Entries: map[string][]string {
-				"Entry B": []string{"Hi", "Hello Dude"},
-			},
-		},
+		lib.MakeRow(map[string]lib.Entry {
+			"Entry B": lib.MakeEntry([]string{"Hi", "Hello Dude"}),
+		}),
 	}
 }
 
 func rowsD() []lib.Row {
 	return []lib.Row{
-		lib.Row{
-			Entries: map[string][]string {
-				"Entry C": []string{"Apple"},
-				"Entry D": []string{"Orange"},
-			},
-		},
+		lib.MakeRow(map[string]lib.Entry {
+			"Entry C": lib.MakeEntry([]string{"Apple"}),
+			"Entry D": lib.MakeEntry([]string{"Orange"}),
+		}),
 	}
 }
 
 func rowsE() []lib.Row {
 	return []lib.Row{
-		lib.Row{
-			Entries: map[string][]string {
-				"Entry E": []string{"Bus"},
-			},
-		},
-		lib.Row{
-			Entries: map[string][]string {
-				"Entry E": []string{"Train"},
-			},
-		},
+		lib.MakeRow(map[string]lib.Entry {
+			"Entry E": lib.MakeEntry([]string{"Bus"}),
+		}),
+		lib.MakeRow(map[string]lib.Entry {
+			"Entry E": lib.MakeEntry([]string{"Train"}),
+		}),
 	}
 }
 
 func rowsF() []lib.Row {
 	return []lib.Row{
-		lib.Row{
-			Entries: map[string][]string {
-				"Entry F": []string{"This row", "rocks"},
-			},
-		},
+		lib.MakeRow(map[string]lib.Entry {
+			"Entry F": lib.MakeEntry([]string{"This row", "rocks"}),
+		}),
 	}
 }
 
 func rowsG() []lib.Row {
 	return []lib.Row{
-		lib.Row{
-			Entries: map[string][]string {
-				"Entry Q": []string{"Hi", "Folks"},
-			},
-		},
-		lib.Row{
-			Entries: map[string][]string {
-				"Entry R": []string{"Wowzer"},
-			},
-		},
-		lib.Row{
-			Entries: map[string][]string {
-				"Entry S": []string{"Trumpet"},
-			},
-		},
+		lib.MakeRow(map[string]lib.Entry {
+			"Entry Q": lib.MakeEntry([]string{"Hi", "Folks"}),
+		}),
+		lib.MakeRow(map[string]lib.Entry {
+			"Entry R": lib.MakeEntry([]string{"Wowzer"}),
+		}),
+		lib.MakeRow(map[string]lib.Entry {
+			"Entry S": lib.MakeEntry([]string{"Trumpet"}),
+		}),
 	}
 }
 
@@ -428,22 +408,16 @@ func rowsG() []lib.Row {
 // Non matching rows.
 func rowsZ() []lib.Row {
 	return []lib.Row{
-		lib.Row{
-			Entries: map[string][]string {
-				"Entry A": []string{"No", "Match"},
-			},
-		},
-		lib.Row{
-			Entries: map[string][]string {
-				"Entry C": []string{"No", "Match", "Here"},
-				"Entry D": []string{"Nada!"},
-			},
-		},
-		lib.Row{
-			Entries: map[string][]string {
-				"Entry E": []string{"Horse"},
-			},
-		},
+		lib.MakeRow(map[string]lib.Entry {
+			"Entry A": lib.MakeEntry([]string{"No", "Match"}),
+		}),
+		lib.MakeRow(map[string]lib.Entry {
+			"Entry C": lib.MakeEntry([]string{"No", "Match", "Here"}),
+			"Entry D": lib.MakeEntry([]string{"Nada!"}),
+		}),
+		lib.MakeRow(map[string]lib.Entry {
+			"Entry E": lib.MakeEntry([]string{"Horse"}),
+		}),
 	}
 }
 
@@ -484,7 +458,7 @@ func feedNamespace(ntr lib.NamespaceTreeReader) {
 }
 
 func mkselectns() *lib.Namespace {
-	namespace := lib.MakeNamespace()
+	namespace := lib.EmptyNamespace()
 	mainTables := []lib.Table{
 		tableA(),
 		tableB(),
@@ -518,13 +492,16 @@ func mkselectns() *lib.Namespace {
 }
 
 func mktable(name string, rows []lib.Row) lib.Table {
-	table := lib.Table{
-		Rows: map[string]lib.Row{},
-	}
+	table := lib.EmptyTable()
 
 	for i, r := range rows {
 		rowKey := fmt.Sprintf("Row %v%v", name, i)
-		table.Rows[rowKey] = r
+		var err error
+		table, err = table.JoinRow(rowKey, r)
+
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	return table
@@ -554,43 +531,10 @@ func rowsEq(a, b []lib.Row) bool {
 	for _, ar := range a {
 		found := false
 		for _, br := range b {
-			if rowEq(ar, br) {
+			if ar.Equals(br) {
 				found = true
 			}
 		}
-		if !found {
-			return false
-		}
-	}
-
-	return true
-}
-
-func rowEq(a, b lib.Row) bool {
-	for ak, av := range a.Entries {
-		bv, present := b.Entries[ak]
-
-		if !present {
-			return false
-		}
-
-		if !entryEq(av, bv) {
-			return false
-		}
-	}
-
-	return true
-}
-
-func entryEq(a, b []string) bool {
-	for _, av := range a {
-		found := false
-		for _, bv := range b {
-			if av == bv {
-				found = true
-			}
-		}
-
 		if !found {
 			return false
 		}

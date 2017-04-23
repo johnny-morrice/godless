@@ -44,7 +44,7 @@ var serveCmd = &cobra.Command{
 		}
 
 		if hash == "" {
-			namespace := lib.MakeNamespace()
+			namespace := lib.EmptyNamespace()
 			kvNamespace, err = lib.PersistNewRemoteNamespace(peer, namespace)
 		} else {
 			index := lib.IPFSPath(hash)

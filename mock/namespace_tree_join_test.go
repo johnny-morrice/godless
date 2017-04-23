@@ -45,22 +45,16 @@ func TestRunQueryJoinSuccess(t *testing.T) {
 	}
 
 
-	table := lib.Table{
-		Rows: map[string]lib.Row{
-			"Row A": lib.Row{
-				Entries: map[string][]string {
-					"Entry A": []string{"Value A", "Value D"},
-					"Entry B": []string{"Value B"},
-					"Entry D": []string{"Value E"},
-				},
-			},
-			"Row B": lib.Row{
-				Entries: map[string][]string {
-					"Entry C": []string{"Value C"},
-				},
-			},
-		},
-	}
+	table := lib.MakeTable(map[string]lib.Row{
+		"Row A": lib.MakeRow(map[string]lib.Entry{
+			"Entry A": lib.MakeEntry([]string{"Value A", "Value D"}),
+			"Entry B": lib.MakeEntry([]string{"Value B"}),
+			"Entry D": lib.MakeEntry([]string{"Value E"}),
+		}),
+		"Row B": lib.MakeRow(map[string]lib.Entry{
+				"Entry C": lib.MakeEntry([]string{"Value C"}),
+		}),
+	})
 	mock.EXPECT().JoinTable(mainTableKey, mtchtable(table)).Return(nil)
 
 	joiner := lib.MakeNamespaceTreeJoin(mock)
@@ -94,16 +88,12 @@ func TestRunQueryJoinFailure(t *testing.T) {
 		},
 	}
 
-	table := lib.Table{
-		Rows: map[string]lib.Row{
-			"Row A": lib.Row{
-				Entries: map[string][]string {
-					"Entry A": []string{"Value A"},
-					"Entry B": []string{"Value B"},
-				},
-			},
-		},
-	}
+	table := lib.MakeTable(map[string]lib.Row{
+		"Row A": lib.MakeRow(map[string]lib.Entry {
+				"Entry A": lib.MakeEntry([]string{"Value A"}),
+				"Entry B": lib.MakeEntry([]string{"Value B"}),
+			}),
+	})
 
 	mock.EXPECT().JoinTable(mainTableKey, mtchtable(table)).Return(errors.New("Expected error"))
 
@@ -166,27 +156,5 @@ func (tm tablematcher) Matches(v interface{}) bool {
 		return false
 	}
 
-	return tableEq(tm.t, other)
-}
-
-func tableEq(a, b lib.Table) bool {
-	if len(a.Rows) != len(b.Rows) {
-		return false
-	}
-
-	// TODO funky.
-	same := true
-	a.Foreachrow(func (rkey string, arow lib.Row) {
-		brow, present := b.Rows[rkey]
-
-		if !present {
-			same = false
-		}
-
-		if !rowEq(arow, brow) {
-			same = false
-		}
-	})
-
-	return same
+	return tm.t.Equals(other)
 }

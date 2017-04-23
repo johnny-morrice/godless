@@ -122,10 +122,10 @@ func (crit *rowCriteria) selectMatching(namespace *Namespace) (bool, error) {
 func (crit *rowCriteria) findRows(namespace *Namespace) []Row {
 	out := []Row{}
 
-	table, present := namespace.Tables[crit.tableKey]
+	table, err := namespace.GetTable(crit.tableKey)
 
-	if !present {
-		logdbg("No table matching %v", crit.tableKey)
+	if err != nil {
+		// logdbg("findRows failed: %v", err)
 		return out
 	}
 
@@ -226,12 +226,12 @@ func (eval *selectEvalTree) evalPred(where *QueryWhere) *expr {
 		prefix = append(prefix, eval.rowKey)
 	}
 
-	entries := [][]string{}
+	entries := []Entry{}
 
 	for _, key := range pred.Keys {
-		values, present := eval.row.Entries[key]
+		values, err := eval.row.GetEntry(key)
 
-		if present {
+		if err != nil {
 			// logdbg("adding key to match")
 			entries = append(entries, values)
 		} else {
@@ -258,7 +258,7 @@ func (eval *selectEvalTree) evalPred(where *QueryWhere) *expr {
 	return &expr{source: where, state: EXPR_FALSE}
 }
 
-func (eval *selectEvalTree) str_eq(prefix []string, entries [][]string) bool {
+func (eval *selectEvalTree) str_eq(prefix []string, entries []Entry) bool {
 	m, err := eval.matcher(prefix, entries)
 
 	if err != nil {
@@ -274,7 +274,7 @@ func (eval *selectEvalTree) str_eq(prefix []string, entries [][]string) bool {
 
 	for _, entry := range entries {
 		found := false
-		for _, val := range entry {
+		for _, val := range entry.GetValues() {
 			if val == m {
 				found = true
 				break
@@ -288,7 +288,7 @@ func (eval *selectEvalTree) str_eq(prefix []string, entries [][]string) bool {
 	return true;
 }
 
-func (eval *selectEvalTree) str_neq(prefix []string, entries [][]string) bool {
+func (eval *selectEvalTree) str_neq(prefix []string, entries []Entry) bool {
 	m, err := eval.matcher(prefix, entries)
 
 	if err != nil {
@@ -304,7 +304,7 @@ func (eval *selectEvalTree) str_neq(prefix []string, entries [][]string) bool {
 
 	entrymatch := 0
 	for _, entry := range entries {
-		for _, val := range entry {
+		for _, val := range entry.GetValues() {
 			if val == m {
 				entrymatch++
 			}
@@ -315,7 +315,7 @@ func (eval *selectEvalTree) str_neq(prefix []string, entries [][]string) bool {
 }
 
 // TODO need user concepts + crypto to narrow row match down.
-func (eval *selectEvalTree) matcher(prefix []string, entries [][]string) (string, error) {
+func (eval *selectEvalTree) matcher(prefix []string, entries []Entry) (string, error) {
 	var first string
 	var found bool
 
@@ -324,8 +324,9 @@ func (eval *selectEvalTree) matcher(prefix []string, entries [][]string) (string
 		found = true
 	} else {
 		for _, entry := range entries {
-			if len(entry) > 0 {
-				first = entry[0]
+			values := entry.GetValues()
+			if len(values) > 0 {
+				first = values[0]
 				found = true
 				break
 			}

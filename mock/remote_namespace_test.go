@@ -16,7 +16,7 @@ func TestLoadRemoteNamespaceSuccess(t *testing.T) {
 	mock := NewMockRemoteStore(ctrl)
 	index := lib.IPFSPath("The Index")
 
-	namespace := lib.MakeNamespace()
+	namespace := lib.EmptyNamespace()
 	record := lib.RemoteNamespaceRecord{
 		Namespace: namespace,
 		Children: []lib.RemoteStoreIndex{},
@@ -60,7 +60,7 @@ func TestPersistNewRemoteNamespaceSuccess(t *testing.T) {
 	defer ctrl.Finish()
 
 	mock := NewMockRemoteStore(ctrl)
-	namespace := lib.MakeNamespace()
+	namespace := lib.EmptyNamespace()
 	record := lib.RemoteNamespaceRecord{
 		Namespace: namespace,
 		Children: []lib.RemoteStoreIndex{},
@@ -86,7 +86,7 @@ func TestPersistNewRemoteNamespaceFailure(t *testing.T) {
 	defer ctrl.Finish()
 
 	mock := NewMockRemoteStore(ctrl)
-	namespace := lib.MakeNamespace()
+	namespace := lib.EmptyNamespace()
 	record := lib.RemoteNamespaceRecord{
 		Namespace: namespace,
 		Children: []lib.RemoteStoreIndex{},
@@ -119,34 +119,22 @@ func TestLoadTraverseSuccess(t *testing.T) {
 	indexB := lib.IPFSPath("Index B")
 	indexC := lib.IPFSPath("Index C")
 
-	empty := lib.MakeNamespace()
-	tableA := lib.Table{
-		Rows: map[string]lib.Row{
-			"Row A": lib.Row{
-				Entries: map[string][]string{
-					"Entry A": []string{"Value A"},
-				},
-			},
-		},
-	}
-	tableB := lib.Table{
-		Rows: map[string]lib.Row{
-			"Row B": lib.Row{
-				Entries: map[string][]string{
-					"Entry B": []string{"Value B"},
-				},
-			},
-		},
-	}
-	tableC := lib.Table{
-		Rows: map[string]lib.Row{
-			"Row C": lib.Row{
-				Entries: map[string][]string{
-					"Entry C": []string{"Value C"},
-				},
-			},
-		},
-	}
+	empty := lib.EmptyNamespace()
+	tableA := lib.MakeTable(map[string]lib.Row{
+		"Row A": lib.MakeRow(map[string]lib.Entry{
+			"Entry A": lib.MakeEntry([]string{"Value A"}),
+		}),
+	})
+	tableB := lib.MakeTable(map[string]lib.Row{
+		"Row B": lib.MakeRow(map[string]lib.Entry{
+			"Entry B": lib.MakeEntry([]string{"Value B"}),
+		}),
+	})
+	tableC := lib.MakeTable(map[string]lib.Row{
+		"Row C": lib.MakeRow(map[string]lib.Entry{
+			"Entry C": lib.MakeEntry([]string{"Value C"}),
+		}),
+	})
 
 	namespaceA, errA := empty.JoinTable("Table A", tableA)
 	namespaceB, errB := empty.JoinTable("Table B", tableB)
@@ -203,16 +191,12 @@ func TestLoadTraverseFailure(t *testing.T) {
 	indexB := lib.IPFSPath("Index B")
 	indexC := lib.IPFSPath("Index C")
 
-	empty := lib.MakeNamespace()
-	tableA := lib.Table{
-		Rows: map[string]lib.Row{
-			"Row A": lib.Row{
-				Entries: map[string][]string{
-					"Entry A": []string{"Value A"},
-				},
-			},
-		},
-	}
+	empty := lib.EmptyNamespace()
+	tableA := lib.MakeTable(map[string]lib.Row{
+		"Row A": lib.MakeRow(map[string]lib.Entry{
+			"Entry A": lib.MakeEntry([]string{"Value A"}),
+		}),
+	})
 
 	namespaceA, errA := empty.JoinTable("Table A", tableA)
 
@@ -255,16 +239,12 @@ func TestLoadTraverseAbort(t *testing.T) {
 	indexB := lib.IPFSPath("Index B")
 	indexC := lib.IPFSPath("Index C")
 
-	empty := lib.MakeNamespace()
-	tableA := lib.Table{
-		Rows: map[string]lib.Row{
-			"Row A": lib.Row{
-				Entries: map[string][]string{
-					"Entry A": []string{"Value A"},
-				},
-			},
-		},
-	}
+	empty := lib.EmptyNamespace()
+	tableA := lib.MakeTable(map[string]lib.Row{
+		"Row A": lib.MakeRow(map[string]lib.Entry{
+			"Entry A": lib.MakeEntry([]string{"Value A"}),
+		}),
+	})
 
 	namespaceA, errA := empty.JoinTable("Table A", tableA)
 
@@ -305,16 +285,12 @@ func TestPersistSuccess(t *testing.T) {
 
 	index := lib.RemoteStoreIndex(lib.IPFSPath("Index Thing"))
 	anotherIndex := lib.RemoteStoreIndex(lib.IPFSPath("Another index"))
-	table := lib.Table{
-		Rows: map[string]lib.Row{
-			"Row Key": lib.Row{
-				Entries: map[string][]string{
-					"Entry Key": []string{"Entry Value"},
-				},
-			},
-		},
-	}
-	namespace := lib.MakeNamespace()
+	table := lib.MakeTable(map[string]lib.Row{
+		"Row Key": lib.MakeRow(map[string]lib.Entry{
+			"Entry Key": lib.MakeEntry([]string{"Entry Value"}),
+		}),
+	})
+	namespace := lib.EmptyNamespace()
 	nextNamespace, _ := namespace.JoinTable("Table Key", table)
 
 	recordA := lib.RemoteNamespaceRecord{
@@ -364,16 +340,12 @@ func TestPersistFailure(t *testing.T) {
 	mock := NewMockRemoteStore(ctrl)
 
 	index := lib.RemoteStoreIndex(lib.IPFSPath("Index Thing"))
-	table := lib.Table{
-		Rows: map[string]lib.Row{
-			"Row Key": lib.Row{
-				Entries: map[string][]string{
-					"Entry Key": []string{"Entry Value"},
-				},
-			},
-		},
-	}
-	namespace := lib.MakeNamespace()
+	table := lib.MakeTable(map[string]lib.Row{
+		"Row Key": lib.MakeRow(map[string]lib.Entry{
+			"Entry Key": lib.MakeEntry([]string{"Entry Value"}),
+		}),
+	})
+	namespace := lib.EmptyNamespace()
 	nextNamespace, _ := namespace.JoinTable("Table Key", table)
 
 	recordA := lib.RemoteNamespaceRecord{

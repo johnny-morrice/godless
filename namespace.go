@@ -3,29 +3,40 @@ package godless
 import (
 	"crypto/sha256"
 	"fmt"
+	"sort"
 	"github.com/pkg/errors"
 )
 
 // Semi-lattice type that implements our storage
 type Namespace struct {
-	Tables map[string]Table
+	tables map[string]Table
 }
 
-func MakeNamespace() *Namespace {
-	return &Namespace{
-		Tables: map[string]Table{},
+func EmptyNamespace() *Namespace {
+	return MakeNamespace(map[string]Table{})
+}
+
+func MakeNamespace(tables map[string]Table) *Namespace {
+	out := &Namespace{
+		tables: map[string]Table{},
 	}
+
+	for k, v := range tables {
+		out.tables[k] = v
+	}
+
+	return out
 }
 
 func (ns *Namespace) IsEmpty() bool {
-	return len(ns.Tables) == 0
+	return len(ns.tables) == 0
 }
 
 func (ns *Namespace) Copy() *Namespace {
-	out := MakeNamespace()
+	out := EmptyNamespace()
 
-	for k, table := range ns.Tables {
-		out.Tables[k] = table
+	for k, table := range ns.tables {
+		out.tables[k] = table
 	}
 
 	return out
@@ -34,7 +45,7 @@ func (ns *Namespace) Copy() *Namespace {
 func (ns *Namespace) JoinNamespace(other *Namespace) (*Namespace, error) {
 	out := ns.Copy()
 
-	for otherk, otherTable := range other.Tables {
+	for otherk, otherTable := range other.tables {
 		out.addTable(otherk, otherTable)
 	}
 
@@ -43,7 +54,7 @@ func (ns *Namespace) JoinNamespace(other *Namespace) (*Namespace, error) {
 
 // Destructive
 func (ns *Namespace) addTable(key string, table Table) error {
-	current, present := ns.Tables[key]
+	current, present := ns.tables[key]
 
 	if present {
 		joined, err := current.JoinTable(table)
@@ -52,9 +63,9 @@ func (ns *Namespace) addTable(key string, table Table) error {
 			return errors.Wrap(err, "Namespace join table failed")
 		}
 
-		ns.Tables[key] = joined
+		ns.tables[key] = joined
 	} else {
-		ns.Tables[key] = table
+		ns.tables[key] = table
 	}
 
 	return nil
@@ -69,29 +80,61 @@ func (ns *Namespace) JoinTable(key string, table Table) (*Namespace, error) {
 }
 
 func (ns *Namespace) GetTable(key string) (Table, error) {
-	if table, present := ns.Tables[key]; present {
+	if table, present := ns.tables[key]; present {
 		return table, nil
 	} else {
-		return Table{}, fmt.Errorf("No such table in namespace '%v'", key)
+		return Table{}, fmt.Errorf("No such Table in Namespace '%v'", key)
 	}
+}
+
+func (ns *Namespace) Equals(other *Namespace) bool {
+	if len(ns.tables) != len(other.tables) {
+		return false
+	}
+
+	for k, v := range ns.tables {
+	 	otherv, present := other.tables[k]
+		if !present || !v.Equals(otherv) {
+			return false
+		}
+	}
+
+	return true
 }
 
 // TODO improved type validation
 type Table struct {
-	Rows map[string]Row
+	rows map[string]Row
 }
 
+func EmptyTable() Table {
+	return MakeTable(map[string]Row{})
+}
+
+func MakeTable(rows map[string]Row) Table {
+	out := Table{
+		rows: map[string]Row{},
+	}
+
+	for k, v := range rows {
+		out.rows[k] = v
+	}
+
+	return out
+}
+
+// TODO easy optimisation: hold slice in Table for fast iteration.
 func (t Table) Foreachrow(f func (rowKey string, r Row)) {
-	for k, r := range t.Rows {
+	for k, r := range t.rows {
 		f(k, r)
 	}
 }
 
 func (t Table) Copy() Table {
-	out := Table{Rows: map[string]Row{}}
+	out := Table{rows: map[string]Row{}}
 
-	for k, row := range t.Rows {
-		out.Rows[k] = row
+	for k, row := range t.rows {
+		out.rows[k] = row
 	}
 
 	return out
@@ -100,7 +143,7 @@ func (t Table) Copy() Table {
 func (t Table) AllRows() []Row {
 	out := []Row{}
 
-	for _, v := range t.Rows {
+	for _, v := range t.rows {
 		out = append(out, v)
 	}
 
@@ -110,7 +153,7 @@ func (t Table) AllRows() []Row {
 func (t Table) JoinTable(other Table) (Table, error) {
 	out := t.Copy()
 
-	for otherk, otherRow := range other.Rows {
+	for otherk, otherRow := range other.rows {
 		out.addRow(otherk, otherRow)
 	}
 
@@ -125,25 +168,64 @@ func (t Table) JoinRow(rowKey string, row Row) (Table, error) {
 	return out, nil
 }
 
-// Destructive.
-func (t Table) addRow(rowKey string, row Row) {
-	if current, present := t.Rows[rowKey]; present {
-		jrow := current.JoinRow(row)
-		t.Rows[rowKey] = jrow
+func (t Table) GetRow(rowKey string) (Row, error) {
+	if row, present := t.rows[rowKey]; present {
+		return row, nil
 	} else {
-		t.Rows[rowKey] = row
+		return Row{}, fmt.Errorf("No such Row in Table '%v'", rowKey)
 	}
 }
 
+// Destructive.
+func (t Table) addRow(rowKey string, row Row) {
+	if current, present := t.rows[rowKey]; present {
+		jrow := current.JoinRow(row)
+		t.rows[rowKey] = jrow
+	} else {
+		t.rows[rowKey] = row
+	}
+}
+
+func (t Table) Equals(other Table) bool {
+	if len(t.rows) != len(other.rows) {
+		return false
+	}
+
+	for k, v := range t.rows {
+	 	otherv, present := other.rows[k]
+		if !present || !v.Equals(otherv) {
+			return false
+		}
+	}
+
+	return true
+}
+
 type Row struct {
-	Entries map[string][]string
+	entries map[string]Entry
+}
+
+func EmptyRow() Row {
+	return MakeRow(map[string]Entry{})
+}
+
+func MakeRow(entries map[string]Entry) Row {
+	out := Row{
+		entries: map[string]Entry{},
+	}
+
+	for k, v := range entries {
+		out.entries[k] = v
+	}
+
+	return out
 }
 
 func (row Row) Copy() Row {
-	out := Row{Entries: map[string][]string{}}
+	out := Row{entries: map[string]Entry{}}
 
-	for k, entry := range row.Entries {
-		out.Entries[k] = entry
+	for k, entry := range row.entries {
+		out.entries[k] = entry
 	}
 
 	return out
@@ -152,15 +234,81 @@ func (row Row) Copy() Row {
 func (row Row) JoinRow(other Row) Row {
 	out := row.Copy()
 
-	for otherk, otherEntry := range other.Entries {
-		if entry, present := out.Entries[otherk]; present {
-			out.Entries[otherk] = uniq256(append(entry, otherEntry...))
+	for otherk, otherEntry := range other.entries {
+		if oute, present := out.entries[otherk]; present {
+			out.entries[otherk] = oute.JoinEntry(otherEntry)
 		} else {
-			out.Entries[otherk] = otherEntry
+			out.entries[otherk] = otherEntry
 		}
 	}
 
 	return out
+}
+
+func (row Row) GetEntry(entryKey string) (Entry, error) {
+	if entry, present := row.entries[entryKey]; present {
+		return entry, nil
+	} else {
+		return Entry{}, fmt.Errorf("No such Entry in Row '%v'", entryKey)
+	}
+}
+
+func (row Row) JoinEntry(entryKey string, entry Entry) Row {
+	entryRow := Row{
+		entries: map[string]Entry{
+			entryKey: entry,
+		},
+	}
+
+	return row.JoinRow(entryRow)
+}
+
+func (row Row) Equals(other Row) bool {
+	if len(row.entries) != len(other.entries) {
+		return false
+	}
+
+	for k, v := range row.entries {
+	 	otherv, present := other.entries[k]
+		if !present || !v.Equals(otherv) {
+			return false
+		}
+	}
+
+	return true
+}
+
+type Entry struct {
+	set []string
+}
+
+func EmptyEntry() Entry {
+	return MakeEntry([]string{})
+}
+
+func MakeEntry(set []string) Entry {
+	undupes := uniq256(set)
+	sort.Strings(undupes)
+	return Entry{set: undupes}
+}
+
+func (e Entry) JoinEntry(other Entry) Entry {
+	return MakeEntry(append(e.set, other.set...))
+}
+
+func (e Entry) Equals(other Entry) bool {
+	// Easy because Entry.set is deduplicated and sorted
+	for i, v := range e.set {
+		if other.set[i] != v {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (e Entry) GetValues() []string {
+	return e.set
 }
 
 // uniq256 deduplicates a slice of strings using sha256.

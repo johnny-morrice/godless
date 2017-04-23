@@ -19,8 +19,8 @@ func LoadRemoteNamespace(Store RemoteStore, Index RemoteStoreIndex) (KvNamespace
 	ns := &remoteNamespace{}
 	ns.Store = Store
 	ns.Index = Index
-	ns.Update = MakeNamespace()
-	ns.Namespace = MakeNamespace()
+	ns.Update = EmptyNamespace()
+	ns.Namespace = EmptyNamespace()
 	ns.Children = []*remoteNamespace{}
 
 	err := ns.load()
@@ -36,7 +36,7 @@ func PersistNewRemoteNamespace(Store RemoteStore, namespace *Namespace) (KvNames
 	ns := &remoteNamespace{}
 	ns.Store = Store
 	ns.Update = namespace
-	ns.Namespace = MakeNamespace()
+	ns.Namespace = EmptyNamespace()
 	ns.Children = []*remoteNamespace{}
 
 	kv, err := ns.Persist()
@@ -180,7 +180,7 @@ func (ns *remoteNamespace) Persist() (KvNamespace, error) {
 	out.Store = ns.Store
 	out.Index = addr
 	out.Namespace = ns.Update
-	out.Update = MakeNamespace()
+	out.Update = EmptyNamespace()
 
 	return out, nil
 }

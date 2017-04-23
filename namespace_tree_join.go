@@ -62,10 +62,10 @@ func (visitor *NamespaceTreeJoin) VisitRowJoin(position int, rowJoin *QueryRowJo
 		return
 	}
 
-	row := Row{Entries: map[string][]string{}}
+	row := Row{}
 
 	for k, entry := range rowJoin.Entries {
-		row.Entries[k] = []string{entry}
+		row = row.JoinEntry(k, MakeEntry([]string{entry}))
 	}
 
 	joined, err := visitor.table.JoinRow(rowJoin.RowKey, row)
