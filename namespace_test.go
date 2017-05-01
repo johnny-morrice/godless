@@ -167,11 +167,43 @@ func TestMakeTable(t *testing.T) {
 }
 
 func TestTableCopy(t *testing.T) {
-	t.Fail()
+	expected := MakeTable(map[string]Row{"foo": EmptyRow()})
+	actual := expected.Copy()
+
+	assertTableEquals(t, expected, actual)
 }
 
 func TestTableAllRows(t *testing.T) {
-	t.Fail()
+	emptyRow := EmptyRow()
+	fullRow := MakeRow(map[string]Entry{
+		"baz": EmptyEntry(),
+	})
+
+	expected := []Row{
+		emptyRow, fullRow,
+	}
+
+	table := MakeTable(map[string]Row{
+		"foo": emptyRow,
+		"bar": fullRow,
+	})
+
+	actual := table.AllRows()
+
+	if len(expected) != len(actual) {
+		t.Error("Length mismatch in expected/actual", actual)
+	}
+
+	for _, a := range actual {
+		found := false
+		for _, e := range expected {
+			found = found || reflect.DeepEqual(e, a)
+		}
+
+		if !found {
+			t.Error("Unexpected row:", a)
+		}
+	}
 }
 
 func TestTableJoinTable(t *testing.T) {
