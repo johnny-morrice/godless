@@ -31,7 +31,7 @@ func (service *KeyValueService) queryRun(rw http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	if (isText) {
+	if isText {
 		buff := bytes.Buffer{}
 		_, err = buff.ReadFrom(req.Body)
 
@@ -122,7 +122,7 @@ func sendGob(rw http.ResponseWriter, gobber interface{}) error {
 
 func needsParse(req *http.Request) (bool, error) {
 	ct := req.Header[CONTENT_TYPE]
-	if linearContains(ct, MIME_QUERY)  {
+	if linearContains(ct, MIME_QUERY) {
 		return true, nil
 	} else if linearContains(ct, MIME_GOB) {
 		return false, nil

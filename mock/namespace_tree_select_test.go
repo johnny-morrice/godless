@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/pkg/errors"
 	lib "github.com/johnny-morrice/godless"
+	"github.com/pkg/errors"
 )
 
 func TestRunQuerySelectSuccess(t *testing.T) {
@@ -18,88 +18,88 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 	whereA := lib.QueryWhere{
 		OpCode: lib.PREDICATE,
 		Predicate: lib.QueryPredicate{
-			OpCode: lib.STR_EQ,
+			OpCode:   lib.STR_EQ,
 			Literals: []string{"Hi"},
-			Keys: []string{"Entry A"},
+			Keys:     []string{"Entry A"},
 		},
 	}
 
 	whereB := lib.QueryWhere{
 		OpCode: lib.PREDICATE,
 		Predicate: lib.QueryPredicate{
-			OpCode: lib.STR_EQ,
+			OpCode:   lib.STR_EQ,
 			Literals: []string{"Hi"},
-			Keys: []string{"Entry B"},
+			Keys:     []string{"Entry B"},
 		},
 	}
 
 	whereC := lib.QueryWhere{
 		OpCode: lib.PREDICATE,
 		Predicate: lib.QueryPredicate{
-			OpCode: lib.STR_NEQ,
+			OpCode:   lib.STR_NEQ,
 			Literals: []string{"Hello World"},
-			Keys: []string{"Entry B"},
+			Keys:     []string{"Entry B"},
 		},
 	}
 
 	whereD := lib.QueryWhere{
 		OpCode: lib.PREDICATE,
 		Predicate: lib.QueryPredicate{
-			OpCode: lib.STR_EQ,
+			OpCode:   lib.STR_EQ,
 			Literals: []string{"Apple"},
-			Keys: []string{"Entry C"},
+			Keys:     []string{"Entry C"},
 		},
 	}
 
 	whereE := lib.QueryWhere{
 		OpCode: lib.PREDICATE,
 		Predicate: lib.QueryPredicate{
-			OpCode: lib.STR_EQ,
+			OpCode:   lib.STR_EQ,
 			Literals: []string{"Orange"},
-			Keys: []string{"Entry D"},
+			Keys:     []string{"Entry D"},
 		},
 	}
 
 	whereF := lib.QueryWhere{
 		OpCode: lib.PREDICATE,
 		Predicate: lib.QueryPredicate{
-			OpCode: lib.STR_EQ,
+			OpCode:   lib.STR_EQ,
 			Literals: []string{"Train"},
-			Keys: []string{"Entry E"},
+			Keys:     []string{"Entry E"},
 		},
 	}
 
 	whereG := lib.QueryWhere{
 		OpCode: lib.PREDICATE,
 		Predicate: lib.QueryPredicate{
-			OpCode: lib.STR_EQ,
+			OpCode:   lib.STR_EQ,
 			Literals: []string{"Bus"},
-			Keys: []string{"Entry E"},
+			Keys:     []string{"Entry E"},
 		},
 	}
 
 	whereH := lib.QueryWhere{
 		OpCode: lib.PREDICATE,
 		Predicate: lib.QueryPredicate{
-			OpCode: lib.STR_EQ,
+			OpCode:   lib.STR_EQ,
 			Literals: []string{"Boat"},
-			Keys: []string{"Entry E"},
+			Keys:     []string{"Entry E"},
 		},
 	}
 
 	whereI := lib.QueryWhere{
 		OpCode: lib.PREDICATE,
 		Predicate: lib.QueryPredicate{
-			OpCode: lib.STR_EQ,
+			OpCode:        lib.STR_EQ,
 			IncludeRowKey: true,
-			Literals: []string{"Row F0"},
+			Literals:      []string{"Row F0"},
 		},
 	}
 
 	queries := []*lib.Query{
 		// One result
 		&lib.Query{
-			OpCode: lib.SELECT,
+			OpCode:   lib.SELECT,
 			TableKey: mainTableKey,
 			Select: lib.QuerySelect{
 				Limit: 2,
@@ -108,7 +108,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		},
 		// Multiple results
 		&lib.Query{
-			OpCode: lib.SELECT,
+			OpCode:   lib.SELECT,
 			TableKey: mainTableKey,
 			Select: lib.QuerySelect{
 				Limit: 2,
@@ -117,7 +117,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		},
 		// STR_NEQ
 		&lib.Query{
-			OpCode: lib.SELECT,
+			OpCode:   lib.SELECT,
 			TableKey: mainTableKey,
 			Select: lib.QuerySelect{
 				Limit: 2,
@@ -126,31 +126,31 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		},
 		// AND
 		&lib.Query{
-			OpCode: lib.SELECT,
+			OpCode:   lib.SELECT,
 			TableKey: mainTableKey,
 			Select: lib.QuerySelect{
 				Limit: 2,
 				Where: lib.QueryWhere{
-					OpCode: lib.AND,
+					OpCode:  lib.AND,
 					Clauses: []lib.QueryWhere{whereD, whereE},
 				},
 			},
 		},
 		// OR
 		&lib.Query{
-			OpCode: lib.SELECT,
+			OpCode:   lib.SELECT,
 			TableKey: mainTableKey,
 			Select: lib.QuerySelect{
 				Limit: 2,
 				Where: lib.QueryWhere{
-					OpCode: lib.OR,
+					OpCode:  lib.OR,
 					Clauses: []lib.QueryWhere{whereF, whereG},
 				},
 			},
 		},
 		// No results
 		&lib.Query{
-			OpCode: lib.SELECT,
+			OpCode:   lib.SELECT,
 			TableKey: mainTableKey,
 			Select: lib.QuerySelect{
 				Limit: 2,
@@ -159,7 +159,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		},
 		// Row key
 		&lib.Query{
-			OpCode: lib.SELECT,
+			OpCode:   lib.SELECT,
 			TableKey: mainTableKey,
 			Select: lib.QuerySelect{
 				Limit: 2,
@@ -168,7 +168,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		},
 		// No where clause
 		&lib.Query{
-			OpCode: lib.SELECT,
+			OpCode:   lib.SELECT,
 			TableKey: altTableKey,
 			Select: lib.QuerySelect{
 				Limit: 3,
@@ -243,16 +243,16 @@ func TestRunQuerySelectFailure(t *testing.T) {
 	mock.EXPECT().LoadTraverse(gomock.Any()).Return(errors.New("Expected Error"))
 
 	failQuery := &lib.Query{
-		OpCode: lib.SELECT,
+		OpCode:   lib.SELECT,
 		TableKey: mainTableKey,
 		Select: lib.QuerySelect{
 			Limit: 2,
 			Where: lib.QueryWhere{
 				OpCode: lib.PREDICATE,
 				Predicate: lib.QueryPredicate{
-					OpCode: lib.STR_EQ,
+					OpCode:   lib.STR_EQ,
 					Literals: []string{"Hi"},
-					Keys: []string{"Entry A"},
+					Keys:     []string{"Entry A"},
 				},
 			},
 		},
@@ -287,9 +287,9 @@ func TestRunQuerySelectInvalid(t *testing.T) {
 				Where: lib.QueryWhere{
 					OpCode: lib.PREDICATE,
 					Predicate: lib.QueryPredicate{
-						OpCode: lib.STR_EQ,
+						OpCode:   lib.STR_EQ,
 						Literals: []string{"Hi"},
-						Keys: []string{"Entry A"},
+						Keys:     []string{"Entry A"},
 					},
 				},
 			},
@@ -300,9 +300,9 @@ func TestRunQuerySelectInvalid(t *testing.T) {
 				Limit: 1,
 				Where: lib.QueryWhere{
 					Predicate: lib.QueryPredicate{
-						OpCode: lib.STR_EQ,
+						OpCode:   lib.STR_EQ,
 						Literals: []string{"Hi"},
-						Keys: []string{"Entry A"},
+						Keys:     []string{"Entry A"},
 					},
 				},
 			},
@@ -315,7 +315,7 @@ func TestRunQuerySelectInvalid(t *testing.T) {
 					OpCode: lib.PREDICATE,
 					Predicate: lib.QueryPredicate{
 						Literals: []string{"Hi"},
-						Keys: []string{"Entry A"},
+						Keys:     []string{"Entry A"},
 					},
 				},
 			},
@@ -339,7 +339,7 @@ func TestRunQuerySelectInvalid(t *testing.T) {
 
 func rowsA() []lib.Row {
 	return []lib.Row{
-		lib.MakeRow(map[string]lib.Entry {
+		lib.MakeRow(map[string]lib.Entry{
 			// TODO use user concepts to match only the Hi.
 			"Entry A": lib.MakeEntry([]string{"Hi", "Hello"}),
 		}),
@@ -348,7 +348,7 @@ func rowsA() []lib.Row {
 
 func rowsB() []lib.Row {
 	return []lib.Row{
-		lib.MakeRow(map[string]lib.Entry {
+		lib.MakeRow(map[string]lib.Entry{
 			"Entry B": lib.MakeEntry([]string{"Hi", "Hello World"}),
 		}),
 	}
@@ -356,7 +356,7 @@ func rowsB() []lib.Row {
 
 func rowsC() []lib.Row {
 	return []lib.Row{
-		lib.MakeRow(map[string]lib.Entry {
+		lib.MakeRow(map[string]lib.Entry{
 			"Entry B": lib.MakeEntry([]string{"Hi", "Hello Dude"}),
 		}),
 	}
@@ -364,7 +364,7 @@ func rowsC() []lib.Row {
 
 func rowsD() []lib.Row {
 	return []lib.Row{
-		lib.MakeRow(map[string]lib.Entry {
+		lib.MakeRow(map[string]lib.Entry{
 			"Entry C": lib.MakeEntry([]string{"Apple"}),
 			"Entry D": lib.MakeEntry([]string{"Orange"}),
 		}),
@@ -373,10 +373,10 @@ func rowsD() []lib.Row {
 
 func rowsE() []lib.Row {
 	return []lib.Row{
-		lib.MakeRow(map[string]lib.Entry {
+		lib.MakeRow(map[string]lib.Entry{
 			"Entry E": lib.MakeEntry([]string{"Bus"}),
 		}),
-		lib.MakeRow(map[string]lib.Entry {
+		lib.MakeRow(map[string]lib.Entry{
 			"Entry E": lib.MakeEntry([]string{"Train"}),
 		}),
 	}
@@ -384,7 +384,7 @@ func rowsE() []lib.Row {
 
 func rowsF() []lib.Row {
 	return []lib.Row{
-		lib.MakeRow(map[string]lib.Entry {
+		lib.MakeRow(map[string]lib.Entry{
 			"Entry F": lib.MakeEntry([]string{"This row", "rocks"}),
 		}),
 	}
@@ -392,30 +392,29 @@ func rowsF() []lib.Row {
 
 func rowsG() []lib.Row {
 	return []lib.Row{
-		lib.MakeRow(map[string]lib.Entry {
+		lib.MakeRow(map[string]lib.Entry{
 			"Entry Q": lib.MakeEntry([]string{"Hi", "Folks"}),
 		}),
-		lib.MakeRow(map[string]lib.Entry {
+		lib.MakeRow(map[string]lib.Entry{
 			"Entry R": lib.MakeEntry([]string{"Wowzer"}),
 		}),
-		lib.MakeRow(map[string]lib.Entry {
+		lib.MakeRow(map[string]lib.Entry{
 			"Entry S": lib.MakeEntry([]string{"Trumpet"}),
 		}),
 	}
 }
 
-
 // Non matching rows.
 func rowsZ() []lib.Row {
 	return []lib.Row{
-		lib.MakeRow(map[string]lib.Entry {
+		lib.MakeRow(map[string]lib.Entry{
 			"Entry A": lib.MakeEntry([]string{"No", "Match"}),
 		}),
-		lib.MakeRow(map[string]lib.Entry {
+		lib.MakeRow(map[string]lib.Entry{
 			"Entry C": lib.MakeEntry([]string{"No", "Match", "Here"}),
 			"Entry D": lib.MakeEntry([]string{"Nada!"}),
 		}),
-		lib.MakeRow(map[string]lib.Entry {
+		lib.MakeRow(map[string]lib.Entry{
 			"Entry E": lib.MakeEntry([]string{"Horse"}),
 		}),
 	}
@@ -474,7 +473,7 @@ func mkselectns() *lib.Namespace {
 
 	tables := map[string][]lib.Table{
 		mainTableKey: mainTables,
-		altTableKey: altTables,
+		altTableKey:  altTables,
 	}
 
 	for tableKey, ts := range tables {

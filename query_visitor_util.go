@@ -4,7 +4,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type noSelectVisitor struct {}
+type noSelectVisitor struct{}
 
 func (visitor *noSelectVisitor) VisitSelect(*QuerySelect) {
 }
@@ -18,7 +18,7 @@ func (visitor *noSelectVisitor) LeaveWhere(*QueryWhere) {
 func (visitor *noSelectVisitor) VisitPredicate(*QueryPredicate) {
 }
 
-type noJoinVisitor struct {}
+type noJoinVisitor struct{}
 
 func (visitor *noJoinVisitor) VisitJoin(*QueryJoin) {
 }
@@ -26,8 +26,7 @@ func (visitor *noJoinVisitor) VisitJoin(*QueryJoin) {
 func (visitor *noJoinVisitor) VisitRowJoin(int, *QueryRowJoin) {
 }
 
-
-type noDebugVisitor struct {}
+type noDebugVisitor struct{}
 
 func (visitor *noDebugVisitor) VisitAST(*QueryAST) {
 }
@@ -44,11 +43,11 @@ func (visitor *errorCollectVisitor) hasError() bool {
 }
 
 func (visitor *errorCollectVisitor) collectError(err error) {
-		if visitor.err == nil {
-			visitor.err = err
-		} else {
-			visitor.err = errors.Wrapf(err, "%v, and", visitor.err)
-		}
+	if visitor.err == nil {
+		visitor.err = err
+	} else {
+		visitor.err = errors.Wrapf(err, "%v, and", visitor.err)
+	}
 
 }
 
@@ -64,15 +63,15 @@ type whereStack struct {
 	stk []whereFrame
 }
 
-func makeWhereStack(where *QueryWhere) *whereStack{
-	return 	&whereStack{
+func makeWhereStack(where *QueryWhere) *whereStack {
+	return &whereStack{
 		stk: []whereFrame{whereFrame{where: where}},
 	}
 }
 
 func (stack *whereStack) visit(visitor whereVisitor) {
 	for i := 0; len(stack.stk) > 0; {
-		head := &stack.stk[len(stack.stk) - 1]
+		head := &stack.stk[len(stack.stk)-1]
 		headWhere := head.where
 
 		if stack.isMarked() {
@@ -83,11 +82,11 @@ func (stack *whereStack) visit(visitor whereVisitor) {
 			visitor.VisitWhere(head.position, headWhere)
 			visitor.VisitPredicate(&headWhere.Predicate)
 			stack.mark()
-			clauses := headWhere.Clauses;
+			clauses := headWhere.Clauses
 			clauseCount := len(clauses)
 			for j := clauseCount - 1; j >= 0; j-- {
 				next := whereFrame{
-					where: &clauses[j],
+					where:    &clauses[j],
 					position: j,
 				}
 				stack.push(next)
@@ -98,8 +97,8 @@ func (stack *whereStack) visit(visitor whereVisitor) {
 }
 
 func (stack *whereStack) pop() whereFrame {
-	head := stack.stk[len(stack.stk) - 1]
-	stack.stk = stack.stk[:len(stack.stk) - 1]
+	head := stack.stk[len(stack.stk)-1]
+	stack.stk = stack.stk[:len(stack.stk)-1]
 	return head
 }
 
@@ -108,16 +107,16 @@ func (stack *whereStack) push(frame whereFrame) {
 }
 
 func (stack *whereStack) mark() {
-	head := &stack.stk[len(stack.stk) - 1]
+	head := &stack.stk[len(stack.stk)-1]
 	head.mark = true
 }
 
 func (stack *whereStack) isMarked() bool {
-	return stack.stk[len(stack.stk) - 1].mark
+	return stack.stk[len(stack.stk)-1].mark
 }
 
 type whereFrame struct {
-	mark bool
+	mark     bool
 	position int
-	where *QueryWhere
+	where    *QueryWhere
 }

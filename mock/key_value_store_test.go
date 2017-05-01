@@ -1,14 +1,12 @@
 package mock_godless
 
-
-
 import (
 	"reflect"
 	"testing"
 
-	"github.com/pkg/errors"
 	"github.com/golang/mock/gomock"
 	lib "github.com/johnny-morrice/godless"
+	"github.com/pkg/errors"
 )
 
 func TestRunQueryReadSuccess(t *testing.T) {
@@ -17,16 +15,16 @@ func TestRunQueryReadSuccess(t *testing.T) {
 
 	mock := NewMockKvNamespace(ctrl)
 	query := &lib.Query{
-		OpCode: lib.SELECT,
+		OpCode:   lib.SELECT,
 		TableKey: "Table Key",
 		Select: lib.QuerySelect{
 			Limit: 1,
 			Where: lib.QueryWhere{
 				OpCode: lib.PREDICATE,
 				Predicate: lib.QueryPredicate{
-					OpCode: lib.STR_EQ,
+					OpCode:   lib.STR_EQ,
 					Literals: []string{"Hi"},
-					Keys: []string{"Entry A"},
+					Keys:     []string{"Entry A"},
 				},
 			},
 		},
@@ -59,7 +57,7 @@ func TestRunQueryWriteSuccess(t *testing.T) {
 
 	mock := NewMockKvNamespace(ctrl)
 	query := &lib.Query{
-		OpCode: lib.JOIN,
+		OpCode:   lib.JOIN,
 		TableKey: "Table Key",
 		Join: lib.QueryJoin{
 			Rows: []lib.QueryRowJoin{
@@ -101,7 +99,7 @@ func TestRunQueryWriteFailure(t *testing.T) {
 
 	mock := NewMockKvNamespace(ctrl)
 	query := &lib.Query{
-		OpCode: lib.JOIN,
+		OpCode:   lib.JOIN,
 		TableKey: "Table Key",
 		Join: lib.QueryJoin{
 			Rows: []lib.QueryRowJoin{

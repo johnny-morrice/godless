@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/pkg/errors"
 	lib "github.com/johnny-morrice/godless"
+	"github.com/pkg/errors"
 )
 
 func TestLoadRemoteNamespaceSuccess(t *testing.T) {
@@ -19,7 +19,7 @@ func TestLoadRemoteNamespaceSuccess(t *testing.T) {
 	namespace := lib.EmptyNamespace()
 	record := lib.RemoteNamespaceRecord{
 		Namespace: namespace,
-		Children: []lib.RemoteStoreIndex{},
+		Children:  []lib.RemoteStoreIndex{},
 	}
 
 	mock.EXPECT().Cat(index).Return(record, nil)
@@ -63,7 +63,7 @@ func TestPersistNewRemoteNamespaceSuccess(t *testing.T) {
 	namespace := lib.EmptyNamespace()
 	record := lib.RemoteNamespaceRecord{
 		Namespace: namespace,
-		Children: []lib.RemoteStoreIndex{},
+		Children:  []lib.RemoteStoreIndex{},
 	}
 
 	index := lib.IPFSPath("The Index")
@@ -89,7 +89,7 @@ func TestPersistNewRemoteNamespaceFailure(t *testing.T) {
 	namespace := lib.EmptyNamespace()
 	record := lib.RemoteNamespaceRecord{
 		Namespace: namespace,
-		Children: []lib.RemoteStoreIndex{},
+		Children:  []lib.RemoteStoreIndex{},
 	}
 
 	mock.EXPECT().Add(mtchrd(record)).Return(nil, errors.New("Expected error"))
@@ -146,15 +146,15 @@ func TestLoadTraverseSuccess(t *testing.T) {
 
 	recordA := lib.RemoteNamespaceRecord{
 		Namespace: namespaceA,
-		Children: []lib.RemoteStoreIndex{indexB, indexC},
+		Children:  []lib.RemoteStoreIndex{indexB, indexC},
 	}
 	recordB := lib.RemoteNamespaceRecord{
 		Namespace: namespaceB,
-		Children: []lib.RemoteStoreIndex{},
+		Children:  []lib.RemoteStoreIndex{},
 	}
 	recordC := lib.RemoteNamespaceRecord{
 		Namespace: namespaceC,
-		Children: []lib.RemoteStoreIndex{},
+		Children:  []lib.RemoteStoreIndex{},
 	}
 
 	mockStore.EXPECT().Cat(indexA).Return(recordA, nil)
@@ -206,7 +206,7 @@ func TestLoadTraverseFailure(t *testing.T) {
 
 	recordA := lib.RemoteNamespaceRecord{
 		Namespace: namespaceA,
-		Children: []lib.RemoteStoreIndex{indexB, indexC},
+		Children:  []lib.RemoteStoreIndex{indexB, indexC},
 	}
 
 	mockStore.EXPECT().Cat(indexA).Return(recordA, nil)
@@ -254,7 +254,7 @@ func TestLoadTraverseAbort(t *testing.T) {
 
 	recordA := lib.RemoteNamespaceRecord{
 		Namespace: namespaceA,
-		Children: []lib.RemoteStoreIndex{indexB, indexC},
+		Children:  []lib.RemoteStoreIndex{indexB, indexC},
 	}
 
 	mockStore.EXPECT().Cat(indexA).Return(recordA, nil)
@@ -295,12 +295,12 @@ func TestPersistSuccess(t *testing.T) {
 
 	recordA := lib.RemoteNamespaceRecord{
 		Namespace: namespace,
-		Children: []lib.RemoteStoreIndex{},
+		Children:  []lib.RemoteStoreIndex{},
 	}
 
 	recordB := lib.RemoteNamespaceRecord{
 		Namespace: nextNamespace,
-		Children: []lib.RemoteStoreIndex{index},
+		Children:  []lib.RemoteStoreIndex{index},
 	}
 
 	mock.EXPECT().Add(mtchrd(recordA)).Return(index, nil)
@@ -350,12 +350,12 @@ func TestPersistFailure(t *testing.T) {
 
 	recordA := lib.RemoteNamespaceRecord{
 		Namespace: namespace,
-		Children: []lib.RemoteStoreIndex{},
+		Children:  []lib.RemoteStoreIndex{},
 	}
 
 	recordB := lib.RemoteNamespaceRecord{
 		Namespace: nextNamespace,
-		Children: []lib.RemoteStoreIndex{index},
+		Children:  []lib.RemoteStoreIndex{index},
 	}
 
 	mock.EXPECT().Add(mtchrd(recordA)).Return(index, nil)
@@ -411,13 +411,12 @@ func (rdm rdmatcher) Matches(v interface{}) bool {
 		return false
 	}
 
-	if reflect.DeepEqual(*rdm.rd.Namespace, *other.Namespace){
+	if reflect.DeepEqual(*rdm.rd.Namespace, *other.Namespace) {
 		return true
 	}
 
 	return reflect.DeepEqual(rdm.rd.Children, other.Children)
 }
-
 
 type nsmatcher struct {
 	ns *lib.Namespace

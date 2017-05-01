@@ -13,20 +13,20 @@ type KvNamespace interface {
 }
 
 type KvQuery struct {
-	Query *Query
+	Query    *Query
 	Response chan APIResponse
 }
 
 func MakeKvQuery(query *Query) KvQuery {
 	return KvQuery{
-		Query: query,
+		Query:    query,
 		Response: make(chan APIResponse),
 	}
 }
 
 // TODO these should make more general sense and be public.
 func (kvq KvQuery) writeResponse(val APIResponse) {
-	kvq.Response<- val
+	kvq.Response <- val
 }
 
 func (kvq KvQuery) reportError(err error) {
@@ -43,7 +43,7 @@ func LaunchKeyValueStore(ns KvNamespace) (QueryAPIService, <-chan error) {
 
 	kv := &keyValueStore{
 		namespace: ns,
-		input: interact,
+		input:     interact,
 	}
 	go func() {
 		for kvq := range interact {
@@ -53,7 +53,7 @@ func LaunchKeyValueStore(ns KvNamespace) (QueryAPIService, <-chan error) {
 			if err != nil {
 				close(kvq.Response)
 				logerr("key value store died with: %v", err)
-				errch<- errors.Wrap(err, "Key value store died")
+				errch <- errors.Wrap(err, "Key value store died")
 				return
 			}
 		}
@@ -64,10 +64,9 @@ func LaunchKeyValueStore(ns KvNamespace) (QueryAPIService, <-chan error) {
 	return kv, errch
 }
 
-
 type keyValueStore struct {
 	namespace KvNamespace
-	input chan<- KvQuery
+	input     chan<- KvQuery
 }
 
 func (kv *keyValueStore) RunQuery(query *Query) (<-chan APIResponse, error) {
@@ -76,7 +75,7 @@ func (kv *keyValueStore) RunQuery(query *Query) (<-chan APIResponse, error) {
 	}
 	kvq := MakeKvQuery(query)
 
-	kv.input<- kvq
+	kv.input <- kvq
 
 	return kvq.Response, nil
 }

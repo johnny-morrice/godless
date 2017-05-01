@@ -7,10 +7,9 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/pkg/errors"
 	ipfs "github.com/ipfs/go-ipfs-api"
+	"github.com/pkg/errors"
 )
-
 
 type IPFSPath string
 
@@ -19,19 +18,19 @@ func (path IPFSPath) Path() string {
 }
 
 type IPFSPeer struct {
-	Url string
+	Url    string
 	Client *http.Client
-	Shell *ipfs.Shell
+	Shell  *ipfs.Shell
 }
 
 type IPFSRecord struct {
 	Namespace *Namespace
-	Children []IPFSPath
+	Children  []IPFSPath
 }
 
 func MakeIPFSPeer(url string) RemoteStore {
 	peer := &IPFSPeer{
-		Url: url,
+		Url:    url,
 		Client: defaultHttpClient(),
 	}
 
@@ -56,7 +55,7 @@ func (peer *IPFSPeer) Disconnect() error {
 func (peer *IPFSPeer) Add(record RemoteNamespaceRecord) (RemoteStoreIndex, error) {
 	chunk := IPFSRecord{
 		Namespace: record.Namespace,
-		Children: make([]IPFSPath, len(record.Children)),
+		Children:  make([]IPFSPath, len(record.Children)),
 	}
 
 	for i, index := range record.Children {
@@ -108,7 +107,7 @@ func (peer *IPFSPeer) Cat(index RemoteStoreIndex) (RemoteNamespaceRecord, error)
 	// According to IPFS binding docs we must drain the reader.
 	remainder, drainerr := ioutil.ReadAll(dat)
 
-	if (drainerr != nil) {
+	if drainerr != nil {
 		logwarn("error draining reader: %v", drainerr)
 	}
 
@@ -118,7 +117,7 @@ func (peer *IPFSPeer) Cat(index RemoteStoreIndex) (RemoteNamespaceRecord, error)
 
 	record := RemoteNamespaceRecord{
 		Namespace: chunk.Namespace,
-		Children: make([]RemoteStoreIndex, len(chunk.Children)),
+		Children:  make([]RemoteStoreIndex, len(chunk.Children)),
 	}
 
 	for i, path := range chunk.Children {

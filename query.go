@@ -1,12 +1,13 @@
 package godless
+
 //go:generate peg -switch -inline query.peg
 //go:generate mockgen -destination mock/mock_query.go -imports lib=github.com/johnny-morrice/godless -self_package lib github.com/johnny-morrice/godless QueryVisitor
 
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"github.com/pkg/errors"
+	"os"
 )
 
 type QueryOpCode uint16
@@ -18,12 +19,12 @@ const (
 )
 
 type Query struct {
-	AST *QueryAST `json:"-"`
-	Parser *QueryParser `json:"-"`
-	OpCode QueryOpCode `json:",omitempty"`
+	AST      *QueryAST    `json:"-"`
+	Parser   *QueryParser `json:"-"`
+	OpCode   QueryOpCode  `json:",omitempty"`
 	TableKey string
-	Join QueryJoin `json:",omitempty"`
-	Select QuerySelect `json:",omitempty"`
+	Join     QueryJoin   `json:",omitempty"`
+	Select   QuerySelect `json:",omitempty"`
 }
 
 type whereVisitor interface {
@@ -52,13 +53,13 @@ type QueryJoin struct {
 }
 
 type QueryRowJoin struct {
-	RowKey string
+	RowKey  string
 	Entries map[string]string `json:",omitempty"`
 }
 
 type QuerySelect struct {
 	Where QueryWhere `json:",omitempty"`
-	Limit uint `json:",omitempty"`
+	Limit uint       `json:",omitempty"`
 }
 
 type QueryWhereOpCode uint16
@@ -71,9 +72,9 @@ const (
 )
 
 type QueryWhere struct {
-	OpCode QueryWhereOpCode `json:",omitempty"`
-	Clauses []QueryWhere `json:",omitempty"`
-	Predicate QueryPredicate `json:",omitempty"`
+	OpCode    QueryWhereOpCode `json:",omitempty"`
+	Clauses   []QueryWhere     `json:",omitempty"`
+	Predicate QueryPredicate   `json:",omitempty"`
 }
 
 type QueryPredicateOpCode uint16
@@ -104,15 +105,15 @@ const (
 )
 
 type QueryPredicate struct {
-	OpCode QueryPredicateOpCode `json:",omitempty"`
-	Keys []string `json:",omitempty"`
-	Literals []string `json:",omitempty"`
-	IncludeRowKey bool `json:",omitempty"`
+	OpCode        QueryPredicateOpCode `json:",omitempty"`
+	Keys          []string             `json:",omitempty"`
+	Literals      []string             `json:",omitempty"`
+	IncludeRowKey bool                 `json:",omitempty"`
 }
 
 func (pred QueryPredicate) match(tableKey string, r Row) bool {
 	// TODO
-	return false;
+	return false
 }
 
 func CompileQuery(source string) (*Query, error) {
@@ -242,6 +243,6 @@ func (visitor *queryValidator) VisitPredicate(predicate *QueryPredicate) {
 	case STR_NEQ:
 		// Okay!
 	default:
-		visitor.collectError(errors.New(fmt.Sprintf("Unknown Predicate OpCode: %v",predicate)))
+		visitor.collectError(errors.New(fmt.Sprintf("Unknown Predicate OpCode: %v", predicate)))
 	}
 }

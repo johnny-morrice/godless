@@ -12,7 +12,7 @@ type remoteNamespace struct {
 	Index RemoteStoreIndex
 	// Breaking 12 factor rule in caching namespace...
 	Namespace *Namespace
-	Children []*remoteNamespace
+	Children  []*remoteNamespace
 }
 
 func LoadRemoteNamespace(Store RemoteStore, Index RemoteStoreIndex) (KvNamespaceTree, error) {
@@ -94,7 +94,7 @@ func (ns *remoteNamespace) LoadTraverse(f NamespaceTreeReader) error {
 	stack := make([]*remoteNamespace, 1)
 	stack[0] = ns
 
-	for i := 0 ; i < len(stack); i++ {
+	for i := 0; i < len(stack); i++ {
 		current := stack[i]
 		err := current.load()
 
@@ -156,7 +156,7 @@ func (ns *remoteNamespace) Persist() (KvNamespace, error) {
 	part := RemoteNamespaceRecord{}
 	part.Namespace = ns.Update
 
-		out := &remoteNamespace{}
+	out := &remoteNamespace{}
 
 	// If this is the first namespace in the chain, don't save children.
 	// TODO become parent of multiple children.

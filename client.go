@@ -3,9 +3,9 @@ package godless
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
-	"io"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -99,5 +99,5 @@ func (client *Client) Post(bodyType string, body io.Reader) (*APIResponse, error
 }
 
 func incorrectContentType(status int, ct []string) error {
-	return fmt.Errorf("%v response had incorrect content type, was: %v", status,  ct)
+	return fmt.Errorf("%v response had incorrect content type, was: %v", status, ct)
 }

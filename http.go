@@ -6,6 +6,7 @@ import (
 )
 
 var __client *http.Client
+
 func defaultHttpClient() *http.Client {
 	if __client == nil {
 		__client = &http.Client{

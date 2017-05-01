@@ -13,7 +13,7 @@ func Serve(laddr string, handler http.Handler) (chan<- interface{}, error) {
 	const protocol = "tcp"
 	listener, err := net.Listen(protocol, laddr)
 
-	if (err != nil) {
+	if err != nil {
 		return nil, errors.Wrap(err, "Serve failed")
 	}
 

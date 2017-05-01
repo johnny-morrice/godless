@@ -2,20 +2,20 @@ package godless
 
 import (
 	"fmt"
-	"strconv"
-	"regexp"
 	"github.com/pkg/errors"
+	"regexp"
+	"strconv"
 )
 
 type QueryAST struct {
-	Command string
+	Command  string
 	TableKey string
-	Select QuerySelectAST `json:",omitempty"`
-	Join QueryJoinAST `json:",omitempty"`
+	Select   QuerySelectAST `json:",omitempty"`
+	Join     QueryJoinAST   `json:",omitempty"`
 
-	whereStack []*QueryWhereAST
+	whereStack     []*QueryWhereAST
 	lastRowJoinKey string
-	lastRowJoin *QueryRowJoinAST
+	lastRowJoin    *QueryRowJoinAST
 }
 
 func (ast *QueryAST) AddJoin() {
@@ -60,7 +60,7 @@ func (ast *QueryAST) PushWhere() {
 }
 
 func (ast *QueryAST) PopWhere() {
-	ast.whereStack = ast.whereStack[:len(ast.whereStack) - 1]
+	ast.whereStack = ast.whereStack[:len(ast.whereStack)-1]
 }
 
 func (ast *QueryAST) SetWhereCommand(command string) {
@@ -69,11 +69,11 @@ func (ast *QueryAST) SetWhereCommand(command string) {
 }
 
 func (ast *QueryAST) peekWhere() *QueryWhereAST {
-	if (len(ast.whereStack) == 0) {
+	if len(ast.whereStack) == 0 {
 		panic("BUG where stack empty!")
 	}
 
-	return ast.whereStack[len(ast.whereStack) - 1]
+	return ast.whereStack[len(ast.whereStack)-1]
 }
 
 func (ast *QueryAST) InitPredicate() {
@@ -160,7 +160,7 @@ func (ast *QueryJoinAST) Compile() (QueryJoin, error) {
 			return QueryJoin{}, errors.Wrap(err, "Error compiling join")
 		}
 
-		rows[i] = QueryRowJoin{RowKey: r.RowKey, Entries: unquoted,}
+		rows[i] = QueryRowJoin{RowKey: r.RowKey, Entries: unquoted}
 	}
 
 	qjoin := QueryJoin{
@@ -170,13 +170,10 @@ func (ast *QueryJoinAST) Compile() (QueryJoin, error) {
 	return qjoin, nil
 }
 
-
 type QueryRowJoinAST struct {
 	RowKey string
 	Values map[string]string `json:",omitempty"`
 }
-
-
 
 type QuerySelectAST struct {
 	Where *QueryWhereAST `json:",omitempty"`
@@ -186,7 +183,7 @@ type QuerySelectAST struct {
 func (ast *QuerySelectAST) Compile() (QuerySelect, error) {
 	qselect := QuerySelect{}
 
-	if (ast.Limit != "") {
+	if ast.Limit != "" {
 		limit, converr := strconv.Atoi(ast.Limit)
 
 		if converr != nil {
@@ -196,7 +193,7 @@ func (ast *QuerySelectAST) Compile() (QuerySelect, error) {
 		qselect.Limit = uint(limit)
 	}
 
-	if (ast.Where != nil) {
+	if ast.Where != nil {
 		where, err := ast.Where.Compile()
 
 		if err != nil {
@@ -210,8 +207,8 @@ func (ast *QuerySelectAST) Compile() (QuerySelect, error) {
 }
 
 type QueryWhereAST struct {
-	Command string
-	Clauses []*QueryWhereAST `json:",omitempty"`
+	Command   string
+	Clauses   []*QueryWhereAST   `json:",omitempty"`
 	Predicate *QueryPredicateAST `json:",omitempty"`
 }
 
@@ -269,9 +266,9 @@ func (ast *QueryWhereAST) CompileClauses() ([]QueryWhere, error) {
 }
 
 type QueryPredicateAST struct {
-	Command string
-	Keys []string
-	Literals []string
+	Command       string
+	Keys          []string
+	Literals      []string
 	IncludeRowKey bool
 }
 
@@ -279,7 +276,7 @@ func (ast *QueryPredicateAST) Compile() (QueryPredicate, error) {
 	predicate := QueryPredicate{}
 
 	// TODO flesh out
-	switch (ast.Command) {
+	switch ast.Command {
 	case "str_eq":
 		predicate.OpCode = STR_EQ
 	case "str_neq":

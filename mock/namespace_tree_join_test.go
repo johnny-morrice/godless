@@ -1,12 +1,11 @@
 package mock_godless
 
-
 import (
 	"testing"
 
-	"github.com/pkg/errors"
 	"github.com/golang/mock/gomock"
 	lib "github.com/johnny-morrice/godless"
+	"github.com/pkg/errors"
 )
 
 func TestRunQueryJoinSuccess(t *testing.T) {
@@ -16,7 +15,7 @@ func TestRunQueryJoinSuccess(t *testing.T) {
 	mock := NewMockNamespaceTree(ctrl)
 
 	query := &lib.Query{
-		OpCode: lib.JOIN,
+		OpCode:   lib.JOIN,
 		TableKey: mainTableKey,
 		Join: lib.QueryJoin{
 			Rows: []lib.QueryRowJoin{
@@ -44,7 +43,6 @@ func TestRunQueryJoinSuccess(t *testing.T) {
 		},
 	}
 
-
 	table := lib.MakeTable(map[string]lib.Row{
 		"Row A": lib.MakeRow(map[string]lib.Entry{
 			"Entry A": lib.MakeEntry([]string{"Value A", "Value D"}),
@@ -52,7 +50,7 @@ func TestRunQueryJoinSuccess(t *testing.T) {
 			"Entry D": lib.MakeEntry([]string{"Value E"}),
 		}),
 		"Row B": lib.MakeRow(map[string]lib.Entry{
-				"Entry C": lib.MakeEntry([]string{"Value C"}),
+			"Entry C": lib.MakeEntry([]string{"Value C"}),
 		}),
 	})
 	mock.EXPECT().JoinTable(mainTableKey, mtchtable(table)).Return(nil)
@@ -73,7 +71,7 @@ func TestRunQueryJoinFailure(t *testing.T) {
 	mock := NewMockNamespaceTree(ctrl)
 
 	failQuery := &lib.Query{
-		OpCode: lib.JOIN,
+		OpCode:   lib.JOIN,
 		TableKey: mainTableKey,
 		Join: lib.QueryJoin{
 			Rows: []lib.QueryRowJoin{
@@ -89,10 +87,10 @@ func TestRunQueryJoinFailure(t *testing.T) {
 	}
 
 	table := lib.MakeTable(map[string]lib.Row{
-		"Row A": lib.MakeRow(map[string]lib.Entry {
-				"Entry A": lib.MakeEntry([]string{"Value A"}),
-				"Entry B": lib.MakeEntry([]string{"Value B"}),
-			}),
+		"Row A": lib.MakeRow(map[string]lib.Entry{
+			"Entry A": lib.MakeEntry([]string{"Value A"}),
+			"Entry B": lib.MakeEntry([]string{"Value B"}),
+		}),
 	})
 
 	mock.EXPECT().JoinTable(mainTableKey, mtchtable(table)).Return(errors.New("Expected error"))

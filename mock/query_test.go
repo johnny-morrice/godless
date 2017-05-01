@@ -51,14 +51,14 @@ func TestVisitSelect(t *testing.T) {
 	innerWhereA.OpCode = lib.PREDICATE
 	innerWhereA.Predicate = lib.QueryPredicate{
 		OpCode: lib.STR_NEQ,
-		Keys: []string{"Index this", "Index that"},
+		Keys:   []string{"Index this", "Index that"},
 	}
 
 	innerWhereB := lib.QueryWhere{}
 	innerWhereB.OpCode = lib.PREDICATE
 	innerWhereB.Predicate = lib.QueryPredicate{
-		OpCode: lib.STR_EQ,
-		Literals: []string{"Match this"},
+		OpCode:        lib.STR_EQ,
+		Literals:      []string{"Match this"},
 		IncludeRowKey: true,
 	}
 

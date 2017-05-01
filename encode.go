@@ -18,7 +18,7 @@ func togob(gobbee interface{}, w io.Writer) error {
 
 func tojson(jsonee interface{}, w io.Writer) error {
 	enc := json.NewEncoder(w)
- 	return enc.Encode(jsonee)
+	return enc.Encode(jsonee)
 }
 
 func dejson(jsonee interface{}, r io.Reader) error {

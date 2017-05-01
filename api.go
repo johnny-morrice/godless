@@ -10,9 +10,9 @@ type QueryAPIService interface {
 }
 
 type APIResponse struct {
-	Err error
-	Msg string
-	Rows []Row
+	Err     error
+	Msg     string
+	Rows    []Row
 	QueryId string
 }
 

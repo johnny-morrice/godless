@@ -10,8 +10,8 @@ type NamespaceTreeJoin struct {
 	noDebugVisitor
 	errorCollectVisitor
 	Namespace NamespaceTree
-	tableKey string
-	table Table
+	tableKey  string
+	table     Table
 }
 
 func MakeNamespaceTreeJoin(ns NamespaceTree) *NamespaceTreeJoin {
