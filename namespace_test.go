@@ -149,15 +149,21 @@ func TestNamespaceEquals(t *testing.T) {
 }
 
 func TestEmptyTable(t *testing.T) {
-	t.Fail()
+	expected := Table{rows: map[string]Row{}}
+	actual := EmptyTable()
+
+	assertTableEquals(t, expected, actual)
 }
 
-func TestRowMakeTable(t *testing.T) {
-	t.Fail()
-}
+func TestMakeTable(t *testing.T) {
+	expected := Table{
+		rows: map[string]Row{
+			"foo": EmptyRow(),
+		},
+	}
+	actual := MakeTable(map[string]Row{"foo": EmptyRow()})
 
-func TestTableForeachrow(t *testing.T) {
-	t.Fail()
+	assertTableEquals(t, expected, actual)
 }
 
 func TestTableCopy(t *testing.T) {

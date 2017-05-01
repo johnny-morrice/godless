@@ -11,7 +11,7 @@ type NamespaceTreeSelect struct {
 	noDebugVisitor
 	errorCollectVisitor
 	Namespace NamespaceTree
-	crit *rowCriteria
+	crit      *rowCriteria
 }
 
 func MakeNamespaceTreeSelect(namespace NamespaceTree) *NamespaceTreeSelect {
@@ -85,10 +85,10 @@ func (visitor *NamespaceTreeSelect) VisitPredicate(predicate *QueryPredicate) {
 }
 
 type rowCriteria struct {
-	tableKey string
-	count int
-	limit int
-	result []Row
+	tableKey  string
+	count     int
+	limit     int
+	result    []Row
 	rootWhere *QueryWhere
 }
 
@@ -133,14 +133,14 @@ func (crit *rowCriteria) findRows(namespace *Namespace) []Row {
 		return table.AllRows()
 	}
 
-	table.Foreachrow(func (rowKey string, r Row) {
+	table.Foreachrow(RowConsumerFunc(func(rowKey string, r Row) {
 		eval := makeSelectEvalTree(rowKey, r)
 		where := makeWhereStack(crit.rootWhere)
 
 		if eval.evaluate(where) {
 			out = append(out, r)
 		}
-	})
+	}))
 
 	return out
 }
@@ -151,9 +151,9 @@ func (crit *rowCriteria) isReady() bool {
 
 type selectEvalTree struct {
 	rowKey string
-	row Row
-	root *expr
-	stk []*expr
+	row    Row
+	root   *expr
+	stk    []*expr
 }
 
 type exprOpCode uint8
@@ -166,15 +166,15 @@ const (
 )
 
 type expr struct {
-	state exprOpCode
+	state    exprOpCode
 	children []*expr
-	source *QueryWhere
+	source   *QueryWhere
 }
 
 func makeSelectEvalTree(rowKey string, row Row) *selectEvalTree {
 	return &selectEvalTree{
 		rowKey: rowKey,
-		row: row,
+		row:    row,
 	}
 }
 
@@ -285,7 +285,7 @@ func (eval *selectEvalTree) str_eq(prefix []string, entries []Entry) bool {
 		}
 	}
 
-	return true;
+	return true
 }
 
 func (eval *selectEvalTree) str_neq(prefix []string, entries []Entry) bool {
@@ -414,12 +414,12 @@ func (eval *selectEvalTree) VisitPredicate(*QueryPredicate) {
 }
 
 func (eval *selectEvalTree) peek() *expr {
-	return eval.stk[len(eval.stk) - 1]
+	return eval.stk[len(eval.stk)-1]
 }
 
 func (eval *selectEvalTree) pop() *expr {
 	head := eval.peek()
-	eval.stk = eval.stk[:len(eval.stk) - 1]
+	eval.stk = eval.stk[:len(eval.stk)-1]
 	return head
 }
 

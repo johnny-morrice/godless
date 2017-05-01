@@ -1,9 +1,12 @@
 package godless
 
+//go:generate mockgen -destination mock/mock_namespace.go -imports lib=github.com/johnny-morrice/godless -self_package lib github.com/johnny-morrice/godless RowConsumer
+
 import (
 	"crypto/sha256"
 	"fmt"
 	"sort"
+
 	"github.com/pkg/errors"
 )
 
@@ -93,7 +96,7 @@ func (ns *Namespace) Equals(other *Namespace) bool {
 	}
 
 	for k, v := range ns.tables {
-	 	otherv, present := other.tables[k]
+		otherv, present := other.tables[k]
 		if !present || !v.Equals(otherv) {
 			return false
 		}
@@ -123,10 +126,20 @@ func MakeTable(rows map[string]Row) Table {
 	return out
 }
 
+type RowConsumer interface {
+	Accept(rowKey string, r Row)
+}
+
+type RowConsumerFunc func(rowKey string, r Row)
+
+func (rcf RowConsumerFunc) Accept(rowKey string, r Row) {
+	rcf(rowKey, r)
+}
+
 // TODO easy optimisation: hold slice in Table for fast iteration.
-func (t Table) Foreachrow(f func (rowKey string, r Row)) {
+func (t Table) Foreachrow(consumer RowConsumer) {
 	for k, r := range t.rows {
-		f(k, r)
+		consumer.Accept(k, r)
 	}
 }
 
@@ -192,7 +205,7 @@ func (t Table) Equals(other Table) bool {
 	}
 
 	for k, v := range t.rows {
-	 	otherv, present := other.rows[k]
+		otherv, present := other.rows[k]
 		if !present || !v.Equals(otherv) {
 			return false
 		}
@@ -269,7 +282,7 @@ func (row Row) Equals(other Row) bool {
 	}
 
 	for k, v := range row.entries {
-	 	otherv, present := other.entries[k]
+		otherv, present := other.entries[k]
 		if !present || !v.Equals(otherv) {
 			return false
 		}
