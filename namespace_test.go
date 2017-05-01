@@ -207,15 +207,68 @@ func TestTableAllRows(t *testing.T) {
 }
 
 func TestTableJoinTable(t *testing.T) {
-	t.Fail()
+	emptyRow := EmptyRow()
+	barRow := MakeRow(map[string]Entry{
+		"Baz": EmptyEntry(),
+	})
+
+	foo := MakeTable(map[string]Row{
+		"foo": emptyRow,
+	})
+
+	bar := MakeTable(map[string]Row{
+		"bar": barRow,
+	})
+
+	expected := MakeTable(map[string]Row{
+		"foo": emptyRow,
+		"bar": barRow,
+	})
+
+	actual, err := foo.JoinTable(bar)
+
+	if err != nil {
+		t.Error("unexpected error", err)
+	}
+
+	assertTableEquals(t, expected, actual)
 }
 
 func TestTableJoinRow(t *testing.T) {
-	t.Fail()
+	emptyTable := EmptyTable()
+	row := MakeRow(map[string]Entry{
+		"bar": MakeEntry([]string{"hello"}),
+	})
+
+	expected := MakeTable(map[string]Row{
+		"foo": row,
+	})
+
+	actual, err := emptyTable.JoinRow("foo", row)
+
+	if err != nil {
+		t.Error("unexpected error", err)
+	}
+
+	assertTableEquals(t, expected, actual)
 }
 
 func TestTableGetRow(t *testing.T) {
-	t.Fail()
+	expected := MakeRow(map[string]Entry{
+		"bar": EmptyEntry(),
+	})
+
+	table := MakeTable(map[string]Row{
+		"foo": expected,
+	})
+
+	actual, err := table.GetRow("foo")
+
+	if err != nil {
+		t.Error("Unexpected error", err)
+	}
+
+	assertRowEquals(t, expected, actual)
 }
 
 func TestTableEquals(t *testing.T) {
@@ -288,6 +341,13 @@ func assertTableEquals(t *testing.T, expected, actual Table) {
 	if !reflect.DeepEqual(expected, actual) {
 		debugLine(t)
 		t.Error("Expected Table", expected, "but received", actual)
+	}
+}
+
+func assertRowEquals(t *testing.T, expected, actual Row) {
+	if !reflect.DeepEqual(expected, actual) {
+		debugLine(t)
+		t.Error("Expected Row", expected, "but received", actual)
 	}
 }
 
