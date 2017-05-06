@@ -1,7 +1,6 @@
-# Things to do
+# TODO
 
 1. Unit tests
-2. Namespace equality (get rid of hacky test eq functions)
 3. Rethink indexing
 4. Replication
 5. Functional & integration tests
@@ -12,19 +11,12 @@ Indexing should be rethought to make replication easy as possible.  Currently we
 
 Imagine another peer downloads the index and wants to check it has access to all the same data.
 
-# Test priority order
+# Testing plan
 
 ## Using mocks and other unit tests
 
-1. remoteNamespace
-2. keyValueStore
-3. NamespaceTreeSelect
-4. NamespaceTreeJoin
-5. WebService
-6. Query (and parsing)
-7. Namespace
-
-Namespace is last.  Although it is crucial to data integrity, the program can basically do something without it working 100%.  If the other parts don't work, then there is literally nothing to execute.  Namespace is also functional, and so easier to reckon about mentally. I have confidence it is already more stable than some other parts.  Nevertheless Namespace certainly needs solid testing before I can claim any stability.
+1. WebService
+2. Query (and parsing)
 
 ## Using integration testing via docker
 
