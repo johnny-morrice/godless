@@ -478,12 +478,7 @@ func mkselectns() *lib.Namespace {
 
 	for tableKey, ts := range tables {
 		for _, t := range ts {
-			var err error
-			namespace, err = namespace.JoinTable(tableKey, t)
-
-			if err != nil {
-				panic(err)
-			}
+			namespace = namespace.JoinTable(tableKey, t)
 		}
 	}
 
@@ -495,12 +490,7 @@ func mktable(name string, rows []lib.Row) lib.Table {
 
 	for i, r := range rows {
 		rowKey := fmt.Sprintf("Row %v%v", name, i)
-		var err error
-		table, err = table.JoinRow(rowKey, r)
-
-		if err != nil {
-			panic(err)
-		}
+		table = table.JoinRow(rowKey, r)
 	}
 
 	return table

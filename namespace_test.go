@@ -64,11 +64,8 @@ func TestNamespaceJoinNamespace(t *testing.T) {
 	expectedFoo := MakeNamespace(map[string]Table{"foo": table})
 	expectedBar := MakeNamespace(map[string]Table{"bar": table})
 
-	actualJoinFooBar, fooBarErr := foo.JoinNamespace(bar)
-	actualJoinBarFoo, barFooErr := bar.JoinNamespace(foo)
-
-	assertNilError(t, fooBarErr)
-	assertNilError(t, barFooErr)
+	actualJoinFooBar := foo.JoinNamespace(bar)
+	actualJoinBarFoo := bar.JoinNamespace(foo)
 
 	assertNamespaceEquals(t, expectedJoin, actualJoinFooBar)
 	assertNamespaceEquals(t, expectedJoin, actualJoinBarFoo)
@@ -84,9 +81,7 @@ func TestNamespaceJoinTable(t *testing.T) {
 	expectedFoo := MakeNamespace(map[string]Table{"foo": table})
 	expectedJoin := MakeNamespace(map[string]Table{"foo": table, "bar": table})
 
-	actual, err := foo.JoinTable("bar", barTable)
-
-	assertNilError(t, err)
+	actual := foo.JoinTable("bar", barTable)
 
 	assertNamespaceEquals(t, expectedFoo, foo)
 	assertNamespaceEquals(t, expectedJoin, actual)
@@ -225,11 +220,7 @@ func TestTableJoinTable(t *testing.T) {
 		"bar": barRow,
 	})
 
-	actual, err := foo.JoinTable(bar)
-
-	if err != nil {
-		t.Error("unexpected error", err)
-	}
+	actual := foo.JoinTable(bar)
 
 	assertTableEquals(t, expected, actual)
 }
@@ -244,11 +235,7 @@ func TestTableJoinRow(t *testing.T) {
 		"foo": row,
 	})
 
-	actual, err := emptyTable.JoinRow("foo", row)
-
-	if err != nil {
-		t.Error("unexpected error", err)
-	}
+	actual := emptyTable.JoinRow("foo", row)
 
 	assertTableEquals(t, expected, actual)
 }

@@ -6,8 +6,6 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"sort"
-
-	"github.com/pkg/errors"
 )
 
 // Semi-lattice type that implements our storage
@@ -45,41 +43,35 @@ func (ns *Namespace) Copy() *Namespace {
 	return out
 }
 
-func (ns *Namespace) JoinNamespace(other *Namespace) (*Namespace, error) {
+func (ns *Namespace) JoinNamespace(other *Namespace) *Namespace {
 	out := ns.Copy()
 
 	for otherk, otherTable := range other.tables {
 		out.addTable(otherk, otherTable)
 	}
 
-	return out, nil
+	return out
 }
 
 // Destructive
-func (ns *Namespace) addTable(key string, table Table) error {
+func (ns *Namespace) addTable(key string, table Table) {
 	current, present := ns.tables[key]
 
 	if present {
-		joined, err := current.JoinTable(table)
-
-		if err != nil {
-			return errors.Wrap(err, "Namespace join table failed")
-		}
+		joined := current.JoinTable(table)
 
 		ns.tables[key] = joined
 	} else {
 		ns.tables[key] = table
 	}
-
-	return nil
 }
 
-func (ns *Namespace) JoinTable(key string, table Table) (*Namespace, error) {
+func (ns *Namespace) JoinTable(key string, table Table) *Namespace {
 	out := ns.Copy()
 
 	out.addTable(key, table)
 
-	return out, nil
+	return out
 }
 
 func (ns *Namespace) GetTable(key string) (Table, error) {
@@ -163,22 +155,22 @@ func (t Table) AllRows() []Row {
 	return out
 }
 
-func (t Table) JoinTable(other Table) (Table, error) {
+func (t Table) JoinTable(other Table) Table {
 	out := t.Copy()
 
 	for otherk, otherRow := range other.rows {
 		out.addRow(otherk, otherRow)
 	}
 
-	return out, nil
+	return out
 }
 
-func (t Table) JoinRow(rowKey string, row Row) (Table, error) {
+func (t Table) JoinRow(rowKey string, row Row) Table {
 	out := t.Copy()
 
 	out.addRow(rowKey, row)
 
-	return out, nil
+	return out
 }
 
 func (t Table) GetRow(rowKey string) (Row, error) {

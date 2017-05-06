@@ -136,13 +136,9 @@ func TestLoadTraverseSuccess(t *testing.T) {
 		}),
 	})
 
-	namespaceA, errA := empty.JoinTable("Table A", tableA)
-	namespaceB, errB := empty.JoinTable("Table B", tableB)
-	namespaceC, errC := empty.JoinTable("Table C", tableC)
-
-	if !(errA == nil && errB == nil && errC == nil) {
-		t.Error("JoinTable failed", errA, errB, errC)
-	}
+	namespaceA := empty.JoinTable("Table A", tableA)
+	namespaceB := empty.JoinTable("Table B", tableB)
+	namespaceC := empty.JoinTable("Table C", tableC)
 
 	recordA := lib.RemoteNamespaceRecord{
 		Namespace: namespaceA,
@@ -198,11 +194,7 @@ func TestLoadTraverseFailure(t *testing.T) {
 		}),
 	})
 
-	namespaceA, errA := empty.JoinTable("Table A", tableA)
-
-	if !(errA == nil) {
-		t.Error("JoinTable failed", errA)
-	}
+	namespaceA := empty.JoinTable("Table A", tableA)
 
 	recordA := lib.RemoteNamespaceRecord{
 		Namespace: namespaceA,
@@ -246,11 +238,7 @@ func TestLoadTraverseAbort(t *testing.T) {
 		}),
 	})
 
-	namespaceA, errA := empty.JoinTable("Table A", tableA)
-
-	if !(errA == nil) {
-		t.Error("JoinTable failed", errA)
-	}
+	namespaceA := empty.JoinTable("Table A", tableA)
 
 	recordA := lib.RemoteNamespaceRecord{
 		Namespace: namespaceA,
@@ -291,7 +279,7 @@ func TestPersistSuccess(t *testing.T) {
 		}),
 	})
 	namespace := lib.EmptyNamespace()
-	nextNamespace, _ := namespace.JoinTable("Table Key", table)
+	nextNamespace := namespace.JoinTable("Table Key", table)
 
 	recordA := lib.RemoteNamespaceRecord{
 		Namespace: namespace,
@@ -346,7 +334,7 @@ func TestPersistFailure(t *testing.T) {
 		}),
 	})
 	namespace := lib.EmptyNamespace()
-	nextNamespace, _ := namespace.JoinTable("Table Key", table)
+	nextNamespace := namespace.JoinTable("Table Key", table)
 
 	recordA := lib.RemoteNamespaceRecord{
 		Namespace: namespace,

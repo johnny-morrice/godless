@@ -5,9 +5,10 @@ import (
 	"testing"
 )
 
-func TestRowCriteria_selectMatching(t *testing.T) {
-	t.Fail()
-}
+// TODO implement test.
+// func TestRowCriteria_selectMatching(t *testing.T) {
+// 	t.Fail()
+// }
 
 // The various where predicates are tested elsewhere.  This test focusses
 // on whether the correct rows will be discovered for any predicate.

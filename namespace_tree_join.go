@@ -1,9 +1,6 @@
 package godless
 
-import (
-	"fmt"
-	"github.com/pkg/errors"
-)
+import "github.com/pkg/errors"
 
 type NamespaceTreeJoin struct {
 	noSelectVisitor
@@ -68,12 +65,7 @@ func (visitor *NamespaceTreeJoin) VisitRowJoin(position int, rowJoin *QueryRowJo
 		row = row.JoinEntry(k, MakeEntry([]string{entry}))
 	}
 
-	joined, err := visitor.table.JoinRow(rowJoin.RowKey, row)
-
-	if err != nil {
-		visitor.collectError(errors.Wrap(err, fmt.Sprintf("VisitRowJoin failed at position %v", position)))
-		return
-	}
+	joined := visitor.table.JoinRow(rowJoin.RowKey, row)
 
 	visitor.table = joined
 }

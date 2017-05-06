@@ -75,11 +75,7 @@ func (ns *remoteNamespace) IsChanged() bool {
 }
 
 func (ns *remoteNamespace) JoinTable(tableKey string, table Table) error {
-	joined, joinerr := ns.Update.JoinTable(tableKey, table)
-
-	if joinerr != nil {
-		return errors.Wrap(joinerr, "remoteNamespace.JoinTable failed")
-	}
+	joined := ns.Update.JoinTable(tableKey, table)
 
 	ns.Update = joined
 
