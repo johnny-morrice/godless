@@ -115,7 +115,7 @@ func (crit *rowCriteria) selectMatching(namespace *Namespace) (bool, error) {
 	crit.result = append(crit.result, rows[:slurp]...)
 	crit.count = crit.count + slurp
 
-	logdbg("Found %v more results. Total: %v.  Limit: %v.", slurp, crit.count, crit.limit)
+	// logdbg("Found %v more results. Total: %v.  Limit: %v.", slurp, crit.count, crit.limit)
 	return false, nil
 }
 
@@ -125,7 +125,6 @@ func (crit *rowCriteria) findRows(namespace *Namespace) []Row {
 	table, err := namespace.GetTable(crit.tableKey)
 
 	if err != nil {
-		// logdbg("findRows failed: %v", err)
 		return out
 	}
 
@@ -146,7 +145,7 @@ func (crit *rowCriteria) findRows(namespace *Namespace) []Row {
 }
 
 func (crit *rowCriteria) isReady() bool {
-	return crit.rootWhere != nil && crit.limit > 0
+	return crit.rootWhere != nil && crit.limit > 0 && crit.tableKey != ""
 }
 
 type selectEvalTree struct {
@@ -229,11 +228,11 @@ func (eval *selectEvalTree) evalPred(where *QueryWhere) *expr {
 	entries := []Entry{}
 
 	for _, key := range pred.Keys {
-		values, err := eval.row.GetEntry(key)
+		more, err := eval.row.GetEntry(key)
 
-		if err != nil {
-			// logdbg("adding key to match")
-			entries = append(entries, values)
+		if err == nil {
+			// logdbg("entry %v: %v", key, more)
+			entries = append(entries, more)
 		} else {
 			// No key = no match.
 			// logdbg("no key = no match for pred %v", pred)
@@ -263,6 +262,7 @@ func (eval *selectEvalTree) str_eq(prefix []string, entries []Entry) bool {
 
 	if err != nil {
 		// Don't log this case.
+		// logdbg("find matcher error")
 		return false
 	}
 
@@ -361,7 +361,6 @@ func (eval *selectEvalTree) LeaveWhere(where *QueryWhere) {
 		panic(fmt.Sprintf("expr stack corruption, 'head' %v but 'where' %v", head.source, where))
 	}
 
-	// logdbg("evaluating for %v children", len(head.children))
 	// TODO dupe code.
 	switch head.state {
 	case EXPR_AND:
