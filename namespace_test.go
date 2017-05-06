@@ -272,55 +272,249 @@ func TestTableGetRow(t *testing.T) {
 }
 
 func TestTableEquals(t *testing.T) {
-	t.Fail()
+	tables := []Table{
+		EmptyTable(),
+		MakeTable(map[string]Row{
+			"foo": EmptyRow(),
+		}),
+		MakeTable(map[string]Row{
+			"bar": EmptyRow(),
+		}),
+		MakeTable(map[string]Row{
+			"foo": MakeRow(map[string]Entry{
+				"baz": EmptyEntry(),
+			}),
+		}),
+	}
+
+	for i := 0; i < len(tables); i++ {
+		tab := tables[i]
+		if !tab.Equals(tab) {
+			t.Error("Expected Table equality at ", i)
+		}
+
+		for j := 0; j < len(tables); j++ {
+			if i == j {
+				continue
+			}
+			other := tables[j]
+
+			if tab.Equals(other) {
+				t.Error("Unexpected Table equality at ", i, j)
+			}
+		}
+	}
 }
 
 func TestEmptyRow(t *testing.T) {
-	t.Fail()
+	expected := Row{
+		entries: map[string]Entry{},
+	}
+
+	actual := EmptyRow()
+
+	assertRowEquals(t, expected, actual)
 }
 
-func TestEntryMakeRow(t *testing.T) {
-	t.Fail()
+func TestMakeRow(t *testing.T) {
+	entry := EmptyEntry()
+
+	expected := Row{
+		entries: map[string]Entry{
+			"foo": entry,
+		},
+	}
+
+	actual := MakeRow(map[string]Entry{
+		"foo": entry,
+	})
+
+	assertRowEquals(t, expected, actual)
 }
 
 func TestRowCopy(t *testing.T) {
-	t.Fail()
+	expected := MakeRow(map[string]Entry{"foo": EmptyEntry()})
+	actual := expected.Copy()
+	assertRowEquals(t, expected, actual)
 }
 
 func TestRowJoinRow(t *testing.T) {
-	t.Fail()
+	emptyEntry := EmptyEntry()
+	fullEntry := MakeEntry([]string{"hi"})
+
+	expected := MakeRow(map[string]Entry{
+		"foo": emptyEntry,
+		"bar": fullEntry,
+	})
+
+	foo := MakeRow(map[string]Entry{
+		"foo": emptyEntry,
+	})
+
+	bar := MakeRow(map[string]Entry{
+		"bar": fullEntry,
+	})
+
+	actual := foo.JoinRow(bar)
+
+	assertRowEquals(t, expected, actual)
 }
 
 func TestRowGetEntry(t *testing.T) {
-	t.Fail()
+	expected := MakeEntry([]string{"hi"})
+
+	row := MakeRow(map[string]Entry{
+		"foo": expected,
+	})
+
+	actual, err := row.GetEntry("foo")
+
+	if err != nil {
+		t.Error("Unexpected error", err)
+	}
+
+	assertEntryEquals(t, expected, actual)
 }
 
 func TestRowJoinEntry(t *testing.T) {
-	t.Fail()
+	emptyEntry := EmptyEntry()
+	fullEntry := MakeEntry([]string{"hi"})
+
+	expected := MakeRow(map[string]Entry{
+		"foo": emptyEntry,
+		"bar": fullEntry,
+	})
+
+	foo := MakeRow(map[string]Entry{
+		"foo": emptyEntry,
+	})
+
+	actual := foo.JoinEntry("bar", fullEntry)
+
+	assertRowEquals(t, expected, actual)
 }
 
 func TestRowEquals(t *testing.T) {
-	t.Fail()
+	emptyEntry := EmptyEntry()
+	fullEntry := MakeEntry([]string{"hi"})
+
+	rows := []Row{
+		EmptyRow(),
+		MakeRow(map[string]Entry{
+			"foo": emptyEntry,
+		}),
+		MakeRow(map[string]Entry{
+			"bar": emptyEntry,
+		}),
+		MakeRow(map[string]Entry{
+			"foo": fullEntry,
+		}),
+	}
+
+	for i := 0; i < len(rows); i++ {
+		r := rows[i]
+
+		if !r.Equals(r) {
+			t.Error("Expected equality at ", i)
+		}
+
+		for j := 0; j < len(rows); j++ {
+			if i == j {
+				continue
+			}
+
+			other := rows[j]
+			if r.Equals(other) {
+				t.Error("Unexpected equality at ", j)
+			}
+		}
+	}
 }
 
 func TestEmptyEntry(t *testing.T) {
-	t.Fail()
+	expected := Entry{
+		set: []string{},
+	}
+
+	actual := EmptyEntry()
+
+	assertEntryEquals(t, expected, actual)
 }
 
 func TestMakeEntry(t *testing.T) {
-	t.Fail()
+	expected := Entry{
+		set: []string{"hello", "world"},
+	}
+
+	actuals := []Entry{
+		MakeEntry([]string{"hello", "world"}),
+		MakeEntry([]string{"world", "hello"}),
+		MakeEntry([]string{"hello", "hello", "world", "world"}),
+	}
+
+	for _, a := range actuals {
+		assertEntryEquals(t, expected, a)
+	}
 }
 
 func TestEntryJoinEntry(t *testing.T) {
-	t.Fail()
+	expected := Entry{
+		set: []string{"hello", "world"},
+	}
+
+	hello := MakeEntry([]string{"hello"})
+	world := MakeEntry([]string{"world"})
+
+	actualFront := hello.JoinEntry(world)
+	actualBack := world.JoinEntry(hello)
+	actualHello := hello.JoinEntry(hello)
+
+	assertEntryEquals(t, expected, actualFront)
+	assertEntryEquals(t, expected, actualBack)
+	assertEntryEquals(t, hello, actualHello)
 }
 
 func TestEntryEquals(t *testing.T) {
-	t.Fail()
+	entries := []Entry{
+		EmptyEntry(),
+		MakeEntry([]string{"hi"}),
+		MakeEntry([]string{"hello", "world"}),
+	}
+
+	for i := 0; i < len(entries); i++ {
+		e := entries[i]
+
+		if !e.Equals(e) {
+			t.Error("Expected equality at ", i)
+		}
+
+		for j := 0; j < len(entries); j++ {
+			if i == j {
+				continue
+			}
+
+			other := entries[j]
+			if e.Equals(other) {
+				t.Error("Unexpected equality at ", j)
+			}
+		}
+	}
 }
 
 func TestEntryGetValues(t *testing.T) {
-	t.Fail()
+	expected := []string{"hello"}
+	entry := MakeEntry([]string{"hello"})
+	actual := entry.GetValues()
+	if !reflect.DeepEqual(expected, actual) {
+		t.Error("Expected", expected, "but was", actual)
+	}
+}
+
+func assertEntryEquals(t *testing.T, expected, actual Entry) {
+	if !reflect.DeepEqual(expected, actual) {
+		debugLine(t)
+		t.Error("Expected Entry", expected, "but received", actual)
+	}
 }
 
 func assertNamespaceEquals(t *testing.T, expected, actual *Namespace) {

@@ -311,6 +311,10 @@ func (e Entry) JoinEntry(other Entry) Entry {
 
 func (e Entry) Equals(other Entry) bool {
 	// Easy because Entry.set is deduplicated and sorted
+	if len(e.set) != len(other.set) {
+		return false
+	}
+
 	for i, v := range e.set {
 		if other.set[i] != v {
 			return false
