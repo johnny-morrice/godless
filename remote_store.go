@@ -14,8 +14,7 @@ type RemoteStoreIndex interface {
 }
 
 type RemoteNamespaceRecord struct {
-	// TODO elsewhere we use pointer for Namespace but this is easier to test.
-	Namespace *Namespace
+	Namespace Namespace
 	Children  []RemoteStoreIndex
 }
 

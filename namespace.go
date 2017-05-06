@@ -13,12 +13,12 @@ type Namespace struct {
 	tables map[string]Table
 }
 
-func EmptyNamespace() *Namespace {
+func EmptyNamespace() Namespace {
 	return MakeNamespace(map[string]Table{})
 }
 
-func MakeNamespace(tables map[string]Table) *Namespace {
-	out := &Namespace{
+func MakeNamespace(tables map[string]Table) Namespace {
+	out := Namespace{
 		tables: map[string]Table{},
 	}
 
@@ -29,11 +29,11 @@ func MakeNamespace(tables map[string]Table) *Namespace {
 	return out
 }
 
-func (ns *Namespace) IsEmpty() bool {
+func (ns Namespace) IsEmpty() bool {
 	return len(ns.tables) == 0
 }
 
-func (ns *Namespace) Copy() *Namespace {
+func (ns Namespace) Copy() Namespace {
 	out := EmptyNamespace()
 
 	for k, table := range ns.tables {
@@ -43,18 +43,18 @@ func (ns *Namespace) Copy() *Namespace {
 	return out
 }
 
-func (ns *Namespace) JoinNamespace(other *Namespace) *Namespace {
+func (ns Namespace) JoinNamespace(other Namespace) Namespace {
 	out := ns.Copy()
 
 	for otherk, otherTable := range other.tables {
-		out.addTable(otherk, otherTable)
+		out = out.addTable(otherk, otherTable)
 	}
 
 	return out
 }
 
 // Destructive
-func (ns *Namespace) addTable(key string, table Table) {
+func (ns Namespace) addTable(key string, table Table) Namespace {
 	current, present := ns.tables[key]
 
 	if present {
@@ -64,17 +64,19 @@ func (ns *Namespace) addTable(key string, table Table) {
 	} else {
 		ns.tables[key] = table
 	}
+
+	return ns
 }
 
-func (ns *Namespace) JoinTable(key string, table Table) *Namespace {
+func (ns Namespace) JoinTable(key string, table Table) Namespace {
 	out := ns.Copy()
 
-	out.addTable(key, table)
+	out = out.addTable(key, table)
 
 	return out
 }
 
-func (ns *Namespace) GetTable(key string) (Table, error) {
+func (ns Namespace) GetTable(key string) (Table, error) {
 	if table, present := ns.tables[key]; present {
 		return table, nil
 	} else {
@@ -82,7 +84,7 @@ func (ns *Namespace) GetTable(key string) (Table, error) {
 	}
 }
 
-func (ns *Namespace) Equals(other *Namespace) bool {
+func (ns Namespace) Equals(other Namespace) bool {
 	if len(ns.tables) != len(other.tables) {
 		return false
 	}

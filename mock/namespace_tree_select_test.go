@@ -456,7 +456,7 @@ func feedNamespace(ntr lib.NamespaceTreeReader) {
 	ntr.ReadNamespace(mkselectns())
 }
 
-func mkselectns() *lib.Namespace {
+func mkselectns() lib.Namespace {
 	namespace := lib.EmptyNamespace()
 	mainTables := []lib.Table{
 		tableA(),

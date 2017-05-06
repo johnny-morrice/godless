@@ -376,7 +376,7 @@ func TestPersistFailure(t *testing.T) {
 	}
 }
 
-func mtchns(ns *lib.Namespace) gomock.Matcher {
+func mtchns(ns lib.Namespace) gomock.Matcher {
 	return nsmatcher{ns}
 }
 
@@ -399,7 +399,7 @@ func (rdm rdmatcher) Matches(v interface{}) bool {
 		return false
 	}
 
-	if reflect.DeepEqual(*rdm.rd.Namespace, *other.Namespace) {
+	if reflect.DeepEqual(rdm.rd.Namespace, other.Namespace) {
 		return true
 	}
 
@@ -407,17 +407,17 @@ func (rdm rdmatcher) Matches(v interface{}) bool {
 }
 
 type nsmatcher struct {
-	ns *lib.Namespace
+	ns lib.Namespace
 }
 
 func (nsm nsmatcher) Matches(v interface{}) bool {
-	other, ok := v.(*lib.Namespace)
+	other, ok := v.(lib.Namespace)
 
 	if !ok {
 		return false
 	}
 
-	return reflect.DeepEqual(*nsm.ns, *other)
+	return nsm.ns.Equals(other)
 }
 
 func (nsm nsmatcher) String() string {

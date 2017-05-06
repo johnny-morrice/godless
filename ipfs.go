@@ -24,7 +24,7 @@ type IPFSPeer struct {
 }
 
 type IPFSRecord struct {
-	Namespace *Namespace
+	Namespace Namespace
 	Children  []IPFSPath
 }
 

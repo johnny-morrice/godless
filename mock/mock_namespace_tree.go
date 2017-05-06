@@ -49,9 +49,9 @@ func (_mr *_MockNamespaceTreeRecorder) LoadTraverse(arg0 interface{}) *gomock.Ca
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "LoadTraverse", arg0)
 }
 
-func (_m *MockNamespaceTree) NamespaceLeaf() *godless.Namespace {
+func (_m *MockNamespaceTree) NamespaceLeaf() godless.Namespace {
 	ret := _m.ctrl.Call(_m, "NamespaceLeaf")
-	ret0, _ := ret[0].(*godless.Namespace)
+	ret0, _ := ret[0].(godless.Namespace)
 	return ret0
 }
 
@@ -80,7 +80,7 @@ func (_m *MockNamespaceTreeReader) EXPECT() *_MockNamespaceTreeReaderRecorder {
 	return _m.recorder
 }
 
-func (_m *MockNamespaceTreeReader) ReadNamespace(_param0 *godless.Namespace) (bool, error) {
+func (_m *MockNamespaceTreeReader) ReadNamespace(_param0 godless.Namespace) (bool, error) {
 	ret := _m.ctrl.Call(_m, "ReadNamespace", _param0)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)

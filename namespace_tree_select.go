@@ -92,7 +92,7 @@ type rowCriteria struct {
 	rootWhere *QueryWhere
 }
 
-func (crit *rowCriteria) selectMatching(namespace *Namespace) (bool, error) {
+func (crit *rowCriteria) selectMatching(namespace Namespace) (bool, error) {
 	remaining := crit.limit - crit.count
 
 	if remaining < 0 {
@@ -119,7 +119,7 @@ func (crit *rowCriteria) selectMatching(namespace *Namespace) (bool, error) {
 	return false, nil
 }
 
-func (crit *rowCriteria) findRows(namespace *Namespace) []Row {
+func (crit *rowCriteria) findRows(namespace Namespace) []Row {
 	out := []Row{}
 
 	table, err := namespace.GetTable(crit.tableKey)

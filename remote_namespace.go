@@ -6,12 +6,12 @@ import (
 
 type remoteNamespace struct {
 	loaded bool
-	Update *Namespace
+	Update Namespace
 
 	Store RemoteStore
 	Index RemoteStoreIndex
 	// Breaking 12 factor rule in caching namespace...
-	Namespace *Namespace
+	Namespace Namespace
 	Children  []*remoteNamespace
 }
 
@@ -32,7 +32,7 @@ func LoadRemoteNamespace(Store RemoteStore, Index RemoteStoreIndex) (KvNamespace
 	return ns, nil
 }
 
-func PersistNewRemoteNamespace(Store RemoteStore, namespace *Namespace) (KvNamespaceTree, error) {
+func PersistNewRemoteNamespace(Store RemoteStore, namespace Namespace) (KvNamespaceTree, error) {
 	ns := &remoteNamespace{}
 	ns.Store = Store
 	ns.Update = namespace
@@ -82,7 +82,7 @@ func (ns *remoteNamespace) JoinTable(tableKey string, table Table) error {
 	return nil
 }
 
-func (ns *remoteNamespace) NamespaceLeaf() *Namespace {
+func (ns *remoteNamespace) NamespaceLeaf() Namespace {
 	return ns.Namespace
 }
 

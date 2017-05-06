@@ -7,7 +7,7 @@ import (
 )
 
 func TestEmptyNamespace(t *testing.T) {
-	expected := &Namespace{
+	expected := Namespace{
 		tables: map[string]Table{},
 	}
 	actual := EmptyNamespace()
@@ -18,7 +18,7 @@ func TestEmptyNamespace(t *testing.T) {
 func TestMakeNamespace(t *testing.T) {
 	table := EmptyTable()
 
-	expected := &Namespace{
+	expected := Namespace{
 		tables: map[string]Table{
 			"foo": table,
 		},
@@ -48,10 +48,6 @@ func TestNamespaceCopy(t *testing.T) {
 	expected := MakeNamespace(map[string]Table{"foo": EmptyTable()})
 	actual := expected.Copy()
 
-	if expected == actual {
-		t.Error("Unexpected pointer equality")
-	}
-
 	assertNamespaceEquals(t, expected, actual)
 }
 
@@ -61,16 +57,12 @@ func TestNamespaceJoinNamespace(t *testing.T) {
 	bar := MakeNamespace(map[string]Table{"bar": table})
 
 	expectedJoin := MakeNamespace(map[string]Table{"foo": table, "bar": table})
-	expectedFoo := MakeNamespace(map[string]Table{"foo": table})
-	expectedBar := MakeNamespace(map[string]Table{"bar": table})
 
 	actualJoinFooBar := foo.JoinNamespace(bar)
 	actualJoinBarFoo := bar.JoinNamespace(foo)
 
 	assertNamespaceEquals(t, expectedJoin, actualJoinFooBar)
 	assertNamespaceEquals(t, expectedJoin, actualJoinBarFoo)
-	assertNamespaceEquals(t, expectedFoo, foo)
-	assertNamespaceEquals(t, expectedBar, bar)
 }
 
 func TestNamespaceJoinTable(t *testing.T) {
@@ -121,11 +113,11 @@ func TestNamespaceEquals(t *testing.T) {
 		}),
 	})
 
-	foos := []*Namespace{
+	foos := []Namespace{
 		nsA, nsB, nsC, nsD,
 	}
 
-	bars := make([]*Namespace, len(foos))
+	bars := make([]Namespace, len(foos))
 	for i, f := range foos {
 		bars[i] = f.Copy()
 	}
@@ -504,14 +496,14 @@ func assertEntryEquals(t *testing.T, expected, actual Entry) {
 	}
 }
 
-func assertNamespaceEquals(t *testing.T, expected, actual *Namespace) {
+func assertNamespaceEquals(t *testing.T, expected, actual Namespace) {
 	if !reflect.DeepEqual(expected, actual) {
 		debugLine(t)
 		t.Error("Expected Namespace", expected, "but received", actual)
 	}
 }
 
-func assertNamespaceNotEquals(t *testing.T, other, actual *Namespace) {
+func assertNamespaceNotEquals(t *testing.T, other, actual Namespace) {
 	if reflect.DeepEqual(other, actual) {
 		debugLine(t)
 		t.Error("Unexpected Namespace", other, "was equal to", actual)
