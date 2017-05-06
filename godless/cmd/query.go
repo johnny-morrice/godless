@@ -32,7 +32,7 @@ import (
 var queryCmd = &cobra.Command{
 	Use:   "query",
 	Short: "Query a godless server",
-	Long: `Send a query to a godless server over HTTP.`,
+	Long:  `Send a query to a godless server over HTTP.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		var query *lib.Query
 

@@ -21,15 +21,15 @@
 package cmd
 
 import (
-	"github.com/spf13/cobra"
 	lib "github.com/johnny-morrice/godless"
+	"github.com/spf13/cobra"
 )
 
 // serveCmd represents the serve command
 var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Run a Godless server",
-	Long: `A godless server listens to queries over HTTP.`,
+	Long:  `A godless server listens to queries over HTTP.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		var err error
 		var kvNamespace lib.KvNamespace
@@ -68,7 +68,7 @@ var serveCmd = &cobra.Command{
 		}
 
 		err = <-errch
-		stopch<- nil
+		stopch <- nil
 
 		die(err)
 	},
