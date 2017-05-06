@@ -1,14 +1,49 @@
 package godless
 
 import (
+	"bytes"
+	"encoding/gob"
 	"reflect"
 	"runtime"
 	"testing"
 )
 
+// Something like QuickCheck would be great here.
+func TestGob(t *testing.T) {
+	expected := MakeNamespace(map[string]Table{
+		"foo": MakeTable(map[string]Row{
+			"bar": MakeRow(map[string]Entry{
+				"baz": MakeEntry([]string{"zob"}),
+			}),
+		}),
+	})
+
+	actual := EmptyNamespace()
+
+	buff := &bytes.Buffer{}
+	enc := gob.NewEncoder(buff)
+
+	err := enc.Encode(expected)
+
+	if err != nil {
+		t.Error("Unexpected encoding error:", err)
+		t.FailNow()
+	}
+
+	dec := gob.NewDecoder(buff)
+	err = dec.Decode(&actual)
+
+	if err != nil {
+		t.Error("Unexpected decoding error:", err)
+		t.FailNow()
+	}
+
+	assertNamespaceEquals(t, expected, actual)
+}
+
 func TestEmptyNamespace(t *testing.T) {
 	expected := Namespace{
-		tables: map[string]Table{},
+		Tables: map[string]Table{},
 	}
 	actual := EmptyNamespace()
 
@@ -19,7 +54,7 @@ func TestMakeNamespace(t *testing.T) {
 	table := EmptyTable()
 
 	expected := Namespace{
-		tables: map[string]Table{
+		Tables: map[string]Table{
 			"foo": table,
 		},
 	}
@@ -136,7 +171,7 @@ func TestNamespaceEquals(t *testing.T) {
 }
 
 func TestEmptyTable(t *testing.T) {
-	expected := Table{rows: map[string]Row{}}
+	expected := Table{Rows: map[string]Row{}}
 	actual := EmptyTable()
 
 	assertTableEquals(t, expected, actual)
@@ -144,7 +179,7 @@ func TestEmptyTable(t *testing.T) {
 
 func TestMakeTable(t *testing.T) {
 	expected := Table{
-		rows: map[string]Row{
+		Rows: map[string]Row{
 			"foo": EmptyRow(),
 		},
 	}
@@ -287,7 +322,7 @@ func TestTableEquals(t *testing.T) {
 
 func TestEmptyRow(t *testing.T) {
 	expected := Row{
-		entries: map[string]Entry{},
+		Entries: map[string]Entry{},
 	}
 
 	actual := EmptyRow()
@@ -299,7 +334,7 @@ func TestMakeRow(t *testing.T) {
 	entry := EmptyEntry()
 
 	expected := Row{
-		entries: map[string]Entry{
+		Entries: map[string]Entry{
 			"foo": entry,
 		},
 	}
@@ -412,7 +447,7 @@ func TestRowEquals(t *testing.T) {
 
 func TestEmptyEntry(t *testing.T) {
 	expected := Entry{
-		set: []string{},
+		Set: []string{},
 	}
 
 	actual := EmptyEntry()
@@ -422,7 +457,7 @@ func TestEmptyEntry(t *testing.T) {
 
 func TestMakeEntry(t *testing.T) {
 	expected := Entry{
-		set: []string{"hello", "world"},
+		Set: []string{"hello", "world"},
 	}
 
 	actuals := []Entry{
@@ -438,7 +473,7 @@ func TestMakeEntry(t *testing.T) {
 
 func TestEntryJoinEntry(t *testing.T) {
 	expected := Entry{
-		set: []string{"hello", "world"},
+		Set: []string{"hello", "world"},
 	}
 
 	hello := MakeEntry([]string{"hello"})
