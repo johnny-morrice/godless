@@ -29,6 +29,18 @@ func MakeNamespace(tables map[string]Table) Namespace {
 	return out
 }
 
+func (ns Namespace) GetTableNames() []string {
+	out := make([]string, len(ns.Tables))
+
+	i := 0
+	for name := range ns.Tables {
+		out[i] = name
+		i++
+	}
+
+	return out
+}
+
 func (ns Namespace) IsEmpty() bool {
 	return len(ns.Tables) == 0
 }

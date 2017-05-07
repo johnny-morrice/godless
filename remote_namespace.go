@@ -5,41 +5,35 @@ import (
 )
 
 type remoteNamespace struct {
-	loaded bool
 	Update Namespace
-
-	Store RemoteStore
-	Index RemoteStoreIndex
-	// Breaking 12 factor rule in caching namespace...
-	Namespace Namespace
-	Children  []*remoteNamespace
+	Store  RemoteStore
+	Addr   RemoteStoreAddress
 }
 
-func LoadRemoteNamespace(Store RemoteStore, Index RemoteStoreIndex) (KvNamespaceTree, error) {
-	ns := &remoteNamespace{}
-	ns.Store = Store
-	ns.Index = Index
-	ns.Update = EmptyNamespace()
-	ns.Namespace = EmptyNamespace()
-	ns.Children = []*remoteNamespace{}
+func LoadRemoteNamespace(store RemoteStore, addr RemoteStoreAddress) (KvNamespaceTree, error) {
+	rn := &remoteNamespace{}
+	rn.Store = store
+	rn.Addr = addr
+	rn.Update = EmptyNamespace()
 
-	err := ns.load()
+	_, err := rn.loadIndex()
+
+	// We don't use the index for anything at this point.
+	logdbg("Index found at '%v'", addr)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "Error loading new namespace")
 	}
 
-	return ns, nil
+	return rn, nil
 }
 
-func PersistNewRemoteNamespace(Store RemoteStore, namespace Namespace) (KvNamespaceTree, error) {
-	ns := &remoteNamespace{}
-	ns.Store = Store
-	ns.Update = namespace
-	ns.Namespace = EmptyNamespace()
-	ns.Children = []*remoteNamespace{}
+func PersistNewRemoteNamespace(store RemoteStore, namespace Namespace) (KvNamespaceTree, error) {
+	rn := &remoteNamespace{}
+	rn.Store = store
+	rn.Update = namespace
 
-	kv, err := ns.Persist()
+	kv, err := rn.Persist()
 
 	if err != nil {
 		return nil, err
@@ -49,17 +43,17 @@ func PersistNewRemoteNamespace(Store RemoteStore, namespace Namespace) (KvNamesp
 }
 
 // RunKvQuery will block until the result can be written to kvq.
-func (ns *remoteNamespace) RunKvQuery(kvq KvQuery) {
+func (rn *remoteNamespace) RunKvQuery(kvq KvQuery) {
 	query := kvq.Query
 	var runner QueryRun
 
 	switch query.OpCode {
 	case JOIN:
-		visitor := MakeNamespaceTreeJoin(ns)
+		visitor := MakeNamespaceTreeJoin(rn)
 		query.Visit(visitor)
 		runner = visitor
 	case SELECT:
-		visitor := MakeNamespaceTreeSelect(ns)
+		visitor := MakeNamespaceTreeSelect(rn)
 		query.Visit(visitor)
 		runner = visitor
 	default:
@@ -70,113 +64,158 @@ func (ns *remoteNamespace) RunKvQuery(kvq KvQuery) {
 	kvq.writeResponse(response)
 }
 
-func (ns *remoteNamespace) IsChanged() bool {
-	return !ns.Update.IsEmpty()
+func (rn *remoteNamespace) IsChanged() bool {
+	return !rn.Update.IsEmpty()
 }
 
-func (ns *remoteNamespace) JoinTable(tableKey string, table Table) error {
-	joined := ns.Update.JoinTable(tableKey, table)
-
-	ns.Update = joined
-
+func (rn *remoteNamespace) JoinTable(tableKey string, table Table) error {
+	joined := rn.Update.JoinTable(tableKey, table)
+	rn.Update = joined
 	return nil
 }
 
-func (ns *remoteNamespace) NamespaceLeaf() Namespace {
-	return ns.Namespace
+func (rn *remoteNamespace) LoadTraverse(nttr NamespaceTreeTableReader) error {
+	index, indexerr := rn.loadIndex()
+
+	if indexerr != nil {
+		return errors.Wrap(indexerr, "LoadTraverse failed")
+	}
+
+	tableAddrs := rn.findTableAddrs(index, nttr)
+
+	return rn.traverseTableNamespaces(tableAddrs, nttr)
 }
 
-func (ns *remoteNamespace) LoadTraverse(f NamespaceTreeReader) error {
-	stack := make([]*remoteNamespace, 1)
-	stack[0] = ns
+func (rn *remoteNamespace) traverseTableNamespaces(tableAddrs []RemoteStoreAddress, f NamespaceTreeReader) error {
+	nsch, cancelch := rn.namespaceLoader(tableAddrs)
+	defer close(cancelch)
+	for ns := range nsch {
+		stop, err := f.ReadNamespace(ns)
 
-	for i := 0; i < len(stack); i++ {
-		current := stack[i]
-		err := current.load()
+		if stop || err != nil {
+			cancelch <- struct{}{}
+		}
 
 		if err != nil {
-			return errors.Wrap(err, "Error in remoteNamespace loadTraverse")
+			return errors.Wrap(err, "traverseTableNamespaces failed")
 		}
-
-		leaf := current.NamespaceLeaf()
-		abort, visiterr := f.ReadNamespace(leaf)
-
-		if visiterr != nil {
-			return errors.Wrap(visiterr, "Error in remoteNamespace traversal")
-		}
-
-		if abort {
-			return nil
-		}
-
-		stack = append(stack, current.Children...)
 	}
 
 	return nil
+}
+
+// Preload namespaces while the previous is analysed.
+func (rn *remoteNamespace) namespaceLoader(addrs []RemoteStoreAddress) (<-chan Namespace, chan<- struct{}) {
+	nsch := make(chan Namespace)
+	cancelch := make(chan struct{})
+
+	go func() {
+		defer close(nsch)
+		for _, a := range addrs {
+			nsr, err := rn.Store.CatNamespace(a)
+
+			if err != nil {
+				logerr("namespaceLoader failed: %v", err)
+				return
+			}
+
+			logdbg("Catted namespace from: %v", a)
+			for {
+				select {
+				case <-cancelch:
+					return
+				case nsch <- nsr.Namespace:
+					break
+				}
+			}
+		}
+	}()
+
+	return nsch, cancelch
+}
+
+func (rn *remoteNamespace) findTableAddrs(index RemoteNamespaceIndex, tableHints TableHinter) []RemoteStoreAddress {
+	out := []RemoteStoreAddress{}
+	for _, t := range tableHints.ReadsTables() {
+		addrs, err := index.GetTableIndices(t)
+
+		if err == nil {
+			out = append(out, addrs...)
+		}
+	}
+
+	return out
 }
 
 // Load chunks over IPFS
 // TODO opportunity to query IPFS in parallel?
-func (ns *remoteNamespace) load() error {
-	if ns.Index == nil {
-		panic("tried to load remoteNamespace with empty Index")
+func (rn *remoteNamespace) loadIndex() (RemoteNamespaceIndex, error) {
+	if rn.Addr == nil {
+		// panic("tried to load remoteNamespace with empty Addr")
+		return EMPTY_INDEX, nil
 	}
 
-	if ns.loaded {
-		logwarn("remoteNamespace already loaded from: '%v'", ns.Index)
-		return nil
-	}
-
-	part, err := ns.Store.Cat(ns.Index)
+	index, err := rn.Store.CatIndex(rn.Addr)
 
 	if err != nil {
-		return errors.Wrap(err, "Error in remoteNamespace Cat")
+		return RemoteNamespaceIndex{}, errors.Wrap(err, "Error in remoteNamespace CatNamespace")
 	}
 
-	ns.Namespace = part.Namespace
-	ns.Children = make([]*remoteNamespace, len(part.Children))
-
-	for i, file := range part.Children {
-		child := &remoteNamespace{}
-		child.Index = file
-		child.Store = ns.Store
-		ns.Children[i] = child
-	}
-
-	ns.loaded = true
-	return nil
+	return index, nil
 }
 
 // Write pending changes to IPFS and return the new parent namespace.
-func (ns *remoteNamespace) Persist() (KvNamespace, error) {
-	part := RemoteNamespaceRecord{}
-	part.Namespace = ns.Update
+func (rn *remoteNamespace) Persist() (KvNamespace, error) {
+	namespace := rn.Update
+	namespaceAddr, nserr := rn.persistNamespace(namespace)
 
-	out := &remoteNamespace{}
-
-	// If this is the first namespace in the chain, don't save children.
-	// TODO become parent of multiple children.
-	if ns.Index != nil {
-		part.Children = []RemoteStoreIndex{ns.Index}
-		out.Children = []*remoteNamespace{ns}
-	} else {
-		part.Children = []RemoteStoreIndex{}
-		out.Children = []*remoteNamespace{}
+	if nserr != nil {
+		return nil, nserr
 	}
 
-	addr, err := ns.Store.Add(part)
+	indexAddr, indexerr := rn.persistIndex(namespaceAddr, namespace)
+
+	if indexerr != nil {
+		return nil, indexerr
+	}
+
+	out := &remoteNamespace{
+		Addr:   indexAddr,
+		Store:  rn.Store,
+		Update: EmptyNamespace(),
+	}
+
+	return out, nil
+}
+
+func (rn *remoteNamespace) persistNamespace(namespace Namespace) (RemoteStoreAddress, error) {
+	part := RemoteNamespaceRecord{Namespace: namespace}
+
+	namespaceAddr, err := rn.Store.AddNamespace(part)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "Error adding remoteNamespace to Store")
 	}
 
-	logdbg("Persisted Namespace at: %v", addr)
+	logdbg("Persisted Namespace at: %v", namespaceAddr)
 
-	out.loaded = true
-	out.Store = ns.Store
-	out.Index = addr
-	out.Namespace = ns.Update
-	out.Update = EmptyNamespace()
+	return namespaceAddr, nil
+}
 
-	return out, nil
+func (rn *remoteNamespace) persistIndex(addr RemoteStoreAddress, namespace Namespace) (RemoteStoreAddress, error) {
+	index, loaderr := rn.loadIndex()
+
+	if loaderr != nil {
+		return nil, errors.Wrap(loaderr, "persistIndex failed")
+	}
+
+	newIndex := index.JoinNamespace(addr, namespace)
+	addr, saveerr := rn.Store.AddIndex(newIndex)
+
+	// TODO duplicate code.
+	if saveerr != nil {
+		return nil, errors.Wrap(saveerr, "persistIndex failed")
+	}
+
+	return addr, nil
 }

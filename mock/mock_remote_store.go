@@ -29,26 +29,48 @@ func (_m *MockRemoteStore) EXPECT() *_MockRemoteStoreRecorder {
 	return _m.recorder
 }
 
-func (_m *MockRemoteStore) Add(_param0 godless.RemoteNamespaceRecord) (godless.RemoteStoreIndex, error) {
-	ret := _m.ctrl.Call(_m, "Add", _param0)
-	ret0, _ := ret[0].(godless.RemoteStoreIndex)
+func (_m *MockRemoteStore) AddIndex(_param0 godless.RemoteNamespaceIndex) (godless.RemoteStoreAddress, error) {
+	ret := _m.ctrl.Call(_m, "AddIndex", _param0)
+	ret0, _ := ret[0].(godless.RemoteStoreAddress)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockRemoteStoreRecorder) Add(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Add", arg0)
+func (_mr *_MockRemoteStoreRecorder) AddIndex(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "AddIndex", arg0)
 }
 
-func (_m *MockRemoteStore) Cat(_param0 godless.RemoteStoreIndex) (godless.RemoteNamespaceRecord, error) {
-	ret := _m.ctrl.Call(_m, "Cat", _param0)
+func (_m *MockRemoteStore) AddNamespace(_param0 godless.RemoteNamespaceRecord) (godless.RemoteStoreAddress, error) {
+	ret := _m.ctrl.Call(_m, "AddNamespace", _param0)
+	ret0, _ := ret[0].(godless.RemoteStoreAddress)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockRemoteStoreRecorder) AddNamespace(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "AddNamespace", arg0)
+}
+
+func (_m *MockRemoteStore) CatIndex(_param0 godless.RemoteStoreAddress) (godless.RemoteNamespaceIndex, error) {
+	ret := _m.ctrl.Call(_m, "CatIndex", _param0)
+	ret0, _ := ret[0].(godless.RemoteNamespaceIndex)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockRemoteStoreRecorder) CatIndex(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "CatIndex", arg0)
+}
+
+func (_m *MockRemoteStore) CatNamespace(_param0 godless.RemoteStoreAddress) (godless.RemoteNamespaceRecord, error) {
+	ret := _m.ctrl.Call(_m, "CatNamespace", _param0)
 	ret0, _ := ret[0].(godless.RemoteNamespaceRecord)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockRemoteStoreRecorder) Cat(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Cat", arg0)
+func (_mr *_MockRemoteStoreRecorder) CatNamespace(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "CatNamespace", arg0)
 }
 
 func (_m *MockRemoteStore) Connect() error {

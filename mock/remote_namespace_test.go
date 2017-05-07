@@ -1,7 +1,7 @@
 package mock_godless
 
 import (
-	"reflect"
+	"fmt"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -14,17 +14,11 @@ func TestLoadRemoteNamespaceSuccess(t *testing.T) {
 	defer ctrl.Finish()
 
 	mock := NewMockRemoteStore(ctrl)
-	index := lib.IPFSPath("The Index")
+	addr := lib.IPFSPath("The Index")
 
-	namespace := lib.EmptyNamespace()
-	record := lib.RemoteNamespaceRecord{
-		Namespace: namespace,
-		Children:  []lib.RemoteStoreIndex{},
-	}
+	mock.EXPECT().CatIndex(addr).Return(lib.EMPTY_INDEX, nil)
 
-	mock.EXPECT().Cat(index).Return(record, nil)
-
-	ns, err := lib.LoadRemoteNamespace(mock, index)
+	ns, err := lib.LoadRemoteNamespace(mock, addr)
 
 	if ns == nil {
 		t.Error("ns was nil")
@@ -40,11 +34,11 @@ func TestLoadRemoteNamespaceFailure(t *testing.T) {
 	defer ctrl.Finish()
 
 	mock := NewMockRemoteStore(ctrl)
-	index := lib.IPFSPath("The Index")
+	addr := lib.IPFSPath("The Index")
 
-	mock.EXPECT().Cat(index).Return(lib.EMPTY_RECORD, errors.New("expected error"))
+	mock.EXPECT().CatIndex(addr).Return(lib.EMPTY_INDEX, errors.New("expected error"))
 
-	ns, err := lib.LoadRemoteNamespace(mock, index)
+	ns, err := lib.LoadRemoteNamespace(mock, addr)
 
 	if ns != nil {
 		t.Error("ns was not nil")
@@ -63,12 +57,13 @@ func TestPersistNewRemoteNamespaceSuccess(t *testing.T) {
 	namespace := lib.EmptyNamespace()
 	record := lib.RemoteNamespaceRecord{
 		Namespace: namespace,
-		Children:  []lib.RemoteStoreIndex{},
 	}
+	addr := lib.IPFSPath("The Index")
+	index := lib.EMPTY_INDEX
+	joinedIndex := index.JoinNamespace(addr, namespace)
 
-	index := lib.IPFSPath("The Index")
-
-	mock.EXPECT().Add(mtchrd(record)).Return(index, nil)
+	mock.EXPECT().AddIndex(joinedIndex).Return(addr, nil)
+	mock.EXPECT().AddNamespace(mtchrd(record)).Return(addr, nil)
 
 	ns, err := lib.PersistNewRemoteNamespace(mock, namespace)
 
@@ -89,10 +84,9 @@ func TestPersistNewRemoteNamespaceFailure(t *testing.T) {
 	namespace := lib.EmptyNamespace()
 	record := lib.RemoteNamespaceRecord{
 		Namespace: namespace,
-		Children:  []lib.RemoteStoreIndex{},
 	}
 
-	mock.EXPECT().Add(mtchrd(record)).Return(nil, errors.New("Expected error"))
+	mock.EXPECT().AddNamespace(mtchrd(record)).Return(nil, errors.New("Expected error"))
 
 	ns, err := lib.PersistNewRemoteNamespace(mock, namespace)
 
@@ -114,10 +108,11 @@ func TestLoadTraverseSuccess(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := NewMockRemoteStore(ctrl)
-	mockReader := NewMockNamespaceTreeReader(ctrl)
-	indexA := lib.IPFSPath("Index A")
-	indexB := lib.IPFSPath("Index B")
-	indexC := lib.IPFSPath("Index C")
+	mockReader := NewMockNamespaceTreeTableReader(ctrl)
+	addrA := lib.IPFSPath("Addr A")
+	addrB := lib.IPFSPath("Addr B")
+	addrC := lib.IPFSPath("Addr C")
+	addrIndex := lib.IPFSPath("Addr Index")
 
 	empty := lib.EmptyNamespace()
 	tableA := lib.MakeTable(map[string]lib.Row{
@@ -136,31 +131,42 @@ func TestLoadTraverseSuccess(t *testing.T) {
 		}),
 	})
 
-	namespaceA := empty.JoinTable("Table A", tableA)
-	namespaceB := empty.JoinTable("Table B", tableB)
-	namespaceC := empty.JoinTable("Table C", tableC)
+	const tableAName = "Table A"
+	const tableBName = "Table B"
+	const tableCName = "Table C"
+
+	namespaceA := empty.JoinTable(tableAName, tableA)
+	namespaceB := empty.JoinTable(tableBName, tableB)
+	namespaceC := empty.JoinTable(tableCName, tableC)
 
 	recordA := lib.RemoteNamespaceRecord{
 		Namespace: namespaceA,
-		Children:  []lib.RemoteStoreIndex{indexB, indexC},
 	}
 	recordB := lib.RemoteNamespaceRecord{
 		Namespace: namespaceB,
-		Children:  []lib.RemoteStoreIndex{},
 	}
 	recordC := lib.RemoteNamespaceRecord{
 		Namespace: namespaceC,
-		Children:  []lib.RemoteStoreIndex{},
 	}
 
-	mockStore.EXPECT().Cat(indexA).Return(recordA, nil)
-	mockStore.EXPECT().Cat(indexB).Return(recordB, nil)
-	mockStore.EXPECT().Cat(indexC).Return(recordC, nil)
+	index := lib.MakeRemoteNamespaceIndex(map[string]lib.RemoteStoreAddress{
+		tableAName: addrA,
+		tableBName: addrB,
+		tableCName: addrC,
+	})
+
+	mockStore.EXPECT().CatIndex(addrIndex).Return(index, nil).Times(2)
+
+	mockStore.EXPECT().CatNamespace(addrA).Return(recordA, nil)
+	mockStore.EXPECT().CatNamespace(addrB).Return(recordB, nil)
+	mockStore.EXPECT().CatNamespace(addrC).Return(recordC, nil)
+
+	mockReader.EXPECT().ReadsTables().Return([]string{tableAName, tableBName, tableCName})
 	mockReader.EXPECT().ReadNamespace(mtchns(namespaceA)).Return(false, nil)
 	mockReader.EXPECT().ReadNamespace(mtchns(namespaceB)).Return(false, nil)
 	mockReader.EXPECT().ReadNamespace(mtchns(namespaceC)).Return(false, nil)
 
-	ns, err := lib.LoadRemoteNamespace(mockStore, indexA)
+	ns, err := lib.LoadRemoteNamespace(mockStore, addrIndex)
 
 	if ns == nil {
 		t.Error("ns was nil")
@@ -182,10 +188,9 @@ func TestLoadTraverseFailure(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := NewMockRemoteStore(ctrl)
-	mockReader := NewMockNamespaceTreeReader(ctrl)
-	indexA := lib.IPFSPath("Index A")
-	indexB := lib.IPFSPath("Index B")
-	indexC := lib.IPFSPath("Index C")
+	mockReader := NewMockNamespaceTreeTableReader(ctrl)
+	addrA := lib.IPFSPath("Addr A")
+	addrB := lib.IPFSPath("Addr B")
 
 	empty := lib.EmptyNamespace()
 	tableA := lib.MakeTable(map[string]lib.Row{
@@ -198,13 +203,17 @@ func TestLoadTraverseFailure(t *testing.T) {
 
 	recordA := lib.RemoteNamespaceRecord{
 		Namespace: namespaceA,
-		Children:  []lib.RemoteStoreIndex{indexB, indexC},
 	}
 
-	mockStore.EXPECT().Cat(indexA).Return(recordA, nil)
+	index := lib.MakeRemoteNamespaceIndex(map[string]lib.RemoteStoreAddress{
+		"Table A": addrB,
+	})
+
+	mockStore.EXPECT().CatNamespace(addrB).Return(recordA, nil)
+	mockStore.EXPECT().CatIndex(index).Return(index, nil)
 	mockReader.EXPECT().ReadNamespace(mtchns(namespaceA)).Return(false, errors.New("Expected error"))
 
-	ns, err := lib.LoadRemoteNamespace(mockStore, indexA)
+	ns, err := lib.LoadRemoteNamespace(mockStore, addrA)
 
 	if ns == nil {
 		t.Error("ns was nil")
@@ -226,10 +235,9 @@ func TestLoadTraverseAbort(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := NewMockRemoteStore(ctrl)
-	mockReader := NewMockNamespaceTreeReader(ctrl)
-	indexA := lib.IPFSPath("Index A")
-	indexB := lib.IPFSPath("Index B")
-	indexC := lib.IPFSPath("Index C")
+	mockReader := NewMockNamespaceTreeTableReader(ctrl)
+	addrA := lib.IPFSPath("Addr A")
+	addrB := lib.IPFSPath("Addr B")
 
 	empty := lib.EmptyNamespace()
 	tableA := lib.MakeTable(map[string]lib.Row{
@@ -242,13 +250,17 @@ func TestLoadTraverseAbort(t *testing.T) {
 
 	recordA := lib.RemoteNamespaceRecord{
 		Namespace: namespaceA,
-		Children:  []lib.RemoteStoreIndex{indexB, indexC},
 	}
 
-	mockStore.EXPECT().Cat(indexA).Return(recordA, nil)
+	index := lib.MakeRemoteNamespaceIndex(map[string]lib.RemoteStoreAddress{
+		"Table A": addrB,
+	})
+
+	mockStore.EXPECT().CatNamespace(addrB).Return(recordA, nil)
+	mockStore.EXPECT().CatIndex(index).Return(index, nil)
 	mockReader.EXPECT().ReadNamespace(mtchns(namespaceA)).Return(true, nil)
 
-	ns, err := lib.LoadRemoteNamespace(mockStore, indexA)
+	ns, err := lib.LoadRemoteNamespace(mockStore, addrA)
 
 	if ns == nil {
 		t.Error("ns was nil")
@@ -271,30 +283,38 @@ func TestPersistSuccess(t *testing.T) {
 
 	mock := NewMockRemoteStore(ctrl)
 
-	index := lib.RemoteStoreIndex(lib.IPFSPath("Index Thing"))
-	anotherIndex := lib.RemoteStoreIndex(lib.IPFSPath("Another index"))
+	addrA := lib.RemoteStoreAddress(lib.IPFSPath("Addr A"))
+	addrB := lib.RemoteStoreAddress(lib.IPFSPath("Addr B"))
+	addrIndexA := lib.RemoteStoreAddress(lib.IPFSPath("Addr Index A"))
+	addrIndexB := lib.RemoteStoreAddress(lib.IPFSPath("Addr Index B"))
 	table := lib.MakeTable(map[string]lib.Row{
 		"Row Key": lib.MakeRow(map[string]lib.Entry{
 			"Entry Key": lib.MakeEntry([]string{"Entry Value"}),
 		}),
 	})
-	namespace := lib.EmptyNamespace()
-	nextNamespace := namespace.JoinTable("Table Key", table)
+	namespaceA := lib.EmptyNamespace()
+	namespaceB := namespaceA.JoinTable("Table Key", table)
 
 	recordA := lib.RemoteNamespaceRecord{
-		Namespace: namespace,
-		Children:  []lib.RemoteStoreIndex{},
+		Namespace: namespaceA,
 	}
 
 	recordB := lib.RemoteNamespaceRecord{
-		Namespace: nextNamespace,
-		Children:  []lib.RemoteStoreIndex{index},
+		Namespace: namespaceB,
 	}
 
-	mock.EXPECT().Add(mtchrd(recordA)).Return(index, nil)
-	mock.EXPECT().Add(mtchrd(recordB)).Return(anotherIndex, nil)
+	indexA := lib.MakeRemoteNamespaceIndex(map[string]lib.RemoteStoreAddress{
+		"Table Key": addrA,
+	})
+	indexB := indexA.JoinNamespace(addrB, namespaceB)
 
-	ns1, perr1 := lib.PersistNewRemoteNamespace(mock, namespace)
+	mock.EXPECT().AddIndex(indexA).Return(addrIndexA, nil)
+	mock.EXPECT().CatIndex(addrIndexA).Return(indexA, nil)
+	mock.EXPECT().AddIndex(indexB).Return(addrIndexB, nil)
+	mock.EXPECT().AddNamespace(mtchrd(recordA)).Return(addrA, nil)
+	mock.EXPECT().AddNamespace(mtchrd(recordB)).Return(addrB, nil)
+
+	ns1, perr1 := lib.PersistNewRemoteNamespace(mock, namespaceA)
 
 	if perr1 != nil {
 		t.Error(perr1)
@@ -327,7 +347,7 @@ func TestPersistFailure(t *testing.T) {
 
 	mock := NewMockRemoteStore(ctrl)
 
-	index := lib.RemoteStoreIndex(lib.IPFSPath("Index Thing"))
+	addr := lib.RemoteStoreAddress(lib.IPFSPath("Index Thing"))
 	table := lib.MakeTable(map[string]lib.Row{
 		"Row Key": lib.MakeRow(map[string]lib.Entry{
 			"Entry Key": lib.MakeEntry([]string{"Entry Value"}),
@@ -338,16 +358,14 @@ func TestPersistFailure(t *testing.T) {
 
 	recordA := lib.RemoteNamespaceRecord{
 		Namespace: namespace,
-		Children:  []lib.RemoteStoreIndex{},
 	}
 
 	recordB := lib.RemoteNamespaceRecord{
 		Namespace: nextNamespace,
-		Children:  []lib.RemoteStoreIndex{index},
 	}
 
-	mock.EXPECT().Add(mtchrd(recordA)).Return(index, nil)
-	mock.EXPECT().Add(mtchrd(recordB)).Return(nil, errors.New("Expected error"))
+	mock.EXPECT().AddNamespace(mtchrd(recordA)).Return(addr, nil)
+	mock.EXPECT().AddNamespace(mtchrd(recordB)).Return(nil, errors.New("Expected error"))
 
 	ns1, perr1 := lib.PersistNewRemoteNamespace(mock, namespace)
 
@@ -399,11 +417,7 @@ func (rdm rdmatcher) Matches(v interface{}) bool {
 		return false
 	}
 
-	if reflect.DeepEqual(rdm.rd.Namespace, other.Namespace) {
-		return true
-	}
-
-	return reflect.DeepEqual(rdm.rd.Children, other.Children)
+	return rdm.rd.Namespace.Equals(other.Namespace)
 }
 
 type nsmatcher struct {
@@ -421,5 +435,5 @@ func (nsm nsmatcher) Matches(v interface{}) bool {
 }
 
 func (nsm nsmatcher) String() string {
-	return "is matcing Namespace"
+	return fmt.Sprintf("matches Namespace: %v", nsm.ns)
 }

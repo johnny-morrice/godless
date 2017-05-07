@@ -46,6 +46,7 @@ func LaunchKeyValueStore(ns KvNamespace) (QueryAPIService, <-chan error) {
 		input:     interact,
 	}
 	go func() {
+		defer close(errch)
 		for kvq := range interact {
 			logdbg("Key Value API received query")
 			err := kv.transact(kvq)
@@ -57,8 +58,6 @@ func LaunchKeyValueStore(ns KvNamespace) (QueryAPIService, <-chan error) {
 				return
 			}
 		}
-
-		close(errch)
 	}()
 
 	return kv, errch

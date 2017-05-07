@@ -17,6 +17,16 @@ func (path IPFSPath) Path() string {
 	return string(path)
 }
 
+func castIPFSPath(addr RemoteStoreAddress) IPFSPath {
+	path, ok := addr.(IPFSPath)
+
+	if !ok {
+		panic("addr was not IPFSPath")
+	}
+
+	return path
+}
+
 type IPFSPeer struct {
 	Url    string
 	Client *http.Client
@@ -25,7 +35,38 @@ type IPFSPeer struct {
 
 type IPFSRecord struct {
 	Namespace Namespace
-	Children  []IPFSPath
+}
+
+type IPFSIndex struct {
+	Index map[string][]IPFSPath
+}
+
+func (index IPFSIndex) remoteIndex() RemoteNamespaceIndex {
+	out := RemoteNamespaceIndex{}
+
+	for indexKey, paths := range index.Index {
+		addrs := make([]RemoteStoreAddress, len(paths))
+		for i, p := range paths {
+			addrs[i] = p
+		}
+		out.Index[indexKey] = addrs
+	}
+
+	return out
+}
+
+func makeIpfsIndex(index RemoteNamespaceIndex) IPFSIndex {
+	out := IPFSIndex{}
+
+	for indexKey, addrs := range index.Index {
+		paths := make([]IPFSPath, len(addrs))
+		for i, a := range addrs {
+			paths[i] = castIPFSPath(a)
+		}
+		out.Index[indexKey] = paths
+	}
+
+	return out
 }
 
 func MakeIPFSPeer(url string) RemoteStore {
@@ -52,60 +93,96 @@ func (peer *IPFSPeer) Disconnect() error {
 	return nil
 }
 
-func (peer *IPFSPeer) Add(record RemoteNamespaceRecord) (RemoteStoreIndex, error) {
+func (peer *IPFSPeer) AddIndex(index RemoteNamespaceIndex) (RemoteStoreAddress, error) {
+	chunk := makeIpfsIndex(index)
+
+	path, err := peer.add(&chunk)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "IPFSPeer.AddIndex failed")
+	}
+
+	return path, nil
+}
+
+func (peer *IPFSPeer) CatIndex(addr RemoteStoreAddress) (RemoteNamespaceIndex, error) {
+	path := castIPFSPath(addr)
+
+	chunk := IPFSIndex{}
+	caterr := peer.cat(path, &chunk)
+
+	if caterr != nil {
+		return EMPTY_INDEX, errors.Wrap(caterr, "IPFSPeer.CatNamespace failed")
+	}
+
+	index := chunk.remoteIndex()
+	return index, nil
+}
+
+func (peer *IPFSPeer) AddNamespace(record RemoteNamespaceRecord) (RemoteStoreAddress, error) {
 	chunk := IPFSRecord{
 		Namespace: record.Namespace,
-		Children:  make([]IPFSPath, len(record.Children)),
 	}
 
-	for i, index := range record.Children {
-		path, ok := index.(IPFSPath)
+	path, err := peer.add(&chunk)
 
-		if !ok {
-			panic("Child was not IPFSPath")
-		}
-
-		chunk.Children[i] = path
+	if err != nil {
+		return nil, errors.Wrap(err, "IPFSPeer.AddNamespace failed")
 	}
 
+	return path, nil
+}
+
+func (peer *IPFSPeer) CatNamespace(addr RemoteStoreAddress) (RemoteNamespaceRecord, error) {
+	path := castIPFSPath(addr)
+
+	chunk := IPFSRecord{}
+	caterr := peer.cat(path, &chunk)
+
+	if caterr != nil {
+		return EMPTY_RECORD, errors.Wrap(caterr, "IPFSPeer.CatNamespace failed")
+	}
+
+	record := RemoteNamespaceRecord{Namespace: chunk.Namespace}
+	return record, nil
+}
+
+func (peer *IPFSPeer) add(chunk interface{}) (IPFSPath, error) {
 	buff := bytes.Buffer{}
 	enc := gob.NewEncoder(&buff)
 	err := enc.Encode(chunk)
 
 	if err != nil {
-		return nil, errors.Wrap(err, "Error encoding IPFSRecord Gob")
+		return "", errors.Wrap(err, "Error encoding Gob")
 	}
 
 	path, sherr := peer.Shell.Add(&buff)
 
 	if sherr != nil {
-		return nil, errors.Wrap(err, "Error adding to IPFS")
+		return "", errors.Wrap(err, "IPFSPeer.add failed")
 	}
 
-	return RemoteStoreIndex(IPFSPath(path)), nil
+	return IPFSPath(path), nil
 }
 
-func (peer *IPFSPeer) Cat(index RemoteStoreIndex) (RemoteNamespaceRecord, error) {
-	path, ok := index.(IPFSPath)
-
-	if !ok {
-		panic("index was not IPFSPath")
-	}
-
-	dat, err := peer.Shell.Cat(string(path))
+func (peer *IPFSPeer) cat(path IPFSPath, out interface{}) error {
+	reader, err := peer.Shell.Cat(string(path))
 
 	if err != nil {
-		return EMPTY_RECORD, errors.Wrap(err, "Could not Cat index from IPFS")
+		return errors.Wrap(err, "IPFSPeer.cat failed")
 	}
 
-	defer dat.Close()
+	defer reader.Close()
 
-	dec := gob.NewDecoder(dat)
-	chunk := &IPFSRecord{}
-	err = dec.Decode(chunk)
+	dec := gob.NewDecoder(reader)
+	err = dec.Decode(out)
+
+	if err != nil {
+		return errors.Wrap(err, "failed to decode gob")
+	}
 
 	// According to IPFS binding docs we must drain the reader.
-	remainder, drainerr := ioutil.ReadAll(dat)
+	remainder, drainerr := ioutil.ReadAll(reader)
 
 	if drainerr != nil {
 		logwarn("error draining reader: %v", drainerr)
@@ -115,14 +192,5 @@ func (peer *IPFSPeer) Cat(index RemoteStoreIndex) (RemoteNamespaceRecord, error)
 		logwarn("remaining bits after gob: %v", remainder)
 	}
 
-	record := RemoteNamespaceRecord{
-		Namespace: chunk.Namespace,
-		Children:  make([]RemoteStoreIndex, len(chunk.Children)),
-	}
-
-	for i, path := range chunk.Children {
-		record.Children[i] = RemoteStoreIndex(path)
-	}
-
-	return record, nil
+	return nil
 }

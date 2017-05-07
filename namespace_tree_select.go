@@ -35,7 +35,9 @@ func (visitor *NamespaceTreeSelect) RunQuery() APIResponse {
 	}
 
 	lambda := NamespaceTreeLambda(visitor.crit.selectMatching)
-	err := visitor.Namespace.LoadTraverse(lambda)
+	tables := []string{visitor.crit.tableKey}
+	tableReader := AddTableHints(tables, lambda)
+	err := visitor.Namespace.LoadTraverse(tableReader)
 
 	if err != nil {
 		fail.Err = errors.Wrap(err, "NamespaceTreeSelect failed")
