@@ -2,7 +2,7 @@
 
 A toy distributed database for the future internet.
 
-Godless is a CRDT database with query language that uses [Interplanetary Filesystem](https://ipfs.io/) as a data store.
+Godless is a CRDT database, and query language, that uses [Interplanetary Filesystem](https://ipfs.io/) as a data store.
 
 ## Demo
 
