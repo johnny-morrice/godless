@@ -42,7 +42,7 @@ func PersistNewRemoteNamespace(store RemoteStore, namespace Namespace) (KvNamesp
 	return kv.(*remoteNamespace), nil
 }
 
-// TODO there are likely to  replace switches with polymorphism.
+// TODO there are likely to be many reflection features.  Replace switches with polymorphism.
 func (rn *remoteNamespace) RunKvReflection(reflect APIReflectRequest, kvq KvQuery) {
 	var runner APIResponder
 	switch reflect.Command {
