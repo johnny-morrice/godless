@@ -6,6 +6,12 @@ Godless is a CRDT datastore with query language that uses [Interplanetary Filesy
 
 ## Demo
 
+Run IPFS:
+
+```
+$ ipfs daemon --offline
+```
+
 Run server:
 
 ```
