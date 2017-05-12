@@ -25,6 +25,10 @@ type RemoteNamespaceIndex struct {
 	Index map[string][]RemoteStoreAddress
 }
 
+func EmptyRemoteNamespaceIndex() RemoteNamespaceIndex {
+	return MakeRemoteNamespaceIndex(map[string]RemoteStoreAddress{})
+}
+
 func MakeRemoteNamespaceIndex(indices map[string]RemoteStoreAddress) RemoteNamespaceIndex {
 	out := RemoteNamespaceIndex{
 		Index: map[string][]RemoteStoreAddress{},

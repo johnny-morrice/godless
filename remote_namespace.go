@@ -107,7 +107,7 @@ func (rn *remoteNamespace) traverseTableNamespaces(tableAddrs []RemoteStoreAddre
 // Preload namespaces while the previous is analysed.
 func (rn *remoteNamespace) namespaceLoader(addrs []RemoteStoreAddress) (<-chan Namespace, chan<- struct{}) {
 	nsch := make(chan Namespace)
-	cancelch := make(chan struct{})
+	cancelch := make(chan struct{}, 1)
 
 	go func() {
 		defer close(nsch)
@@ -120,12 +120,13 @@ func (rn *remoteNamespace) namespaceLoader(addrs []RemoteStoreAddress) (<-chan N
 			}
 
 			logdbg("Catted namespace from: %v", a)
+		LOOP:
 			for {
 				select {
 				case <-cancelch:
 					return
 				case nsch <- nsr.Namespace:
-					break
+					break LOOP
 				}
 			}
 		}

@@ -86,7 +86,7 @@ func sendErr(rw http.ResponseWriter, err error) error {
 	encerr := tojson(&message, &buff)
 
 	if encerr != nil {
-		panic(fmt.Sprintf("Bug encoding json error message: '%v'; ", err, encerr))
+		panic(fmt.Sprintf("Bug encoding json error message: '%v'; ", encerr))
 	}
 
 	rw.WriteHeader(400)

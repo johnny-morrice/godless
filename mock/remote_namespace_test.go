@@ -189,8 +189,8 @@ func TestLoadTraverseFailure(t *testing.T) {
 
 	mockStore := NewMockRemoteStore(ctrl)
 	mockReader := NewMockNamespaceTreeTableReader(ctrl)
-	addrA := lib.IPFSPath("Addr A")
-	addrB := lib.IPFSPath("Addr B")
+	indexAddr := lib.IPFSPath("Addr Index")
+	namespaceAddr := lib.IPFSPath("Addr A")
 
 	empty := lib.EmptyNamespace()
 	tableA := lib.MakeTable(map[string]lib.Row{
@@ -204,16 +204,17 @@ func TestLoadTraverseFailure(t *testing.T) {
 	recordA := lib.RemoteNamespaceRecord{
 		Namespace: namespaceA,
 	}
-
+	tableName := "Table A"
 	index := lib.MakeRemoteNamespaceIndex(map[string]lib.RemoteStoreAddress{
-		"Table A": addrB,
+		tableName: namespaceAddr,
 	})
 
-	mockStore.EXPECT().CatNamespace(addrB).Return(recordA, nil)
-	mockStore.EXPECT().CatIndex(index).Return(index, nil)
+	mockStore.EXPECT().CatNamespace(namespaceAddr).Return(recordA, nil)
+	mockStore.EXPECT().CatIndex(indexAddr).Return(index, nil).Times(2)
+	mockReader.EXPECT().ReadsTables().Return([]string{tableName})
 	mockReader.EXPECT().ReadNamespace(mtchns(namespaceA)).Return(false, errors.New("Expected error"))
 
-	ns, err := lib.LoadRemoteNamespace(mockStore, addrA)
+	ns, err := lib.LoadRemoteNamespace(mockStore, indexAddr)
 
 	if ns == nil {
 		t.Error("ns was nil")
@@ -236,8 +237,8 @@ func TestLoadTraverseAbort(t *testing.T) {
 
 	mockStore := NewMockRemoteStore(ctrl)
 	mockReader := NewMockNamespaceTreeTableReader(ctrl)
+	addrIndex := lib.IPFSPath("Addr Index")
 	addrA := lib.IPFSPath("Addr A")
-	addrB := lib.IPFSPath("Addr B")
 
 	empty := lib.EmptyNamespace()
 	tableA := lib.MakeTable(map[string]lib.Row{
@@ -252,15 +253,17 @@ func TestLoadTraverseAbort(t *testing.T) {
 		Namespace: namespaceA,
 	}
 
+	tableName := "Table A"
 	index := lib.MakeRemoteNamespaceIndex(map[string]lib.RemoteStoreAddress{
-		"Table A": addrB,
+		tableName: addrA,
 	})
 
-	mockStore.EXPECT().CatNamespace(addrB).Return(recordA, nil)
-	mockStore.EXPECT().CatIndex(index).Return(index, nil)
+	mockStore.EXPECT().CatNamespace(addrA).Return(recordA, nil)
+	mockStore.EXPECT().CatIndex(addrIndex).Return(index, nil).Times(2)
+	mockReader.EXPECT().ReadsTables().Return([]string{tableName})
 	mockReader.EXPECT().ReadNamespace(mtchns(namespaceA)).Return(true, nil)
 
-	ns, err := lib.LoadRemoteNamespace(mockStore, addrA)
+	ns, err := lib.LoadRemoteNamespace(mockStore, addrIndex)
 
 	if ns == nil {
 		t.Error("ns was nil")
@@ -287,13 +290,14 @@ func TestPersistSuccess(t *testing.T) {
 	addrB := lib.RemoteStoreAddress(lib.IPFSPath("Addr B"))
 	addrIndexA := lib.RemoteStoreAddress(lib.IPFSPath("Addr Index A"))
 	addrIndexB := lib.RemoteStoreAddress(lib.IPFSPath("Addr Index B"))
-	table := lib.MakeTable(map[string]lib.Row{
-		"Row Key": lib.MakeRow(map[string]lib.Entry{
-			"Entry Key": lib.MakeEntry([]string{"Entry Value"}),
+	tableB := lib.MakeTable(map[string]lib.Row{
+		"Row B": lib.MakeRow(map[string]lib.Entry{
+			"Entry B": lib.MakeEntry([]string{"Entry B"}),
 		}),
 	})
 	namespaceA := lib.EmptyNamespace()
-	namespaceB := namespaceA.JoinTable("Table Key", table)
+	tableBName := "Table B"
+	namespaceB := namespaceA.JoinTable(tableBName, tableB)
 
 	recordA := lib.RemoteNamespaceRecord{
 		Namespace: namespaceA,
@@ -303,9 +307,8 @@ func TestPersistSuccess(t *testing.T) {
 		Namespace: namespaceB,
 	}
 
-	indexA := lib.MakeRemoteNamespaceIndex(map[string]lib.RemoteStoreAddress{
-		"Table Key": addrA,
-	})
+	indexA := lib.EmptyRemoteNamespaceIndex()
+
 	indexB := indexA.JoinNamespace(addrB, namespaceB)
 
 	mock.EXPECT().AddIndex(indexA).Return(addrIndexA, nil)
@@ -324,7 +327,7 @@ func TestPersistSuccess(t *testing.T) {
 		t.Error("ns1 was nil")
 	}
 
-	jerr := ns1.JoinTable("Table Key", table)
+	jerr := ns1.JoinTable(tableBName, tableB)
 
 	if jerr != nil {
 		t.Error(jerr)
@@ -364,6 +367,7 @@ func TestPersistFailure(t *testing.T) {
 		Namespace: nextNamespace,
 	}
 
+	mock.EXPECT().AddIndex(lib.EmptyRemoteNamespaceIndex())
 	mock.EXPECT().AddNamespace(mtchrd(recordA)).Return(addr, nil)
 	mock.EXPECT().AddNamespace(mtchrd(recordB)).Return(nil, errors.New("Expected error"))
 
