@@ -44,8 +44,8 @@ func (visitor *NamespaceTreeSelect) RunQuery() APIResponse {
 		return fail
 	}
 
-	response := RESPONSE_OK
-	response.Rows = visitor.crit.result
+	response := RESPONSE_QUERY
+	response.QueryResponse.Rows = visitor.crit.result
 	return response
 }
 

@@ -42,10 +42,44 @@ func PersistNewRemoteNamespace(store RemoteStore, namespace Namespace) (KvNamesp
 	return kv.(*remoteNamespace), nil
 }
 
+// TODO there are likely to  replace switches with polymorphism.
+func (rn *remoteNamespace) RunKvReflection(reflect APIReflectRequest, kvq KvQuery) {
+	var runner APIResponder
+	switch reflect.Command {
+	case REFLECT_READ_REMOTE_PATH:
+		runner = APIResponderFunc(rn.getReflectPath)
+	case REFLECT_READ_INDEX:
+		runner = APIResponderFunc(rn.getReflectIndex)
+	case REFLECT_READ_ALL_NAMESPACES:
+		runner = APIResponderFunc(rn.dumpReflectNamespaces)
+	default:
+		panic("Unknown reflection command")
+	}
+
+	response := runner.RunQuery()
+	kvq.writeResponse(response)
+}
+
+// TODO Not sure if best place for these to live.
+func (rn *remoteNamespace) getReflectPath() APIResponse {
+	response := RESPONSE_REFLECT
+	response.ReflectResponse.Path = rn.Addr.Path()
+	return response
+}
+
+func (rn *remoteNamespace) getReflectIndex() APIResponse {
+	response := RESPONSE_REFLECT
+	return response
+}
+
+func (rn *remoteNamespace) dumpReflectNamespaces() APIResponse {
+	response := RESPONSE_REFLECT
+	return response
+}
+
 // RunKvQuery will block until the result can be written to kvq.
-func (rn *remoteNamespace) RunKvQuery(kvq KvQuery) {
-	query := kvq.Query
-	var runner QueryRun
+func (rn *remoteNamespace) RunKvQuery(query *Query, kvq KvQuery) {
+	var runner APIResponder
 
 	switch query.OpCode {
 	case JOIN:

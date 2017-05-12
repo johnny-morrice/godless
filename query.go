@@ -6,8 +6,9 @@ package godless
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
 	"os"
+
+	"github.com/pkg/errors"
 )
 
 type QueryOpCode uint16
@@ -42,10 +43,6 @@ type QueryVisitor interface {
 	VisitJoin(*QueryJoin)
 	VisitRowJoin(int, *QueryRowJoin)
 	VisitSelect(*QuerySelect)
-}
-
-type QueryRun interface {
-	RunQuery() APIResponse
 }
 
 type QueryJoin struct {

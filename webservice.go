@@ -10,7 +10,7 @@ import (
 )
 
 type KeyValueService struct {
-	API QueryAPIService
+	API APIService
 }
 
 func (service *KeyValueService) Handler() http.Handler {

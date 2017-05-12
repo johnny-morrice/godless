@@ -50,6 +50,5 @@ func (thw tableHinterWrapper) ReadNamespace(ns Namespace) (bool, error) {
 type NamespaceTreeLambda func(ns Namespace) (bool, error)
 
 func (ntl NamespaceTreeLambda) ReadNamespace(ns Namespace) (bool, error) {
-	f := (func(ns Namespace) (bool, error))(ntl)
-	return f(ns)
+	return ntl(ns)
 }

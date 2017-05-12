@@ -7,19 +7,47 @@ import (
 )
 
 type KvNamespace interface {
-	RunKvQuery(KvQuery)
+	RunKvQuery(*Query, KvQuery)
+	RunKvReflection(APIReflectRequest, KvQuery)
 	IsChanged() bool
 	Persist() (KvNamespace, error)
 }
 
+type kvRunner interface {
+	Run(KvNamespace, KvQuery)
+}
+
+type kvQueryRunner struct {
+	query *Query
+}
+
+func (kqr kvQueryRunner) Run(kvn KvNamespace, kvq KvQuery) {
+	kvn.RunKvQuery(kqr.query, kvq)
+}
+
+type kvReflectRunner struct {
+	reflection APIReflectRequest
+}
+
+func (krr kvReflectRunner) Run(kvn KvNamespace, kvq KvQuery) {
+	kvn.RunKvReflection(krr.reflection, kvq)
+}
+
 type KvQuery struct {
-	Query    *Query
+	runner   kvRunner
 	Response chan APIResponse
 }
 
 func MakeKvQuery(query *Query) KvQuery {
 	return KvQuery{
-		Query:    query,
+		runner:   kvQueryRunner{query: query},
+		Response: make(chan APIResponse),
+	}
+}
+
+func MakeKvReflect(request APIReflectRequest) KvQuery {
+	return KvQuery{
+		runner:   kvReflectRunner{reflection: request},
 		Response: make(chan APIResponse),
 	}
 }
@@ -37,7 +65,11 @@ func (kvq KvQuery) reportSuccess(val APIResponse) {
 	kvq.writeResponse(val)
 }
 
-func LaunchKeyValueStore(ns KvNamespace) (QueryAPIService, <-chan error) {
+func (kvq KvQuery) Run(kvn KvNamespace) {
+
+}
+
+func LaunchKeyValueStore(ns KvNamespace) (APIService, <-chan error) {
 	interact := make(chan KvQuery)
 	errch := make(chan error, 1)
 
@@ -48,6 +80,7 @@ func LaunchKeyValueStore(ns KvNamespace) (QueryAPIService, <-chan error) {
 	go func() {
 		defer close(errch)
 		for kvq := range interact {
+
 			logdbg("Key Value API received query")
 			err := kv.transact(kvq)
 
@@ -79,12 +112,20 @@ func (kv *keyValueStore) RunQuery(query *Query) (<-chan APIResponse, error) {
 	return kvq.Response, nil
 }
 
-func (kv *keyValueStore) Close() {
+func (kv *keyValueStore) Reflect(request APIReflectRequest) (<-chan APIResponse, error) {
+	kvq := MakeKvReflect(request)
+
+	kv.input <- kvq
+
+	return kvq.Response, nil
+}
+
+func (kv *keyValueStore) CloseAPI() {
 	close(kv.input)
 }
 
 func (kv *keyValueStore) transact(kvq KvQuery) error {
-	kv.namespace.RunKvQuery(kvq)
+	kvq.Run(kv.namespace)
 
 	if kv.namespace.IsChanged() {
 		logdbg("Persisting new namespace")
