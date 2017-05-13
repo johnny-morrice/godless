@@ -9,8 +9,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-const QUERY_API_ROOT = "/api/query"
-const REFLECT_API_ROOT = "/api/reflect"
+const API_ROOT = "/api"
+const QUERY_API_ROOT = "/query"
+const REFLECT_API_ROOT = "/reflect"
 
 type WebService struct {
 	API APIService
@@ -18,13 +19,15 @@ type WebService struct {
 
 func (service *WebService) Handler() http.Handler {
 	root := mux.NewRouter()
-	root.HandleFunc(QUERY_API_ROOT, service.queryRun)
+	topLevel := root.PathPrefix(API_ROOT).Subrouter()
 
-	reflectMux := mux.NewRouter()
+	reflectMux := topLevel.PathPrefix(REFLECT_API_ROOT).Subrouter()
 	reflectMux.HandleFunc("/head", service.reflectHead)
 	reflectMux.HandleFunc("/index", service.reflectIndex)
 	reflectMux.HandleFunc("/namespace", service.reflectDumpNamespace)
-	root.Handle(REFLECT_API_ROOT, reflectMux).Methods("POST")
+
+	topLevel.HandleFunc(QUERY_API_ROOT, service.queryRun)
+
 	return root
 }
 

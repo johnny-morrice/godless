@@ -26,7 +26,12 @@ func MakeClient(addr string) *Client {
 func (client *Client) SendReflection(command APIReflectionType) (*APIResponse, error) {
 	var part string
 	switch command {
-
+	case REFLECT_HEAD_PATH:
+		part = "head"
+	case REFLECT_DUMP_NAMESPACE:
+		part = "namespace"
+	case REFLECT_INDEX:
+		part = "index"
 	default:
 		return nil, fmt.Errorf("Unknown APIReflectionType: %v", command)
 	}
@@ -57,7 +62,7 @@ func (client *Client) SendQuery(query *Query) (*APIResponse, error) {
 }
 
 func (client *Client) Post(path, bodyType string, body io.Reader) (*APIResponse, error) {
-	addr := fmt.Sprintf("http://%s%s", client.Addr, path)
+	addr := fmt.Sprintf("http://%s%s%s", client.Addr, API_ROOT, path)
 	logdbg("HTTP POST to %v", addr)
 
 	resp, err := client.Http.Post(addr, bodyType, body)

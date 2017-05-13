@@ -118,7 +118,6 @@ func parseReflect() (lib.APIReflectionType, error) {
 	default:
 		return lib.REFLECT_NOOP, fmt.Errorf("Unknown reflect type: %v", reflect)
 	}
-
 }
 
 func init() {
