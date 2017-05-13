@@ -57,7 +57,7 @@ var serveCmd = &cobra.Command{
 
 		api, errch := lib.LaunchKeyValueStore(kvNamespace)
 
-		service := &lib.KeyValueService{
+		service := &lib.WebService{
 			API: api,
 		}
 

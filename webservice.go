@@ -12,11 +12,11 @@ import (
 const QUERY_API_ROOT = "/api/query"
 const REFLECT_API_ROOT = "/api/reflect"
 
-type KeyValueService struct {
+type WebService struct {
 	API APIService
 }
 
-func (service *KeyValueService) Handler() http.Handler {
+func (service *WebService) Handler() http.Handler {
 	root := mux.NewRouter()
 	root.HandleFunc(QUERY_API_ROOT, service.queryRun).Methods("POST")
 
@@ -28,22 +28,24 @@ func (service *KeyValueService) Handler() http.Handler {
 	return root
 }
 
-func (service *KeyValueService) reflectHead(rw http.ResponseWriter, req *http.Request) {
-	service.reflect(APIReflectRequest{Command: REFLECT_HEAD_PATH}, rw, req)
+func (service *WebService) reflectHead(rw http.ResponseWriter, req *http.Request) {
+	service.reflect(rw, APIReflectRequest{Command: REFLECT_HEAD_PATH})
 }
 
-func (service *KeyValueService) reflectIndex(rw http.ResponseWriter, req *http.Request) {
-	service.reflect(APIReflectRequest{Command: REFLECT_INDEX}, rw, req)
+func (service *WebService) reflectIndex(rw http.ResponseWriter, req *http.Request) {
+	service.reflect(rw, APIReflectRequest{Command: REFLECT_INDEX})
 }
 
-func (service *KeyValueService) reflectDumpNamespace(rw http.ResponseWriter, req *http.Request) {
-	service.reflect(APIReflectRequest{Command: REFLECT_DUMP_NAMESPACE}, rw, req)
+func (service *WebService) reflectDumpNamespace(rw http.ResponseWriter, req *http.Request) {
+	service.reflect(rw, APIReflectRequest{Command: REFLECT_DUMP_NAMESPACE})
 }
 
-func (service *KeyValueService) reflect(reflection APIReflectRequest, rw http.ResponseWriter, req *http.Request) {
+func (service *WebService) reflect(rw http.ResponseWriter, reflection APIReflectRequest) {
+	respch, err := service.API.Reflect(reflection)
+	service.respond(rw, respch, err)
 }
 
-func (service *KeyValueService) queryRun(rw http.ResponseWriter, req *http.Request) {
+func (service *WebService) queryRun(rw http.ResponseWriter, req *http.Request) {
 	var query *Query
 	var err error
 	var isText bool
@@ -84,9 +86,13 @@ func invalidRequest(rw http.ResponseWriter, err error) {
 	}
 }
 
-func (service *KeyValueService) runQuery(rw http.ResponseWriter, query *Query) {
+func (service *WebService) runQuery(rw http.ResponseWriter, query *Query) {
 	respch, err := service.API.RunQuery(query)
+	service.respond(rw, respch, err)
+}
 
+// TODO more coherency.
+func (service *WebService) respond(rw http.ResponseWriter, respch <-chan APIResponse, err error) {
 	if err != nil {
 		invalidRequest(rw, err)
 		return
