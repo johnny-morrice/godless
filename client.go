@@ -23,8 +23,20 @@ func MakeClient(addr string) *Client {
 	}
 }
 
+func (client *Client) SendReflection(command APIReflectionType) (*APIResponse, error) {
+	var part string
+	switch command {
+
+	default:
+		return nil, fmt.Errorf("Unknown APIReflectionType: %v", command)
+	}
+
+	path := fmt.Sprintf("%v/%v", REFLECT_API_ROOT, part)
+	return client.Post(path, MIME_EMPTY, &bytes.Buffer{})
+}
+
 func (client *Client) SendRawQuery(source string) (*APIResponse, error) {
-	return client.Post(MIME_QUERY, strings.NewReader(source))
+	return client.Post(QUERY_API_ROOT, MIME_QUERY, strings.NewReader(source))
 }
 
 func (client *Client) SendQuery(query *Query) (*APIResponse, error) {
@@ -41,11 +53,11 @@ func (client *Client) SendQuery(query *Query) (*APIResponse, error) {
 		return nil, errors.Wrap(encerr, "Gob encode failed")
 	}
 
-	return client.Post(MIME_GOB, buff)
+	return client.Post(QUERY_API_ROOT, MIME_GOB, buff)
 }
 
-func (client *Client) Post(bodyType string, body io.Reader) (*APIResponse, error) {
-	addr := fmt.Sprintf("http://%s%s", client.Addr, QUERY_API_ROOT)
+func (client *Client) Post(path, bodyType string, body io.Reader) (*APIResponse, error) {
+	addr := fmt.Sprintf("http://%s%s", client.Addr, path)
 	logdbg("HTTP POST to %v", addr)
 
 	resp, err := client.Http.Post(addr, bodyType, body)

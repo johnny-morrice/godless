@@ -33,9 +33,8 @@ var queryCmd = &cobra.Command{
 	Use:   "query",
 	Short: "Query a godless server",
 	Long:  `Send a query to a godless server over HTTP.`,
+	// TODO tidy method.
 	Run: func(cmd *cobra.Command, args []string) {
-		var query *lib.Query
-
 		client := lib.MakeClient(serverAddr)
 
 		if source != "" || analyse {
@@ -55,24 +54,18 @@ var queryCmd = &cobra.Command{
 			query.Parser.PrintSyntaxTree()
 		}
 
-		if query == nil {
-			return
-		}
-
 		if dryrun {
 			return
 		}
 
-		var err error
-		var response *lib.APIResponse
-		if noparse {
-			response, err = client.SendRawQuery(source)
-		} else {
-			response, err = client.SendQuery(query)
-		}
+		response, err := runClient(client)
 
 		if err != nil {
 			die(err)
+		}
+
+		if response == nil {
+			return
 		}
 
 		var json string
@@ -86,11 +79,47 @@ var queryCmd = &cobra.Command{
 	},
 }
 
+var query *lib.Query
 var source string
 var analyse bool
 var noparse bool
 var serverAddr string
 var dryrun bool
+var reflect string
+
+func runClient(client *lib.Client) (*lib.APIResponse, error) {
+	if query != nil {
+		if noparse {
+			return client.SendRawQuery(source)
+		} else {
+			return client.SendQuery(query)
+		}
+	} else if reflect != "" {
+		reflectType, err := parseReflect()
+
+		if err != nil {
+			return nil, err
+		}
+
+		return client.SendReflection(reflectType)
+	} else {
+		return nil, nil
+	}
+}
+
+func parseReflect() (lib.APIReflectionType, error) {
+	switch reflect {
+	case "index":
+		return lib.REFLECT_INDEX, nil
+	case "head":
+		return lib.REFLECT_HEAD_PATH, nil
+	case "namespace":
+		return lib.REFLECT_DUMP_NAMESPACE, nil
+	default:
+		return lib.REFLECT_NOOP, fmt.Errorf("Unknown reflect type: %v", reflect)
+	}
+
+}
 
 func init() {
 	RootCmd.AddCommand(queryCmd)
@@ -100,4 +129,5 @@ func init() {
 	queryCmd.Flags().BoolVar(&analyse, "analyse", false, "Analyse query")
 	queryCmd.Flags().BoolVar(&noparse, "noparse", false, "Send raw query text to server.")
 	queryCmd.Flags().StringVar(&serverAddr, "server", "localhost:8085", "Server address")
+	queryCmd.Flags().StringVar(&reflect, "reflect", "", "Reflect on server state")
 }

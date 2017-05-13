@@ -18,13 +18,13 @@ type WebService struct {
 
 func (service *WebService) Handler() http.Handler {
 	root := mux.NewRouter()
-	root.HandleFunc(QUERY_API_ROOT, service.queryRun).Methods("POST")
+	root.HandleFunc(QUERY_API_ROOT, service.queryRun)
 
 	reflectMux := mux.NewRouter()
-	reflectMux.HandleFunc("/head", service.reflectHead).Methods("GET")
-	reflectMux.HandleFunc("/index", service.reflectIndex).Methods("POST")
-	reflectMux.HandleFunc("/namespace", service.reflectDumpNamespace).Methods("POST")
-	root.Handle(REFLECT_API_ROOT, reflectMux)
+	reflectMux.HandleFunc("/head", service.reflectHead)
+	reflectMux.HandleFunc("/index", service.reflectIndex)
+	reflectMux.HandleFunc("/namespace", service.reflectDumpNamespace)
+	root.Handle(REFLECT_API_ROOT, reflectMux).Methods("POST")
 	return root
 }
 
