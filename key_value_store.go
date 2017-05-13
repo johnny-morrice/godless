@@ -66,7 +66,7 @@ func (kvq KvQuery) reportSuccess(val APIResponse) {
 }
 
 func (kvq KvQuery) Run(kvn KvNamespace) {
-
+	kvq.runner.Run(kvn, kvq)
 }
 
 func LaunchKeyValueStore(ns KvNamespace) (APIService, <-chan error) {
@@ -81,7 +81,7 @@ func LaunchKeyValueStore(ns KvNamespace) (APIService, <-chan error) {
 		defer close(errch)
 		for kvq := range interact {
 
-			logdbg("Key Point API received query")
+			logdbg("Key Value API received query")
 			err := kv.transact(kvq)
 
 			if err != nil {

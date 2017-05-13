@@ -332,7 +332,13 @@ func (e Entry) Equals(other Entry) bool {
 }
 
 func (e Entry) GetValues() []Point {
-	return e.Set
+	cpy := make([]Point, len(e.Set))
+
+	for i, p := range e.Set {
+		cpy[i] = p
+	}
+
+	return cpy
 }
 
 type byStringValue []Point
@@ -350,21 +356,23 @@ func (v byStringValue) Less(i, j int) bool {
 }
 
 // uniq256 deduplicates a slice of Values using sha256.
-func uniq256(dups []Point) []Point {
+func uniq256(dupes []Point) []Point {
 	dedup := map[[sha256.Size]byte]Point{}
 
-	for _, s := range dups {
-		bs := []byte(s)
+	for _, point := range dupes {
+		bs := []byte(string(point))
 		k := sha256.Sum256(bs)
 		if _, present := dedup[k]; !present {
-			dedup[k] = s
+			dedup[k] = point
 		}
 	}
 
 	out := make([]Point, len(dedup))
 
-	for _, v := range dedup {
-		out = append(out, v)
+	i := 0
+	for _, point := range dedup {
+		out[i] = point
+		i++
 	}
 
 	return out

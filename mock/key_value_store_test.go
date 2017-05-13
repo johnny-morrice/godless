@@ -31,7 +31,7 @@ func TestRunQueryReadSuccess(t *testing.T) {
 	}
 
 	mock.EXPECT().IsChanged().Return(false)
-	mock.EXPECT().RunKvQuery(query, mtchkvqq(query))
+	mock.EXPECT().RunKvQuery(query, kvqmatcher{})
 
 	api, errch := lib.LaunchKeyValueStore(mock)
 	resp, err := api.RunQuery(query)
@@ -72,7 +72,7 @@ func TestRunQueryWriteSuccess(t *testing.T) {
 	}
 
 	mock.EXPECT().IsChanged().Return(true)
-	mock.EXPECT().RunKvQuery(query, mtchkvqq(query))
+	mock.EXPECT().RunKvQuery(query, kvqmatcher{})
 	mock.EXPECT().Persist().Return(mock, nil)
 
 	api, errch := lib.LaunchKeyValueStore(mock)
@@ -114,7 +114,7 @@ func TestRunQueryWriteFailure(t *testing.T) {
 	}
 
 	mock.EXPECT().IsChanged().Return(true)
-	mock.EXPECT().RunKvQuery(query, mtchkvqq(query))
+	mock.EXPECT().RunKvQuery(query, kvqmatcher{})
 	mock.EXPECT().Persist().Return(nil, errors.New("Expected error"))
 
 	api, errch := lib.LaunchKeyValueStore(mock)
@@ -162,24 +162,15 @@ func TestRunQueryInvalid(t *testing.T) {
 	api.CloseAPI()
 }
 
-func mtchkvqq(q *lib.Query) gomock.Matcher {
-	return kvqqmatcher{q}
+type kvqmatcher struct {
 }
 
-type kvqqmatcher struct {
-	q *lib.Query
+func (kvqmatcher) String() string {
+	return "any KvQuery"
 }
 
-func (kvqqm kvqqmatcher) String() string {
-	return "is matching KvQuery"
-}
+func (kvqmatcher) Matches(v interface{}) bool {
+	_, ok := v.(lib.KvQuery)
 
-func (kvqqm kvqqmatcher) Matches(v interface{}) bool {
-	other, ok := v.(lib.KvQuery)
-
-	if !ok {
-		return false
-	}
-
-	return reflect.DeepEqual(*kvqqm.q, *other.Query)
+	return ok
 }

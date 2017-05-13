@@ -12,18 +12,18 @@ func TestVisitJoin(t *testing.T) {
 	defer ctrl.Finish()
 
 	joinQuery := lib.Query{}
-	joinQuery.TableKey = "Table Key"
+	joinQuery.TableKey = MAIN_TABLE_KEY
 	joinQuery.OpCode = lib.JOIN
 	joinQuery.Join.Rows = []lib.QueryRowJoin{
 		lib.QueryRowJoin{
 			RowKey: "Hello Row",
-			Entries: map[string]string{
+			Entries: map[lib.EntryName]lib.Point{
 				"Entry A": "Point A",
 			},
 		},
 		lib.QueryRowJoin{
 			RowKey: "Goodbye Row",
-			Entries: map[string]string{
+			Entries: map[lib.EntryName]lib.Point{
 				"Entry B": "Point B",
 			},
 		},
@@ -33,7 +33,7 @@ func TestVisitJoin(t *testing.T) {
 	c1 := visitor.EXPECT().VisitAST(nil)
 	c2 := visitor.EXPECT().VisitParser(nil)
 	c3 := visitor.EXPECT().VisitOpCode(lib.JOIN)
-	c4 := visitor.EXPECT().VisitTableKey("Table Key")
+	c4 := visitor.EXPECT().VisitTableKey(lib.TableName(MAIN_TABLE_KEY))
 	c5 := visitor.EXPECT().VisitJoin(&joinQuery.Join)
 	c6 := visitor.EXPECT().VisitRowJoin(0, &joinQuery.Join.Rows[0])
 	c7 := visitor.EXPECT().VisitRowJoin(1, &joinQuery.Join.Rows[1])
@@ -51,7 +51,7 @@ func TestVisitSelect(t *testing.T) {
 	innerWhereA.OpCode = lib.PREDICATE
 	innerWhereA.Predicate = lib.QueryPredicate{
 		OpCode: lib.STR_NEQ,
-		Keys:   []string{"Index this", "Index that"},
+		Keys:   []lib.EntryName{"Index this", "Index that"},
 	}
 
 	innerWhereB := lib.QueryWhere{}
@@ -70,7 +70,7 @@ func TestVisitSelect(t *testing.T) {
 	}
 
 	selectQuery := lib.Query{}
-	selectQuery.TableKey = "Table Key"
+	selectQuery.TableKey = MAIN_TABLE_KEY
 	selectQuery.OpCode = lib.SELECT
 	selectQuery.Select.Limit = 5
 	selectQuery.Select.Where = outerWhere
@@ -80,7 +80,7 @@ func TestVisitSelect(t *testing.T) {
 	c1 := visitor.EXPECT().VisitAST(nil)
 	c2 := visitor.EXPECT().VisitParser(nil)
 	c3 := visitor.EXPECT().VisitOpCode(lib.SELECT)
-	c4 := visitor.EXPECT().VisitTableKey("Table Key")
+	c4 := visitor.EXPECT().VisitTableKey(MAIN_TABLE_KEY)
 	c5 := visitor.EXPECT().VisitSelect(&selectQuery.Select)
 	c6 := visitor.EXPECT().VisitWhere(0, &selectQuery.Select.Where)
 	c7 := visitor.EXPECT().VisitPredicate(&selectQuery.Select.Where.Predicate)
