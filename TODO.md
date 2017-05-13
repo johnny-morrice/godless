@@ -1,20 +1,19 @@
 # TODO
 
-1. Replication
-2. Any additional mocking tests (I think a couple might be untested)
-3. Write generator of testing data.
-4. libP2P client
-5. Functional & integration tests
-6. User concepts (crypto!)
-
-I want to do the replication bit before writing integration tests via docker because I think the API might change.  As a one man project, doing it in this order is less costly.
+1. Protocol buffers
+2. Replication
+3. Any additional mocking tests (I think a couple might be untested)
+4. Write generator of testing data.
+5. libP2P client
+6. Functional & integration tests
+7. User concepts (crypto!)
 
 We now have an index that associates table names with IPFS content.  When we adopt user concepts, we shall have a 2-dimensional index via crypto keys too (so that users can easily find their data).  Regarding indexing, I want to keep things simple for now.  Need to get a working system first before we start optimising.
-
 
 The client currently sends all requests via webservice.  However, replication and queries should also be handled by libp2p.  We shall keep this webservice though, to facilitate administration.
 
 I am working on a reflection API that can dump data and info on the running system.  This will be very useful for debugging & integration testing, and might serve the basis of a metrics feature (although for a toy program I won't go that far.) I don't know if the reflection API should be available over P2P protocols.  Probably not!
+
 # Testing plan
 
 ## Using mocks and other unit tests
