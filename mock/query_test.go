@@ -18,13 +18,13 @@ func TestVisitJoin(t *testing.T) {
 		lib.QueryRowJoin{
 			RowKey: "Hello Row",
 			Entries: map[string]string{
-				"Entry A": "Value A",
+				"Entry A": "Point A",
 			},
 		},
 		lib.QueryRowJoin{
 			RowKey: "Goodbye Row",
 			Entries: map[string]string{
-				"Entry B": "Value B",
+				"Entry B": "Point B",
 			},
 		},
 	}

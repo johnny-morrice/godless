@@ -62,7 +62,7 @@ func (visitor *NamespaceTreeJoin) VisitRowJoin(position int, rowJoin *QueryRowJo
 	row := Row{}
 
 	for k, entryValue := range rowJoin.Entries {
-		entry := MakeEntry([]Value{entryValue})
+		entry := MakeEntry([]Point{entryValue})
 		row = row.JoinEntry(k, entry)
 	}
 

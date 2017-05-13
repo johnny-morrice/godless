@@ -22,21 +22,21 @@ func TestRunQueryJoinSuccess(t *testing.T) {
 				lib.QueryRowJoin{
 					RowKey: "Row A",
 					Entries: map[string]string{
-						"Entry A": "Value A",
-						"Entry B": "Value B",
+						"Entry A": "Point A",
+						"Entry B": "Point B",
 					},
 				},
 				lib.QueryRowJoin{
 					RowKey: "Row B",
 					Entries: map[string]string{
-						"Entry C": "Value C",
+						"Entry C": "Point C",
 					},
 				},
 				lib.QueryRowJoin{
 					RowKey: "Row A",
 					Entries: map[string]string{
-						"Entry A": "Value D",
-						"Entry D": "Value E",
+						"Entry A": "Point D",
+						"Entry D": "Point E",
 					},
 				},
 			},
@@ -45,12 +45,12 @@ func TestRunQueryJoinSuccess(t *testing.T) {
 
 	table := lib.MakeTable(map[RowName]lib.Row{
 		"Row A": lib.MakeRow(map[EntryName]lib.Entry{
-			"Entry A": lib.MakeEntry([]Value{"Value A", "Value D"}),
-			"Entry B": lib.MakeEntry([]Value{"Value B"}),
-			"Entry D": lib.MakeEntry([]Value{"Value E"}),
+			"Entry A": lib.MakeEntry([]Point{"Point A", "Point D"}),
+			"Entry B": lib.MakeEntry([]Point{"Point B"}),
+			"Entry D": lib.MakeEntry([]Point{"Point E"}),
 		}),
 		"Row B": lib.MakeRow(map[EntryName]lib.Entry{
-			"Entry C": lib.MakeEntry([]Value{"Value C"}),
+			"Entry C": lib.MakeEntry([]Point{"Point C"}),
 		}),
 	})
 	mock.EXPECT().JoinTable(mainTableKey, mtchtable(table)).Return(nil)
@@ -78,8 +78,8 @@ func TestRunQueryJoinFailure(t *testing.T) {
 				lib.QueryRowJoin{
 					RowKey: "Row A",
 					Entries: map[string]string{
-						"Entry A": "Value A",
-						"Entry B": "Value B",
+						"Entry A": "Point A",
+						"Entry B": "Point B",
 					},
 				},
 			},
@@ -88,8 +88,8 @@ func TestRunQueryJoinFailure(t *testing.T) {
 
 	table := lib.MakeTable(map[RowName]lib.Row{
 		"Row A": lib.MakeRow(map[EntryName]lib.Entry{
-			"Entry A": lib.MakeEntry([]Value{"Value A"}),
-			"Entry B": lib.MakeEntry([]Value{"Value B"}),
+			"Entry A": lib.MakeEntry([]Point{"Point A"}),
+			"Entry B": lib.MakeEntry([]Point{"Point B"}),
 		}),
 	})
 

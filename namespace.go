@@ -11,7 +11,7 @@ import (
 type TableName string
 type RowName string
 type EntryName string
-type Value string
+type Point string
 
 // Semi-lattice type that implements our storage
 type Namespace struct {
@@ -299,14 +299,14 @@ func (row Row) Equals(other Row) bool {
 }
 
 type Entry struct {
-	Set []Value
+	Set []Point
 }
 
 func EmptyEntry() Entry {
-	return MakeEntry([]Value{})
+	return MakeEntry([]Point{})
 }
 
-func MakeEntry(set []Value) Entry {
+func MakeEntry(set []Point) Entry {
 	undupes := uniq256(set)
 	sort.Sort(byStringValue(undupes))
 	return Entry{Set: undupes}
@@ -331,11 +331,11 @@ func (e Entry) Equals(other Entry) bool {
 	return true
 }
 
-func (e Entry) GetValues() []Value {
+func (e Entry) GetValues() []Point {
 	return e.Set
 }
 
-type byStringValue []Value
+type byStringValue []Point
 
 func (v byStringValue) Len() int {
 	return len(v)
@@ -350,8 +350,8 @@ func (v byStringValue) Less(i, j int) bool {
 }
 
 // uniq256 deduplicates a slice of Values using sha256.
-func uniq256(dups []Value) []Value {
-	dedup := map[[sha256.Size]byte]Value{}
+func uniq256(dups []Point) []Point {
+	dedup := map[[sha256.Size]byte]Point{}
 
 	for _, s := range dups {
 		bs := []byte(s)
@@ -361,7 +361,7 @@ func uniq256(dups []Value) []Value {
 		}
 	}
 
-	out := make([]Value, len(dedup))
+	out := make([]Point, len(dedup))
 
 	for _, v := range dedup {
 		out = append(out, v)

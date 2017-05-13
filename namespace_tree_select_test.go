@@ -14,10 +14,10 @@ import (
 // on whether the correct rows will be discovered for any predicate.
 func TestRowCriteria_findRows(t *testing.T) {
 	rowA := MakeRow(map[EntryName]Entry{
-		"foo": MakeEntry([]Value{"hello"}),
+		"foo": MakeEntry([]Point{"hello"}),
 	})
 	rowB := MakeRow(map[EntryName]Entry{
-		"bar": MakeEntry([]Value{"world"}),
+		"bar": MakeEntry([]Point{"world"}),
 	})
 
 	namespace := MakeNamespace(map[TableName]Table{

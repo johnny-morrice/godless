@@ -353,11 +353,11 @@ func unquote(value string) (string, error) {
 	return quoted, nil
 }
 
-func makeJoinEntries(mess map[string]string) map[EntryName]Value {
-	es := map[EntryName]Value{}
+func makeJoinEntries(mess map[string]string) map[EntryName]Point {
+	es := map[EntryName]Point{}
 
 	for k, v := range mess {
-		es[EntryName(k)] = Value(v)
+		es[EntryName(k)] = Point(v)
 	}
 
 	return es

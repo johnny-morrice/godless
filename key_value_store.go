@@ -81,7 +81,7 @@ func LaunchKeyValueStore(ns KvNamespace) (APIService, <-chan error) {
 		defer close(errch)
 		for kvq := range interact {
 
-			logdbg("Key Value API received query")
+			logdbg("Key Point API received query")
 			err := kv.transact(kvq)
 
 			if err != nil {

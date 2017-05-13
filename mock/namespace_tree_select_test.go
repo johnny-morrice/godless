@@ -341,7 +341,7 @@ func rowsA() []lib.Row {
 	return []lib.Row{
 		lib.MakeRow(map[EntryName]lib.Entry{
 			// TODO use user concepts to match only the Hi.
-			"Entry A": lib.MakeEntry([]Value{"Hi", "Hello"}),
+			"Entry A": lib.MakeEntry([]Point{"Hi", "Hello"}),
 		}),
 	}
 }
@@ -349,7 +349,7 @@ func rowsA() []lib.Row {
 func rowsB() []lib.Row {
 	return []lib.Row{
 		lib.MakeRow(map[EntryName]lib.Entry{
-			"Entry B": lib.MakeEntry([]Value{"Hi", "Hello World"}),
+			"Entry B": lib.MakeEntry([]Point{"Hi", "Hello World"}),
 		}),
 	}
 }
@@ -357,7 +357,7 @@ func rowsB() []lib.Row {
 func rowsC() []lib.Row {
 	return []lib.Row{
 		lib.MakeRow(map[EntryName]lib.Entry{
-			"Entry B": lib.MakeEntry([]Value{"Hi", "Hello Dude"}),
+			"Entry B": lib.MakeEntry([]Point{"Hi", "Hello Dude"}),
 		}),
 	}
 }
@@ -365,8 +365,8 @@ func rowsC() []lib.Row {
 func rowsD() []lib.Row {
 	return []lib.Row{
 		lib.MakeRow(map[EntryName]lib.Entry{
-			"Entry C": lib.MakeEntry([]Value{"Apple"}),
-			"Entry D": lib.MakeEntry([]Value{"Orange"}),
+			"Entry C": lib.MakeEntry([]Point{"Apple"}),
+			"Entry D": lib.MakeEntry([]Point{"Orange"}),
 		}),
 	}
 }
@@ -374,10 +374,10 @@ func rowsD() []lib.Row {
 func rowsE() []lib.Row {
 	return []lib.Row{
 		lib.MakeRow(map[EntryName]lib.Entry{
-			"Entry E": lib.MakeEntry([]Value{"Bus"}),
+			"Entry E": lib.MakeEntry([]Point{"Bus"}),
 		}),
 		lib.MakeRow(map[EntryName]lib.Entry{
-			"Entry E": lib.MakeEntry([]Value{"Train"}),
+			"Entry E": lib.MakeEntry([]Point{"Train"}),
 		}),
 	}
 }
@@ -385,7 +385,7 @@ func rowsE() []lib.Row {
 func rowsF() []lib.Row {
 	return []lib.Row{
 		lib.MakeRow(map[EntryName]lib.Entry{
-			"Entry F": lib.MakeEntry([]Value{"This row", "rocks"}),
+			"Entry F": lib.MakeEntry([]Point{"This row", "rocks"}),
 		}),
 	}
 }
@@ -393,13 +393,13 @@ func rowsF() []lib.Row {
 func rowsG() []lib.Row {
 	return []lib.Row{
 		lib.MakeRow(map[EntryName]lib.Entry{
-			"Entry Q": lib.MakeEntry([]Value{"Hi", "Folks"}),
+			"Entry Q": lib.MakeEntry([]Point{"Hi", "Folks"}),
 		}),
 		lib.MakeRow(map[EntryName]lib.Entry{
-			"Entry R": lib.MakeEntry([]Value{"Wowzer"}),
+			"Entry R": lib.MakeEntry([]Point{"Wowzer"}),
 		}),
 		lib.MakeRow(map[EntryName]lib.Entry{
-			"Entry S": lib.MakeEntry([]Value{"Trumpet"}),
+			"Entry S": lib.MakeEntry([]Point{"Trumpet"}),
 		}),
 	}
 }
@@ -408,14 +408,14 @@ func rowsG() []lib.Row {
 func rowsZ() []lib.Row {
 	return []lib.Row{
 		lib.MakeRow(map[EntryName]lib.Entry{
-			"Entry A": lib.MakeEntry([]Value{"No", "Match"}),
+			"Entry A": lib.MakeEntry([]Point{"No", "Match"}),
 		}),
 		lib.MakeRow(map[EntryName]lib.Entry{
-			"Entry C": lib.MakeEntry([]Value{"No", "Match", "Here"}),
-			"Entry D": lib.MakeEntry([]Value{"Nada!"}),
+			"Entry C": lib.MakeEntry([]Point{"No", "Match", "Here"}),
+			"Entry D": lib.MakeEntry([]Point{"Nada!"}),
 		}),
 		lib.MakeRow(map[EntryName]lib.Entry{
-			"Entry E": lib.MakeEntry([]Value{"Horse"}),
+			"Entry E": lib.MakeEntry([]Point{"Horse"}),
 		}),
 	}
 }

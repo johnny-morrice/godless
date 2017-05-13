@@ -51,7 +51,7 @@ type QueryJoin struct {
 
 type QueryRowJoin struct {
 	RowKey  RowName
-	Entries map[EntryName]Value `json:",omitempty"`
+	Entries map[EntryName]Point `json:",omitempty"`
 }
 
 type QuerySelect struct {

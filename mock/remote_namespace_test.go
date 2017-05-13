@@ -117,17 +117,17 @@ func TestLoadTraverseSuccess(t *testing.T) {
 	empty := lib.EmptyNamespace()
 	tableA := lib.MakeTable(map[RowName]lib.Row{
 		"Row A": lib.MakeRow(map[EntryName]lib.Entry{
-			"Entry A": lib.MakeEntry([]Value{"Value A"}),
+			"Entry A": lib.MakeEntry([]Point{"Point A"}),
 		}),
 	})
 	tableB := lib.MakeTable(map[RowName]lib.Row{
 		"Row B": lib.MakeRow(map[EntryName]lib.Entry{
-			"Entry B": lib.MakeEntry([]Value{"Value B"}),
+			"Entry B": lib.MakeEntry([]Point{"Point B"}),
 		}),
 	})
 	tableC := lib.MakeTable(map[RowName]lib.Row{
 		"Row C": lib.MakeRow(map[EntryName]lib.Entry{
-			"Entry C": lib.MakeEntry([]Value{"Value C"}),
+			"Entry C": lib.MakeEntry([]Point{"Point C"}),
 		}),
 	})
 
@@ -195,7 +195,7 @@ func TestLoadTraverseFailure(t *testing.T) {
 	empty := lib.EmptyNamespace()
 	tableA := lib.MakeTable(map[RowName]lib.Row{
 		"Row A": lib.MakeRow(map[EntryName]lib.Entry{
-			"Entry A": lib.MakeEntry([]Value{"Value A"}),
+			"Entry A": lib.MakeEntry([]Point{"Point A"}),
 		}),
 	})
 
@@ -243,7 +243,7 @@ func TestLoadTraverseAbort(t *testing.T) {
 	empty := lib.EmptyNamespace()
 	tableA := lib.MakeTable(map[RowName]lib.Row{
 		"Row A": lib.MakeRow(map[EntryName]lib.Entry{
-			"Entry A": lib.MakeEntry([]Value{"Value A"}),
+			"Entry A": lib.MakeEntry([]Point{"Point A"}),
 		}),
 	})
 
@@ -292,7 +292,7 @@ func TestPersistSuccess(t *testing.T) {
 	addrIndexB := lib.RemoteStoreAddress(lib.IPFSPath("Addr Index B"))
 	tableB := lib.MakeTable(map[RowName]lib.Row{
 		"Row B": lib.MakeRow(map[EntryName]lib.Entry{
-			"Entry B": lib.MakeEntry([]Value{"Entry B"}),
+			"Entry B": lib.MakeEntry([]Point{"Entry B"}),
 		}),
 	})
 	namespaceA := lib.EmptyNamespace()
@@ -353,7 +353,7 @@ func TestPersistFailure(t *testing.T) {
 	addr := lib.RemoteStoreAddress(lib.IPFSPath("Index Thing"))
 	table := lib.MakeTable(map[RowName]lib.Row{
 		"Row Key": lib.MakeRow(map[EntryName]lib.Entry{
-			"Entry Key": lib.MakeEntry([]Value{"Entry Value"}),
+			"Entry Key": lib.MakeEntry([]Point{"Entry Point"}),
 		}),
 	})
 	namespace := lib.EmptyNamespace()
