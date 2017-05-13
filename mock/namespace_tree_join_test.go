@@ -43,14 +43,14 @@ func TestRunQueryJoinSuccess(t *testing.T) {
 		},
 	}
 
-	table := lib.MakeTable(map[string]lib.Row{
-		"Row A": lib.MakeRow(map[string]lib.Entry{
-			"Entry A": lib.MakeEntry([]string{"Value A", "Value D"}),
-			"Entry B": lib.MakeEntry([]string{"Value B"}),
-			"Entry D": lib.MakeEntry([]string{"Value E"}),
+	table := lib.MakeTable(map[RowName]lib.Row{
+		"Row A": lib.MakeRow(map[EntryName]lib.Entry{
+			"Entry A": lib.MakeEntry([]Value{"Value A", "Value D"}),
+			"Entry B": lib.MakeEntry([]Value{"Value B"}),
+			"Entry D": lib.MakeEntry([]Value{"Value E"}),
 		}),
-		"Row B": lib.MakeRow(map[string]lib.Entry{
-			"Entry C": lib.MakeEntry([]string{"Value C"}),
+		"Row B": lib.MakeRow(map[EntryName]lib.Entry{
+			"Entry C": lib.MakeEntry([]Value{"Value C"}),
 		}),
 	})
 	mock.EXPECT().JoinTable(mainTableKey, mtchtable(table)).Return(nil)
@@ -86,10 +86,10 @@ func TestRunQueryJoinFailure(t *testing.T) {
 		},
 	}
 
-	table := lib.MakeTable(map[string]lib.Row{
-		"Row A": lib.MakeRow(map[string]lib.Entry{
-			"Entry A": lib.MakeEntry([]string{"Value A"}),
-			"Entry B": lib.MakeEntry([]string{"Value B"}),
+	table := lib.MakeTable(map[RowName]lib.Row{
+		"Row A": lib.MakeRow(map[EntryName]lib.Entry{
+			"Entry A": lib.MakeEntry([]Value{"Value A"}),
+			"Entry B": lib.MakeEntry([]Value{"Value B"}),
 		}),
 	})
 

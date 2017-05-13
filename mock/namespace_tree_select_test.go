@@ -339,67 +339,67 @@ func TestRunQuerySelectInvalid(t *testing.T) {
 
 func rowsA() []lib.Row {
 	return []lib.Row{
-		lib.MakeRow(map[string]lib.Entry{
+		lib.MakeRow(map[EntryName]lib.Entry{
 			// TODO use user concepts to match only the Hi.
-			"Entry A": lib.MakeEntry([]string{"Hi", "Hello"}),
+			"Entry A": lib.MakeEntry([]Value{"Hi", "Hello"}),
 		}),
 	}
 }
 
 func rowsB() []lib.Row {
 	return []lib.Row{
-		lib.MakeRow(map[string]lib.Entry{
-			"Entry B": lib.MakeEntry([]string{"Hi", "Hello World"}),
+		lib.MakeRow(map[EntryName]lib.Entry{
+			"Entry B": lib.MakeEntry([]Value{"Hi", "Hello World"}),
 		}),
 	}
 }
 
 func rowsC() []lib.Row {
 	return []lib.Row{
-		lib.MakeRow(map[string]lib.Entry{
-			"Entry B": lib.MakeEntry([]string{"Hi", "Hello Dude"}),
+		lib.MakeRow(map[EntryName]lib.Entry{
+			"Entry B": lib.MakeEntry([]Value{"Hi", "Hello Dude"}),
 		}),
 	}
 }
 
 func rowsD() []lib.Row {
 	return []lib.Row{
-		lib.MakeRow(map[string]lib.Entry{
-			"Entry C": lib.MakeEntry([]string{"Apple"}),
-			"Entry D": lib.MakeEntry([]string{"Orange"}),
+		lib.MakeRow(map[EntryName]lib.Entry{
+			"Entry C": lib.MakeEntry([]Value{"Apple"}),
+			"Entry D": lib.MakeEntry([]Value{"Orange"}),
 		}),
 	}
 }
 
 func rowsE() []lib.Row {
 	return []lib.Row{
-		lib.MakeRow(map[string]lib.Entry{
-			"Entry E": lib.MakeEntry([]string{"Bus"}),
+		lib.MakeRow(map[EntryName]lib.Entry{
+			"Entry E": lib.MakeEntry([]Value{"Bus"}),
 		}),
-		lib.MakeRow(map[string]lib.Entry{
-			"Entry E": lib.MakeEntry([]string{"Train"}),
+		lib.MakeRow(map[EntryName]lib.Entry{
+			"Entry E": lib.MakeEntry([]Value{"Train"}),
 		}),
 	}
 }
 
 func rowsF() []lib.Row {
 	return []lib.Row{
-		lib.MakeRow(map[string]lib.Entry{
-			"Entry F": lib.MakeEntry([]string{"This row", "rocks"}),
+		lib.MakeRow(map[EntryName]lib.Entry{
+			"Entry F": lib.MakeEntry([]Value{"This row", "rocks"}),
 		}),
 	}
 }
 
 func rowsG() []lib.Row {
 	return []lib.Row{
-		lib.MakeRow(map[string]lib.Entry{
-			"Entry Q": lib.MakeEntry([]string{"Hi", "Folks"}),
+		lib.MakeRow(map[EntryName]lib.Entry{
+			"Entry Q": lib.MakeEntry([]Value{"Hi", "Folks"}),
 		}),
-		lib.MakeRow(map[string]lib.Entry{
-			"Entry R": lib.MakeEntry([]string{"Wowzer"}),
+		lib.MakeRow(map[EntryName]lib.Entry{
+			"Entry R": lib.MakeEntry([]Value{"Wowzer"}),
 		}),
-		lib.MakeRow(map[string]lib.Entry{
-			"Entry S": lib.MakeEntry([]string{"Trumpet"}),
+		lib.MakeRow(map[EntryName]lib.Entry{
+			"Entry S": lib.MakeEntry([]Value{"Trumpet"}),
 		}),
 	}
 }
@@ -407,15 +407,15 @@ func rowsG() []lib.Row {
 // Non matching rows.
 func rowsZ() []lib.Row {
 	return []lib.Row{
-		lib.MakeRow(map[string]lib.Entry{
-			"Entry A": lib.MakeEntry([]string{"No", "Match"}),
+		lib.MakeRow(map[EntryName]lib.Entry{
+			"Entry A": lib.MakeEntry([]Value{"No", "Match"}),
 		}),
-		lib.MakeRow(map[string]lib.Entry{
-			"Entry C": lib.MakeEntry([]string{"No", "Match", "Here"}),
-			"Entry D": lib.MakeEntry([]string{"Nada!"}),
+		lib.MakeRow(map[EntryName]lib.Entry{
+			"Entry C": lib.MakeEntry([]Value{"No", "Match", "Here"}),
+			"Entry D": lib.MakeEntry([]Value{"Nada!"}),
 		}),
-		lib.MakeRow(map[string]lib.Entry{
-			"Entry E": lib.MakeEntry([]string{"Horse"}),
+		lib.MakeRow(map[EntryName]lib.Entry{
+			"Entry E": lib.MakeEntry([]Value{"Horse"}),
 		}),
 	}
 }

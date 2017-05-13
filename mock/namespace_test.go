@@ -12,7 +12,7 @@ func TestTableForeachrow(t *testing.T) {
 	defer ctrl.Finish()
 
 	emptyRow := lib.EmptyRow()
-	fullRow := lib.MakeRow(map[string]lib.Entry{
+	fullRow := lib.MakeRow(map[EntryName]lib.Entry{
 		"baz": lib.EmptyEntry(),
 	})
 
@@ -20,7 +20,7 @@ func TestTableForeachrow(t *testing.T) {
 	mock.EXPECT().Accept("foo", emptyRow)
 	mock.EXPECT().Accept("bar", fullRow)
 
-	table := lib.MakeTable(map[string]lib.Row{
+	table := lib.MakeTable(map[RowName]lib.Row{
 		"foo": emptyRow,
 		"bar": fullRow,
 	})

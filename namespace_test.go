@@ -10,10 +10,10 @@ import (
 
 // Something like QuickCheck would be great here.
 func TestGob(t *testing.T) {
-	expected := MakeNamespace(map[string]Table{
-		"foo": MakeTable(map[string]Row{
-			"bar": MakeRow(map[string]Entry{
-				"baz": MakeEntry([]string{"zob"}),
+	expected := MakeNamespace(map[TableName]Table{
+		"foo": MakeTable(map[RowName]Row{
+			"bar": MakeRow(map[EntryName]Entry{
+				"baz": MakeEntry([]Value{"zob"}),
 			}),
 		}),
 	})
@@ -43,7 +43,7 @@ func TestGob(t *testing.T) {
 
 func TestEmptyNamespace(t *testing.T) {
 	expected := Namespace{
-		Tables: map[string]Table{},
+		Tables: map[TableName]Table{},
 	}
 	actual := EmptyNamespace()
 
@@ -54,11 +54,11 @@ func TestMakeNamespace(t *testing.T) {
 	table := EmptyTable()
 
 	expected := Namespace{
-		Tables: map[string]Table{
+		Tables: map[TableName]Table{
 			"foo": table,
 		},
 	}
-	actual := MakeNamespace(map[string]Table{"foo": table})
+	actual := MakeNamespace(map[TableName]Table{"foo": table})
 
 	assertNamespaceEquals(t, expected, actual)
 }
@@ -66,7 +66,7 @@ func TestMakeNamespace(t *testing.T) {
 func TestNamespaceIsEmpty(t *testing.T) {
 	table := EmptyTable()
 
-	full := MakeNamespace(map[string]Table{"foo": table})
+	full := MakeNamespace(map[TableName]Table{"foo": table})
 
 	empty := EmptyNamespace()
 
@@ -80,7 +80,7 @@ func TestNamespaceIsEmpty(t *testing.T) {
 }
 
 func TestNamespaceCopy(t *testing.T) {
-	expected := MakeNamespace(map[string]Table{"foo": EmptyTable()})
+	expected := MakeNamespace(map[TableName]Table{"foo": EmptyTable()})
 	actual := expected.Copy()
 
 	assertNamespaceEquals(t, expected, actual)
@@ -88,10 +88,10 @@ func TestNamespaceCopy(t *testing.T) {
 
 func TestNamespaceJoinNamespace(t *testing.T) {
 	table := EmptyTable()
-	foo := MakeNamespace(map[string]Table{"foo": table})
-	bar := MakeNamespace(map[string]Table{"bar": table})
+	foo := MakeNamespace(map[TableName]Table{"foo": table})
+	bar := MakeNamespace(map[TableName]Table{"bar": table})
 
-	expectedJoin := MakeNamespace(map[string]Table{"foo": table, "bar": table})
+	expectedJoin := MakeNamespace(map[TableName]Table{"foo": table, "bar": table})
 
 	actualJoinFooBar := foo.JoinNamespace(bar)
 	actualJoinBarFoo := bar.JoinNamespace(foo)
@@ -102,11 +102,11 @@ func TestNamespaceJoinNamespace(t *testing.T) {
 
 func TestNamespaceJoinTable(t *testing.T) {
 	table := EmptyTable()
-	foo := MakeNamespace(map[string]Table{"foo": table})
+	foo := MakeNamespace(map[TableName]Table{"foo": table})
 	barTable := EmptyTable()
 
-	expectedFoo := MakeNamespace(map[string]Table{"foo": table})
-	expectedJoin := MakeNamespace(map[string]Table{"foo": table, "bar": table})
+	expectedFoo := MakeNamespace(map[TableName]Table{"foo": table})
+	expectedJoin := MakeNamespace(map[TableName]Table{"foo": table, "bar": table})
 
 	actual := foo.JoinTable("bar", barTable)
 
@@ -115,10 +115,10 @@ func TestNamespaceJoinTable(t *testing.T) {
 }
 
 func TestNamespaceGetTable(t *testing.T) {
-	expectedTable := MakeTable(map[string]Row{"foo": EmptyRow()})
+	expectedTable := MakeTable(map[RowName]Row{"foo": EmptyRow()})
 	expectedEmptyTable := Table{}
 
-	hasTable := MakeNamespace(map[string]Table{"bar": expectedTable})
+	hasTable := MakeNamespace(map[TableName]Table{"bar": expectedTable})
 	hasNoTable := EmptyNamespace()
 
 	var actualTable Table
@@ -139,11 +139,11 @@ func TestNamespaceGetTable(t *testing.T) {
 func TestNamespaceEquals(t *testing.T) {
 
 	table := EmptyTable()
-	nsA := MakeNamespace(map[string]Table{"foo": table})
-	nsB := MakeNamespace(map[string]Table{"bar": table})
+	nsA := MakeNamespace(map[TableName]Table{"foo": table})
+	nsB := MakeNamespace(map[TableName]Table{"bar": table})
 	nsC := EmptyNamespace()
-	nsD := MakeNamespace(map[string]Table{
-		"foo": MakeTable(map[string]Row{
+	nsD := MakeNamespace(map[TableName]Table{
+		"foo": MakeTable(map[RowName]Row{
 			"howdy": EmptyRow(),
 		}),
 	})
@@ -171,7 +171,7 @@ func TestNamespaceEquals(t *testing.T) {
 }
 
 func TestEmptyTable(t *testing.T) {
-	expected := Table{Rows: map[string]Row{}}
+	expected := Table{Rows: map[RowName]Row{}}
 	actual := EmptyTable()
 
 	assertTableEquals(t, expected, actual)
@@ -179,17 +179,17 @@ func TestEmptyTable(t *testing.T) {
 
 func TestMakeTable(t *testing.T) {
 	expected := Table{
-		Rows: map[string]Row{
+		Rows: map[RowName]Row{
 			"foo": EmptyRow(),
 		},
 	}
-	actual := MakeTable(map[string]Row{"foo": EmptyRow()})
+	actual := MakeTable(map[RowName]Row{"foo": EmptyRow()})
 
 	assertTableEquals(t, expected, actual)
 }
 
 func TestTableCopy(t *testing.T) {
-	expected := MakeTable(map[string]Row{"foo": EmptyRow()})
+	expected := MakeTable(map[RowName]Row{"foo": EmptyRow()})
 	actual := expected.Copy()
 
 	assertTableEquals(t, expected, actual)
@@ -197,7 +197,7 @@ func TestTableCopy(t *testing.T) {
 
 func TestTableAllRows(t *testing.T) {
 	emptyRow := EmptyRow()
-	fullRow := MakeRow(map[string]Entry{
+	fullRow := MakeRow(map[EntryName]Entry{
 		"baz": EmptyEntry(),
 	})
 
@@ -205,7 +205,7 @@ func TestTableAllRows(t *testing.T) {
 		emptyRow, fullRow,
 	}
 
-	table := MakeTable(map[string]Row{
+	table := MakeTable(map[RowName]Row{
 		"foo": emptyRow,
 		"bar": fullRow,
 	})
@@ -230,19 +230,19 @@ func TestTableAllRows(t *testing.T) {
 
 func TestTableJoinTable(t *testing.T) {
 	emptyRow := EmptyRow()
-	barRow := MakeRow(map[string]Entry{
+	barRow := MakeRow(map[EntryName]Entry{
 		"Baz": EmptyEntry(),
 	})
 
-	foo := MakeTable(map[string]Row{
+	foo := MakeTable(map[RowName]Row{
 		"foo": emptyRow,
 	})
 
-	bar := MakeTable(map[string]Row{
+	bar := MakeTable(map[RowName]Row{
 		"bar": barRow,
 	})
 
-	expected := MakeTable(map[string]Row{
+	expected := MakeTable(map[RowName]Row{
 		"foo": emptyRow,
 		"bar": barRow,
 	})
@@ -254,11 +254,11 @@ func TestTableJoinTable(t *testing.T) {
 
 func TestTableJoinRow(t *testing.T) {
 	emptyTable := EmptyTable()
-	row := MakeRow(map[string]Entry{
-		"bar": MakeEntry([]string{"hello"}),
+	row := MakeRow(map[EntryName]Entry{
+		"bar": MakeEntry([]Value{"hello"}),
 	})
 
-	expected := MakeTable(map[string]Row{
+	expected := MakeTable(map[RowName]Row{
 		"foo": row,
 	})
 
@@ -268,11 +268,11 @@ func TestTableJoinRow(t *testing.T) {
 }
 
 func TestTableGetRow(t *testing.T) {
-	expected := MakeRow(map[string]Entry{
+	expected := MakeRow(map[EntryName]Entry{
 		"bar": EmptyEntry(),
 	})
 
-	table := MakeTable(map[string]Row{
+	table := MakeTable(map[RowName]Row{
 		"foo": expected,
 	})
 
@@ -288,14 +288,14 @@ func TestTableGetRow(t *testing.T) {
 func TestTableEquals(t *testing.T) {
 	tables := []Table{
 		EmptyTable(),
-		MakeTable(map[string]Row{
+		MakeTable(map[RowName]Row{
 			"foo": EmptyRow(),
 		}),
-		MakeTable(map[string]Row{
+		MakeTable(map[RowName]Row{
 			"bar": EmptyRow(),
 		}),
-		MakeTable(map[string]Row{
-			"foo": MakeRow(map[string]Entry{
+		MakeTable(map[RowName]Row{
+			"foo": MakeRow(map[EntryName]Entry{
 				"baz": EmptyEntry(),
 			}),
 		}),
@@ -322,7 +322,7 @@ func TestTableEquals(t *testing.T) {
 
 func TestEmptyRow(t *testing.T) {
 	expected := Row{
-		Entries: map[string]Entry{},
+		Entries: map[EntryName]Entry{},
 	}
 
 	actual := EmptyRow()
@@ -334,12 +334,12 @@ func TestMakeRow(t *testing.T) {
 	entry := EmptyEntry()
 
 	expected := Row{
-		Entries: map[string]Entry{
+		Entries: map[EntryName]Entry{
 			"foo": entry,
 		},
 	}
 
-	actual := MakeRow(map[string]Entry{
+	actual := MakeRow(map[EntryName]Entry{
 		"foo": entry,
 	})
 
@@ -347,25 +347,25 @@ func TestMakeRow(t *testing.T) {
 }
 
 func TestRowCopy(t *testing.T) {
-	expected := MakeRow(map[string]Entry{"foo": EmptyEntry()})
+	expected := MakeRow(map[EntryName]Entry{"foo": EmptyEntry()})
 	actual := expected.Copy()
 	assertRowEquals(t, expected, actual)
 }
 
 func TestRowJoinRow(t *testing.T) {
 	emptyEntry := EmptyEntry()
-	fullEntry := MakeEntry([]string{"hi"})
+	fullEntry := MakeEntry([]Value{"hi"})
 
-	expected := MakeRow(map[string]Entry{
+	expected := MakeRow(map[EntryName]Entry{
 		"foo": emptyEntry,
 		"bar": fullEntry,
 	})
 
-	foo := MakeRow(map[string]Entry{
+	foo := MakeRow(map[EntryName]Entry{
 		"foo": emptyEntry,
 	})
 
-	bar := MakeRow(map[string]Entry{
+	bar := MakeRow(map[EntryName]Entry{
 		"bar": fullEntry,
 	})
 
@@ -375,9 +375,9 @@ func TestRowJoinRow(t *testing.T) {
 }
 
 func TestRowGetEntry(t *testing.T) {
-	expected := MakeEntry([]string{"hi"})
+	expected := MakeEntry([]Value{"hi"})
 
-	row := MakeRow(map[string]Entry{
+	row := MakeRow(map[EntryName]Entry{
 		"foo": expected,
 	})
 
@@ -392,14 +392,14 @@ func TestRowGetEntry(t *testing.T) {
 
 func TestRowJoinEntry(t *testing.T) {
 	emptyEntry := EmptyEntry()
-	fullEntry := MakeEntry([]string{"hi"})
+	fullEntry := MakeEntry([]Value{"hi"})
 
-	expected := MakeRow(map[string]Entry{
+	expected := MakeRow(map[EntryName]Entry{
 		"foo": emptyEntry,
 		"bar": fullEntry,
 	})
 
-	foo := MakeRow(map[string]Entry{
+	foo := MakeRow(map[EntryName]Entry{
 		"foo": emptyEntry,
 	})
 
@@ -410,17 +410,17 @@ func TestRowJoinEntry(t *testing.T) {
 
 func TestRowEquals(t *testing.T) {
 	emptyEntry := EmptyEntry()
-	fullEntry := MakeEntry([]string{"hi"})
+	fullEntry := MakeEntry([]Value{"hi"})
 
 	rows := []Row{
 		EmptyRow(),
-		MakeRow(map[string]Entry{
+		MakeRow(map[EntryName]Entry{
 			"foo": emptyEntry,
 		}),
-		MakeRow(map[string]Entry{
+		MakeRow(map[EntryName]Entry{
 			"bar": emptyEntry,
 		}),
-		MakeRow(map[string]Entry{
+		MakeRow(map[EntryName]Entry{
 			"foo": fullEntry,
 		}),
 	}
@@ -447,7 +447,7 @@ func TestRowEquals(t *testing.T) {
 
 func TestEmptyEntry(t *testing.T) {
 	expected := Entry{
-		Set: []string{},
+		Set: []Value{},
 	}
 
 	actual := EmptyEntry()
@@ -457,13 +457,13 @@ func TestEmptyEntry(t *testing.T) {
 
 func TestMakeEntry(t *testing.T) {
 	expected := Entry{
-		Set: []string{"hello", "world"},
+		Set: []Value{"hello", "world"},
 	}
 
 	actuals := []Entry{
-		MakeEntry([]string{"hello", "world"}),
-		MakeEntry([]string{"world", "hello"}),
-		MakeEntry([]string{"hello", "hello", "world", "world"}),
+		MakeEntry([]Value{"hello", "world"}),
+		MakeEntry([]Value{"world", "hello"}),
+		MakeEntry([]Value{"hello", "hello", "world", "world"}),
 	}
 
 	for _, a := range actuals {
@@ -473,11 +473,11 @@ func TestMakeEntry(t *testing.T) {
 
 func TestEntryJoinEntry(t *testing.T) {
 	expected := Entry{
-		Set: []string{"hello", "world"},
+		Set: []Value{"hello", "world"},
 	}
 
-	hello := MakeEntry([]string{"hello"})
-	world := MakeEntry([]string{"world"})
+	hello := MakeEntry([]Value{"hello"})
+	world := MakeEntry([]Value{"world"})
 
 	actualFront := hello.JoinEntry(world)
 	actualBack := world.JoinEntry(hello)
@@ -491,8 +491,8 @@ func TestEntryJoinEntry(t *testing.T) {
 func TestEntryEquals(t *testing.T) {
 	entries := []Entry{
 		EmptyEntry(),
-		MakeEntry([]string{"hi"}),
-		MakeEntry([]string{"hello", "world"}),
+		MakeEntry([]Value{"hi"}),
+		MakeEntry([]Value{"hello", "world"}),
 	}
 
 	for i := 0; i < len(entries); i++ {
@@ -516,8 +516,8 @@ func TestEntryEquals(t *testing.T) {
 }
 
 func TestEntryGetValues(t *testing.T) {
-	expected := []string{"hello"}
-	entry := MakeEntry([]string{"hello"})
+	expected := []Value{"hello"}
+	entry := MakeEntry([]Value{"hello"})
 	actual := entry.GetValues()
 	if !reflect.DeepEqual(expected, actual) {
 		t.Error("Expected", expected, "but was", actual)

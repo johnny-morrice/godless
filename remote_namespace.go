@@ -131,7 +131,7 @@ func (rn *remoteNamespace) IsChanged() bool {
 	return !rn.Update.IsEmpty()
 }
 
-func (rn *remoteNamespace) JoinTable(tableKey string, table Table) error {
+func (rn *remoteNamespace) JoinTable(tableKey TableName, table Table) error {
 	joined := rn.Update.JoinTable(tableKey, table)
 	rn.Update = joined
 	return nil

@@ -35,7 +35,7 @@ func (visitor *NamespaceTreeSelect) RunQuery() APIResponse {
 	}
 
 	lambda := NamespaceTreeLambda(visitor.crit.selectMatching)
-	tables := []string{visitor.crit.tableKey}
+	tables := []TableName{visitor.crit.tableKey}
 	tableReader := AddTableHints(tables, lambda)
 	err := visitor.Namespace.LoadTraverse(tableReader)
 
@@ -49,7 +49,7 @@ func (visitor *NamespaceTreeSelect) RunQuery() APIResponse {
 	return response
 }
 
-func (visitor *NamespaceTreeSelect) VisitTableKey(tableKey string) {
+func (visitor *NamespaceTreeSelect) VisitTableKey(tableKey TableName) {
 	if visitor.hasError() {
 		return
 	}
@@ -87,7 +87,7 @@ func (visitor *NamespaceTreeSelect) VisitPredicate(predicate *QueryPredicate) {
 }
 
 type rowCriteria struct {
-	tableKey  string
+	tableKey  TableName
 	count     int
 	limit     int
 	result    []Row
@@ -134,7 +134,7 @@ func (crit *rowCriteria) findRows(namespace Namespace) []Row {
 		return table.AllRows()
 	}
 
-	table.Foreachrow(RowConsumerFunc(func(rowKey string, r Row) {
+	table.Foreachrow(RowConsumerFunc(func(rowKey RowName, r Row) {
 		eval := makeSelectEvalTree(rowKey, r)
 		where := makeWhereStack(crit.rootWhere)
 
@@ -151,7 +151,7 @@ func (crit *rowCriteria) isReady() bool {
 }
 
 type selectEvalTree struct {
-	rowKey string
+	rowKey RowName
 	row    Row
 	root   *expr
 	stk    []*expr
@@ -172,7 +172,7 @@ type expr struct {
 	source   *QueryWhere
 }
 
-func makeSelectEvalTree(rowKey string, row Row) *selectEvalTree {
+func makeSelectEvalTree(rowKey RowName, row Row) *selectEvalTree {
 	return &selectEvalTree{
 		rowKey: rowKey,
 		row:    row,
@@ -224,7 +224,7 @@ func (eval *selectEvalTree) evalPred(where *QueryWhere) *expr {
 	prefix = append(prefix, pred.Literals...)
 
 	if pred.IncludeRowKey {
-		prefix = append(prefix, eval.rowKey)
+		prefix = append(prefix, string(eval.rowKey))
 	}
 
 	entries := []Entry{}
@@ -277,7 +277,7 @@ func (eval *selectEvalTree) str_eq(prefix []string, entries []Entry) bool {
 	for _, entry := range entries {
 		found := false
 		for _, val := range entry.GetValues() {
-			if val == m {
+			if string(val) == m {
 				found = true
 				break
 			}
@@ -307,7 +307,7 @@ func (eval *selectEvalTree) str_neq(prefix []string, entries []Entry) bool {
 	entrymatch := 0
 	for _, entry := range entries {
 		for _, val := range entry.GetValues() {
-			if val == m {
+			if string(val) == m {
 				entrymatch++
 			}
 		}
@@ -328,7 +328,7 @@ func (eval *selectEvalTree) matcher(prefix []string, entries []Entry) (string, e
 		for _, entry := range entries {
 			values := entry.GetValues()
 			if len(values) > 0 {
-				first = values[0]
+				first = string(values[0])
 				found = true
 				break
 			}

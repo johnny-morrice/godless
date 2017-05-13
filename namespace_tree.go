@@ -3,7 +3,7 @@ package godless
 //go:generate mockgen -destination mock/mock_namespace_tree.go -imports lib=github.com/johnny-morrice/godless -self_package lib github.com/johnny-morrice/godless NamespaceTree,NamespaceTreeTableReader
 
 type NamespaceTree interface {
-	JoinTable(string, Table) error
+	JoinTable(TableName, Table) error
 	LoadTraverse(NamespaceTreeTableReader) error
 }
 
@@ -17,7 +17,7 @@ type NamespaceTreeReader interface {
 }
 
 type TableHinter interface {
-	ReadsTables() []string
+	ReadsTables() []TableName
 }
 
 type NamespaceTreeTableReader interface {
@@ -25,7 +25,7 @@ type NamespaceTreeTableReader interface {
 	NamespaceTreeReader
 }
 
-func AddTableHints(tables []string, ntr NamespaceTreeReader) NamespaceTreeTableReader {
+func AddTableHints(tables []TableName, ntr NamespaceTreeReader) NamespaceTreeTableReader {
 	return tableHinterWrapper{
 		hints:  tables,
 		reader: ntr,
@@ -34,10 +34,10 @@ func AddTableHints(tables []string, ntr NamespaceTreeReader) NamespaceTreeTableR
 
 type tableHinterWrapper struct {
 	reader NamespaceTreeReader
-	hints  []string
+	hints  []TableName
 }
 
-func (thw tableHinterWrapper) ReadsTables() []string {
+func (thw tableHinterWrapper) ReadsTables() []TableName {
 	return thw.hints
 }
 

@@ -7,7 +7,7 @@ type NamespaceTreeJoin struct {
 	noDebugVisitor
 	errorCollectVisitor
 	Namespace NamespaceTree
-	tableKey  string
+	tableKey  TableName
 	table     Table
 }
 
@@ -43,7 +43,7 @@ func (visitor *NamespaceTreeJoin) VisitOpCode(opCode QueryOpCode) {
 	}
 }
 
-func (visitor *NamespaceTreeJoin) VisitTableKey(tableKey string) {
+func (visitor *NamespaceTreeJoin) VisitTableKey(tableKey TableName) {
 	if visitor.hasError() {
 		return
 	}
@@ -61,8 +61,9 @@ func (visitor *NamespaceTreeJoin) VisitRowJoin(position int, rowJoin *QueryRowJo
 
 	row := Row{}
 
-	for k, entry := range rowJoin.Entries {
-		row = row.JoinEntry(k, MakeEntry([]string{entry}))
+	for k, entryValue := range rowJoin.Entries {
+		entry := MakeEntry([]Value{entryValue})
+		row = row.JoinEntry(k, entry)
 	}
 
 	joined := visitor.table.JoinRow(rowJoin.RowKey, row)
