@@ -40,9 +40,9 @@ type APIReflectionType uint16
 
 const (
 	REFLECT_NOOP = APIReflectionType(iota)
-	REFLECT_READ_REMOTE_PATH
-	REFLECT_READ_ALL_NAMESPACES
-	REFLECT_READ_INDEX
+	REFLECT_HEAD_PATH
+	REFLECT_DUMP_NAMESPACE
+	REFLECT_INDEX
 )
 
 type APIReflectRequest struct {
@@ -86,7 +86,9 @@ func (response APIResponse) RenderJSON() (string, error) {
 	return string(bs), nil
 }
 
-var RESPONSE_OK APIResponse = APIResponse{Msg: "ok"}
-var RESPONSE_FAIL APIResponse = APIResponse{Msg: "error"}
-var RESPONSE_QUERY APIResponse = APIResponse{Msg: "ok", Type: API_QUERY}
-var RESPONSE_REFLECT APIResponse = APIResponse{Msg: "ok", Type: API_REFLECT}
+var RESPONSE_FAIL_MSG = "error"
+var RESPONSE_OK_MSG = "ok"
+var RESPONSE_OK APIResponse = APIResponse{Msg: RESPONSE_OK_MSG}
+var RESPONSE_FAIL APIResponse = APIResponse{Msg: RESPONSE_FAIL_MSG}
+var RESPONSE_QUERY APIResponse = APIResponse{Msg: RESPONSE_OK_MSG, Type: API_QUERY}
+var RESPONSE_REFLECT APIResponse = APIResponse{Msg: RESPONSE_OK_MSG, Type: API_REFLECT}

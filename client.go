@@ -45,7 +45,7 @@ func (client *Client) SendQuery(query *Query) (*APIResponse, error) {
 }
 
 func (client *Client) Post(bodyType string, body io.Reader) (*APIResponse, error) {
-	addr := fmt.Sprintf("http://%s/api/query/run", client.Addr)
+	addr := fmt.Sprintf("http://%s%s", client.Addr, QUERY_API_ROOT)
 	logdbg("HTTP POST to %v", addr)
 
 	resp, err := client.Http.Post(addr, bodyType, body)

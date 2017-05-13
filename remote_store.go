@@ -21,6 +21,7 @@ type RemoteNamespaceRecord struct {
 	Namespace Namespace
 }
 
+// TODO tiny type for table name.
 type RemoteNamespaceIndex struct {
 	Index map[string][]RemoteStoreAddress
 }
@@ -41,7 +42,35 @@ func MakeRemoteNamespaceIndex(indices map[string]RemoteStoreAddress) RemoteNames
 	return out
 }
 
-func (rni RemoteNamespaceIndex) GetTableIndices(tableName string) ([]RemoteStoreAddress, error) {
+func (rni RemoteNamespaceIndex) APIIndex() APIRemoteIndex {
+	apiIndex := APIRemoteIndex{
+		Index: map[string][]string{},
+	}
+
+	for table, addrs := range rni.Index {
+		apiAddrs := make([]string, len(addrs))
+		for i, a := range addrs {
+			apiAddrs[i] = a.Path()
+		}
+		apiIndex.Index[table] = apiAddrs
+	}
+
+	return apiIndex
+}
+
+func (rni RemoteNamespaceIndex) AllTables() []string {
+	tables := make([]string, len(rni.Index))
+
+	i := 0
+	for name := range rni.Index {
+		tables[i] = name
+		i++
+	}
+
+	return tables
+}
+
+func (rni RemoteNamespaceIndex) GetTableAddrs(tableName string) ([]RemoteStoreAddress, error) {
 	indices, ok := rni.Index[tableName]
 
 	if !ok {

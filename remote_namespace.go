@@ -46,11 +46,11 @@ func PersistNewRemoteNamespace(store RemoteStore, namespace Namespace) (KvNamesp
 func (rn *remoteNamespace) RunKvReflection(reflect APIReflectRequest, kvq KvQuery) {
 	var runner APIResponder
 	switch reflect.Command {
-	case REFLECT_READ_REMOTE_PATH:
-		runner = APIResponderFunc(rn.getReflectPath)
-	case REFLECT_READ_INDEX:
+	case REFLECT_HEAD_PATH:
+		runner = APIResponderFunc(rn.getReflectHead)
+	case REFLECT_INDEX:
 		runner = APIResponderFunc(rn.getReflectIndex)
-	case REFLECT_READ_ALL_NAMESPACES:
+	case REFLECT_DUMP_NAMESPACE:
 		runner = APIResponderFunc(rn.dumpReflectNamespaces)
 	default:
 		panic("Unknown reflection command")
@@ -61,7 +61,7 @@ func (rn *remoteNamespace) RunKvReflection(reflect APIReflectRequest, kvq KvQuer
 }
 
 // TODO Not sure if best place for these to live.
-func (rn *remoteNamespace) getReflectPath() APIResponse {
+func (rn *remoteNamespace) getReflectHead() APIResponse {
 	response := RESPONSE_REFLECT
 	response.ReflectResponse.Path = rn.Addr.Path()
 	return response
@@ -69,11 +69,40 @@ func (rn *remoteNamespace) getReflectPath() APIResponse {
 
 func (rn *remoteNamespace) getReflectIndex() APIResponse {
 	response := RESPONSE_REFLECT
+
+	index, err := rn.loadIndex()
+
+	if err != nil {
+		response.Msg = RESPONSE_FAIL_MSG
+		response.Err = errors.Wrap(err, "getReflectIndex failed")
+		return response
+	}
+
+	response.ReflectResponse.Index = index.APIIndex()
+
 	return response
 }
 
 func (rn *remoteNamespace) dumpReflectNamespaces() APIResponse {
 	response := RESPONSE_REFLECT
+
+	index, err := rn.loadIndex()
+
+	if err != nil {
+		response.Msg = RESPONSE_FAIL_MSG
+		response.Err = errors.Wrap(err, "dumpReflectNamespace failed")
+		return response
+	}
+
+	tables := index.AllTables()
+	everything := EmptyNamespace()
+
+	lambda := NamespaceTreeLambda(func(ns Namespace) (bool, error) {
+		everything = everything.JoinNamespace(ns)
+		return false, nil
+	})
+	traversal := AddTableHints(tables, lambda)
+	rn.LoadTraverse(traversal)
 	return response
 }
 
@@ -172,7 +201,7 @@ func (rn *remoteNamespace) namespaceLoader(addrs []RemoteStoreAddress) (<-chan N
 func (rn *remoteNamespace) findTableAddrs(index RemoteNamespaceIndex, tableHints TableHinter) []RemoteStoreAddress {
 	out := []RemoteStoreAddress{}
 	for _, t := range tableHints.ReadsTables() {
-		addrs, err := index.GetTableIndices(t)
+		addrs, err := index.GetTableAddrs(t)
 
 		if err == nil {
 			out = append(out, addrs...)

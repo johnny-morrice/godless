@@ -9,14 +9,38 @@ import (
 	"github.com/pkg/errors"
 )
 
+const QUERY_API_ROOT = "/api/query"
+const REFLECT_API_ROOT = "/api/reflect"
+
 type KeyValueService struct {
 	API APIService
 }
 
 func (service *KeyValueService) Handler() http.Handler {
-	r := mux.NewRouter()
-	r.HandleFunc("/api/query/run", service.queryRun)
-	return r
+	root := mux.NewRouter()
+	root.HandleFunc(QUERY_API_ROOT, service.queryRun).Methods("POST")
+
+	reflectMux := mux.NewRouter()
+	reflectMux.HandleFunc("/head", service.reflectHead).Methods("GET")
+	reflectMux.HandleFunc("/index", service.reflectIndex).Methods("POST")
+	reflectMux.HandleFunc("/namespace", service.reflectDumpNamespace).Methods("POST")
+	root.Handle(REFLECT_API_ROOT, reflectMux)
+	return root
+}
+
+func (service *KeyValueService) reflectHead(rw http.ResponseWriter, req *http.Request) {
+	service.reflect(APIReflectRequest{Command: REFLECT_HEAD_PATH}, rw, req)
+}
+
+func (service *KeyValueService) reflectIndex(rw http.ResponseWriter, req *http.Request) {
+	service.reflect(APIReflectRequest{Command: REFLECT_INDEX}, rw, req)
+}
+
+func (service *KeyValueService) reflectDumpNamespace(rw http.ResponseWriter, req *http.Request) {
+	service.reflect(APIReflectRequest{Command: REFLECT_DUMP_NAMESPACE}, rw, req)
+}
+
+func (service *KeyValueService) reflect(reflection APIReflectRequest, rw http.ResponseWriter, req *http.Request) {
 }
 
 func (service *KeyValueService) queryRun(rw http.ResponseWriter, req *http.Request) {
