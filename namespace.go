@@ -4,7 +4,9 @@ package godless
 
 import (
 	"crypto/sha256"
+	"encoding/gob"
 	"fmt"
+	"io"
 	"sort"
 )
 
@@ -34,6 +36,21 @@ func MakeNamespace(tables map[TableName]Table) Namespace {
 	return out
 }
 
+// Just encode as Gob for now.
+func EncodeNamespace(ns Namespace, w io.Writer) error {
+	stream := MakeNamespaceStream(ns)
+	logdbg("stream: %v", stream)
+	enc := gob.NewEncoder(w)
+	return enc.Encode(stream)
+}
+
+func DecodeNamespace(r io.Reader) (Namespace, error) {
+	var stream []NamespaceStreamEntry
+	dec := gob.NewDecoder(r)
+	err := dec.Decode(&stream)
+	return ReadNamespaceStream(stream), err
+}
+
 func (ns Namespace) GetTableNames() []TableName {
 	tableNames := make([]TableName, len(ns.Tables))
 
@@ -44,6 +61,18 @@ func (ns Namespace) GetTableNames() []TableName {
 	}
 
 	return tableNames
+}
+
+func (ns Namespace) JoinStreamEntry(streamEntry NamespaceStreamEntry) Namespace {
+	entryNamespace := MakeNamespace(map[TableName]Table{
+		streamEntry.Table: MakeTable(map[RowName]Row{
+			streamEntry.Row: MakeRow(map[EntryName]Entry{
+				streamEntry.Entry: MakeEntry(streamEntry.Points),
+			}),
+		}),
+	})
+
+	return ns.JoinNamespace(entryNamespace)
 }
 
 func (ns Namespace) IsEmpty() bool {
@@ -308,7 +337,7 @@ func EmptyEntry() Entry {
 
 func MakeEntry(set []Point) Entry {
 	undupes := uniq256(set)
-	sort.Sort(byStringValue(undupes))
+	sort.Sort(byPointValue(undupes))
 	return Entry{Set: undupes}
 }
 
@@ -341,18 +370,18 @@ func (e Entry) GetValues() []Point {
 	return cpy
 }
 
-type byStringValue []Point
+type byPointValue []Point
 
-func (v byStringValue) Len() int {
-	return len(v)
+func (p byPointValue) Len() int {
+	return len(p)
 }
 
-func (v byStringValue) Swap(i, j int) {
-	v[i], v[j] = v[j], v[i]
+func (p byPointValue) Swap(i, j int) {
+	p[i], p[j] = p[j], p[i]
 }
 
-func (v byStringValue) Less(i, j int) bool {
-	return v[i] < v[j]
+func (p byPointValue) Less(i, j int) bool {
+	return p[i] < p[j]
 }
 
 // uniq256 deduplicates a slice of Values using sha256.

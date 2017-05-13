@@ -34,7 +34,7 @@ type IPFSPeer struct {
 }
 
 type IPFSRecord struct {
-	Namespace Namespace
+	Stream []NamespaceStreamEntry
 }
 
 type IPFSIndex struct {
@@ -122,9 +122,9 @@ func (peer *IPFSPeer) CatIndex(addr RemoteStoreAddress) (RemoteNamespaceIndex, e
 }
 
 func (peer *IPFSPeer) AddNamespace(record RemoteNamespaceRecord) (RemoteStoreAddress, error) {
-	chunk := IPFSRecord{
-		Namespace: record.Namespace,
-	}
+	stream := MakeNamespaceStream(record.Namespace)
+
+	chunk := IPFSRecord{Stream: stream}
 
 	path, err := peer.add(&chunk)
 
@@ -145,7 +145,8 @@ func (peer *IPFSPeer) CatNamespace(addr RemoteStoreAddress) (RemoteNamespaceReco
 		return EMPTY_RECORD, errors.Wrap(caterr, "IPFSPeer.CatNamespace failed")
 	}
 
-	record := RemoteNamespaceRecord{Namespace: chunk.Namespace}
+	namespace := ReadNamespaceStream(chunk.Stream)
+	record := RemoteNamespaceRecord{Namespace: namespace}
 	return record, nil
 }
 

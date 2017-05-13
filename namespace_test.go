@@ -2,43 +2,77 @@ package godless
 
 import (
 	"bytes"
-	"encoding/gob"
 	"reflect"
 	"runtime"
 	"testing"
 )
 
-// Something like QuickCheck would be great here.
-func TestGob(t *testing.T) {
+// A namespace without entries is rendered to an empty stream.
+//
+// func TestQuickEncoding(t *testing.T) {
+// 	if testing.Short() {
+// 		t.Skip("Skipping test in short mode")
+// 		return
+// 	}
+//
+// 	config := &quick.Config{
+// 		MaxCount: ENCODE_REPEAT_COUNT,
+// 	}
+//
+// 	err := quick.Check(encodesOk, config)
+//
+// 	if err != nil {
+// 		t.Error("Unexpected error:", trim(err))
+// 	}
+// }
+
+func TestReEncoding(t *testing.T) {
+	entryA := MakeEntry([]Point{"hiya"})
+	entryB := MakeEntry([]Point{"whatcha"})
 	expected := MakeNamespace(map[TableName]Table{
 		"foo": MakeTable(map[RowName]Row{
 			"bar": MakeRow(map[EntryName]Entry{
-				"baz": MakeEntry([]Point{"zob"}),
+				"zob": entryA,
+			}),
+			"baz": MakeRow(map[EntryName]Entry{
+				"zob": entryB,
 			}),
 		}),
 	})
 
-	actual := EmptyNamespace()
+	for i := 0; i < ENCODE_REPEAT_COUNT; i++ {
+		actual := encodeId(expected)
+		assertNamespaceEquals(t, expected, actual)
+	}
+}
 
+func trim(err error) string {
+	msg := err.Error()
+
+	return msg[:TRIM_LENGTH]
+}
+
+func encodesOk(expected Namespace) bool {
+	actual := encodeId(expected)
+	return reflect.DeepEqual(expected, actual)
+}
+
+func encodeId(expected Namespace) Namespace {
 	buff := &bytes.Buffer{}
-	enc := gob.NewEncoder(buff)
-
-	err := enc.Encode(expected)
+	err := EncodeNamespace(expected, buff)
 
 	if err != nil {
-		t.Error("Unexpected encoding error:", err)
-		t.FailNow()
+		panic(err)
 	}
 
-	dec := gob.NewDecoder(buff)
-	err = dec.Decode(&actual)
+	var actual Namespace
+	actual, err = DecodeNamespace(buff)
 
 	if err != nil {
-		t.Error("Unexpected decoding error:", err)
-		t.FailNow()
+		panic(err)
 	}
 
-	assertNamespaceEquals(t, expected, actual)
+	return actual
 }
 
 func TestEmptyNamespace(t *testing.T) {
@@ -593,3 +627,5 @@ func debugLine(t *testing.T) {
 }
 
 const CALLER_DEPTH = 2
+const TRIM_LENGTH = 200
+const ENCODE_REPEAT_COUNT = 50
