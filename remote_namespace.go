@@ -42,10 +42,73 @@ func PersistNewRemoteNamespace(store RemoteStore, namespace Namespace) (KvNamesp
 	return kv.(*remoteNamespace), nil
 }
 
+// TODO there are likely to be many reflection features.  Replace switches with polymorphism.
+func (rn *remoteNamespace) RunKvReflection(reflect APIReflectRequest, kvq KvQuery) {
+	var runner APIResponder
+	switch reflect.Command {
+	case REFLECT_HEAD_PATH:
+		runner = APIResponderFunc(rn.getReflectHead)
+	case REFLECT_INDEX:
+		runner = APIResponderFunc(rn.getReflectIndex)
+	case REFLECT_DUMP_NAMESPACE:
+		runner = APIResponderFunc(rn.dumpReflectNamespaces)
+	default:
+		panic("Unknown reflection command")
+	}
+
+	response := runner.RunQuery()
+	kvq.writeResponse(response)
+}
+
+// TODO Not sure if best place for these to live.
+func (rn *remoteNamespace) getReflectHead() APIResponse {
+	response := RESPONSE_REFLECT
+	response.ReflectResponse.Path = rn.Addr.Path()
+	return response
+}
+
+func (rn *remoteNamespace) getReflectIndex() APIResponse {
+	response := RESPONSE_REFLECT
+
+	index, err := rn.loadIndex()
+
+	if err != nil {
+		response.Msg = RESPONSE_FAIL_MSG
+		response.Err = errors.Wrap(err, "getReflectIndex failed")
+		return response
+	}
+
+	response.ReflectResponse.Index = index.APIIndex()
+
+	return response
+}
+
+func (rn *remoteNamespace) dumpReflectNamespaces() APIResponse {
+	response := RESPONSE_REFLECT
+
+	index, err := rn.loadIndex()
+
+	if err != nil {
+		response.Msg = RESPONSE_FAIL_MSG
+		response.Err = errors.Wrap(err, "dumpReflectNamespace failed")
+		return response
+	}
+
+	tables := index.AllTables()
+	everything := EmptyNamespace()
+
+	lambda := NamespaceTreeLambda(func(ns Namespace) (bool, error) {
+		everything = everything.JoinNamespace(ns)
+		return false, nil
+	})
+	traversal := AddTableHints(tables, lambda)
+	rn.LoadTraverse(traversal)
+	return response
+}
+
 // RunKvQuery will block until the result can be written to kvq.
-func (rn *remoteNamespace) RunKvQuery(kvq KvQuery) {
-	query := kvq.Query
-	var runner QueryRun
+func (rn *remoteNamespace) RunKvQuery(query *Query, kvq KvQuery) {
+	var runner APIResponder
 
 	switch query.OpCode {
 	case JOIN:
@@ -68,7 +131,7 @@ func (rn *remoteNamespace) IsChanged() bool {
 	return !rn.Update.IsEmpty()
 }
 
-func (rn *remoteNamespace) JoinTable(tableKey string, table Table) error {
+func (rn *remoteNamespace) JoinTable(tableKey TableName, table Table) error {
 	joined := rn.Update.JoinTable(tableKey, table)
 	rn.Update = joined
 	return nil
@@ -138,7 +201,7 @@ func (rn *remoteNamespace) namespaceLoader(addrs []RemoteStoreAddress) (<-chan N
 func (rn *remoteNamespace) findTableAddrs(index RemoteNamespaceIndex, tableHints TableHinter) []RemoteStoreAddress {
 	out := []RemoteStoreAddress{}
 	for _, t := range tableHints.ReadsTables() {
-		addrs, err := index.GetTableIndices(t)
+		addrs, err := index.GetTableAddrs(t)
 
 		if err == nil {
 			out = append(out, addrs...)

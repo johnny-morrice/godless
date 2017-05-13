@@ -9,17 +9,46 @@ import (
 	"github.com/pkg/errors"
 )
 
-type KeyValueService struct {
-	API QueryAPIService
+const API_ROOT = "/api"
+const QUERY_API_ROOT = "/query"
+const REFLECT_API_ROOT = "/reflect"
+
+type WebService struct {
+	API APIService
 }
 
-func (service *KeyValueService) Handler() http.Handler {
-	r := mux.NewRouter()
-	r.HandleFunc("/api/query/run", service.queryRun)
-	return r
+func (service *WebService) Handler() http.Handler {
+	root := mux.NewRouter()
+	topLevel := root.PathPrefix(API_ROOT).Subrouter()
+
+	reflectMux := topLevel.PathPrefix(REFLECT_API_ROOT).Subrouter()
+	reflectMux.HandleFunc("/head", service.reflectHead)
+	reflectMux.HandleFunc("/index", service.reflectIndex)
+	reflectMux.HandleFunc("/namespace", service.reflectDumpNamespace)
+
+	topLevel.HandleFunc(QUERY_API_ROOT, service.queryRun)
+
+	return root
 }
 
-func (service *KeyValueService) queryRun(rw http.ResponseWriter, req *http.Request) {
+func (service *WebService) reflectHead(rw http.ResponseWriter, req *http.Request) {
+	service.reflect(rw, APIReflectRequest{Command: REFLECT_HEAD_PATH})
+}
+
+func (service *WebService) reflectIndex(rw http.ResponseWriter, req *http.Request) {
+	service.reflect(rw, APIReflectRequest{Command: REFLECT_INDEX})
+}
+
+func (service *WebService) reflectDumpNamespace(rw http.ResponseWriter, req *http.Request) {
+	service.reflect(rw, APIReflectRequest{Command: REFLECT_DUMP_NAMESPACE})
+}
+
+func (service *WebService) reflect(rw http.ResponseWriter, reflection APIReflectRequest) {
+	respch, err := service.API.Reflect(reflection)
+	service.respond(rw, respch, err)
+}
+
+func (service *WebService) queryRun(rw http.ResponseWriter, req *http.Request) {
 	var query *Query
 	var err error
 	var isText bool
@@ -60,9 +89,13 @@ func invalidRequest(rw http.ResponseWriter, err error) {
 	}
 }
 
-func (service *KeyValueService) runQuery(rw http.ResponseWriter, query *Query) {
+func (service *WebService) runQuery(rw http.ResponseWriter, query *Query) {
 	respch, err := service.API.RunQuery(query)
+	service.respond(rw, respch, err)
+}
 
+// TODO more coherency.
+func (service *WebService) respond(rw http.ResponseWriter, respch <-chan APIResponse, err error) {
 	if err != nil {
 		invalidRequest(rw, err)
 		return

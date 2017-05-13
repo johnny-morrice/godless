@@ -24,14 +24,14 @@ func TestRunQueryReadSuccess(t *testing.T) {
 				Predicate: lib.QueryPredicate{
 					OpCode:   lib.STR_EQ,
 					Literals: []string{"Hi"},
-					Keys:     []string{"Entry A"},
+					Keys:     []lib.EntryName{"Entry A"},
 				},
 			},
 		},
 	}
 
 	mock.EXPECT().IsChanged().Return(false)
-	mock.EXPECT().RunKvQuery(mtchkvqq(query))
+	mock.EXPECT().RunKvQuery(query, kvqmatcher{})
 
 	api, errch := lib.LaunchKeyValueStore(mock)
 	resp, err := api.RunQuery(query)
@@ -44,7 +44,7 @@ func TestRunQueryReadSuccess(t *testing.T) {
 		t.Error("Response channel was nil")
 	}
 
-	api.Close()
+	api.CloseAPI()
 
 	for err := range errch {
 		t.Error(err)
@@ -63,7 +63,7 @@ func TestRunQueryWriteSuccess(t *testing.T) {
 			Rows: []lib.QueryRowJoin{
 				lib.QueryRowJoin{
 					RowKey: "Row thing",
-					Entries: map[string]string{
+					Entries: map[lib.EntryName]lib.Point{
 						"Hello": "world",
 					},
 				},
@@ -72,7 +72,7 @@ func TestRunQueryWriteSuccess(t *testing.T) {
 	}
 
 	mock.EXPECT().IsChanged().Return(true)
-	mock.EXPECT().RunKvQuery(mtchkvqq(query))
+	mock.EXPECT().RunKvQuery(query, kvqmatcher{})
 	mock.EXPECT().Persist().Return(mock, nil)
 
 	api, errch := lib.LaunchKeyValueStore(mock)
@@ -86,7 +86,7 @@ func TestRunQueryWriteSuccess(t *testing.T) {
 		t.Error("Response channel was nil")
 	}
 
-	api.Close()
+	api.CloseAPI()
 
 	for err := range errch {
 		t.Error(err)
@@ -105,7 +105,7 @@ func TestRunQueryWriteFailure(t *testing.T) {
 			Rows: []lib.QueryRowJoin{
 				lib.QueryRowJoin{
 					RowKey: "Row thing",
-					Entries: map[string]string{
+					Entries: map[lib.EntryName]lib.Point{
 						"Hello": "world",
 					},
 				},
@@ -114,7 +114,7 @@ func TestRunQueryWriteFailure(t *testing.T) {
 	}
 
 	mock.EXPECT().IsChanged().Return(true)
-	mock.EXPECT().RunKvQuery(mtchkvqq(query))
+	mock.EXPECT().RunKvQuery(query, kvqmatcher{})
 	mock.EXPECT().Persist().Return(nil, errors.New("Expected error"))
 
 	api, errch := lib.LaunchKeyValueStore(mock)
@@ -128,7 +128,7 @@ func TestRunQueryWriteFailure(t *testing.T) {
 		t.Error("Response channel was nil")
 	}
 
-	api.Close()
+	api.CloseAPI()
 
 	if err := <-errch; err == nil {
 		t.Error("err was nil")
@@ -159,27 +159,18 @@ func TestRunQueryInvalid(t *testing.T) {
 		t.Error("Response channel was not nil")
 	}
 
-	api.Close()
+	api.CloseAPI()
 }
 
-func mtchkvqq(q *lib.Query) gomock.Matcher {
-	return kvqqmatcher{q}
+type kvqmatcher struct {
 }
 
-type kvqqmatcher struct {
-	q *lib.Query
+func (kvqmatcher) String() string {
+	return "any KvQuery"
 }
 
-func (kvqqm kvqqmatcher) String() string {
-	return "is matching KvQuery"
-}
+func (kvqmatcher) Matches(v interface{}) bool {
+	_, ok := v.(lib.KvQuery)
 
-func (kvqqm kvqqmatcher) Matches(v interface{}) bool {
-	other, ok := v.(lib.KvQuery)
-
-	if !ok {
-		return false
-	}
-
-	return reflect.DeepEqual(*kvqqm.q, *other.Query)
+	return ok
 }

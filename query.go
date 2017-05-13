@@ -6,8 +6,9 @@ package godless
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
 	"os"
+
+	"github.com/pkg/errors"
 )
 
 type QueryOpCode uint16
@@ -22,7 +23,7 @@ type Query struct {
 	AST      *QueryAST    `json:"-"`
 	Parser   *QueryParser `json:"-"`
 	OpCode   QueryOpCode  `json:",omitempty"`
-	TableKey string
+	TableKey TableName
 	Join     QueryJoin   `json:",omitempty"`
 	Select   QuerySelect `json:",omitempty"`
 }
@@ -38,14 +39,10 @@ type QueryVisitor interface {
 	VisitOpCode(QueryOpCode)
 	VisitAST(*QueryAST)
 	VisitParser(*QueryParser)
-	VisitTableKey(string)
+	VisitTableKey(TableName)
 	VisitJoin(*QueryJoin)
 	VisitRowJoin(int, *QueryRowJoin)
 	VisitSelect(*QuerySelect)
-}
-
-type QueryRun interface {
-	RunQuery() APIResponse
 }
 
 type QueryJoin struct {
@@ -53,8 +50,8 @@ type QueryJoin struct {
 }
 
 type QueryRowJoin struct {
-	RowKey  string
-	Entries map[string]string `json:",omitempty"`
+	RowKey  RowName
+	Entries map[EntryName]Point `json:",omitempty"`
 }
 
 type QuerySelect struct {
@@ -106,7 +103,7 @@ const (
 
 type QueryPredicate struct {
 	OpCode        QueryPredicateOpCode `json:",omitempty"`
-	Keys          []string             `json:",omitempty"`
+	Keys          []EntryName          `json:",omitempty"`
 	Literals      []string             `json:",omitempty"`
 	IncludeRowKey bool                 `json:",omitempty"`
 }
@@ -212,7 +209,7 @@ func (visitor *queryValidator) VisitOpCode(opCode QueryOpCode) {
 	}
 }
 
-func (visitor *queryValidator) VisitTableKey(tableKey string) {
+func (visitor *queryValidator) VisitTableKey(tableKey TableName) {
 	if tableKey == "" {
 		visitor.collectError(errors.New("Empty table key"))
 	}

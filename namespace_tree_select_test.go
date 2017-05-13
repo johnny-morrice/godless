@@ -13,15 +13,15 @@ import (
 // The various where predicates are tested elsewhere.  This test focusses
 // on whether the correct rows will be discovered for any predicate.
 func TestRowCriteria_findRows(t *testing.T) {
-	rowA := MakeRow(map[string]Entry{
-		"foo": MakeEntry([]string{"hello"}),
+	rowA := MakeRow(map[EntryName]Entry{
+		"foo": MakeEntry([]Point{"hello"}),
 	})
-	rowB := MakeRow(map[string]Entry{
-		"bar": MakeEntry([]string{"world"}),
+	rowB := MakeRow(map[EntryName]Entry{
+		"bar": MakeEntry([]Point{"world"}),
 	})
 
-	namespace := MakeNamespace(map[string]Table{
-		TABLE_KEY: MakeTable(map[string]Row{
+	namespace := MakeNamespace(map[TableName]Table{
+		TABLE_KEY: MakeTable(map[RowName]Row{
 			"a": rowA,
 			"b": rowB,
 			"c": rowB,
@@ -51,7 +51,7 @@ func TestRowCriteria_findRows(t *testing.T) {
 			Predicate: QueryPredicate{
 				OpCode:   STR_EQ,
 				Literals: []string{"world"},
-				Keys:     []string{"bar"},
+				Keys:     []EntryName{"bar"},
 			},
 		},
 	}

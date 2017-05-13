@@ -29,7 +29,7 @@ func (_m *MockNamespaceTree) EXPECT() *_MockNamespaceTreeRecorder {
 	return _m.recorder
 }
 
-func (_m *MockNamespaceTree) JoinTable(_param0 string, _param1 godless.Table) error {
+func (_m *MockNamespaceTree) JoinTable(_param0 godless.TableName, _param1 godless.Table) error {
 	ret := _m.ctrl.Call(_m, "JoinTable", _param0, _param1)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -81,9 +81,9 @@ func (_mr *_MockNamespaceTreeTableReaderRecorder) ReadNamespace(arg0 interface{}
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ReadNamespace", arg0)
 }
 
-func (_m *MockNamespaceTreeTableReader) ReadsTables() []string {
+func (_m *MockNamespaceTreeTableReader) ReadsTables() []godless.TableName {
 	ret := _m.ctrl.Call(_m, "ReadsTables")
-	ret0, _ := ret[0].([]string)
+	ret0, _ := ret[0].([]godless.TableName)
 	return ret0
 }
 

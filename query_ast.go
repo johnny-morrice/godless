@@ -2,9 +2,10 @@ package godless
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
 	"regexp"
 	"strconv"
+
+	"github.com/pkg/errors"
 )
 
 type QueryAST struct {
@@ -141,7 +142,7 @@ func (ast *QueryAST) Compile() (*Query, error) {
 	}
 
 	query.AST = ast
-	query.TableKey = ast.TableKey
+	query.TableKey = TableName(ast.TableKey)
 
 	return query, nil
 }
@@ -160,7 +161,10 @@ func (ast *QueryJoinAST) Compile() (QueryJoin, error) {
 			return QueryJoin{}, errors.Wrap(err, "Error compiling join")
 		}
 
-		rows[i] = QueryRowJoin{RowKey: r.RowKey, Entries: unquoted}
+		rows[i] = QueryRowJoin{
+			RowKey:  RowName(r.RowKey),
+			Entries: makeJoinEntries(unquoted),
+		}
 	}
 
 	qjoin := QueryJoin{
@@ -291,7 +295,7 @@ func (ast *QueryPredicateAST) Compile() (QueryPredicate, error) {
 		return QueryPredicate{}, errors.Wrap(err, "Error compiling predicate")
 	}
 
-	predicate.Keys = ast.Keys
+	predicate.Keys = makeEntryNames(ast.Keys)
 	predicate.Literals = literals
 	predicate.IncludeRowKey = ast.IncludeRowKey
 
@@ -347,4 +351,24 @@ func unquote(value string) (string, error) {
 	}
 
 	return quoted, nil
+}
+
+func makeJoinEntries(mess map[string]string) map[EntryName]Point {
+	es := map[EntryName]Point{}
+
+	for k, v := range mess {
+		es[EntryName(k)] = Point(v)
+	}
+
+	return es
+}
+
+func makeEntryNames(mess []string) []EntryName {
+	es := make([]EntryName, len(mess))
+
+	for i, s := range mess {
+		es[i] = EntryName(s)
+	}
+
+	return es
 }

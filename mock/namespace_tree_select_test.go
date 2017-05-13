@@ -20,7 +20,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		Predicate: lib.QueryPredicate{
 			OpCode:   lib.STR_EQ,
 			Literals: []string{"Hi"},
-			Keys:     []string{"Entry A"},
+			Keys:     []lib.EntryName{"Entry A"},
 		},
 	}
 
@@ -29,7 +29,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		Predicate: lib.QueryPredicate{
 			OpCode:   lib.STR_EQ,
 			Literals: []string{"Hi"},
-			Keys:     []string{"Entry B"},
+			Keys:     []lib.EntryName{"Entry B"},
 		},
 	}
 
@@ -38,7 +38,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		Predicate: lib.QueryPredicate{
 			OpCode:   lib.STR_NEQ,
 			Literals: []string{"Hello World"},
-			Keys:     []string{"Entry B"},
+			Keys:     []lib.EntryName{"Entry B"},
 		},
 	}
 
@@ -47,7 +47,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		Predicate: lib.QueryPredicate{
 			OpCode:   lib.STR_EQ,
 			Literals: []string{"Apple"},
-			Keys:     []string{"Entry C"},
+			Keys:     []lib.EntryName{"Entry C"},
 		},
 	}
 
@@ -56,7 +56,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		Predicate: lib.QueryPredicate{
 			OpCode:   lib.STR_EQ,
 			Literals: []string{"Orange"},
-			Keys:     []string{"Entry D"},
+			Keys:     []lib.EntryName{"Entry D"},
 		},
 	}
 
@@ -65,7 +65,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		Predicate: lib.QueryPredicate{
 			OpCode:   lib.STR_EQ,
 			Literals: []string{"Train"},
-			Keys:     []string{"Entry E"},
+			Keys:     []lib.EntryName{"Entry E"},
 		},
 	}
 
@@ -74,7 +74,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		Predicate: lib.QueryPredicate{
 			OpCode:   lib.STR_EQ,
 			Literals: []string{"Bus"},
-			Keys:     []string{"Entry E"},
+			Keys:     []lib.EntryName{"Entry E"},
 		},
 	}
 
@@ -83,7 +83,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		Predicate: lib.QueryPredicate{
 			OpCode:   lib.STR_EQ,
 			Literals: []string{"Boat"},
-			Keys:     []string{"Entry E"},
+			Keys:     []lib.EntryName{"Entry E"},
 		},
 	}
 
@@ -100,7 +100,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		// One result
 		&lib.Query{
 			OpCode:   lib.SELECT,
-			TableKey: mainTableKey,
+			TableKey: MAIN_TABLE_KEY,
 			Select: lib.QuerySelect{
 				Limit: 2,
 				Where: whereA,
@@ -109,7 +109,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		// Multiple results
 		&lib.Query{
 			OpCode:   lib.SELECT,
-			TableKey: mainTableKey,
+			TableKey: MAIN_TABLE_KEY,
 			Select: lib.QuerySelect{
 				Limit: 2,
 				Where: whereB,
@@ -118,7 +118,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		// STR_NEQ
 		&lib.Query{
 			OpCode:   lib.SELECT,
-			TableKey: mainTableKey,
+			TableKey: MAIN_TABLE_KEY,
 			Select: lib.QuerySelect{
 				Limit: 2,
 				Where: whereC,
@@ -127,7 +127,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		// AND
 		&lib.Query{
 			OpCode:   lib.SELECT,
-			TableKey: mainTableKey,
+			TableKey: MAIN_TABLE_KEY,
 			Select: lib.QuerySelect{
 				Limit: 2,
 				Where: lib.QueryWhere{
@@ -139,7 +139,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		// OR
 		&lib.Query{
 			OpCode:   lib.SELECT,
-			TableKey: mainTableKey,
+			TableKey: MAIN_TABLE_KEY,
 			Select: lib.QuerySelect{
 				Limit: 2,
 				Where: lib.QueryWhere{
@@ -151,7 +151,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		// No results
 		&lib.Query{
 			OpCode:   lib.SELECT,
-			TableKey: mainTableKey,
+			TableKey: MAIN_TABLE_KEY,
 			Select: lib.QuerySelect{
 				Limit: 2,
 				Where: whereH,
@@ -160,7 +160,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		// Row key
 		&lib.Query{
 			OpCode:   lib.SELECT,
-			TableKey: mainTableKey,
+			TableKey: MAIN_TABLE_KEY,
 			Select: lib.QuerySelect{
 				Limit: 2,
 				Where: whereI,
@@ -169,7 +169,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		// No where clause
 		&lib.Query{
 			OpCode:   lib.SELECT,
-			TableKey: altTableKey,
+			TableKey: ALT_TABLE_KEY,
 			Select: lib.QuerySelect{
 				Limit: 3,
 			},
@@ -177,27 +177,27 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 	}
 
 	responseA := lib.RESPONSE_OK
-	responseA.Rows = rowsA()
+	responseA.QueryResponse.Rows = rowsA()
 
 	responseB := lib.RESPONSE_OK
-	responseB.Rows = append(rowsB(), rowsC()...)
+	responseB.QueryResponse.Rows = append(rowsB(), rowsC()...)
 
 	responseC := lib.RESPONSE_OK
-	responseC.Rows = rowsC()
+	responseC.QueryResponse.Rows = rowsC()
 
 	responseD := lib.RESPONSE_OK
-	responseD.Rows = rowsD()
+	responseD.QueryResponse.Rows = rowsD()
 
 	responseE := lib.RESPONSE_OK
-	responseE.Rows = rowsE()
+	responseE.QueryResponse.Rows = rowsE()
 
 	responseF := lib.RESPONSE_OK
 
 	responseG := lib.RESPONSE_OK
-	responseG.Rows = rowsF()
+	responseG.QueryResponse.Rows = rowsF()
 
 	responseH := lib.RESPONSE_OK
-	responseH.Rows = rowsG()
+	responseH.QueryResponse.Rows = rowsG()
 
 	expect := []lib.APIResponse{
 		responseA,
@@ -222,8 +222,8 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		resp := selector.RunQuery()
 
 		if !apiResponseEq(resp, expect[i]) {
-			if resp.Rows == nil {
-				t.Error("resp.Rows was nil")
+			if resp.QueryResponse.Rows == nil {
+				t.Error("resp.QueryResponse.Rows was nil")
 			}
 			if resp.Err != nil {
 				t.Error("resp.Err was", resp.Err)
@@ -244,7 +244,7 @@ func TestRunQuerySelectFailure(t *testing.T) {
 
 	failQuery := &lib.Query{
 		OpCode:   lib.SELECT,
-		TableKey: mainTableKey,
+		TableKey: MAIN_TABLE_KEY,
 		Select: lib.QuerySelect{
 			Limit: 2,
 			Where: lib.QueryWhere{
@@ -252,7 +252,7 @@ func TestRunQuerySelectFailure(t *testing.T) {
 				Predicate: lib.QueryPredicate{
 					OpCode:   lib.STR_EQ,
 					Literals: []string{"Hi"},
-					Keys:     []string{"Entry A"},
+					Keys:     []lib.EntryName{"Entry A"},
 				},
 			},
 		},
@@ -289,7 +289,7 @@ func TestRunQuerySelectInvalid(t *testing.T) {
 					Predicate: lib.QueryPredicate{
 						OpCode:   lib.STR_EQ,
 						Literals: []string{"Hi"},
-						Keys:     []string{"Entry A"},
+						Keys:     []lib.EntryName{"Entry A"},
 					},
 				},
 			},
@@ -302,7 +302,7 @@ func TestRunQuerySelectInvalid(t *testing.T) {
 					Predicate: lib.QueryPredicate{
 						OpCode:   lib.STR_EQ,
 						Literals: []string{"Hi"},
-						Keys:     []string{"Entry A"},
+						Keys:     []lib.EntryName{"Entry A"},
 					},
 				},
 			},
@@ -315,7 +315,7 @@ func TestRunQuerySelectInvalid(t *testing.T) {
 					OpCode: lib.PREDICATE,
 					Predicate: lib.QueryPredicate{
 						Literals: []string{"Hi"},
-						Keys:     []string{"Entry A"},
+						Keys:     []lib.EntryName{"Entry A"},
 					},
 				},
 			},
@@ -339,67 +339,67 @@ func TestRunQuerySelectInvalid(t *testing.T) {
 
 func rowsA() []lib.Row {
 	return []lib.Row{
-		lib.MakeRow(map[string]lib.Entry{
+		lib.MakeRow(map[lib.EntryName]lib.Entry{
 			// TODO use user concepts to match only the Hi.
-			"Entry A": lib.MakeEntry([]string{"Hi", "Hello"}),
+			"Entry A": lib.MakeEntry([]lib.Point{"Hi", "Hello"}),
 		}),
 	}
 }
 
 func rowsB() []lib.Row {
 	return []lib.Row{
-		lib.MakeRow(map[string]lib.Entry{
-			"Entry B": lib.MakeEntry([]string{"Hi", "Hello World"}),
+		lib.MakeRow(map[lib.EntryName]lib.Entry{
+			"Entry B": lib.MakeEntry([]lib.Point{"Hi", "Hello World"}),
 		}),
 	}
 }
 
 func rowsC() []lib.Row {
 	return []lib.Row{
-		lib.MakeRow(map[string]lib.Entry{
-			"Entry B": lib.MakeEntry([]string{"Hi", "Hello Dude"}),
+		lib.MakeRow(map[lib.EntryName]lib.Entry{
+			"Entry B": lib.MakeEntry([]lib.Point{"Hi", "Hello Dude"}),
 		}),
 	}
 }
 
 func rowsD() []lib.Row {
 	return []lib.Row{
-		lib.MakeRow(map[string]lib.Entry{
-			"Entry C": lib.MakeEntry([]string{"Apple"}),
-			"Entry D": lib.MakeEntry([]string{"Orange"}),
+		lib.MakeRow(map[lib.EntryName]lib.Entry{
+			"Entry C": lib.MakeEntry([]lib.Point{"Apple"}),
+			"Entry D": lib.MakeEntry([]lib.Point{"Orange"}),
 		}),
 	}
 }
 
 func rowsE() []lib.Row {
 	return []lib.Row{
-		lib.MakeRow(map[string]lib.Entry{
-			"Entry E": lib.MakeEntry([]string{"Bus"}),
+		lib.MakeRow(map[lib.EntryName]lib.Entry{
+			"Entry E": lib.MakeEntry([]lib.Point{"Bus"}),
 		}),
-		lib.MakeRow(map[string]lib.Entry{
-			"Entry E": lib.MakeEntry([]string{"Train"}),
+		lib.MakeRow(map[lib.EntryName]lib.Entry{
+			"Entry E": lib.MakeEntry([]lib.Point{"Train"}),
 		}),
 	}
 }
 
 func rowsF() []lib.Row {
 	return []lib.Row{
-		lib.MakeRow(map[string]lib.Entry{
-			"Entry F": lib.MakeEntry([]string{"This row", "rocks"}),
+		lib.MakeRow(map[lib.EntryName]lib.Entry{
+			"Entry F": lib.MakeEntry([]lib.Point{"This row", "rocks"}),
 		}),
 	}
 }
 
 func rowsG() []lib.Row {
 	return []lib.Row{
-		lib.MakeRow(map[string]lib.Entry{
-			"Entry Q": lib.MakeEntry([]string{"Hi", "Folks"}),
+		lib.MakeRow(map[lib.EntryName]lib.Entry{
+			"Entry Q": lib.MakeEntry([]lib.Point{"Hi", "Folks"}),
 		}),
-		lib.MakeRow(map[string]lib.Entry{
-			"Entry R": lib.MakeEntry([]string{"Wowzer"}),
+		lib.MakeRow(map[lib.EntryName]lib.Entry{
+			"Entry R": lib.MakeEntry([]lib.Point{"Wowzer"}),
 		}),
-		lib.MakeRow(map[string]lib.Entry{
-			"Entry S": lib.MakeEntry([]string{"Trumpet"}),
+		lib.MakeRow(map[lib.EntryName]lib.Entry{
+			"Entry S": lib.MakeEntry([]lib.Point{"Trumpet"}),
 		}),
 	}
 }
@@ -407,15 +407,15 @@ func rowsG() []lib.Row {
 // Non matching rows.
 func rowsZ() []lib.Row {
 	return []lib.Row{
-		lib.MakeRow(map[string]lib.Entry{
-			"Entry A": lib.MakeEntry([]string{"No", "Match"}),
+		lib.MakeRow(map[lib.EntryName]lib.Entry{
+			"Entry A": lib.MakeEntry([]lib.Point{"No", "Match"}),
 		}),
-		lib.MakeRow(map[string]lib.Entry{
-			"Entry C": lib.MakeEntry([]string{"No", "Match", "Here"}),
-			"Entry D": lib.MakeEntry([]string{"Nada!"}),
+		lib.MakeRow(map[lib.EntryName]lib.Entry{
+			"Entry C": lib.MakeEntry([]lib.Point{"No", "Match", "Here"}),
+			"Entry D": lib.MakeEntry([]lib.Point{"Nada!"}),
 		}),
-		lib.MakeRow(map[string]lib.Entry{
-			"Entry E": lib.MakeEntry([]string{"Horse"}),
+		lib.MakeRow(map[lib.EntryName]lib.Entry{
+			"Entry E": lib.MakeEntry([]lib.Point{"Horse"}),
 		}),
 	}
 }
@@ -471,9 +471,9 @@ func mkselectns() lib.Namespace {
 		tableG(),
 	}
 
-	tables := map[string][]lib.Table{
-		mainTableKey: mainTables,
-		altTableKey:  altTables,
+	tables := map[lib.TableName][]lib.Table{
+		MAIN_TABLE_KEY: mainTables,
+		ALT_TABLE_KEY:  altTables,
 	}
 
 	for tableKey, ts := range tables {
@@ -489,7 +489,7 @@ func mktable(name string, rows []lib.Row) lib.Table {
 	table := lib.EmptyTable()
 
 	for i, r := range rows {
-		rowKey := fmt.Sprintf("Row %v%v", name, i)
+		rowKey := lib.RowName(fmt.Sprintf("Row %v%v", name, i))
 		table = table.JoinRow(rowKey, r)
 	}
 
@@ -505,11 +505,11 @@ func apiResponseEq(a, b lib.APIResponse) bool {
 		return false
 	}
 
-	if len(a.Rows) != len(b.Rows) {
+	if len(a.QueryResponse.Rows) != len(b.QueryResponse.Rows) {
 		return false
 	}
 
-	if !rowsEq(a.Rows, b.Rows) {
+	if !rowsEq(a.QueryResponse.Rows, b.QueryResponse.Rows) {
 		return false
 	}
 
@@ -532,5 +532,5 @@ func rowsEq(a, b []lib.Row) bool {
 	return true
 }
 
-const mainTableKey = "The Table"
-const altTableKey = "Another table"
+const MAIN_TABLE_KEY = lib.TableName("The Table")
+const ALT_TABLE_KEY = lib.TableName("Another table")

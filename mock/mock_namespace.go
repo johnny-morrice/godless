@@ -29,7 +29,7 @@ func (_m *MockRowConsumer) EXPECT() *_MockRowConsumerRecorder {
 	return _m.recorder
 }
 
-func (_m *MockRowConsumer) Accept(_param0 string, _param1 godless.Row) {
+func (_m *MockRowConsumer) Accept(_param0 godless.RowName, _param1 godless.Row) {
 	_m.ctrl.Call(_m, "Accept", _param0, _param1)
 }
 

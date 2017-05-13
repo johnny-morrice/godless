@@ -50,10 +50,18 @@ func (_mr *_MockKvNamespaceRecorder) Persist() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Persist")
 }
 
-func (_m *MockKvNamespace) RunKvQuery(_param0 godless.KvQuery) {
-	_m.ctrl.Call(_m, "RunKvQuery", _param0)
+func (_m *MockKvNamespace) RunKvQuery(_param0 *godless.Query, _param1 godless.KvQuery) {
+	_m.ctrl.Call(_m, "RunKvQuery", _param0, _param1)
 }
 
-func (_mr *_MockKvNamespaceRecorder) RunKvQuery(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "RunKvQuery", arg0)
+func (_mr *_MockKvNamespaceRecorder) RunKvQuery(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "RunKvQuery", arg0, arg1)
+}
+
+func (_m *MockKvNamespace) RunKvReflection(_param0 godless.APIReflectRequest, _param1 godless.KvQuery) {
+	_m.ctrl.Call(_m, "RunKvReflection", _param0, _param1)
+}
+
+func (_mr *_MockKvNamespaceRecorder) RunKvReflection(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "RunKvReflection", arg0, arg1)
 }

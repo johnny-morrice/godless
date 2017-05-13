@@ -8,18 +8,23 @@ import (
 	"sort"
 )
 
+type TableName string
+type RowName string
+type EntryName string
+type Point string
+
 // Semi-lattice type that implements our storage
 type Namespace struct {
-	Tables map[string]Table
+	Tables map[TableName]Table
 }
 
 func EmptyNamespace() Namespace {
-	return MakeNamespace(map[string]Table{})
+	return MakeNamespace(map[TableName]Table{})
 }
 
-func MakeNamespace(tables map[string]Table) Namespace {
+func MakeNamespace(tables map[TableName]Table) Namespace {
 	out := Namespace{
-		Tables: map[string]Table{},
+		Tables: map[TableName]Table{},
 	}
 
 	for k, v := range tables {
@@ -29,16 +34,16 @@ func MakeNamespace(tables map[string]Table) Namespace {
 	return out
 }
 
-func (ns Namespace) GetTableNames() []string {
-	out := make([]string, len(ns.Tables))
+func (ns Namespace) GetTableNames() []TableName {
+	tableNames := make([]TableName, len(ns.Tables))
 
 	i := 0
 	for name := range ns.Tables {
-		out[i] = name
+		tableNames[i] = name
 		i++
 	}
 
-	return out
+	return tableNames
 }
 
 func (ns Namespace) IsEmpty() bool {
@@ -46,27 +51,27 @@ func (ns Namespace) IsEmpty() bool {
 }
 
 func (ns Namespace) Copy() Namespace {
-	out := EmptyNamespace()
+	cpy := EmptyNamespace()
 
 	for k, table := range ns.Tables {
-		out.Tables[k] = table
+		cpy.Tables[k] = table
 	}
 
-	return out
+	return cpy
 }
 
 func (ns Namespace) JoinNamespace(other Namespace) Namespace {
-	out := ns.Copy()
+	joined := ns.Copy()
 
 	for otherk, otherTable := range other.Tables {
-		out = out.addTable(otherk, otherTable)
+		joined = joined.addTable(otherk, otherTable)
 	}
 
-	return out
+	return joined
 }
 
 // Destructive
-func (ns Namespace) addTable(key string, table Table) Namespace {
+func (ns Namespace) addTable(key TableName, table Table) Namespace {
 	current, present := ns.Tables[key]
 
 	if present {
@@ -80,15 +85,13 @@ func (ns Namespace) addTable(key string, table Table) Namespace {
 	return ns
 }
 
-func (ns Namespace) JoinTable(key string, table Table) Namespace {
-	out := ns.Copy()
-
-	out = out.addTable(key, table)
-
-	return out
+func (ns Namespace) JoinTable(key TableName, table Table) Namespace {
+	joined := ns.Copy()
+	joined = joined.addTable(key, table)
+	return joined
 }
 
-func (ns Namespace) GetTable(key string) (Table, error) {
+func (ns Namespace) GetTable(key TableName) (Table, error) {
 	if table, present := ns.Tables[key]; present {
 		return table, nil
 	} else {
@@ -113,16 +116,16 @@ func (ns Namespace) Equals(other Namespace) bool {
 
 // TODO improved type validation
 type Table struct {
-	Rows map[string]Row
+	Rows map[RowName]Row
 }
 
 func EmptyTable() Table {
-	return MakeTable(map[string]Row{})
+	return MakeTable(map[RowName]Row{})
 }
 
-func MakeTable(rows map[string]Row) Table {
+func MakeTable(rows map[RowName]Row) Table {
 	out := Table{
-		Rows: map[string]Row{},
+		Rows: map[RowName]Row{},
 	}
 
 	for k, v := range rows {
@@ -133,12 +136,12 @@ func MakeTable(rows map[string]Row) Table {
 }
 
 type RowConsumer interface {
-	Accept(rowKey string, r Row)
+	Accept(rowKey RowName, r Row)
 }
 
-type RowConsumerFunc func(rowKey string, r Row)
+type RowConsumerFunc func(rowKey RowName, r Row)
 
-func (rcf RowConsumerFunc) Accept(rowKey string, r Row) {
+func (rcf RowConsumerFunc) Accept(rowKey RowName, r Row) {
 	rcf(rowKey, r)
 }
 
@@ -150,44 +153,42 @@ func (t Table) Foreachrow(consumer RowConsumer) {
 }
 
 func (t Table) Copy() Table {
-	out := Table{Rows: map[string]Row{}}
+	cpy := EmptyTable()
 
 	for k, row := range t.Rows {
-		out.Rows[k] = row
+		cpy.Rows[k] = row
 	}
 
-	return out
+	return cpy
 }
 
 func (t Table) AllRows() []Row {
-	out := []Row{}
+	rows := []Row{}
 
 	for _, v := range t.Rows {
-		out = append(out, v)
+		rows = append(rows, v)
 	}
 
-	return out
+	return rows
 }
 
 func (t Table) JoinTable(other Table) Table {
-	out := t.Copy()
+	joined := t.Copy()
 
 	for otherk, otherRow := range other.Rows {
-		out.addRow(otherk, otherRow)
+		joined.addRow(otherk, otherRow)
 	}
 
-	return out
+	return joined
 }
 
-func (t Table) JoinRow(rowKey string, row Row) Table {
-	out := t.Copy()
-
-	out.addRow(rowKey, row)
-
-	return out
+func (t Table) JoinRow(rowKey RowName, row Row) Table {
+	joined := t.Copy()
+	joined.addRow(rowKey, row)
+	return joined
 }
 
-func (t Table) GetRow(rowKey string) (Row, error) {
+func (t Table) GetRow(rowKey RowName) (Row, error) {
 	if row, present := t.Rows[rowKey]; present {
 		return row, nil
 	} else {
@@ -196,7 +197,7 @@ func (t Table) GetRow(rowKey string) (Row, error) {
 }
 
 // Destructive.
-func (t Table) addRow(rowKey string, row Row) {
+func (t Table) addRow(rowKey RowName, row Row) {
 	if current, present := t.Rows[rowKey]; present {
 		jrow := current.JoinRow(row)
 		t.Rows[rowKey] = jrow
@@ -221,16 +222,16 @@ func (t Table) Equals(other Table) bool {
 }
 
 type Row struct {
-	Entries map[string]Entry
+	Entries map[EntryName]Entry
 }
 
 func EmptyRow() Row {
-	return MakeRow(map[string]Entry{})
+	return MakeRow(map[EntryName]Entry{})
 }
 
-func MakeRow(entries map[string]Entry) Row {
+func MakeRow(entries map[EntryName]Entry) Row {
 	out := Row{
-		Entries: map[string]Entry{},
+		Entries: map[EntryName]Entry{},
 	}
 
 	for k, v := range entries {
@@ -241,30 +242,30 @@ func MakeRow(entries map[string]Entry) Row {
 }
 
 func (row Row) Copy() Row {
-	out := Row{Entries: map[string]Entry{}}
+	cpy := Row{Entries: map[EntryName]Entry{}}
 
 	for k, entry := range row.Entries {
-		out.Entries[k] = entry
+		cpy.Entries[k] = entry
 	}
 
-	return out
+	return cpy
 }
 
 func (row Row) JoinRow(other Row) Row {
-	out := row.Copy()
+	joined := row.Copy()
 
 	for otherk, otherEntry := range other.Entries {
-		if oute, present := out.Entries[otherk]; present {
-			out.Entries[otherk] = oute.JoinEntry(otherEntry)
+		if joinEntry, present := joined.Entries[otherk]; present {
+			joined.Entries[otherk] = joinEntry.JoinEntry(otherEntry)
 		} else {
-			out.Entries[otherk] = otherEntry
+			joined.Entries[otherk] = otherEntry
 		}
 	}
 
-	return out
+	return joined
 }
 
-func (row Row) GetEntry(entryKey string) (Entry, error) {
+func (row Row) GetEntry(entryKey EntryName) (Entry, error) {
 	if entry, present := row.Entries[entryKey]; present {
 		return entry, nil
 	} else {
@@ -272,9 +273,9 @@ func (row Row) GetEntry(entryKey string) (Entry, error) {
 	}
 }
 
-func (row Row) JoinEntry(entryKey string, entry Entry) Row {
+func (row Row) JoinEntry(entryKey EntryName, entry Entry) Row {
 	entryRow := Row{
-		Entries: map[string]Entry{
+		Entries: map[EntryName]Entry{
 			entryKey: entry,
 		},
 	}
@@ -298,16 +299,16 @@ func (row Row) Equals(other Row) bool {
 }
 
 type Entry struct {
-	Set []string
+	Set []Point
 }
 
 func EmptyEntry() Entry {
-	return MakeEntry([]string{})
+	return MakeEntry([]Point{})
 }
 
-func MakeEntry(set []string) Entry {
+func MakeEntry(set []Point) Entry {
 	undupes := uniq256(set)
-	sort.Strings(undupes)
+	sort.Sort(byStringValue(undupes))
 	return Entry{Set: undupes}
 }
 
@@ -330,26 +331,48 @@ func (e Entry) Equals(other Entry) bool {
 	return true
 }
 
-func (e Entry) GetValues() []string {
-	return e.Set
+func (e Entry) GetValues() []Point {
+	cpy := make([]Point, len(e.Set))
+
+	for i, p := range e.Set {
+		cpy[i] = p
+	}
+
+	return cpy
 }
 
-// uniq256 deduplicates a slice of strings using sha256.
-func uniq256(dups []string) []string {
-	dedup := map[[sha256.Size]byte]string{}
+type byStringValue []Point
 
-	for _, s := range dups {
-		bs := []byte(s)
+func (v byStringValue) Len() int {
+	return len(v)
+}
+
+func (v byStringValue) Swap(i, j int) {
+	v[i], v[j] = v[j], v[i]
+}
+
+func (v byStringValue) Less(i, j int) bool {
+	return v[i] < v[j]
+}
+
+// uniq256 deduplicates a slice of Values using sha256.
+func uniq256(dupes []Point) []Point {
+	dedup := map[[sha256.Size]byte]Point{}
+
+	for _, point := range dupes {
+		bs := []byte(string(point))
 		k := sha256.Sum256(bs)
 		if _, present := dedup[k]; !present {
-			dedup[k] = s
+			dedup[k] = point
 		}
 	}
 
-	out := []string{}
+	out := make([]Point, len(dedup))
 
-	for _, v := range dedup {
-		out = append(out, v)
+	i := 0
+	for _, point := range dedup {
+		out[i] = point
+		i++
 	}
 
 	return out

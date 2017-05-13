@@ -93,7 +93,7 @@ func (_mr *_MockQueryVisitorRecorder) VisitSelect(arg0 interface{}) *gomock.Call
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "VisitSelect", arg0)
 }
 
-func (_m *MockQueryVisitor) VisitTableKey(_param0 string) {
+func (_m *MockQueryVisitor) VisitTableKey(_param0 godless.TableName) {
 	_m.ctrl.Call(_m, "VisitTableKey", _param0)
 }
 

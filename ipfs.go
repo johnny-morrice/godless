@@ -38,13 +38,11 @@ type IPFSRecord struct {
 }
 
 type IPFSIndex struct {
-	Index map[string][]IPFSPath
+	Index map[TableName][]IPFSPath
 }
 
 func (index IPFSIndex) remoteIndex() RemoteNamespaceIndex {
-	out := RemoteNamespaceIndex{
-		Index: map[string][]RemoteStoreAddress{},
-	}
+	out := EmptyRemoteNamespaceIndex()
 
 	for indexKey, paths := range index.Index {
 		addrs := make([]RemoteStoreAddress, len(paths))
@@ -59,7 +57,7 @@ func (index IPFSIndex) remoteIndex() RemoteNamespaceIndex {
 
 func makeIpfsIndex(index RemoteNamespaceIndex) IPFSIndex {
 	out := IPFSIndex{
-		Index: map[string][]IPFSPath{},
+		Index: map[TableName][]IPFSPath{},
 	}
 
 	for indexKey, addrs := range index.Index {
