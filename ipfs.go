@@ -38,37 +38,13 @@ type IPFSRecord struct {
 }
 
 type IPFSIndex struct {
-	Index map[TableName][]IPFSPath
-}
-
-func (index IPFSIndex) remoteIndex() RemoteNamespaceIndex {
-	out := EmptyRemoteNamespaceIndex()
-
-	for indexKey, paths := range index.Index {
-		addrs := make([]RemoteStoreAddress, len(paths))
-		for i, p := range paths {
-			addrs[i] = p
-		}
-		out.Index[indexKey] = addrs
-	}
-
-	return out
+	Stream []IndexStreamEntry
 }
 
 func makeIpfsIndex(index RemoteNamespaceIndex) IPFSIndex {
-	out := IPFSIndex{
-		Index: map[TableName][]IPFSPath{},
+	return IPFSIndex{
+		Stream: MakeIndexStream(index),
 	}
-
-	for indexKey, addrs := range index.Index {
-		paths := make([]IPFSPath, len(addrs))
-		for i, a := range addrs {
-			paths[i] = castIPFSPath(a)
-		}
-		out.Index[indexKey] = paths
-	}
-
-	return out
 }
 
 func MakeIPFSPeer(url string) RemoteStore {
@@ -117,7 +93,7 @@ func (peer *IPFSPeer) CatIndex(addr RemoteStoreAddress) (RemoteNamespaceIndex, e
 		return EMPTY_INDEX, errors.Wrap(caterr, "IPFSPeer.CatNamespace failed")
 	}
 
-	index := chunk.remoteIndex()
+	index := ReadIndexStream(chunk.Stream)
 	return index, nil
 }
 

@@ -1,7 +1,9 @@
 package godless
 
 import (
+	"encoding/gob"
 	"fmt"
+	"io"
 	"sort"
 )
 
@@ -86,6 +88,33 @@ func MakeRemoteNamespaceIndex(indices map[TableName]RemoteStoreAddress) RemoteNa
 	return out
 }
 
+// Just encode as Gob for now.
+func EncodeIndex(index RemoteNamespaceIndex, w io.Writer) error {
+	stream := MakeIndexStream(index)
+	enc := gob.NewEncoder(w)
+	return enc.Encode(stream)
+}
+
+func DecodeIndex(r io.Reader) (RemoteNamespaceIndex, error) {
+	var stream []IndexStreamEntry
+	dec := gob.NewDecoder(r)
+	err := dec.Decode(&stream)
+	return ReadIndexStream(stream), err
+}
+
+func (rni RemoteNamespaceIndex) joinStreamEntry(entry IndexStreamEntry) RemoteNamespaceIndex {
+	cpy := rni.Copy()
+	addrs := make([]RemoteStoreAddress, len(entry.Links))
+
+	for i, l := range entry.Links {
+		addrs[i] = RemoteStoreAddress(l)
+	}
+
+	cpy.addTable(entry.TableName, addrs...)
+
+	return cpy
+}
+
 func (rni RemoteNamespaceIndex) APIIndex() APIRemoteIndex {
 	apiIndex := APIRemoteIndex{
 		Index: map[string][]string{},
@@ -129,21 +158,19 @@ func (rni RemoteNamespaceIndex) JoinNamespace(addr RemoteStoreAddress, namespace
 
 	joined := rni.Copy()
 	for _, t := range tables {
-		joined = joined.addTable(t, addr)
+		joined.addTable(t, addr)
 	}
 
 	return joined
 }
 
-func (rni RemoteNamespaceIndex) addTable(table TableName, addr RemoteStoreAddress) RemoteNamespaceIndex {
+func (rni RemoteNamespaceIndex) addTable(table TableName, addr ...RemoteStoreAddress) {
 	if addrs, ok := rni.Index[table]; ok {
-		normal := normalStoreAddress(append(addrs, addr))
+		normal := normalStoreAddress(append(addrs, addr...))
 		rni.Index[table] = normal
 	} else {
-		rni.Index[table] = []RemoteStoreAddress{addr}
+		rni.Index[table] = addr
 	}
-
-	return rni
 }
 
 func (rni RemoteNamespaceIndex) Copy() RemoteNamespaceIndex {

@@ -39,7 +39,6 @@ func MakeNamespace(tables map[TableName]Table) Namespace {
 // Just encode as Gob for now.
 func EncodeNamespace(ns Namespace, w io.Writer) error {
 	stream := MakeNamespaceStream(ns)
-	logdbg("stream: %v", stream)
 	enc := gob.NewEncoder(w)
 	return enc.Encode(stream)
 }
