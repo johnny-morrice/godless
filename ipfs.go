@@ -2,8 +2,8 @@ package godless
 
 import (
 	"bytes"
-	"encoding/gob"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 
@@ -27,24 +27,69 @@ func castIPFSPath(addr RemoteStoreAddress) IPFSPath {
 	return path
 }
 
+type IPFSRecord struct {
+	Namespace Namespace
+}
+
+func makeIpfsRecord(namespace Namespace) *IPFSRecord {
+	return &IPFSRecord{
+		Namespace: namespace,
+	}
+}
+
+func (record *IPFSRecord) encode(w io.Writer) error {
+	return EncodeNamespace(record.Namespace, w)
+}
+
+func (record *IPFSRecord) decode(r io.Reader) error {
+	ns, err := DecodeNamespace(r)
+
+	if err != nil {
+		return err
+	}
+
+	record.Namespace = ns
+	return nil
+}
+
+type encoder interface {
+	encode(io.Writer) error
+}
+
+type decoder interface {
+	decode(io.Reader) error
+}
+
+type IPFSIndex struct {
+	Index RemoteNamespaceIndex
+}
+
+func makeIpfsIndex(index RemoteNamespaceIndex) *IPFSIndex {
+	return &IPFSIndex{
+		Index: index,
+	}
+}
+
+func (index *IPFSIndex) encode(w io.Writer) error {
+	return EncodeIndex(index.Index, w)
+}
+
+func (index *IPFSIndex) decode(r io.Reader) error {
+	dx, err := DecodeIndex(r)
+
+	if err != nil {
+		return err
+	}
+
+	index.Index = dx
+	return nil
+}
+
+// TODO Don't use Shell directly - invent an interface.  This would enable mocking.
 type IPFSPeer struct {
 	Url    string
 	Client *http.Client
 	Shell  *ipfs.Shell
-}
-
-type IPFSRecord struct {
-	Stream []NamespaceStreamEntry
-}
-
-type IPFSIndex struct {
-	Stream []IndexStreamEntry
-}
-
-func makeIpfsIndex(index RemoteNamespaceIndex) IPFSIndex {
-	return IPFSIndex{
-		Stream: MakeIndexStream(index),
-	}
 }
 
 func MakeIPFSPeer(url string) RemoteStore {
@@ -74,7 +119,7 @@ func (peer *IPFSPeer) Disconnect() error {
 func (peer *IPFSPeer) AddIndex(index RemoteNamespaceIndex) (RemoteStoreAddress, error) {
 	chunk := makeIpfsIndex(index)
 
-	path, err := peer.add(&chunk)
+	path, err := peer.add(chunk)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "IPFSPeer.AddIndex failed")
@@ -86,23 +131,20 @@ func (peer *IPFSPeer) AddIndex(index RemoteNamespaceIndex) (RemoteStoreAddress, 
 func (peer *IPFSPeer) CatIndex(addr RemoteStoreAddress) (RemoteNamespaceIndex, error) {
 	path := castIPFSPath(addr)
 
-	chunk := IPFSIndex{}
-	caterr := peer.cat(path, &chunk)
+	chunk := &IPFSIndex{}
+	caterr := peer.cat(path, chunk)
 
 	if caterr != nil {
 		return EMPTY_INDEX, errors.Wrap(caterr, "IPFSPeer.CatNamespace failed")
 	}
 
-	index := ReadIndexStream(chunk.Stream)
-	return index, nil
+	return chunk.Index, nil
 }
 
 func (peer *IPFSPeer) AddNamespace(record RemoteNamespaceRecord) (RemoteStoreAddress, error) {
-	stream := MakeNamespaceStream(record.Namespace)
+	chunk := makeIpfsRecord(record.Namespace)
 
-	chunk := IPFSRecord{Stream: stream}
-
-	path, err := peer.add(&chunk)
+	path, err := peer.add(chunk)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "IPFSPeer.AddNamespace failed")
@@ -114,50 +156,49 @@ func (peer *IPFSPeer) AddNamespace(record RemoteNamespaceRecord) (RemoteStoreAdd
 func (peer *IPFSPeer) CatNamespace(addr RemoteStoreAddress) (RemoteNamespaceRecord, error) {
 	path := castIPFSPath(addr)
 
-	chunk := IPFSRecord{}
-	caterr := peer.cat(path, &chunk)
+	chunk := &IPFSRecord{}
+	caterr := peer.cat(path, chunk)
 
 	if caterr != nil {
 		return EMPTY_RECORD, errors.Wrap(caterr, "IPFSPeer.CatNamespace failed")
 	}
 
-	namespace := ReadNamespaceStream(chunk.Stream)
-	record := RemoteNamespaceRecord{Namespace: namespace}
+	record := RemoteNamespaceRecord{Namespace: chunk.Namespace}
 	return record, nil
 }
 
-func (peer *IPFSPeer) add(chunk interface{}) (IPFSPath, error) {
-	buff := bytes.Buffer{}
-	enc := gob.NewEncoder(&buff)
-	err := enc.Encode(chunk)
+func (peer *IPFSPeer) add(chunk encoder) (IPFSPath, error) {
+	const failMsg = "IPFSPeer.add failed"
+	buff := &bytes.Buffer{}
+	err := chunk.encode(buff)
 
 	if err != nil {
-		return "", errors.Wrap(err, "Error encoding Gob")
+		return "", errors.Wrap(err, failMsg)
 	}
 
-	path, sherr := peer.Shell.Add(&buff)
+	path, sherr := peer.Shell.Add(buff)
 
 	if sherr != nil {
-		return "", errors.Wrap(err, "IPFSPeer.add failed")
+		return "", errors.Wrap(err, failMsg)
 	}
 
 	return IPFSPath(path), nil
 }
 
-func (peer *IPFSPeer) cat(path IPFSPath, out interface{}) error {
+func (peer *IPFSPeer) cat(path IPFSPath, out decoder) error {
+	const failMsg = "IPFSPeer.cat failed"
 	reader, err := peer.Shell.Cat(string(path))
 
 	if err != nil {
-		return errors.Wrap(err, "IPFSPeer.cat failed")
+		return errors.Wrap(err, failMsg)
 	}
 
 	defer reader.Close()
 
-	dec := gob.NewDecoder(reader)
-	err = dec.Decode(out)
+	err = out.decode(reader)
 
 	if err != nil {
-		return errors.Wrap(err, "failed to decode gob")
+		return errors.Wrap(err, failMsg)
 	}
 
 	// According to IPFS binding docs we must drain the reader.
