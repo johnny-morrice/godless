@@ -1,0 +1,22 @@
+syntax = "proto3";
+package godless;
+
+message NamespaceMessage {
+	repeated NamespaceEntryMessage entries = 1;
+}
+
+message IndexProto {
+	repeated IndexEntryMessage entries = 1;
+}
+
+message IndexEntryMessage {
+	string table = 1;
+	repeated string links = 2;
+}
+
+message NamespaceEntryMessage {
+	string table = 1;
+	string row = 2;
+	string entry = 3;
+	repeated string points = 4;
+}

@@ -4,10 +4,13 @@ package godless
 
 import (
 	"crypto/sha256"
-	"encoding/gob"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"sort"
+
+	"github.com/gogo/protobuf/proto"
+	"github.com/pkg/errors"
 )
 
 type TableName string
@@ -36,18 +39,58 @@ func MakeNamespace(tables map[TableName]Table) Namespace {
 	return out
 }
 
-// Just encode as Gob for now.
 func EncodeNamespace(ns Namespace, w io.Writer) error {
-	stream := MakeNamespaceStream(ns)
-	enc := gob.NewEncoder(w)
-	return enc.Encode(stream)
+	const failMsg = "EncodeNamespace failed"
+
+	pb := MakeNamespaceMessage(ns)
+
+	bs, err := proto.Marshal(pb)
+	if err != nil {
+		return errors.Wrap(err, failMsg)
+	}
+
+	var written int
+	written, err = w.Write(bs)
+
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("%v after %v bytes", failMsg, written))
+	}
+
+	return nil
 }
 
 func DecodeNamespace(r io.Reader) (Namespace, error) {
-	var stream []NamespaceStreamEntry
-	dec := gob.NewDecoder(r)
-	err := dec.Decode(&stream)
-	return ReadNamespaceStream(stream), err
+	const failMsg = "DecodeNamespace failed"
+	bs, err := ioutil.ReadAll(r)
+
+	if err != nil {
+		return EmptyNamespace(), errors.Wrap(err, failMsg)
+	}
+
+	pb := &NamespaceMessage{}
+	err = proto.Unmarshal(bs, pb)
+
+	if err != nil {
+		return EmptyNamespace(), errors.Wrap(err, failMsg)
+	}
+
+	return ReadNamespaceMessage(pb), nil
+}
+
+func ReadNamespaceMessage(message *NamespaceMessage) Namespace {
+	stream := ReadNamespaceStreamMessage(message)
+	return ReadNamespaceStream(stream)
+}
+
+func MakeNamespaceMessage(ns Namespace) *NamespaceMessage {
+	stream := MakeNamespaceStream(ns)
+	pb := &NamespaceMessage{Entries: make([]*NamespaceEntryMessage, len(stream))}
+
+	for i, entry := range stream {
+		pb.Entries[i] = MakeNamespaceEntryMessage(entry)
+	}
+
+	return pb
 }
 
 func (ns Namespace) GetTableNames() []TableName {
