@@ -5,7 +5,33 @@ type IndexStreamEntry struct {
 	Links     []IPFSPath
 }
 
-func makeIndexStreamEntry(t TableName, addrs []RemoteStoreAddress) IndexStreamEntry {
+func ReadIndexEntryMessage(message *IndexEntryMessage) IndexStreamEntry {
+	entry := IndexStreamEntry{
+		TableName: TableName(message.Table),
+		Links:     make([]IPFSPath, len(message.Links)),
+	}
+
+	for i, l := range message.Links {
+		entry.Links[i] = IPFSPath(l)
+	}
+
+	return entry
+}
+
+func MakeIndexEntryMessage(entry IndexStreamEntry) *IndexEntryMessage {
+	message := &IndexEntryMessage{
+		Table: string(entry.TableName),
+		Links: make([]string, len(entry.Links)),
+	}
+
+	for i, l := range entry.Links {
+		message.Links[i] = string(l)
+	}
+
+	return message
+}
+
+func MakeIndexStreamEntry(t TableName, addrs []RemoteStoreAddress) IndexStreamEntry {
 	entry := IndexStreamEntry{
 		TableName: t,
 		Links:     make([]IPFSPath, len(addrs)),
@@ -58,7 +84,7 @@ func MakeIndexStream(index RemoteNamespaceIndex) []IndexStreamEntry {
 
 	i := 0
 	for t, addrs := range index.Index {
-		entry := makeIndexStreamEntry(t, addrs)
+		entry := MakeIndexStreamEntry(t, addrs)
 		stream[i] = entry
 		i++
 	}
@@ -74,4 +100,24 @@ func ReadIndexStream(stream []IndexStreamEntry) RemoteNamespaceIndex {
 	}
 
 	return index
+}
+
+func MakeIndexStreamMessage(stream []IndexStreamEntry) *IndexMessage {
+	message := &IndexMessage{Entries: make([]*IndexEntryMessage, len(stream))}
+
+	for i, entry := range stream {
+		message.Entries[i] = MakeIndexEntryMessage(entry)
+	}
+
+	return message
+}
+
+func ReadIndexStreamMessage(message *IndexMessage) []IndexStreamEntry {
+	stream := make([]IndexStreamEntry, len(message.Entries))
+
+	for i, emsg := range message.Entries {
+		stream[i] = ReadIndexEntryMessage(emsg)
+	}
+
+	return stream
 }

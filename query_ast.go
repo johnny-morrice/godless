@@ -188,13 +188,13 @@ func (ast *QuerySelectAST) Compile() (QuerySelect, error) {
 	qselect := QuerySelect{}
 
 	if ast.Limit != "" {
-		limit, converr := strconv.Atoi(ast.Limit)
+		limit, converr := strconv.ParseUint(ast.Limit, __BASE_10, __BITS_64)
 
 		if converr != nil {
 			return QuerySelect{}, errors.Wrap(converr, "BUG convert limit failed")
 		}
 
-		qselect.Limit = uint(limit)
+		qselect.Limit = limit
 	}
 
 	if ast.Where != nil {
@@ -372,3 +372,6 @@ func makeEntryNames(mess []string) []EntryName {
 
 	return es
 }
+
+const __BASE_10 = 10
+const __BITS_64 = 64

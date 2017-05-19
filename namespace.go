@@ -1,6 +1,6 @@
-package godless
-
+//go:generate protoc --go_out=. godless.proto
 //go:generate mockgen -destination mock/mock_namespace.go -imports lib=github.com/johnny-morrice/godless -self_package lib github.com/johnny-morrice/godless RowConsumer
+package godless
 
 import (
 	"crypto/sha256"
@@ -42,9 +42,9 @@ func MakeNamespace(tables map[TableName]Table) Namespace {
 func EncodeNamespace(ns Namespace, w io.Writer) error {
 	const failMsg = "EncodeNamespace failed"
 
-	pb := MakeNamespaceMessage(ns)
+	message := MakeNamespaceMessage(ns)
 
-	bs, err := proto.Marshal(pb)
+	bs, err := proto.Marshal(message)
 	if err != nil {
 		return errors.Wrap(err, failMsg)
 	}
@@ -67,14 +67,14 @@ func DecodeNamespace(r io.Reader) (Namespace, error) {
 		return EmptyNamespace(), errors.Wrap(err, failMsg)
 	}
 
-	pb := &NamespaceMessage{}
-	err = proto.Unmarshal(bs, pb)
+	message := &NamespaceMessage{}
+	err = proto.Unmarshal(bs, message)
 
 	if err != nil {
 		return EmptyNamespace(), errors.Wrap(err, failMsg)
 	}
 
-	return ReadNamespaceMessage(pb), nil
+	return ReadNamespaceMessage(message), nil
 }
 
 func ReadNamespaceMessage(message *NamespaceMessage) Namespace {
@@ -84,13 +84,7 @@ func ReadNamespaceMessage(message *NamespaceMessage) Namespace {
 
 func MakeNamespaceMessage(ns Namespace) *NamespaceMessage {
 	stream := MakeNamespaceStream(ns)
-	pb := &NamespaceMessage{Entries: make([]*NamespaceEntryMessage, len(stream))}
-
-	for i, entry := range stream {
-		pb.Entries[i] = MakeNamespaceEntryMessage(entry)
-	}
-
-	return pb
+	return MakeNamespaceStreamMessage(stream)
 }
 
 func (ns Namespace) GetTableNames() []TableName {

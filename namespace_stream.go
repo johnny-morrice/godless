@@ -1,4 +1,3 @@
-//go:generate protoc --go_out=. namespace.proto
 package godless
 
 import "sort"
@@ -109,6 +108,16 @@ func MakeNamespaceStream(ns Namespace) []NamespaceStreamEntry {
 
 	sort.Sort(byNamespaceStreamOrder(stream))
 	return stream
+}
+
+func MakeNamespaceStreamMessage(stream []NamespaceStreamEntry) *NamespaceMessage {
+	message := &NamespaceMessage{Entries: make([]*NamespaceEntryMessage, len(stream))}
+
+	for i, entry := range stream {
+		message.Entries[i] = MakeNamespaceEntryMessage(entry)
+	}
+
+	return message
 }
 
 func ReadNamespaceStreamMessage(message *NamespaceMessage) []NamespaceStreamEntry {

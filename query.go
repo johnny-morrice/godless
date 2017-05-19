@@ -56,7 +56,7 @@ type QueryRowJoin struct {
 
 type QuerySelect struct {
 	Where QueryWhere `json:",omitempty"`
-	Limit uint       `json:",omitempty"`
+	Limit uint64     `json:",omitempty"`
 }
 
 type QueryWhereOpCode uint16
