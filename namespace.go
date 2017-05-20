@@ -122,7 +122,7 @@ func (ns Namespace) Copy() Namespace {
 	cpy := EmptyNamespace()
 
 	for k, table := range ns.Tables {
-		cpy.Tables[k] = table
+		cpy.Tables[k] = table.Copy()
 	}
 
 	return cpy
@@ -221,7 +221,7 @@ func (t Table) Copy() Table {
 	cpy := EmptyTable()
 
 	for k, row := range t.Rows {
-		cpy.Rows[k] = row
+		cpy.Rows[k] = row.Copy()
 	}
 
 	return cpy
@@ -311,7 +311,7 @@ func (row Row) Copy() Row {
 	cpy := Row{Entries: map[EntryName]Entry{}}
 
 	for k, entry := range row.Entries {
-		cpy.Entries[k] = entry
+		cpy.Entries[k] = entry.Copy()
 	}
 
 	return cpy
@@ -378,6 +378,10 @@ func MakeEntry(set []Point) Entry {
 	undupes := uniqPoints(set)
 	sort.Sort(byPointValue(undupes))
 	return Entry{Set: undupes}
+}
+
+func (e Entry) Copy() Entry {
+	return MakeEntry(e.Set)
 }
 
 func (e Entry) JoinEntry(other Entry) Entry {
