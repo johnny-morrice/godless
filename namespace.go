@@ -3,7 +3,6 @@
 package godless
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -87,6 +86,12 @@ func MakeNamespaceMessage(ns Namespace) *NamespaceMessage {
 	return MakeNamespaceStreamMessage(stream)
 }
 
+// Strip removes empty tables and rows that would not be saved to the backing store.
+func (ns Namespace) Strip() Namespace {
+	stream := MakeNamespaceStream(ns)
+	return ReadNamespaceStream(stream)
+}
+
 func (ns Namespace) GetTableNames() []TableName {
 	tableNames := make([]TableName, len(ns.Tables))
 
@@ -99,16 +104,14 @@ func (ns Namespace) GetTableNames() []TableName {
 	return tableNames
 }
 
-func (ns Namespace) JoinStreamEntry(streamEntry NamespaceStreamEntry) Namespace {
-	entryNamespace := MakeNamespace(map[TableName]Table{
-		streamEntry.Table: MakeTable(map[RowName]Row{
-			streamEntry.Row: MakeRow(map[EntryName]Entry{
-				streamEntry.Entry: MakeEntry(streamEntry.Points),
-			}),
+func (ns Namespace) addStreamEntry(streamEntry NamespaceStreamEntry) {
+	table := MakeTable(map[RowName]Row{
+		streamEntry.Row: MakeRow(map[EntryName]Entry{
+			streamEntry.Entry: MakeEntry(streamEntry.Points),
 		}),
 	})
 
-	return ns.JoinNamespace(entryNamespace)
+	ns.addTable(streamEntry.Table, table)
 }
 
 func (ns Namespace) IsEmpty() bool {
@@ -135,14 +138,11 @@ func (ns Namespace) JoinNamespace(other Namespace) Namespace {
 	return joined
 }
 
-// Destructive
 func (ns Namespace) addTable(key TableName, table Table) Namespace {
 	current, present := ns.Tables[key]
 
 	if present {
-		joined := current.JoinTable(table)
-
-		ns.Tables[key] = joined
+		current.addTable(table)
 	} else {
 		ns.Tables[key] = table
 	}
@@ -239,12 +239,14 @@ func (t Table) AllRows() []Row {
 
 func (t Table) JoinTable(other Table) Table {
 	joined := t.Copy()
-
-	for otherk, otherRow := range other.Rows {
-		joined.addRow(otherk, otherRow)
-	}
-
+	joined.addTable(other)
 	return joined
+}
+
+func (t Table) addTable(other Table) {
+	for otherk, otherRow := range other.Rows {
+		t.addRow(otherk, otherRow)
+	}
 }
 
 func (t Table) JoinRow(rowKey RowName, row Row) Table {
@@ -264,8 +266,7 @@ func (t Table) GetRow(rowKey RowName) (Row, error) {
 // Destructive.
 func (t Table) addRow(rowKey RowName, row Row) {
 	if current, present := t.Rows[rowKey]; present {
-		jrow := current.JoinRow(row)
-		t.Rows[rowKey] = jrow
+		current.addRow(row)
 	} else {
 		t.Rows[rowKey] = row
 	}
@@ -316,17 +317,19 @@ func (row Row) Copy() Row {
 	return cpy
 }
 
-func (row Row) JoinRow(other Row) Row {
-	joined := row.Copy()
-
+func (row Row) addRow(other Row) {
 	for otherk, otherEntry := range other.Entries {
-		if joinEntry, present := joined.Entries[otherk]; present {
-			joined.Entries[otherk] = joinEntry.JoinEntry(otherEntry)
+		if joinEntry, present := row.Entries[otherk]; present {
+			row.Entries[otherk] = joinEntry.JoinEntry(otherEntry)
 		} else {
-			joined.Entries[otherk] = otherEntry
+			row.Entries[otherk] = otherEntry
 		}
 	}
+}
 
+func (row Row) JoinRow(other Row) Row {
+	joined := row.Copy()
+	joined.addRow(other)
 	return joined
 }
 
@@ -372,7 +375,7 @@ func EmptyEntry() Entry {
 }
 
 func MakeEntry(set []Point) Entry {
-	undupes := uniq256(set)
+	undupes := uniqPoints(set)
 	sort.Sort(byPointValue(undupes))
 	return Entry{Set: undupes}
 }
@@ -420,25 +423,22 @@ func (p byPointValue) Less(i, j int) bool {
 	return p[i] < p[j]
 }
 
-// uniq256 deduplicates a slice of Values using sha256.
-func uniq256(dupes []Point) []Point {
-	dedup := map[[sha256.Size]byte]Point{}
+func uniqPoints(dupes []Point) []Point {
+	dedupe := map[Point]struct{}{}
 
-	for _, point := range dupes {
-		bs := []byte(string(point))
-		k := sha256.Sum256(bs)
-		if _, present := dedup[k]; !present {
-			dedup[k] = point
+	for _, p := range dupes {
+		if _, present := dedupe[p]; !present {
+			dedupe[p] = struct{}{}
 		}
 	}
 
-	out := make([]Point, len(dedup))
+	uniq := make([]Point, len(dedupe))
 
 	i := 0
-	for _, point := range dedup {
-		out[i] = point
+	for p, _ := range dedupe {
+		uniq[i] = p
 		i++
 	}
 
-	return out
+	return uniq
 }

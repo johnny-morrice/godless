@@ -2,31 +2,49 @@ package godless
 
 import (
 	"bytes"
+	"math/rand"
 	"reflect"
 	"runtime"
 	"testing"
+	"testing/quick"
+	"time"
 )
 
-// A namespace without entries is rendered to an empty stream.
-//
-// func TestQuickEncoding(t *testing.T) {
-// 	if testing.Short() {
-// 		t.Skip("Skipping test in short mode")
-// 		return
-// 	}
-//
-// 	config := &quick.Config{
-// 		MaxCount: ENCODE_REPEAT_COUNT,
-// 	}
-//
-// 	err := quick.Check(encodesOk, config)
-//
-// 	if err != nil {
-// 		t.Error("Unexpected error:", trim(err))
-// 	}
-// }
+func BenchmarkNamespaceEncoding(b *testing.B) {
+	seed := time.Now().UTC().UnixNano()
+	src := rand.NewSource(seed)
+	rand := rand.New(src)
+	nsType := reflect.TypeOf(Namespace{})
+	for i := 0; i < b.N; i++ {
+		nsValue, ok := quick.Value(nsType, rand)
 
-func TestReEncoding(t *testing.T) {
+		if !ok {
+			panic("Can not generate value")
+		}
+
+		ns := nsValue.Interface().(Namespace)
+		namespaceSerializationPass(ns)
+	}
+}
+
+func TestNamespaceEncoding(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+		return
+	}
+
+	config := &quick.Config{
+		MaxCount: ENCODE_REPEAT_COUNT,
+	}
+
+	err := quick.Check(encodesOk, config)
+
+	if err != nil {
+		t.Error("Unexpected error:", trim(err))
+	}
+}
+
+func TestNamespaceStableEncoding(t *testing.T) {
 	entryA := MakeEntry([]Point{"hiya"})
 	entryB := MakeEntry([]Point{"whatcha"})
 	expected := MakeNamespace(map[TableName]Table{
@@ -41,7 +59,7 @@ func TestReEncoding(t *testing.T) {
 	})
 
 	for i := 0; i < ENCODE_REPEAT_COUNT; i++ {
-		actual := encodeId(expected)
+		actual := namespaceSerializationPass(expected)
 		assertNamespaceEquals(t, expected, actual)
 	}
 }
@@ -52,12 +70,13 @@ func trim(err error) string {
 	return msg[:TRIM_LENGTH]
 }
 
-func encodesOk(expected Namespace) bool {
-	actual := encodeId(expected)
-	return reflect.DeepEqual(expected, actual)
+func encodesOk(randomNs Namespace) bool {
+	expected := randomNs.Strip()
+	actual := namespaceSerializationPass(randomNs)
+	return expected.Equals(actual)
 }
 
-func encodeId(expected Namespace) Namespace {
+func namespaceSerializationPass(expected Namespace) Namespace {
 	buff := &bytes.Buffer{}
 	err := EncodeNamespace(expected, buff)
 
@@ -558,10 +577,10 @@ func TestEntryGetValues(t *testing.T) {
 	}
 }
 
-func Test_uniq256(t *testing.T) {
+func Test_uniqPoints(t *testing.T) {
 	expected := []Point{"hello"}
 	input := []Point{"hello", "hello", "hello"}
-	actual := uniq256(input)
+	actual := uniqPoints(input)
 	if !reflect.DeepEqual(expected, actual) {
 		t.Error("Expected", expected, "but was", actual)
 	}

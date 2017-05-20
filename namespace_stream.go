@@ -100,8 +100,10 @@ func MakeNamespaceStream(ns Namespace) []NamespaceStreamEntry {
 	for tableName, table := range ns.Tables {
 		for rowName, row := range table.Rows {
 			for entryName, entry := range row.Entries {
-				streamEntry := MakeStreamEntry(tableName, rowName, entryName, entry)
-				stream = append(stream, streamEntry)
+				if len(entry.Set) > 0 {
+					streamEntry := MakeStreamEntry(tableName, rowName, entryName, entry)
+					stream = append(stream, streamEntry)
+				}
 			}
 		}
 	}
@@ -134,7 +136,7 @@ func ReadNamespaceStream(stream []NamespaceStreamEntry) Namespace {
 	ns := EmptyNamespace()
 
 	for _, streamEntry := range stream {
-		ns = ns.JoinStreamEntry(streamEntry)
+		ns.addStreamEntry(streamEntry)
 	}
 
 	return ns

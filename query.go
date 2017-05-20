@@ -289,6 +289,10 @@ func CompileQuery(source string) (*Query, error) {
 	return query, nil
 }
 
+func (query *Query) PrettyPrint() string {
+	return ""
+}
+
 func (query *Query) Analyse() string {
 	return fmt.Sprintf("Compiled:\n\n%v\n\nAST:\n\n%v", prettyPrintJson(query), prettyPrintJson(query.AST))
 }
