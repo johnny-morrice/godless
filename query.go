@@ -47,39 +47,76 @@ func MakeQuerySelectMessage(querySelect QuerySelect) *QuerySelectMessage {
 }
 
 func MakeQueryWhereMessage(queryWhere QueryWhere) *QueryWhereMessage {
-	whereStack := []QueryWhere{queryWhere}
+	builder := &whereMessageBuilder{}
+	whereStack := makeWhereStack(&queryWhere)
+	whereStack.visit(builder)
 
-	rootMessage := &QueryWhereMessage{}
-	configureWhereMessage(queryWhere, rootMessage)
-	messageStack := []*QueryWhereMessage{rootMessage}
-
-	for len(whereStack) > 0 {
-		size := len(whereStack)
-		last := size - 1
-		whereTip := whereStack[last]
-		messageTip := messageStack[last]
-		childSize := len(whereTip.Clauses)
-		messageTip.Clauses = make([]*QueryWhereMessage, childSize)
-
-		whereStack = whereStack[:last]
-		messageStack = messageStack[:last]
-
-		for i := 0; i < childSize; i++ {
-			whereChild := whereTip.Clauses[i]
-			messageChild := &QueryWhereMessage{}
-			messageTip.Clauses[i] = messageChild
-			configureWhereMessage(whereChild, messageChild)
-			whereStack = append(whereStack, whereChild)
-			messageStack = append(messageStack, messageChild)
-		}
-	}
-
-	return rootMessage
+	return builder.message
 }
 
-func configureWhereMessage(queryWhere QueryWhere, message *QueryWhereMessage) {
+type whereMessageBuilder struct {
+	message      *QueryWhereMessage
+	messageStack []whereBuilderFrame
+}
+
+func (builder *whereMessageBuilder) VisitWhere(pos int, where *QueryWhere) {
+	message := &QueryWhereMessage{}
+
+	if builder.message == nil {
+		builder.message = message
+	}
+
+	frame := whereBuilderFrame{
+		message: message,
+		where:   where,
+	}
+
+	tip := builder.peek()
+	tip.message.Clauses[pos] = message
+
+	builder.push(frame)
+	configureWhereMessage(where, message)
+}
+
+func (builder *whereMessageBuilder) LeaveWhere(where *QueryWhere) {
+	frame := builder.pop()
+
+	if frame.where != where {
+		panic("messageStack corruption")
+	}
+}
+
+func (builder *whereMessageBuilder) VisitPredicate(*QueryPredicate) {
+
+}
+
+func (builder *whereMessageBuilder) push(frame whereBuilderFrame) {
+	builder.messageStack = append(builder.messageStack, frame)
+}
+
+func (builder *whereMessageBuilder) peek() whereBuilderFrame {
+	return builder.messageStack[builder.lastIndex()]
+}
+
+func (builder *whereMessageBuilder) pop() whereBuilderFrame {
+	frame := builder.peek()
+	builder.messageStack = builder.messageStack[:builder.lastIndex()]
+	return frame
+}
+
+func (builder *whereMessageBuilder) lastIndex() int {
+	return len(builder.messageStack) - 1
+}
+
+type whereBuilderFrame struct {
+	message *QueryWhereMessage
+	where   *QueryWhere
+}
+
+func configureWhereMessage(queryWhere *QueryWhere, message *QueryWhereMessage) {
 	message.Opcode = uint32(queryWhere.OpCode)
 	message.Predicate = MakeQueryPredicateMessage(queryWhere.Predicate)
+	message.Clauses = make([]*QueryWhereMessage, len(queryWhere.Clauses))
 }
 
 func MakeQueryPredicateMessage(predicate QueryPredicate) *QueryPredicateMessage {
