@@ -341,14 +341,18 @@ func (row Row) GetEntry(entryKey EntryName) (Entry, error) {
 	}
 }
 
-func (row Row) JoinEntry(entryKey EntryName, entry Entry) Row {
-	entryRow := Row{
-		Entries: map[EntryName]Entry{
-			entryKey: entry,
-		},
+func (row Row) addEntry(entryKey EntryName, other Entry) {
+	if entry, present := row.Entries[entryKey]; present {
+		row.Entries[entryKey] = entry.JoinEntry(other)
+	} else {
+		row.Entries[entryKey] = other
 	}
+}
 
-	return row.JoinRow(entryRow)
+func (row Row) JoinEntry(entryKey EntryName, entry Entry) Row {
+	cpy := row.Copy()
+	cpy.addEntry(entryKey, entry)
+	return cpy
 }
 
 func (row Row) Equals(other Row) bool {

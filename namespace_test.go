@@ -5,10 +5,81 @@ import (
 	"math/rand"
 	"reflect"
 	"runtime"
+	"strings"
 	"testing"
 	"testing/quick"
 	"time"
 )
+
+func (ns Namespace) Generate(rand *rand.Rand, size int) reflect.Value {
+	const maxStr = 100
+	const tableFudge = 0.125
+	const rowFudge = 0.25
+	const entryFudge = 0.65
+	const pointFudge = 0.85
+
+	gen := EmptyNamespace()
+
+	// FIXME This looks horrific.
+	tableCount := genCount(rand, size, tableFudge)
+	for i := 0; i < tableCount; i++ {
+		tableName := TableName(randStr(rand, maxStr))
+		table := EmptyTable()
+		rowCount := genCount(rand, size, rowFudge)
+		for j := 0; j < rowCount; j++ {
+			rowName := RowName(randStr(rand, maxStr))
+			row := EmptyRow()
+			entryCount := genCount(rand, size, entryFudge)
+			for k := 0; k < entryCount; k++ {
+				entryName := EntryName(randStr(rand, maxStr))
+				pointCount := genCount(rand, size, pointFudge)
+				points := make([]Point, pointCount)
+
+				for m := 0; m < pointCount; m++ {
+					points[m] = Point(randStr(rand, maxStr))
+				}
+
+				entry := MakeEntry(points)
+				row.addEntry(entryName, entry)
+			}
+			table.addRow(rowName, row)
+		}
+		gen.addTable(tableName, table)
+	}
+
+	return reflect.ValueOf(gen)
+}
+
+// Fudge to generate count of sample data.
+func genCount(rand *rand.Rand, size int, scale float32) int {
+	fudge := float32(1.0)
+	mark := rand.Float32()
+	if mark < 0.01 {
+		fudge = 0
+	} else if mark < 0.3 {
+		fudge = 0.3
+	} else if mark < 0.7 {
+		fudge = 0.5
+	} else if mark < 0.9 {
+		fudge = 0.8
+	}
+
+	return int(fudge * float32(size) * scale)
+}
+
+func randStr(rand *rand.Rand, max int) string {
+	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	count := rand.Intn(max)
+	parts := make([]string, count)
+
+	for i := 0; i < count; i++ {
+		index := rand.Intn(len(letters))
+		b := letters[index]
+		parts[i] = string([]byte{b})
+	}
+
+	return strings.Join(parts, "")
+}
 
 func BenchmarkNamespaceEncoding(b *testing.B) {
 	seed := time.Now().UTC().UnixNano()
