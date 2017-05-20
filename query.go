@@ -28,6 +28,114 @@ type Query struct {
 	Select   QuerySelect `json:",omitempty"`
 }
 
+func MakeQueryMessage(query *Query) *QueryMessage {
+	return &QueryMessage{
+		Opcode: uint32(query.OpCode),
+		Table:  string(query.TableKey),
+		Join:   MakeQueryJoinMessage(query.Join),
+		Select: MakeQuerySelectMessage(query.Select),
+	}
+}
+
+func MakeQuerySelectMessage(querySelect QuerySelect) *QuerySelectMessage {
+	message := &QuerySelectMessage{
+		Limit: querySelect.Limit,
+		Where: MakeQueryWhereMessage(querySelect.Where),
+	}
+
+	return message
+}
+
+func MakeQueryWhereMessage(queryWhere QueryWhere) *QueryWhereMessage {
+	whereStack := []QueryWhere{queryWhere}
+
+	rootMessage := &QueryWhereMessage{}
+	configureWhereMessage(queryWhere, rootMessage)
+	messageStack := []*QueryWhereMessage{rootMessage}
+
+	for len(whereStack) > 0 {
+		size := len(whereStack)
+		last := size - 1
+		whereTip := whereStack[last]
+		messageTip := messageStack[last]
+		childSize := len(whereTip.Clauses)
+		messageTip.Clauses = make([]*QueryWhereMessage, childSize)
+
+		whereStack = whereStack[:last]
+		messageStack = messageStack[:last]
+
+		for i := 0; i < childSize; i++ {
+			whereChild := whereTip.Clauses[i]
+			messageChild := &QueryWhereMessage{}
+			messageTip.Clauses[i] = messageChild
+			configureWhereMessage(whereChild, messageChild)
+			whereStack = append(whereStack, whereChild)
+			messageStack = append(messageStack, messageChild)
+		}
+	}
+
+	return rootMessage
+}
+
+func configureWhereMessage(queryWhere QueryWhere, message *QueryWhereMessage) {
+	message.Opcode = uint32(queryWhere.OpCode)
+	message.Predicate = MakeQueryPredicateMessage(queryWhere.Predicate)
+}
+
+func MakeQueryPredicateMessage(predicate QueryPredicate) *QueryPredicateMessage {
+	message := &QueryPredicateMessage{
+		Opcode:   uint32(predicate.OpCode),
+		Userow:   predicate.IncludeRowKey,
+		Literals: make([]string, len(predicate.Literals)),
+		Keys:     make([]string, len(predicate.Keys)),
+	}
+
+	for i, l := range predicate.Literals {
+		message.Literals[i] = string(l)
+	}
+
+	for i, k := range predicate.Keys {
+		message.Keys[i] = string(k)
+	}
+
+	return message
+}
+
+func MakeQueryJoinMessage(join QueryJoin) *QueryJoinMessage {
+	message := &QueryJoinMessage{
+		Rows: make([]*QueryRowJoinMessage, len(join.Rows)),
+	}
+
+	for i, r := range join.Rows {
+		message.Rows[i] = MakeQueryRowJoinMessage(r)
+	}
+
+	return message
+}
+
+func MakeQueryRowJoinMessage(row QueryRowJoin) *QueryRowJoinMessage {
+	message := &QueryRowJoinMessage{
+		Row:     string(row.RowKey),
+		Entries: make([]*QueryRowJoinEntryMessage, len(row.Entries)),
+	}
+
+	// We don't store these in IPFS so no need for stable order.
+	i := 0
+	for e, p := range row.Entries {
+		message.Entries[i] = &QueryRowJoinEntryMessage{
+			Entry: string(e),
+			Point: string(p),
+		}
+		i++
+	}
+
+	return message
+}
+
+func ReadQueryMessage(message *QueryMessage) *Query {
+	return nil
+}
+
 type whereVisitor interface {
 	VisitWhere(int, *QueryWhere)
 	LeaveWhere(*QueryWhere)
@@ -56,7 +164,7 @@ type QueryRowJoin struct {
 
 type QuerySelect struct {
 	Where QueryWhere `json:",omitempty"`
-	Limit uint64     `json:",omitempty"`
+	Limit uint32     `json:",omitempty"`
 }
 
 type QueryWhereOpCode uint16

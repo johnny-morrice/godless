@@ -188,13 +188,13 @@ func (ast *QuerySelectAST) Compile() (QuerySelect, error) {
 	qselect := QuerySelect{}
 
 	if ast.Limit != "" {
-		limit, converr := strconv.ParseUint(ast.Limit, __BASE_10, __BITS_64)
+		limit, converr := strconv.ParseUint(ast.Limit, __BASE_10, __BITS_32)
 
 		if converr != nil {
 			return QuerySelect{}, errors.Wrap(converr, "BUG convert limit failed")
 		}
 
-		qselect.Limit = limit
+		qselect.Limit = uint32(limit)
 	}
 
 	if ast.Where != nil {
@@ -219,54 +219,70 @@ type QueryWhereAST struct {
 func (ast *QueryWhereAST) Compile() (QueryWhere, error) {
 	where := QueryWhere{}
 
-	if ast.Command == "and" {
-		clauses, err := ast.CompileClauses()
+	err := ast.Configure(&where)
 
-		if err != nil {
-			return QueryWhere{}, errors.Wrap(err, "BUG and clause compile failed")
-		}
+	if err != nil {
+		err = ast.CompileClauses(&where)
+	}
 
-		where.Clauses = clauses
-		where.OpCode = AND
-	} else if ast.Command == "or" {
-		clauses, err := ast.CompileClauses()
-
-		if err != nil {
-			return QueryWhere{}, errors.Wrap(err, "BUG or clause compile failed")
-		}
-
-		where.Clauses = clauses
-		where.OpCode = OR
-	} else if ast.Command == "predicate" && ast.Predicate != nil {
-		predicate, err := ast.Predicate.Compile()
-
-		if err != nil {
-			return QueryWhere{}, errors.Wrap(err, "BUG predicate compile failed")
-		}
-
-		where.OpCode = PREDICATE
-		where.Predicate = predicate
-	} else {
-		return QueryWhere{}, fmt.Errorf("BUG unsupported where OpCode: '%v'", ast.Command)
+	if err != nil {
+		return QueryWhere{}, errors.Wrap(err, "QueryWhereAST.Compile failed")
 	}
 
 	return where, nil
 }
 
-func (ast *QueryWhereAST) CompileClauses() ([]QueryWhere, error) {
-	clauses := make([]QueryWhere, len(ast.Clauses))
-
-	for i, child := range ast.Clauses {
-		clause, err := child.Compile()
+func (ast *QueryWhereAST) Configure(where *QueryWhere) error {
+	if ast.Command == "and" {
+		where.OpCode = AND
+	} else if ast.Command == "or" {
+		where.OpCode = OR
+	} else if ast.Command == "predicate" && ast.Predicate != nil {
+		predicate, err := ast.Predicate.Compile()
 
 		if err != nil {
-			return nil, errors.Wrap(err, fmt.Sprintf("BUG failed compiling child clause '%v'", i))
+			return errors.Wrap(err, "QueryWhereAST.Configure failed")
 		}
 
-		clauses[i] = clause
+		where.OpCode = PREDICATE
+		where.Predicate = predicate
+	} else {
+		return fmt.Errorf("BUG unsupported where OpCode: '%v'", ast.Command)
 	}
 
-	return clauses, nil
+	return nil
+}
+
+func (ast *QueryWhereAST) CompileClauses(out *QueryWhere) error {
+	astStack := []*QueryWhereAST{ast}
+	whereStack := []*QueryWhere{out}
+
+	for len(astStack) > 0 {
+		size := len(astStack)
+		last := size - 1
+		astTip := astStack[last]
+		whereTip := whereStack[last]
+
+		astStack = astStack[:last]
+		whereStack = whereStack[:last]
+
+		childSize := len(astTip.Clauses)
+		whereTip.Clauses = make([]QueryWhere, childSize)
+		for i := 0; i < childSize; i++ {
+			astChild := astTip.Clauses[i]
+			whereChild := &whereTip.Clauses[i]
+			err := astChild.Configure(whereChild)
+
+			if err != nil {
+				return errors.Wrap(err, "QueryWhereAST.CompileClauses failed")
+			}
+
+			astStack = append(astStack, astChild)
+			whereStack = append(whereStack, whereChild)
+		}
+	}
+
+	return nil
 }
 
 type QueryPredicateAST struct {
@@ -374,4 +390,4 @@ func makeEntryNames(mess []string) []EntryName {
 }
 
 const __BASE_10 = 10
-const __BITS_64 = 64
+const __BITS_32 = 64
