@@ -6,8 +6,12 @@ package godless
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"os"
+	"sort"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/pkg/errors"
 )
 
@@ -194,9 +198,51 @@ type QueryJoin struct {
 	Rows []QueryRowJoin `json:",omitempty"`
 }
 
+func (join QueryJoin) equals(other QueryJoin) bool {
+	if len(join.Rows) != len(other.Rows) {
+		return false
+	}
+
+	for i, myJoin := range join.Rows {
+		theirJoin := other.Rows[i]
+		if !myJoin.equals(theirJoin) {
+			return false
+		}
+	}
+
+	return true
+}
+
 type QueryRowJoin struct {
 	RowKey  RowName
 	Entries map[EntryName]Point `json:",omitempty"`
+}
+
+func (join QueryRowJoin) equals(other QueryRowJoin) bool {
+	ok := join.RowKey == other.RowKey
+	ok = ok && len(join.Entries) == len(other.Entries)
+
+	if !ok {
+		return false
+	}
+
+	keys := make([]string, len(join.Entries))
+	i := 0
+	for k, _ := range join.Entries {
+		keys[i] = string(k)
+		i++
+	}
+
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		ename := EntryName(k)
+		if join.Entries[ename] != other.Entries[ename] {
+			return false
+		}
+	}
+
+	return true
 }
 
 type QuerySelect struct {
@@ -217,6 +263,21 @@ type QueryWhere struct {
 	OpCode    QueryWhereOpCode `json:",omitempty"`
 	Clauses   []QueryWhere     `json:",omitempty"`
 	Predicate QueryPredicate   `json:",omitempty"`
+}
+
+func (where QueryWhere) shallowEquals(other QueryWhere) bool {
+	ok := where.OpCode == other.OpCode
+	ok = ok && len(where.Clauses) == len(other.Clauses)
+
+	if !ok {
+		return false
+	}
+
+	if !where.Predicate.equals(other.Predicate) {
+		return false
+	}
+
+	return true
 }
 
 type QueryPredicateOpCode uint16
@@ -253,9 +314,31 @@ type QueryPredicate struct {
 	IncludeRowKey bool                 `json:",omitempty"`
 }
 
-func (pred QueryPredicate) match(tableKey string, r Row) bool {
-	// TODO
-	return false
+func (pred QueryPredicate) equals(other QueryPredicate) bool {
+	ok := pred.OpCode == other.OpCode
+	ok = ok && pred.IncludeRowKey == other.IncludeRowKey
+	ok = ok && len(pred.Keys) == len(other.Keys)
+	ok = ok && len(pred.Literals) == len(other.Literals)
+
+	if !ok {
+		return false
+	}
+
+	for i, myKey := range pred.Keys {
+		theirKey := other.Keys[i]
+		if myKey != theirKey {
+			return false
+		}
+	}
+
+	for i, myLit := range pred.Literals {
+		theirLit := other.Literals[i]
+		if myLit != theirLit {
+			return false
+		}
+	}
+
+	return true
 }
 
 func CompileQuery(source string) (*Query, error) {
@@ -289,8 +372,53 @@ func CompileQuery(source string) (*Query, error) {
 	return query, nil
 }
 
-func (query *Query) PrettyPrint() string {
-	return ""
+func EncodeQuery(query *Query, w io.Writer) error {
+	const failMsg = "EncodeQuery failed"
+
+	message := MakeQueryMessage(query)
+
+	bs, err := proto.Marshal(message)
+	if err != nil {
+		return errors.Wrap(err, failMsg)
+	}
+
+	err = writeBytes(bs, w)
+
+	if err != nil {
+		return errors.Wrap(err, failMsg)
+	}
+
+	return nil
+}
+
+func DecodeQuery(r io.Reader) (*Query, error) {
+	const failMsg = "DecodeQuery failed"
+	bs, err := ioutil.ReadAll(r)
+
+	if err != nil {
+		return nil, errors.Wrap(err, failMsg)
+	}
+
+	message := &QueryMessage{}
+	err = proto.Unmarshal(bs, message)
+
+	if err != nil {
+		return nil, errors.Wrap(err, failMsg)
+	}
+
+	return ReadQueryMessage(message), nil
+}
+
+func (query *Query) PrettyPrint(w io.Writer) error {
+	printer := &queryPrinter{output: w}
+
+	query.Visit(printer)
+
+	if printer.hasError() {
+		return printer.visitError()
+	}
+
+	return nil
 }
 
 func (query *Query) Analyse() string {
@@ -303,6 +431,16 @@ func (query *Query) Validate() error {
 	query.Visit(validator)
 
 	return validator.err
+}
+
+func (query *Query) Equals(other *Query) bool {
+	flattenMe := &queryFlattener{}
+	flattenThem := &queryFlattener{}
+
+	query.Visit(flattenMe)
+	other.Visit(flattenThem)
+
+	return flattenMe.Equals(flattenThem)
 }
 
 func (query *Query) Visit(visitor QueryVisitor) {
@@ -340,55 +478,4 @@ func prettyPrintJson(jsonable interface{}) string {
 		panic(errors.Wrap(err, "BUG prettyPrintJson failed"))
 	}
 	return string(bs)
-}
-
-type queryValidator struct {
-	noDebugVisitor
-	errorCollectVisitor
-	noJoinVisitor
-}
-
-func (visitor *queryValidator) VisitOpCode(opCode QueryOpCode) {
-	switch opCode {
-	case SELECT:
-	case JOIN:
-		// Okay!
-	default:
-		visitor.collectError(errors.New(fmt.Sprintf("Invalid Query OpCode: %v", opCode)))
-	}
-}
-
-func (visitor *queryValidator) VisitTableKey(tableKey TableName) {
-	if tableKey == "" {
-		visitor.collectError(errors.New("Empty table key"))
-	}
-}
-
-func (visitor *queryValidator) VisitSelect(*QuerySelect) {
-}
-
-func (visitor *queryValidator) VisitWhere(position int, where *QueryWhere) {
-	switch where.OpCode {
-	case WHERE_NOOP:
-	case AND:
-	case OR:
-	case PREDICATE:
-		// Okay!
-	default:
-		visitor.collectError(errors.New(fmt.Sprintf("Unknown Where OpCode at position %v: %v", position, where)))
-	}
-}
-
-func (visitor *queryValidator) LeaveWhere(*QueryWhere) {
-}
-
-func (visitor *queryValidator) VisitPredicate(predicate *QueryPredicate) {
-	switch predicate.OpCode {
-	case PREDICATE_NOP:
-	case STR_EQ:
-	case STR_NEQ:
-		// Okay!
-	default:
-		visitor.collectError(errors.New(fmt.Sprintf("Unknown Predicate OpCode: %v", predicate)))
-	}
 }

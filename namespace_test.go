@@ -108,7 +108,7 @@ func TestNamespaceEncoding(t *testing.T) {
 		MaxCount: ENCODE_REPEAT_COUNT,
 	}
 
-	err := quick.Check(encodesOk, config)
+	err := quick.Check(namespaceEncodeOk, config)
 
 	if err != nil {
 		t.Error("Unexpected error:", trim(err))
@@ -141,7 +141,7 @@ func trim(err error) string {
 	return msg[:TRIM_LENGTH]
 }
 
-func encodesOk(randomNs Namespace) bool {
+func namespaceEncodeOk(randomNs Namespace) bool {
 	expected := randomNs.Strip()
 	actual := namespaceSerializationPass(randomNs)
 	return expected.Equals(actual)

@@ -1,6 +1,8 @@
 package godless
 
 import (
+	"fmt"
+
 	"github.com/pkg/errors"
 )
 
@@ -42,6 +44,31 @@ func (visitor *errorCollectVisitor) hasError() bool {
 	return visitor.err != nil
 }
 
+func (visitor *errorCollectVisitor) badOpcode(opCode QueryOpCode) {
+	visitor.collectError(fmt.Errorf("Unknown Query OpCode: %v", opCode))
+}
+
+func (visitor *errorCollectVisitor) badTableName(table TableName) {
+	var err error
+	if table == "" {
+		err = errors.New("Empty table key")
+	} else {
+		err = fmt.Errorf("Bad table name: %v", table)
+	}
+
+	visitor.collectError(err)
+}
+
+func (visitor *errorCollectVisitor) badWhereOpCode(position int, where *QueryWhere) {
+	err := fmt.Errorf("Unknown Where OpCode at position %v: %v", position, where)
+	visitor.collectError(err)
+}
+
+func (visitor *errorCollectVisitor) badPredicateOpCode(predicate *QueryPredicate) {
+	err := fmt.Errorf("Unknown Predicate OpCode: %v", predicate)
+	visitor.collectError(err)
+}
+
 func (visitor *errorCollectVisitor) collectError(err error) {
 	if visitor.err == nil {
 		visitor.err = err
@@ -51,7 +78,7 @@ func (visitor *errorCollectVisitor) collectError(err error) {
 
 }
 
-func (visitor *errorCollectVisitor) reportError() error {
+func (visitor *errorCollectVisitor) visitError() error {
 	if visitor.err == nil {
 		panic("No error to report")
 	}

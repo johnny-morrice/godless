@@ -26,7 +26,7 @@ func MakeNamespaceTreeSelect(namespace NamespaceTree) *NamespaceTreeSelect {
 func (visitor *NamespaceTreeSelect) RunQuery() APIResponse {
 	fail := RESPONSE_FAIL
 	if visitor.hasError() {
-		fail.Err = visitor.reportError()
+		fail.Err = visitor.visitError()
 		return fail
 	}
 

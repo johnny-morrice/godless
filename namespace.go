@@ -48,11 +48,10 @@ func EncodeNamespace(ns Namespace, w io.Writer) error {
 		return errors.Wrap(err, failMsg)
 	}
 
-	var written int
-	written, err = w.Write(bs)
+	err = writeBytes(bs, w)
 
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("%v after %v bytes", failMsg, written))
+		return errors.Wrap(err, failMsg)
 	}
 
 	return nil

@@ -19,7 +19,7 @@ func (visitor *NamespaceTreeJoin) RunQuery() APIResponse {
 	fail := RESPONSE_FAIL
 
 	if visitor.hasError() {
-		fail.Err = visitor.reportError()
+		fail.Err = visitor.visitError()
 		return fail
 	}
 
