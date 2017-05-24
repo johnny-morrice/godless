@@ -57,7 +57,7 @@ func (kvq KvQuery) writeResponse(val APIResponse) {
 	kvq.Response <- val
 }
 
-func (kvq KvQuery) visitError(err error) {
+func (kvq KvQuery) Error(err error) {
 	kvq.writeResponse(APIResponse{Err: err})
 }
 

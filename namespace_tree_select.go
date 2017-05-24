@@ -25,8 +25,9 @@ func MakeNamespaceTreeSelect(namespace NamespaceTree) *NamespaceTreeSelect {
 
 func (visitor *NamespaceTreeSelect) RunQuery() APIResponse {
 	fail := RESPONSE_FAIL
-	if visitor.hasError() {
-		fail.Err = visitor.visitError()
+	err := visitor.Error()
+	if err != nil {
+		fail.Err = err
 		return fail
 	}
 
@@ -37,7 +38,7 @@ func (visitor *NamespaceTreeSelect) RunQuery() APIResponse {
 	lambda := NamespaceTreeLambda(visitor.crit.selectMatching)
 	tables := []TableName{visitor.crit.tableKey}
 	tableReader := AddTableHints(tables, lambda)
-	err := visitor.Namespace.LoadTraverse(tableReader)
+	err = visitor.Namespace.LoadTraverse(tableReader)
 
 	if err != nil {
 		fail.Err = errors.Wrap(err, "NamespaceTreeSelect failed")
@@ -50,7 +51,7 @@ func (visitor *NamespaceTreeSelect) RunQuery() APIResponse {
 }
 
 func (visitor *NamespaceTreeSelect) VisitTableKey(tableKey TableName) {
-	if visitor.hasError() {
+	if visitor.Error() != nil {
 		return
 	}
 
@@ -64,7 +65,7 @@ func (visitor *NamespaceTreeSelect) VisitOpCode(opCode QueryOpCode) {
 }
 
 func (visitor *NamespaceTreeSelect) VisitSelect(qselect *QuerySelect) {
-	if visitor.hasError() {
+	if visitor.Error() != nil {
 		return
 	}
 

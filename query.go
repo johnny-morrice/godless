@@ -414,8 +414,9 @@ func (query *Query) PrettyPrint(w io.Writer) error {
 
 	query.Visit(printer)
 
-	if printer.hasError() {
-		return printer.visitError()
+	err := printer.Error()
+	if err != nil {
+		return err
 	}
 
 	return nil

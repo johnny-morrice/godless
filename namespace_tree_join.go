@@ -18,8 +18,9 @@ func MakeNamespaceTreeJoin(ns NamespaceTree) *NamespaceTreeJoin {
 func (visitor *NamespaceTreeJoin) RunQuery() APIResponse {
 	fail := RESPONSE_FAIL
 
-	if visitor.hasError() {
-		fail.Err = visitor.visitError()
+	err := visitor.Error()
+	if err != nil {
+		fail.Err = visitor.Error()
 		return fail
 	}
 
@@ -27,7 +28,7 @@ func (visitor *NamespaceTreeJoin) RunQuery() APIResponse {
 		panic("Expected table key")
 	}
 
-	err := visitor.Namespace.JoinTable(visitor.tableKey, visitor.table)
+	err = visitor.Namespace.JoinTable(visitor.tableKey, visitor.table)
 
 	if err != nil {
 		fail.Err = errors.Wrap(err, "NamespaceTreeJoin failed")
@@ -44,7 +45,7 @@ func (visitor *NamespaceTreeJoin) VisitOpCode(opCode QueryOpCode) {
 }
 
 func (visitor *NamespaceTreeJoin) VisitTableKey(tableKey TableName) {
-	if visitor.hasError() {
+	if visitor.Error() != nil {
 		return
 	}
 
@@ -55,7 +56,7 @@ func (visitor *NamespaceTreeJoin) VisitJoin(*QueryJoin) {
 }
 
 func (visitor *NamespaceTreeJoin) VisitRowJoin(position int, rowJoin *QueryRowJoin) {
-	if visitor.hasError() {
+	if visitor.Error() != nil {
 		return
 	}
 

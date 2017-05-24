@@ -40,10 +40,6 @@ type errorCollectVisitor struct {
 	err error
 }
 
-func (visitor *errorCollectVisitor) hasError() bool {
-	return visitor.err != nil
-}
-
 func (visitor *errorCollectVisitor) badOpcode(opCode QueryOpCode) {
 	visitor.collectError(fmt.Errorf("Unknown Query OpCode: %v", opCode))
 }
@@ -78,11 +74,7 @@ func (visitor *errorCollectVisitor) collectError(err error) {
 
 }
 
-func (visitor *errorCollectVisitor) visitError() error {
-	if visitor.err == nil {
-		panic("No error to report")
-	}
-
+func (visitor *errorCollectVisitor) Error() error {
 	return visitor.err
 }
 
