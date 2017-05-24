@@ -200,6 +200,10 @@ type QueryJoin struct {
 	Rows []QueryRowJoin `json:",omitempty"`
 }
 
+func (join QueryJoin) Empty() bool {
+	return join.equals(QueryJoin{})
+}
+
 func (join QueryJoin) equals(other QueryJoin) bool {
 	if len(join.Rows) != len(other.Rows) {
 		return false
@@ -252,6 +256,11 @@ type QuerySelect struct {
 	Limit uint32     `json:",omitempty"`
 }
 
+func (querySelect QuerySelect) Empty() bool {
+	var emptyLimit uint32
+	return emptyLimit == querySelect.Limit && querySelect.Where.Empty()
+}
+
 type QueryWhereOpCode uint16
 
 const (
@@ -265,6 +274,14 @@ type QueryWhere struct {
 	OpCode    QueryWhereOpCode `json:",omitempty"`
 	Clauses   []QueryWhere     `json:",omitempty"`
 	Predicate QueryPredicate   `json:",omitempty"`
+}
+
+func (where QueryWhere) Empty() bool {
+	var emptyOpCode QueryWhereOpCode
+	empty := emptyOpCode == where.OpCode
+	empty = empty && len(where.Clauses) == 0
+	empty = empty && where.Predicate.Empty()
+	return empty
 }
 
 func (where QueryWhere) shallowEquals(other QueryWhere) bool {
@@ -314,6 +331,10 @@ type QueryPredicate struct {
 	Keys          []EntryName          `json:",omitempty"`
 	Literals      []string             `json:",omitempty"`
 	IncludeRowKey bool                 `json:",omitempty"`
+}
+
+func (pred QueryPredicate) Empty() bool {
+	return pred.equals(QueryPredicate{})
 }
 
 func (pred QueryPredicate) equals(other QueryPredicate) bool {

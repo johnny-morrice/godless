@@ -69,7 +69,8 @@ func genCount(rand *rand.Rand, size int, scale float32) int {
 
 func randStr(rand *rand.Rand, max int) string {
 	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	count := rand.Intn(max)
+	count := rand.Intn(max - 1)
+	count++
 	parts := make([]string, count)
 
 	for i := 0; i < count; i++ {

@@ -3,6 +3,7 @@ package godless
 import (
 	"fmt"
 	"io"
+	"sort"
 )
 
 // Visitor outline to help with editor macros.
@@ -43,26 +44,54 @@ func (printer *queryPrinter) VisitOpCode(opCode QueryOpCode) {
 		printer.collectError(fmt.Errorf("Unknown "))
 		return
 	}
-
-	printer.space()
 }
 
 func (printer *queryPrinter) VisitTableKey(table TableName) {
-	printer.write("'")
+	printer.write(" ")
 	printer.write(table)
+}
+
+func (printer *queryPrinter) VisitJoin(join *QueryJoin) {
+	if join.Empty() {
+		return
+	}
+
+	printer.write(" rows")
+}
+
+func (printer *queryPrinter) LeaveJoin(join *QueryJoin) {
+}
+
+func (printer *queryPrinter) VisitRowJoin(position int, row *QueryRowJoin) {
+	// TODO shorthand key syntax for simple names.
+
+	printer.write(" (@key")
+	printer.write("=")
+
+	printer.write("@'")
+	printer.write(row.RowKey)
 	printer.write("'")
-	printer.space()
-}
 
-func (printer *queryPrinter) VisitJoin(rows *QueryJoin) {
-	printer.write("rows (")
-}
+	keys := make([]string, len(row.Entries))
+	i := 0
+	for entry, _ := range row.Entries {
+		keys[i] = string(entry)
+		i++
+	}
+	sort.Strings(keys)
 
-func (printer *queryPrinter) LeaveJoin(*QueryJoin) {
+	for _, k := range keys {
+		entry := EntryName(k)
+		point := row.Entries[entry]
+		printer.write(", @'")
+		printer.write(k)
+		printer.write("'=")
+		printer.write("'")
+		printer.write(point)
+		printer.write("'")
+	}
+
 	printer.write(")")
-}
-
-func (printer *queryPrinter) VisitRowJoin(int, *QueryRowJoin) {
 }
 
 func (printer *queryPrinter) VisitSelect(*QuerySelect) {

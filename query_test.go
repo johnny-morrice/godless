@@ -33,7 +33,27 @@ func genQuerySelect(rand *rand.Rand, size int) QuerySelect {
 }
 
 func genQueryJoin(rand *rand.Rand, size int) QueryJoin {
-	return QueryJoin{}
+	const ROW_SCALE = 1.0
+	const ENTRY_SCALE = 0.2
+	const MAX_STR_LEN = 10
+	rowCount := genCount(rand, size, ROW_SCALE)
+
+	gen := QueryJoin{Rows: make([]QueryRowJoin, rowCount)}
+
+	for i := 0; i < rowCount; i++ {
+		gen.Rows[i] = QueryRowJoin{Entries: map[EntryName]Point{}}
+		row := &gen.Rows[i]
+		row.RowKey = RowName(randStr(rand, MAX_STR_LEN))
+
+		entryCount := genCount(rand, size, ENTRY_SCALE)
+		for i := 0; i < entryCount; i++ {
+			entry := randStr(rand, MAX_STR_LEN)
+			point := randStr(rand, MAX_STR_LEN)
+			row.Entries[EntryName(entry)] = Point(point)
+		}
+	}
+
+	return gen
 }
 
 func TestParseQuery(t *testing.T) {
