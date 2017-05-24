@@ -15,7 +15,7 @@ func (query *Query) Generate(rand *rand.Rand, size int) reflect.Value {
 	const TABLE_NAME_MAX = 20
 
 	gen := &Query{}
-	gen.TableKey = TableName(randStr(rand, TABLE_NAME_MAX))
+	gen.TableKey = TableName(randLetters(rand, TABLE_NAME_MAX))
 
 	if rand.Float32() > 0.5 {
 		gen.OpCode = SELECT
@@ -43,17 +43,27 @@ func genQueryJoin(rand *rand.Rand, size int) QueryJoin {
 	for i := 0; i < rowCount; i++ {
 		gen.Rows[i] = QueryRowJoin{Entries: map[EntryName]Point{}}
 		row := &gen.Rows[i]
-		row.RowKey = RowName(randStr(rand, MAX_STR_LEN))
+		row.RowKey = RowName(randKey(rand, MAX_STR_LEN))
 
 		entryCount := genCount(rand, size, ENTRY_SCALE)
 		for i := 0; i < entryCount; i++ {
-			entry := randStr(rand, MAX_STR_LEN)
-			point := randStr(rand, MAX_STR_LEN)
+			entry := randKey(rand, MAX_STR_LEN)
+			point := randPoint(rand, MAX_STR_LEN)
 			row.Entries[EntryName(entry)] = Point(point)
 		}
 	}
 
 	return gen
+}
+
+func randKey(rand *rand.Rand, max int) string {
+	return randLetters(rand, max)
+}
+
+func randPoint(rand *rand.Rand, max int) string {
+	const MIN_POINT_LENGTH = 0
+	const pointSyms = ALPHABET + DIGITS + SYMBOLS
+	return randStr(rand, pointSyms, MIN_POINT_LENGTH, max)
 }
 
 func TestParseQuery(t *testing.T) {

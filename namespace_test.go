@@ -23,20 +23,20 @@ func (ns Namespace) Generate(rand *rand.Rand, size int) reflect.Value {
 	// FIXME This looks horrific.
 	tableCount := genCount(rand, size, tableFudge)
 	for i := 0; i < tableCount; i++ {
-		tableName := TableName(randStr(rand, maxStr))
+		tableName := TableName(randLetters(rand, maxStr))
 		table := EmptyTable()
 		rowCount := genCount(rand, size, rowFudge)
 		for j := 0; j < rowCount; j++ {
-			rowName := RowName(randStr(rand, maxStr))
+			rowName := RowName(randLetters(rand, maxStr))
 			row := EmptyRow()
 			entryCount := genCount(rand, size, entryFudge)
 			for k := 0; k < entryCount; k++ {
-				entryName := EntryName(randStr(rand, maxStr))
+				entryName := EntryName(randLetters(rand, maxStr))
 				pointCount := genCount(rand, size, pointFudge)
 				points := make([]Point, pointCount)
 
 				for m := 0; m < pointCount; m++ {
-					points[m] = Point(randStr(rand, maxStr))
+					points[m] = Point(randLetters(rand, maxStr))
 				}
 
 				entry := MakeEntry(points)
@@ -67,15 +67,18 @@ func genCount(rand *rand.Rand, size int, scale float32) int {
 	return int(fudge * float32(size) * scale)
 }
 
-func randStr(rand *rand.Rand, max int) string {
-	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	count := rand.Intn(max - 1)
-	count++
+func randLetters(rand *rand.Rand, max int) string {
+	return randStr(rand, ALPHABET, 0, max)
+}
+
+func randStr(rand *rand.Rand, elements string, min, max int) string {
+	count := rand.Intn(max - min)
+	count += min
 	parts := make([]string, count)
 
 	for i := 0; i < count; i++ {
-		index := rand.Intn(len(letters))
-		b := letters[index]
+		index := rand.Intn(len(elements))
+		b := elements[index]
 		parts[i] = string([]byte{b})
 	}
 
@@ -720,3 +723,6 @@ func debugLine(t *testing.T) {
 const CALLER_DEPTH = 2
 const TRIM_LENGTH = 200
 const ENCODE_REPEAT_COUNT = 50
+const ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+const DIGITS = "0123456789"
+const SYMBOLS = "!@#$5^&*()\"'\\|:;-_~``"
