@@ -78,6 +78,9 @@ func (visitor *NamespaceTreeSelect) VisitSelect(qselect *QuerySelect) {
 	visitor.crit.rootWhere = &qselect.Where
 }
 
+func (visitor *NamespaceTreeSelect) LeaveSelect(*QuerySelect) {
+}
+
 func (visitor *NamespaceTreeSelect) VisitWhere(position int, where *QueryWhere) {
 }
 

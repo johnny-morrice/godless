@@ -55,6 +55,7 @@ func TestParseQuery(t *testing.T) {
 
 func queryParseOk(expected *Query) bool {
 	source := prettyQueryString(expected)
+	logdbg("Pretty Printed: \"%v\"", source)
 
 	actual, err := CompileQuery(source)
 

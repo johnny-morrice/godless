@@ -11,6 +11,9 @@ type noSelectVisitor struct{}
 func (visitor *noSelectVisitor) VisitSelect(*QuerySelect) {
 }
 
+func (visitor *noSelectVisitor) LeaveSelect(*QuerySelect) {
+}
+
 func (visitor *noSelectVisitor) VisitWhere(int, *QueryWhere) {
 }
 
@@ -23,6 +26,9 @@ func (visitor *noSelectVisitor) VisitPredicate(*QueryPredicate) {
 type noJoinVisitor struct{}
 
 func (visitor *noJoinVisitor) VisitJoin(*QueryJoin) {
+}
+
+func (visitor *noJoinVisitor) LeaveJoin(*QueryJoin) {
 }
 
 func (visitor *noJoinVisitor) VisitRowJoin(int, *QueryRowJoin) {

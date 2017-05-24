@@ -55,6 +55,9 @@ func (visitor *NamespaceTreeJoin) VisitTableKey(tableKey TableName) {
 func (visitor *NamespaceTreeJoin) VisitJoin(*QueryJoin) {
 }
 
+func (visitor *NamespaceTreeJoin) LeaveJoin(*QueryJoin) {
+}
+
 func (visitor *NamespaceTreeJoin) VisitRowJoin(position int, rowJoin *QueryRowJoin) {
 	if visitor.Error() != nil {
 		return

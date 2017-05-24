@@ -41,13 +41,25 @@ func (printer *queryPrinter) VisitOpCode(opCode QueryOpCode) {
 		printer.write("join")
 	default:
 		printer.collectError(fmt.Errorf("Unknown "))
+		return
 	}
+
+	printer.space()
 }
 
-func (printer *queryPrinter) VisitTableKey(TableName) {
+func (printer *queryPrinter) VisitTableKey(table TableName) {
+	printer.write("'")
+	printer.write(table)
+	printer.write("'")
+	printer.space()
 }
 
-func (printer *queryPrinter) VisitJoin(*QueryJoin) {
+func (printer *queryPrinter) VisitJoin(rows *QueryJoin) {
+	printer.write("rows (")
+}
+
+func (printer *queryPrinter) LeaveJoin(*QueryJoin) {
+	printer.write(")")
 }
 
 func (printer *queryPrinter) VisitRowJoin(int, *QueryRowJoin) {
@@ -56,8 +68,15 @@ func (printer *queryPrinter) VisitRowJoin(int, *QueryRowJoin) {
 func (printer *queryPrinter) VisitSelect(*QuerySelect) {
 }
 
-func (printer *queryPrinter) write(token interface{}) {
+func (printer *queryPrinter) LeaveSelect(*QuerySelect) {
+}
 
+func (printer *queryPrinter) write(token interface{}) {
+	fmt.Fprintf(printer.output, "%v", token)
+}
+
+func (printer *queryPrinter) space() {
+	printer.write(" ")
 }
 
 type queryFlattener struct {
@@ -83,8 +102,14 @@ func (visitor *queryFlattener) VisitSelect(slct *QuerySelect) {
 	visitor.slct = *slct
 }
 
+func (visitor *queryFlattener) LeaveSelect(*QuerySelect) {
+}
+
 func (visitor *queryFlattener) VisitJoin(join *QueryJoin) {
 	visitor.join = *join
+}
+
+func (visitor *queryFlattener) LeaveJoin(*QueryJoin) {
 }
 
 func (visitor *queryFlattener) VisitRowJoin(int, *QueryRowJoin) {
@@ -148,6 +173,10 @@ func (visitor *queryValidator) VisitTableKey(tableKey TableName) {
 }
 
 func (visitor *queryValidator) VisitSelect(*QuerySelect) {
+}
+
+func (visitor *queryValidator) LeaveSelect(*QuerySelect) {
+
 }
 
 func (visitor *queryValidator) VisitWhere(position int, where *QueryWhere) {

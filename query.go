@@ -190,8 +190,10 @@ type QueryVisitor interface {
 	VisitParser(*QueryParser)
 	VisitTableKey(TableName)
 	VisitJoin(*QueryJoin)
+	LeaveJoin(*QueryJoin)
 	VisitRowJoin(int, *QueryRowJoin)
 	VisitSelect(*QuerySelect)
+	LeaveSelect(*QuerySelect)
 }
 
 type QueryJoin struct {
