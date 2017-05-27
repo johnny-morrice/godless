@@ -22,7 +22,8 @@ import (
 type queryPrinter struct {
 	noDebugVisitor
 	errorCollectVisitor
-	output io.Writer
+	output    io.Writer
+	tabIndent int
 }
 
 func (printer *queryPrinter) VisitOpCode(opCode QueryOpCode) {
@@ -48,12 +49,16 @@ func (printer *queryPrinter) VisitJoin(join *QueryJoin) {
 	}
 
 	printer.write(" rows")
+	printer.indent(1)
 }
 
 func (printer *queryPrinter) LeaveJoin(join *QueryJoin) {
+	printer.indent(-1)
 }
 
 func (printer *queryPrinter) VisitRowJoin(position int, row *QueryRowJoin) {
+	printer.newline()
+	printer.tabs()
 	// TODO shorthand key syntax for simple names.
 	printer.write(" (@key")
 	printer.write("=")
@@ -161,8 +166,26 @@ func (printer *queryPrinter) VisitPredicate(pred *QueryPredicate) {
 	printer.write(")")
 }
 
+func (printer *queryPrinter) tabs() {
+	for i := 0; i < printer.tabIndent; i++ {
+		printer.write("\t")
+	}
+}
+
+func (printer *queryPrinter) indent(indent int) {
+	printer.tabIndent += indent
+
+	if printer.tabIndent < 0 {
+		panic(fmt.Sprintf("Invalid tabIndent: %v", printer.tabIndent))
+	}
+}
+
 func (printer *queryPrinter) write(token interface{}) {
 	fmt.Fprintf(printer.output, "%v", token)
+}
+
+func (printer *queryPrinter) newline() {
+	printer.write("\n")
 }
 
 func (printer *queryPrinter) space() {
