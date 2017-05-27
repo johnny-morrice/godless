@@ -200,7 +200,7 @@ type QueryJoin struct {
 	Rows []QueryRowJoin `json:",omitempty"`
 }
 
-func (join QueryJoin) Empty() bool {
+func (join QueryJoin) IsEmpty() bool {
 	return join.equals(QueryJoin{})
 }
 
@@ -256,9 +256,9 @@ type QuerySelect struct {
 	Limit uint32     `json:",omitempty"`
 }
 
-func (querySelect QuerySelect) Empty() bool {
+func (querySelect QuerySelect) IsEmpty() bool {
 	var emptyLimit uint32
-	return emptyLimit == querySelect.Limit && querySelect.Where.Empty()
+	return emptyLimit == querySelect.Limit && querySelect.Where.IsEmpty()
 }
 
 type QueryWhereOpCode uint16
@@ -276,11 +276,11 @@ type QueryWhere struct {
 	Predicate QueryPredicate   `json:",omitempty"`
 }
 
-func (where QueryWhere) Empty() bool {
+func (where QueryWhere) IsEmpty() bool {
 	var emptyOpCode QueryWhereOpCode
 	empty := emptyOpCode == where.OpCode
 	empty = empty && len(where.Clauses) == 0
-	empty = empty && where.Predicate.Empty()
+	empty = empty && where.Predicate.IsEmpty()
 	return empty
 }
 
@@ -333,7 +333,7 @@ type QueryPredicate struct {
 	IncludeRowKey bool                 `json:",omitempty"`
 }
 
-func (pred QueryPredicate) Empty() bool {
+func (pred QueryPredicate) IsEmpty() bool {
 	return pred.equals(QueryPredicate{})
 }
 

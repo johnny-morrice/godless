@@ -25,15 +25,6 @@ type queryPrinter struct {
 	output io.Writer
 }
 
-func (printer *queryPrinter) VisitWhere(int, *QueryWhere) {
-}
-
-func (printer *queryPrinter) LeaveWhere(*QueryWhere) {
-}
-
-func (printer *queryPrinter) VisitPredicate(*QueryPredicate) {
-}
-
 func (printer *queryPrinter) VisitOpCode(opCode QueryOpCode) {
 	switch opCode {
 	case SELECT:
@@ -52,7 +43,7 @@ func (printer *queryPrinter) VisitTableKey(table TableName) {
 }
 
 func (printer *queryPrinter) VisitJoin(join *QueryJoin) {
-	if join.Empty() {
+	if join.IsEmpty() {
 		return
 	}
 
@@ -64,7 +55,6 @@ func (printer *queryPrinter) LeaveJoin(join *QueryJoin) {
 
 func (printer *queryPrinter) VisitRowJoin(position int, row *QueryRowJoin) {
 	// TODO shorthand key syntax for simple names.
-
 	printer.write(" (@key")
 	printer.write("=")
 
@@ -94,10 +84,81 @@ func (printer *queryPrinter) VisitRowJoin(position int, row *QueryRowJoin) {
 	printer.write(")")
 }
 
-func (printer *queryPrinter) VisitSelect(*QuerySelect) {
+func (printer *queryPrinter) VisitSelect(querySelect *QuerySelect) {
+	if querySelect.IsEmpty() {
+		return
+	}
+
+	printer.write(" where ")
+
 }
 
 func (printer *queryPrinter) LeaveSelect(*QuerySelect) {
+}
+
+func (printer *queryPrinter) VisitWhere(position int, where *QueryWhere) {
+	if position > 0 {
+		printer.write(", ")
+	}
+
+	switch where.OpCode {
+	case AND:
+		printer.write("and(")
+	case OR:
+		printer.write("or(")
+	case PREDICATE:
+	default:
+		printer.badWhereOpCode(position, where)
+	}
+}
+
+func (printer *queryPrinter) LeaveWhere(*QueryWhere) {
+	printer.write(")")
+}
+
+func (printer *queryPrinter) VisitPredicate(pred *QueryPredicate) {
+	if pred.IsEmpty() {
+		return
+	}
+
+	switch pred.OpCode {
+	case STR_EQ:
+		printer.write("str_eq(")
+	case STR_NEQ:
+		printer.write("str_neq(")
+	default:
+		printer.badPredicateOpCode(pred)
+	}
+
+	first := true
+	if pred.IncludeRowKey {
+		printer.write("@key")
+		first = false
+	}
+
+	for _, k := range pred.Keys {
+		if !first {
+			printer.write(", ")
+		}
+		printer.write("@'")
+		printer.write(string(k))
+		printer.write("'")
+
+		first = false
+	}
+
+	for _, l := range pred.Literals {
+		if !first {
+			printer.write(", ")
+		}
+		printer.write("'")
+		printer.write(l)
+		printer.write("'")
+
+		first = false
+	}
+
+	printer.write(")")
 }
 
 func (printer *queryPrinter) write(token interface{}) {
