@@ -26,7 +26,7 @@ message APIResponseMessage {
 }
 
 message QueryMessage {
-	uint32 opcode = 1;
+	uint32 opCode = 1;
 	string table = 2;
 	QueryJoinMessage join = 3;
 	QuerySelectMessage select = 4;
@@ -52,13 +52,13 @@ message QuerySelectMessage {
 }
 
 message QueryWhereMessage {
-	uint32 opcode = 1;
+	uint32 opCode = 1;
 	QueryPredicateMessage predicate = 2;
 	repeated QueryWhereMessage clauses = 3;
 }
 
 message QueryPredicateMessage {
-	uint32 opcode = 1;
+	uint32 opCode = 1;
 	repeated string keys = 2;
 	repeated string literals = 3;
 	bool userow = 4;
