@@ -38,7 +38,7 @@ func quoteUnquoteOk(token string) bool {
 }
 
 func genQuoteToken(values []reflect.Value, rand *rand.Rand) {
-	const MAX_LEN = 100
+	const MAX_LEN = 50
 	text := randPoint(rand, MAX_LEN)
 	gen := reflect.ValueOf(text)
 	values[0] = gen
@@ -97,4 +97,4 @@ func TestUnquote(t *testing.T) {
 	}
 }
 
-const ATOM_CHECK_COUNT = 1000
+const ATOM_CHECK_COUNT = 100

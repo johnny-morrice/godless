@@ -52,6 +52,7 @@ func MakeQuerySelectMessage(querySelect QuerySelect) *QuerySelectMessage {
 
 func MakeQueryWhereMessage(queryWhere QueryWhere) *QueryWhereMessage {
 	builder := &whereMessageBuilder{}
+	builder.messageStack = []whereBuilderFrame{}
 	whereStack := makeWhereStack(&queryWhere)
 	whereStack.visit(builder)
 
@@ -75,8 +76,10 @@ func (builder *whereMessageBuilder) VisitWhere(pos int, where *QueryWhere) {
 		where:   where,
 	}
 
-	tip := builder.peek()
-	tip.message.Clauses[pos] = message
+	if len(builder.messageStack) > 0 {
+		tip := builder.peek()
+		tip.message.Clauses[pos] = message
+	}
 
 	builder.push(frame)
 	configureWhereMessage(where, message)
@@ -173,6 +176,7 @@ func MakeQueryRowJoinMessage(row QueryRowJoin) *QueryRowJoinMessage {
 	return message
 }
 
+// FIXME not implemented
 func ReadQueryMessage(message *QueryMessage) *Query {
 	return nil
 }

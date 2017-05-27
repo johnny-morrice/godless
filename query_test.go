@@ -11,6 +11,40 @@ import (
 	"github.com/pkg/errors"
 )
 
+func TestParseQuery(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+		return
+	}
+
+	config := &quick.Config{
+		MaxCount: PARSE_REPEAT_COUNT,
+	}
+
+	err := quick.Check(queryParseOk, config)
+
+	if err != nil {
+		t.Error("Unexpected error:", trim(err))
+	}
+}
+
+func TestQueryEncode(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+		return
+	}
+
+	config := &quick.Config{
+		MaxCount: ENCODE_REPEAT_COUNT,
+	}
+
+	err := quick.Check(queryEncodeOk, config)
+
+	if err != nil {
+		t.Error("Unexpected error:", trim(err))
+	}
+}
+
 // Generate a *valid* query.
 func (query *Query) Generate(rand *rand.Rand, size int) reflect.Value {
 	const TABLE_NAME_MAX = 20
@@ -154,23 +188,6 @@ func randEscape(rand *rand.Rand) string {
 	const MIN_CHARS = 1
 	const CHARS_LIM = 2
 	return "\\" + randStr(rand, chars, MIN_CHARS, CHARS_LIM)
-}
-
-func TestParseQuery(t *testing.T) {
-	if testing.Short() {
-		t.SkipNow()
-		return
-	}
-
-	config := &quick.Config{
-		MaxCount: PARSE_REPEAT_COUNT,
-	}
-
-	err := quick.Check(queryParseOk, config)
-
-	if err != nil {
-		t.Error("Unexpected error:", trim(err))
-	}
 }
 
 func queryParseOk(expected *Query) bool {
