@@ -257,8 +257,7 @@ type QuerySelect struct {
 }
 
 func (querySelect QuerySelect) IsEmpty() bool {
-	var emptyLimit uint32
-	return emptyLimit == querySelect.Limit && querySelect.Where.IsEmpty()
+	return 0 == querySelect.Limit && querySelect.Where.IsEmpty()
 }
 
 type QueryWhereOpCode uint16

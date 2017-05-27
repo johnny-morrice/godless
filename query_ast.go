@@ -2,7 +2,6 @@ package godless
 
 import (
 	"fmt"
-	"regexp"
 	"strconv"
 
 	"github.com/pkg/errors"
@@ -350,23 +349,20 @@ func unquoteMap(values map[string]string) (map[string]string, error) {
 	return quoted, nil
 }
 
-func unquote(value string) (string, error) {
-	regex, regerr := regexp.Compile("\\\\'")
-
-	if regerr != nil {
-		return "", errors.Wrap(regerr, "BUG regex compile failed in string unquote")
-	}
-
-	desingled := string(regex.ReplaceAll([]byte(value), []byte("'")))
-
-	dquote := fmt.Sprintf("\"%v\"", desingled)
-	quoted, err := strconv.Unquote(dquote)
+func unquote(token string) (string, error) {
+	token = fmt.Sprintf("\"%s\"", token)
+	unquoted, err := strconv.Unquote(token)
 
 	if err != nil {
-		return "", errors.Wrap(err, fmt.Sprintf("Invalid string escape: '%v'", desingled))
+		return "", errors.Wrap(err, fmt.Sprintf("Invalid string escape: '%v'", token))
 	}
 
-	return quoted, nil
+	return unquoted, nil
+}
+
+func quote(token string) string {
+	token = strconv.Quote(token)
+	return token[1 : len(token)-1]
 }
 
 func makeJoinEntries(mess map[string]string) map[EntryName]Point {

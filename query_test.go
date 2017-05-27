@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"math/rand"
 	"reflect"
+	"strings"
 	"testing"
 	"testing/quick"
 
@@ -63,7 +64,27 @@ func randKey(rand *rand.Rand, max int) string {
 func randPoint(rand *rand.Rand, max int) string {
 	const MIN_POINT_LENGTH = 0
 	const pointSyms = ALPHABET + DIGITS + SYMBOLS
-	return randStr(rand, pointSyms, MIN_POINT_LENGTH, max)
+	const injectScale = 0.1
+	injectCount := genCount(rand, max, injectScale)
+	point := randStr(rand, pointSyms, MIN_POINT_LENGTH, max-injectCount)
+
+	for i := 0; i < injectCount; i++ {
+		// position := rand.Intn(len(point))
+		// inject := randEscape(rand)
+		// point = insert(point, inject, position)
+	}
+	return point
+}
+
+func insert(old, ins string, pos int) string {
+	before := old[:pos]
+	after := old[pos:]
+	return before + ins + after
+}
+
+func randEscape(rand *rand.Rand) string {
+	const chars = "\\nt\""
+	return "\\" + randStr(rand, chars, 1, 2)
 }
 
 func TestParseQuery(t *testing.T) {
@@ -93,7 +114,42 @@ func queryParseOk(expected *Query) bool {
 		panic(errors.Wrap(err, "Parse error"))
 	}
 
-	return expected.Equals(actual)
+	same := expected.Equals(actual)
+
+	if !same {
+		logDiff(source, prettyQueryString(actual))
+	}
+
+	return same
+}
+
+func logDiff(old, new string) {
+	oldParts := strings.Split(old, "")
+	newParts := strings.Split(new, "")
+
+	minSize := imin(len(oldParts), len(newParts))
+
+	for i := 0; i < minSize; i++ {
+		oldChar := oldParts[i]
+		newChar := newParts[i]
+
+		if oldChar != newChar {
+			fragmentStart := i - 10
+			if fragmentStart < 0 {
+				fragmentStart = 0
+			}
+
+			fragmentEnd := i + 100
+
+			oldFragment := old[fragmentStart:fragmentEnd]
+			newFragment := new[fragmentStart:fragmentEnd]
+
+			logerr("First difference at %v", i)
+			logerr("Old was: '%v'", oldFragment)
+			logerr("New was: '%v'", newFragment)
+		}
+	}
+
 }
 
 func prettyQueryString(query *Query) string {

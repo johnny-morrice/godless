@@ -740,7 +740,7 @@ func (p *QueryParser) Init() {
 							goto l33
 						}
 						position++
-						if buffer[position] != rune('\'') {
+						if buffer[position] != rune('"') {
 							goto l33
 						}
 						position++
@@ -751,7 +751,7 @@ func (p *QueryParser) Init() {
 							}
 							add(rulePegText, position34)
 						}
-						if buffer[position] != rune('\'') {
+						if buffer[position] != rune('"') {
 							goto l33
 						}
 						position++
@@ -803,7 +803,7 @@ func (p *QueryParser) Init() {
 								goto l38
 							}
 							position++
-							if buffer[position] != rune('\'') {
+							if buffer[position] != rune('"') {
 								goto l38
 							}
 							position++
@@ -814,7 +814,7 @@ func (p *QueryParser) Init() {
 								}
 								add(rulePegText, position43)
 							}
-							if buffer[position] != rune('\'') {
+							if buffer[position] != rune('"') {
 								goto l38
 							}
 							position++
@@ -833,7 +833,7 @@ func (p *QueryParser) Init() {
 						if !_rules[ruleSpacing]() {
 							goto l38
 						}
-						if buffer[position] != rune('\'') {
+						if buffer[position] != rune('"') {
 							goto l38
 						}
 						position++
@@ -844,7 +844,7 @@ func (p *QueryParser) Init() {
 							}
 							add(rulePegText, position45)
 						}
-						if buffer[position] != rune('\'') {
+						if buffer[position] != rune('"') {
 							goto l38
 						}
 						position++
@@ -871,9 +871,9 @@ func (p *QueryParser) Init() {
 			position, tokenIndex = position28, tokenIndex28
 			return false
 		},
-		/* 4 KeyJoin <- <('@' 'k' 'e' 'y' Spacing '=' Spacing (('@' '\'' <Literal> '\'') / <Key>) Action4)> */
+		/* 4 KeyJoin <- <('@' 'k' 'e' 'y' Spacing '=' Spacing (('@' '"' <Literal> '"') / <Key>) Action4)> */
 		nil,
-		/* 5 ValueJoin <- <((<Key> / ('@' '\'' <Literal> '\'')) Action5 Spacing '=' Spacing '\'' <Literal> '\'' Action6)> */
+		/* 5 ValueJoin <- <((<Key> / ('@' '"' <Literal> '"')) Action5 Spacing '=' Spacing '"' <Literal> '"' Action6)> */
 		nil,
 		/* 6 Select <- <('s' 'e' 'l' 'e' 'c' 't' MustSpacing SelectKey MustSpacing (Where MustSpacing)? Limit)> */
 		nil,
@@ -1199,7 +1199,7 @@ func (p *QueryParser) Init() {
 								goto l85
 							}
 							position++
-							if buffer[position] != rune('\'') {
+							if buffer[position] != rune('"') {
 								goto l85
 							}
 							position++
@@ -1210,7 +1210,7 @@ func (p *QueryParser) Init() {
 								}
 								add(rulePegText, position90)
 							}
-							if buffer[position] != rune('\'') {
+							if buffer[position] != rune('"') {
 								goto l85
 							}
 							position++
@@ -1226,7 +1226,7 @@ func (p *QueryParser) Init() {
 					position, tokenIndex = position81, tokenIndex81
 					{
 						position92 := position
-						if buffer[position] != rune('\'') {
+						if buffer[position] != rune('"') {
 							goto l79
 						}
 						position++
@@ -1237,7 +1237,7 @@ func (p *QueryParser) Init() {
 							}
 							add(rulePegText, position93)
 						}
-						if buffer[position] != rune('\'') {
+						if buffer[position] != rune('"') {
 							goto l79
 						}
 						position++
@@ -1257,11 +1257,11 @@ func (p *QueryParser) Init() {
 		},
 		/* 16 PredicateRowKey <- <('@' 'k' 'e' 'y' Action15)> */
 		nil,
-		/* 17 PredicateKey <- <((<Key> / ('@' '\'' <Literal> '\'')) Action16)> */
+		/* 17 PredicateKey <- <((<Key> / ('@' '"' <Literal> '"')) Action16)> */
 		nil,
-		/* 18 PredicateLiteralValue <- <('\'' <Literal> '\'' Action17)> */
+		/* 18 PredicateLiteralValue <- <('"' <Literal> '"' Action17)> */
 		nil,
-		/* 19 Literal <- <(Escape / (!'\'' .))*> */
+		/* 19 Literal <- <(Escape / (!'"' .))*> */
 		func() bool {
 			{
 				position99 := position
@@ -1278,7 +1278,7 @@ func (p *QueryParser) Init() {
 						position, tokenIndex = position102, tokenIndex102
 						{
 							position104, tokenIndex104 := position, tokenIndex
-							if buffer[position] != rune('\'') {
+							if buffer[position] != rune('"') {
 								goto l104
 							}
 							position++
@@ -1386,7 +1386,7 @@ func (p *QueryParser) Init() {
 			position, tokenIndex = position106, tokenIndex106
 			return false
 		},
-		/* 22 Escape <- <('\\' ((&('v') 'v') | (&('t') 't') | (&('r') 'r') | (&('n') 'n') | (&('f') 'f') | (&('b') 'b') | (&('a') 'a') | (&('\\') '\\') | (&('?') '?') | (&('"') '"') | (&('\'') '\'')))> */
+		/* 22 Escape <- <('\\' ((&('v') 'v') | (&('t') 't') | (&('r') 'r') | (&('n') 'n') | (&('f') 'f') | (&('b') 'b') | (&('a') 'a') | (&('\\') '\\') | (&('"') '"')))> */
 		func() bool {
 			position116, tokenIndex116 := position, tokenIndex
 			{
@@ -1445,20 +1445,8 @@ func (p *QueryParser) Init() {
 						}
 						position++
 						break
-					case '?':
-						if buffer[position] != rune('?') {
-							goto l116
-						}
-						position++
-						break
-					case '"':
-						if buffer[position] != rune('"') {
-							goto l116
-						}
-						position++
-						break
 					default:
-						if buffer[position] != rune('\'') {
+						if buffer[position] != rune('"') {
 							goto l116
 						}
 						position++

@@ -53,6 +53,10 @@ func (printer *queryPrinter) VisitJoin(join *QueryJoin) {
 }
 
 func (printer *queryPrinter) LeaveJoin(join *QueryJoin) {
+	if join.IsEmpty() {
+		return
+	}
+
 	printer.indent(-1)
 }
 
@@ -63,12 +67,12 @@ func (printer *queryPrinter) VisitRowJoin(position int, row *QueryRowJoin) {
 	printer.newline()
 	printer.tabs()
 	// TODO shorthand key syntax for simple names.
-	printer.write(" (@key")
+	printer.write("(@key")
 	printer.write("=")
 
-	printer.write("@'")
-	printer.write(row.RowKey)
-	printer.write("'")
+	printer.write("@\"")
+	printer.writeText(string(row.RowKey))
+	printer.write("\"")
 
 	keys := make([]string, len(row.Entries))
 	i := 0
@@ -81,12 +85,12 @@ func (printer *queryPrinter) VisitRowJoin(position int, row *QueryRowJoin) {
 	for _, k := range keys {
 		entry := EntryName(k)
 		point := row.Entries[entry]
-		printer.write(", @'")
-		printer.write(k)
-		printer.write("'=")
-		printer.write("'")
-		printer.write(point)
-		printer.write("'")
+		printer.write(", @\"")
+		printer.writeText(k)
+		printer.write("\"=")
+		printer.write("\"")
+		printer.writeText(string(point))
+		printer.write("\"")
 	}
 
 	printer.write(")")
@@ -105,6 +109,10 @@ func (printer *queryPrinter) LeaveSelect(*QuerySelect) {
 }
 
 func (printer *queryPrinter) VisitWhere(position int, where *QueryWhere) {
+	if where.IsEmpty() {
+		return
+	}
+
 	if position > 0 {
 		printer.write(", ")
 	}
@@ -120,7 +128,11 @@ func (printer *queryPrinter) VisitWhere(position int, where *QueryWhere) {
 	}
 }
 
-func (printer *queryPrinter) LeaveWhere(*QueryWhere) {
+func (printer *queryPrinter) LeaveWhere(where *QueryWhere) {
+	if where.IsEmpty() {
+		return
+	}
+
 	printer.write(")")
 }
 
@@ -148,9 +160,9 @@ func (printer *queryPrinter) VisitPredicate(pred *QueryPredicate) {
 		if !first {
 			printer.write(", ")
 		}
-		printer.write("@'")
-		printer.write(string(k))
-		printer.write("'")
+		printer.write("@\"")
+		printer.writeText(string(k))
+		printer.write("\"")
 
 		first = false
 	}
@@ -159,9 +171,9 @@ func (printer *queryPrinter) VisitPredicate(pred *QueryPredicate) {
 		if !first {
 			printer.write(", ")
 		}
-		printer.write("'")
-		printer.write(l)
-		printer.write("'")
+		printer.write("\"")
+		printer.writeText(l)
+		printer.write("\"")
 
 		first = false
 	}
@@ -185,6 +197,11 @@ func (printer *queryPrinter) indent(indent int) {
 
 func (printer *queryPrinter) write(token interface{}) {
 	fmt.Fprintf(printer.output, "%v", token)
+}
+
+func (printer *queryPrinter) writeText(token string) {
+	quoted := quote(token)
+	printer.write(quoted)
 }
 
 func (printer *queryPrinter) newline() {
