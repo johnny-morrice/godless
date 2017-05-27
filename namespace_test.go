@@ -734,4 +734,4 @@ const TRIM_LENGTH = 500
 const ENCODE_REPEAT_COUNT = 50
 const ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 const DIGITS = "0123456789"
-const SYMBOLS = "!@#$5^&*()'|:;-_~`"
+const SYMBOLS = "!@#$5^&*()'|:;-_~"

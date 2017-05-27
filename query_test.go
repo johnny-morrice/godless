@@ -16,7 +16,7 @@ func (query *Query) Generate(rand *rand.Rand, size int) reflect.Value {
 	const TABLE_NAME_MAX = 20
 
 	gen := &Query{}
-	gen.TableKey = TableName(randLetters(rand, TABLE_NAME_MAX))
+	gen.TableKey = TableName(randStr(rand, ALPHABET, 1, TABLE_NAME_MAX))
 
 	if rand.Float32() > 0.5 {
 		gen.OpCode = SELECT
@@ -128,14 +128,18 @@ func randPoint(rand *rand.Rand, max int) string {
 	const MIN_POINT_LENGTH = 0
 	const pointSyms = ALPHABET + DIGITS + SYMBOLS
 	const injectScale = 0.1
-	injectCount := genCount(rand, max, injectScale)
-	point := randStr(rand, pointSyms, MIN_POINT_LENGTH, max-injectCount)
+	point := randStr(rand, pointSyms, MIN_POINT_LENGTH, max)
 
-	for i := 0; i < injectCount; i++ {
-		// position := rand.Intn(len(point))
-		// inject := randEscape(rand)
-		// point = insert(point, inject, position)
+	if len(point) == 0 {
+		return point
 	}
+
+	if rand.Float32() > 0.5 {
+		position := rand.Intn(len(point))
+		inject := randEscape(rand)
+		point = insert(point, inject, position)
+	}
+
 	return point
 }
 
@@ -146,8 +150,10 @@ func insert(old, ins string, pos int) string {
 }
 
 func randEscape(rand *rand.Rand) string {
-	const chars = "\\nt\""
-	return "\\" + randStr(rand, chars, 1, 2)
+	const chars = "\\tnav"
+	const MIN_CHARS = 1
+	const CHARS_LIM = 2
+	return "\\" + randStr(rand, chars, MIN_CHARS, CHARS_LIM)
 }
 
 func TestParseQuery(t *testing.T) {
