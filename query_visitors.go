@@ -64,10 +64,13 @@ func (printer *queryPrinter) VisitRowJoin(position int, row *QueryRowJoin) {
 	if position > 0 {
 		printer.write(",")
 	}
-	printer.newline()
-	printer.tabs()
+
+	printer.indentWhitespace()
 	// TODO shorthand key syntax for simple names.
-	printer.write("(@key")
+	printer.write("(")
+	printer.indent(1)
+	printer.indentWhitespace()
+	printer.write("@key")
 	printer.write("=")
 
 	printer.write("@\"")
@@ -85,14 +88,17 @@ func (printer *queryPrinter) VisitRowJoin(position int, row *QueryRowJoin) {
 	for _, k := range keys {
 		entry := EntryName(k)
 		point := row.Entries[entry]
-		printer.write(", @\"")
+		printer.write(", ")
+		printer.indentWhitespace()
+		printer.write("@\"")
 		printer.writeText(k)
 		printer.write("\"=")
 		printer.write("\"")
 		printer.writeText(string(point))
 		printer.write("\"")
 	}
-
+	printer.indent(-1)
+	printer.indentWhitespace()
 	printer.write(")")
 }
 
@@ -105,7 +111,16 @@ func (printer *queryPrinter) VisitSelect(querySelect *QuerySelect) {
 
 }
 
-func (printer *queryPrinter) LeaveSelect(*QuerySelect) {
+func (printer *queryPrinter) LeaveSelect(querySelect *QuerySelect) {
+	if querySelect.IsEmpty() {
+		return
+	}
+
+	printer.indent(1)
+	printer.indentWhitespace()
+	printer.write("limit ")
+	printer.write(querySelect.Limit)
+	printer.indent(-1)
 }
 
 func (printer *queryPrinter) VisitWhere(position int, where *QueryWhere) {
@@ -117,6 +132,9 @@ func (printer *queryPrinter) VisitWhere(position int, where *QueryWhere) {
 		printer.write(", ")
 	}
 
+	printer.indent(1)
+	printer.indentWhitespace()
+
 	switch where.OpCode {
 	case AND:
 		printer.write("and(")
@@ -126,14 +144,16 @@ func (printer *queryPrinter) VisitWhere(position int, where *QueryWhere) {
 	default:
 		printer.badWhereOpCode(position, where)
 	}
+
 }
 
 func (printer *queryPrinter) LeaveWhere(where *QueryWhere) {
 	if where.IsEmpty() {
 		return
 	}
-
+	printer.indentWhitespace()
 	printer.write(")")
+	printer.indent(-1)
 }
 
 func (printer *queryPrinter) VisitPredicate(pred *QueryPredicate) {
@@ -150,8 +170,11 @@ func (printer *queryPrinter) VisitPredicate(pred *QueryPredicate) {
 		printer.badPredicateOpCode(pred)
 	}
 
+	printer.indent(1)
+
 	first := true
 	if pred.IncludeRowKey {
+		printer.indentWhitespace()
 		printer.write("@key")
 		first = false
 	}
@@ -160,6 +183,7 @@ func (printer *queryPrinter) VisitPredicate(pred *QueryPredicate) {
 		if !first {
 			printer.write(", ")
 		}
+		printer.indentWhitespace()
 		printer.write("@\"")
 		printer.writeText(string(k))
 		printer.write("\"")
@@ -171,6 +195,7 @@ func (printer *queryPrinter) VisitPredicate(pred *QueryPredicate) {
 		if !first {
 			printer.write(", ")
 		}
+		printer.indentWhitespace()
 		printer.write("\"")
 		printer.writeText(l)
 		printer.write("\"")
@@ -178,7 +203,12 @@ func (printer *queryPrinter) VisitPredicate(pred *QueryPredicate) {
 		first = false
 	}
 
-	printer.write(")")
+	printer.indent(-1)
+}
+
+func (printer *queryPrinter) indentWhitespace() {
+	printer.newline()
+	printer.tabs()
 }
 
 func (printer *queryPrinter) tabs() {

@@ -52,6 +52,11 @@ func (ns Namespace) Generate(rand *rand.Rand, size int) reflect.Value {
 
 // Fudge to generate count of sample data.
 func genCount(rand *rand.Rand, size int, scale float32) int {
+	return genCountRange(rand, 0, size, scale)
+}
+
+// Fudge to generate count of sample data.
+func genCountRange(rand *rand.Rand, min, max int, scale float32) int {
 	fudge := float32(1.0)
 	mark := rand.Float32()
 	if mark < 0.01 {
@@ -64,7 +69,11 @@ func genCount(rand *rand.Rand, size int, scale float32) int {
 		fudge = 0.8
 	}
 
-	return int(fudge * float32(size) * scale)
+	gen := int(fudge * float32(max) * scale)
+	if gen < min {
+		gen = min
+	}
+	return gen
 }
 
 func randLetters(rand *rand.Rand, max int) string {

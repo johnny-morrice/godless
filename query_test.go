@@ -100,7 +100,7 @@ func genQueryJoin(rand *rand.Rand, size int) QueryJoin {
 	const ROW_SCALE = 1.0
 	const ENTRY_SCALE = 0.2
 	const MAX_STR_LEN = 10
-	rowCount := genCount(rand, size, ROW_SCALE)
+	rowCount := genCountRange(rand, 1, size, ROW_SCALE)
 
 	gen := QueryJoin{Rows: make([]QueryRowJoin, rowCount)}
 
@@ -169,7 +169,7 @@ func TestParseQuery(t *testing.T) {
 
 func queryParseOk(expected *Query) bool {
 	source := prettyQueryString(expected)
-	logdbg("Pretty Printed: \"%v\"", source)
+	logdbg("Pretty Printed input: \"%v\"", source)
 
 	actual, err := CompileQuery(source)
 
@@ -180,6 +180,8 @@ func queryParseOk(expected *Query) bool {
 	same := expected.Equals(actual)
 
 	if !same {
+		actualSource := prettyQueryString(actual)
+		logdbg("Pretty Printed output: \"%v\"", actualSource)
 		logDiff(source, prettyQueryString(actual))
 	}
 
@@ -204,12 +206,23 @@ func logDiff(old, new string) {
 
 			fragmentEnd := i + 100
 
-			oldFragment := old[fragmentStart:fragmentEnd]
-			newFragment := new[fragmentStart:fragmentEnd]
+			oldEnd := fragmentEnd
+			if len(old) < fragmentEnd {
+				oldEnd = len(old) - 1
+			}
+
+			newEnd := fragmentEnd
+			if len(new) < fragmentEnd {
+				newEnd = len(new) - 1
+			}
+
+			oldFragment := old[fragmentStart:oldEnd]
+			newFragment := new[fragmentStart:newEnd]
 
 			logerr("First difference at %v", i)
 			logerr("Old was: '%v'", oldFragment)
 			logerr("New was: '%v'", newFragment)
+			return
 		}
 	}
 

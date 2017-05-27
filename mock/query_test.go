@@ -37,8 +37,9 @@ func TestVisitJoin(t *testing.T) {
 	c5 := visitor.EXPECT().VisitJoin(&joinQuery.Join)
 	c6 := visitor.EXPECT().VisitRowJoin(0, &joinQuery.Join.Rows[0])
 	c7 := visitor.EXPECT().VisitRowJoin(1, &joinQuery.Join.Rows[1])
+	c8 := visitor.EXPECT().LeaveJoin(&joinQuery.Join)
 
-	gomock.InOrder(c1, c2, c3, c4, c5, c6, c7)
+	gomock.InOrder(c1, c2, c3, c4, c5, c6, c7, c8)
 
 	joinQuery.Visit(visitor)
 }
@@ -77,11 +78,12 @@ func TestVisitSelect(t *testing.T) {
 
 	visitor := NewMockQueryVisitor(ctrl)
 
+	querySelect := &selectQuery.Select
 	c1 := visitor.EXPECT().VisitAST(nil)
 	c2 := visitor.EXPECT().VisitParser(nil)
 	c3 := visitor.EXPECT().VisitOpCode(lib.SELECT)
 	c4 := visitor.EXPECT().VisitTableKey(MAIN_TABLE_KEY)
-	c5 := visitor.EXPECT().VisitSelect(&selectQuery.Select)
+	c5 := visitor.EXPECT().VisitSelect(querySelect)
 	c6 := visitor.EXPECT().VisitWhere(0, &selectQuery.Select.Where)
 	c7 := visitor.EXPECT().VisitPredicate(&selectQuery.Select.Where.Predicate)
 	c8 := visitor.EXPECT().VisitWhere(0, &selectQuery.Select.Where.Clauses[0])
@@ -91,10 +93,13 @@ func TestVisitSelect(t *testing.T) {
 	c12 := visitor.EXPECT().VisitPredicate(&selectQuery.Select.Where.Clauses[1].Predicate)
 	c13 := visitor.EXPECT().LeaveWhere(&selectQuery.Select.Where.Clauses[1])
 	c14 := visitor.EXPECT().LeaveWhere(&selectQuery.Select.Where)
+	c15 := visitor.EXPECT().LeaveSelect(querySelect)
 
-	gomock.InOrder(c1, c2, c3, c4,
-		c5, c6, c7, c8, c9,
-		c10, c11, c12, c13, c14)
+	gomock.InOrder(c1, c2, c3,
+		c4, c5, c6,
+		c7, c8, c9,
+		c10, c11, c12,
+		c13, c14, c15)
 
 	selectQuery.Visit(visitor)
 }

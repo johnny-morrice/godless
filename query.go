@@ -436,12 +436,7 @@ func (query *Query) PrettyPrint(w io.Writer) error {
 
 	query.Visit(printer)
 
-	err := printer.Error()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return printer.Error()
 }
 
 func (query *Query) Analyse() string {
@@ -474,15 +469,19 @@ func (query *Query) Visit(visitor QueryVisitor) {
 
 	switch query.OpCode {
 	case JOIN:
-		visitor.VisitJoin(&query.Join)
+		queryJoin := &query.Join
+		visitor.VisitJoin(queryJoin)
 		for i, row := range query.Join.Rows {
 			visitor.VisitRowJoin(i, &row)
 		}
+		visitor.LeaveJoin(queryJoin)
 	case SELECT:
-		visitor.VisitSelect(&query.Select)
+		querySelect := &query.Select
+		visitor.VisitSelect(querySelect)
 
 		stack := makeWhereStack(&query.Select.Where)
 		stack.visit(visitor)
+		visitor.LeaveSelect(querySelect)
 	case QUERY_NOP:
 		// Do nothing.
 	default:

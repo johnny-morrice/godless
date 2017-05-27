@@ -220,7 +220,7 @@ func (ast *QueryWhereAST) Compile() (QueryWhere, error) {
 
 	err := ast.Configure(&where)
 
-	if err != nil {
+	if err == nil {
 		err = ast.CompileClauses(&where)
 	}
 
