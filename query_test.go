@@ -30,7 +30,70 @@ func (query *Query) Generate(rand *rand.Rand, size int) reflect.Value {
 }
 
 func genQuerySelect(rand *rand.Rand, size int) QuerySelect {
-	return QuerySelect{}
+	gen := QuerySelect{}
+	gen.Limit = rand.Uint32()
+	gen.Where = genQueryWhere(rand, size, 1)
+
+	return gen
+}
+
+func genQueryWhere(rand *rand.Rand, size int, depth int) QueryWhere {
+	const CLAUSE_SCALE = 0.8
+
+	gen := QueryWhere{}
+	if rand.Float32()/float32(depth) > 0.8 {
+		if rand.Float32() > 0.5 {
+			gen.OpCode = AND
+		} else {
+			gen.OpCode = OR
+		}
+
+		clauseCount := genCount(rand, size, CLAUSE_SCALE)
+		gen.Clauses = make([]QueryWhere, clauseCount)
+
+		nextDepth := depth + 1
+		for i := 0; i < clauseCount; i++ {
+			gen.Clauses[i] = genQueryWhere(rand, size, nextDepth)
+		}
+	} else {
+		gen.OpCode = PREDICATE
+		gen.Predicate = genQueryPredicate(rand, size)
+	}
+
+	return gen
+}
+
+func genQueryPredicate(rand *rand.Rand, size int) QueryPredicate {
+	const SCALE = 0.5
+	const MAX_POINT = 10
+
+	gen := QueryPredicate{}
+	if rand.Float32() > 0.5 {
+		gen.IncludeRowKey = true
+	}
+
+	if rand.Float32() > 0.5 {
+		gen.OpCode = STR_EQ
+	} else {
+		gen.OpCode = STR_NEQ
+	}
+
+	keyCount := genCount(rand, size, SCALE)
+	litCount := genCount(rand, size, SCALE)
+	gen.Keys = make([]EntryName, keyCount)
+	gen.Literals = make([]string, litCount)
+
+	for i := 0; i < keyCount; i++ {
+		entry := randKey(rand, MAX_POINT)
+		gen.Keys[i] = EntryName(entry)
+	}
+
+	for i := 0; i < litCount; i++ {
+		lit := randPoint(rand, MAX_POINT)
+		gen.Literals[i] = lit
+	}
+
+	return gen
 }
 
 func genQueryJoin(rand *rand.Rand, size int) QueryJoin {
