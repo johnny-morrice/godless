@@ -57,6 +57,9 @@ func (printer *queryPrinter) LeaveJoin(join *QueryJoin) {
 }
 
 func (printer *queryPrinter) VisitRowJoin(position int, row *QueryRowJoin) {
+	if position > 0 {
+		printer.write(",")
+	}
 	printer.newline()
 	printer.tabs()
 	// TODO shorthand key syntax for simple names.

@@ -6,7 +6,7 @@ type QueryParser Peg {
 
 Query <- Spacing (Select { p.AddSelect() } / Join { p.AddJoin() }) !.
 
-Join <- 'join' MustSpacing JoinKey MustSpacing 'rows' MustSpacing JoinRow (Spacing JoinRow)* Spacing
+Join <- 'join' MustSpacing JoinKey MustSpacing 'rows' MustSpacing JoinRow (Spacing ',' Spacing JoinRow)* Spacing
 JoinKey <- < Key > { p.SetTableName(buffer[begin:end]) }
 JoinRow <- { p.AddJoinRow() } '(' Spacing KeyJoin Spacing ( ',' Spacing ValueJoin Spacing ) * ')'
 KeyJoin <- '@key' Spacing '=' Spacing ('@' ['] < Literal > ['] / < Key > ) { p.SetJoinRowKey(buffer[begin:end]) }

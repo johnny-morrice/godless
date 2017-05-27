@@ -29,6 +29,22 @@ func (_m *MockQueryVisitor) EXPECT() *_MockQueryVisitorRecorder {
 	return _m.recorder
 }
 
+func (_m *MockQueryVisitor) LeaveJoin(_param0 *godless.QueryJoin) {
+	_m.ctrl.Call(_m, "LeaveJoin", _param0)
+}
+
+func (_mr *_MockQueryVisitorRecorder) LeaveJoin(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "LeaveJoin", arg0)
+}
+
+func (_m *MockQueryVisitor) LeaveSelect(_param0 *godless.QuerySelect) {
+	_m.ctrl.Call(_m, "LeaveSelect", _param0)
+}
+
+func (_mr *_MockQueryVisitorRecorder) LeaveSelect(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "LeaveSelect", arg0)
+}
+
 func (_m *MockQueryVisitor) LeaveWhere(_param0 *godless.QueryWhere) {
 	_m.ctrl.Call(_m, "LeaveWhere", _param0)
 }

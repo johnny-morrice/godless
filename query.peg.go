@@ -647,6 +647,13 @@ func (p *QueryParser) Init() {
 							if !_rules[ruleSpacing]() {
 								goto l23
 							}
+							if buffer[position] != rune(',') {
+								goto l23
+							}
+							position++
+							if !_rules[ruleSpacing]() {
+								goto l23
+							}
 							if !_rules[ruleJoinRow]() {
 								goto l23
 							}
@@ -680,7 +687,7 @@ func (p *QueryParser) Init() {
 			position, tokenIndex = position0, tokenIndex0
 			return false
 		},
-		/* 1 Join <- <('j' 'o' 'i' 'n' MustSpacing JoinKey MustSpacing ('r' 'o' 'w' 's') MustSpacing JoinRow (Spacing JoinRow)* Spacing)> */
+		/* 1 Join <- <('j' 'o' 'i' 'n' MustSpacing JoinKey MustSpacing ('r' 'o' 'w' 's') MustSpacing JoinRow (Spacing ',' Spacing JoinRow)* Spacing)> */
 		nil,
 		/* 2 JoinKey <- <(<Key> Action2)> */
 		nil,
