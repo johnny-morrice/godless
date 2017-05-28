@@ -4,6 +4,7 @@ package godless
 //go:generate mockgen -destination mock/mock_query.go -imports lib=github.com/johnny-morrice/godless -self_package lib github.com/johnny-morrice/godless QueryVisitor
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -347,6 +348,22 @@ func (query *Query) Visit(visitor QueryVisitor) {
 
 func (query *Query) opcodePanic() {
 	panic(fmt.Sprintf("Unknown Query OpCode: %v", query.OpCode))
+}
+
+func logQuery(query *Query) {
+	text := prettyQueryText(query)
+	logdbg(text)
+}
+
+func prettyQueryText(query *Query) string {
+	buff := &bytes.Buffer{}
+	err := query.PrettyPrint(buff)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return buff.String()
 }
 
 func prettyPrintJson(jsonable interface{}) string {

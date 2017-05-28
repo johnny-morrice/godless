@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 )
 
 // Visitor outline to help with editor macros.
@@ -90,9 +91,8 @@ func (printer *queryPrinter) VisitRowJoin(position int, row *QueryRowJoin) {
 		point := row.Entries[entry]
 		printer.write(", ")
 		printer.indentWhitespace()
-		printer.write("@\"")
-		printer.writeText(k)
-		printer.write("\"=")
+		printer.writeKey(k)
+		printer.write("=")
 		printer.write("\"")
 		printer.writeText(string(point))
 		printer.write("\"")
@@ -184,9 +184,7 @@ func (printer *queryPrinter) VisitPredicate(pred *QueryPredicate) {
 			printer.write(", ")
 		}
 		printer.indentWhitespace()
-		printer.write("@\"")
-		printer.writeText(string(k))
-		printer.write("\"")
+		printer.writeKey(string(k))
 
 		first = false
 	}
@@ -227,6 +225,27 @@ func (printer *queryPrinter) indent(indent int) {
 
 func (printer *queryPrinter) write(token interface{}) {
 	fmt.Fprintf(printer.output, "%v", token)
+}
+
+func (printer *queryPrinter) writeKey(token string) {
+	if len(token) > 0 && printer.isEasyKey(token) {
+		printer.write(token)
+	} else {
+		printer.write("@\"")
+		printer.writeText(token)
+		printer.write("\"")
+	}
+}
+
+func (printer *queryPrinter) isEasyKey(token string) bool {
+	parts := strings.Split(token, "")
+	for _, p := range parts {
+		if !strings.Contains(__KEY_SYMS, p) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (printer *queryPrinter) writeText(token string) {
@@ -367,3 +386,8 @@ func (visitor *queryValidator) VisitPredicate(predicate *QueryPredicate) {
 		visitor.badPredicateOpCode(predicate)
 	}
 }
+
+const __ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+const __DIGITS = "0123456789"
+
+const __KEY_SYMS = __ALPHABET + __DIGITS

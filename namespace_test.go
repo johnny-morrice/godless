@@ -77,7 +77,7 @@ func genCountRange(rand *rand.Rand, min, max int, scale float32) int {
 }
 
 func randLetters(rand *rand.Rand, max int) string {
-	return randStr(rand, ALPHABET, 0, max)
+	return randStr(rand, __ALPHABET, 0, max)
 }
 
 func randStr(rand *rand.Rand, elements string, min, max int) string {
@@ -732,6 +732,4 @@ func debugLine(t *testing.T) {
 const CALLER_DEPTH = 2
 const TRIM_LENGTH = 500
 const ENCODE_REPEAT_COUNT = 50
-const ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-const DIGITS = "0123456789"
 const SYMBOLS = "!@#$5^&*()'|:;-_~"

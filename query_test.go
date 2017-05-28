@@ -50,7 +50,7 @@ func (query *Query) Generate(rand *rand.Rand, size int) reflect.Value {
 	const TABLE_NAME_MAX = 20
 
 	gen := &Query{}
-	gen.TableKey = TableName(randStr(rand, ALPHABET, 1, TABLE_NAME_MAX))
+	gen.TableKey = TableName(randStr(rand, __ALPHABET, 1, TABLE_NAME_MAX))
 
 	if rand.Float32() > 0.5 {
 		gen.OpCode = SELECT
@@ -160,7 +160,7 @@ func randKey(rand *rand.Rand, max int) string {
 
 func randPoint(rand *rand.Rand, max int) string {
 	const MIN_POINT_LENGTH = 0
-	const pointSyms = ALPHABET + DIGITS + SYMBOLS
+	const pointSyms = __ALPHABET + __DIGITS + SYMBOLS
 	const injectScale = 0.1
 	point := randStr(rand, pointSyms, MIN_POINT_LENGTH, max)
 
@@ -191,7 +191,7 @@ func randEscape(rand *rand.Rand) string {
 }
 
 func queryParseOk(expected *Query) bool {
-	source := prettyQueryString(expected)
+	source := prettyQueryText(expected)
 	logdbg("Pretty Printed input: \"%v\"", source)
 
 	actual, err := CompileQuery(source)
@@ -203,9 +203,9 @@ func queryParseOk(expected *Query) bool {
 	same := expected.Equals(actual)
 
 	if !same {
-		actualSource := prettyQueryString(actual)
+		actualSource := prettyQueryText(actual)
 		logdbg("Pretty Printed output: \"%v\"", actualSource)
-		logDiff(source, prettyQueryString(actual))
+		logDiff(source, prettyQueryText(actual))
 	}
 
 	return same
@@ -251,24 +251,13 @@ func logDiff(old, new string) {
 
 }
 
-func prettyQueryString(query *Query) string {
-	buff := &bytes.Buffer{}
-	err := query.PrettyPrint(buff)
-
-	if err != nil {
-		panic(err)
-	}
-
-	return buff.String()
-}
-
 func queryEncodeOk(expected *Query) bool {
 	actual := querySerializationPass(expected)
 	same := expected.Equals(actual)
 
 	if !same {
-		expectedSource := prettyQueryString(expected)
-		actualSource := prettyQueryString(actual)
+		expectedSource := prettyQueryText(expected)
+		actualSource := prettyQueryText(actual)
 		logDiff(expectedSource, actualSource)
 	}
 
