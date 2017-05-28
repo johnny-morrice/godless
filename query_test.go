@@ -264,7 +264,15 @@ func prettyQueryString(query *Query) string {
 
 func queryEncodeOk(expected *Query) bool {
 	actual := querySerializationPass(expected)
-	return expected.Equals(actual)
+	same := expected.Equals(actual)
+
+	if !same {
+		expectedSource := prettyQueryString(expected)
+		actualSource := prettyQueryString(actual)
+		logDiff(expectedSource, actualSource)
+	}
+
+	return same
 }
 
 func querySerializationPass(expected *Query) *Query {

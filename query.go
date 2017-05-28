@@ -75,7 +75,8 @@ func (join QueryJoin) equals(other QueryJoin) bool {
 }
 
 type QueryRowJoin struct {
-	RowKey  RowName
+	RowKey RowName
+	// TODO would this be clearer/more performant as a slice of pair structures?
 	Entries map[EntryName]Point `json:",omitempty"`
 }
 

@@ -201,25 +201,24 @@ func makeQueryMessageDecoder() *queryMessageDecoder {
 }
 
 func (decoder *queryMessageDecoder) VisitWhere(position int, message *QueryWhereMessage) {
-	where := decoder.createChildWhere()
+	where := decoder.createChildWhere(position)
 
 	frame := whereBuilderFrame{
 		message: message,
 		where:   where,
 	}
 
-	decoder.configureQueryWhere(frame)
+	decoder.decodeWhere(frame)
 	decoder.stack.push(frame)
 }
 
-func (decoder *queryMessageDecoder) createChildWhere() *QueryWhere {
+func (decoder *queryMessageDecoder) createChildWhere(position int) *QueryWhere {
 	if len(decoder.stack.stk) == 0 {
-		return &QueryWhere{}
+		return &decoder.Query.Select.Where
 	}
 
 	tip := decoder.stack.peek()
-	tip.where.Clauses = append(tip.where.Clauses, QueryWhere{})
-	return &tip.where.Clauses[len(tip.where.Clauses)-1]
+	return &tip.where.Clauses[position]
 }
 
 func (decoder *queryMessageDecoder) LeaveWhere(message *QueryWhereMessage) {
@@ -232,28 +231,41 @@ func (decoder *queryMessageDecoder) LeaveWhere(message *QueryWhereMessage) {
 func (decoder *queryMessageDecoder) VisitPredicate(*QueryPredicateMessage) {
 }
 
-func (decoder *queryMessageDecoder) VisitOpCode(uint32) {
+func (decoder *queryMessageDecoder) VisitOpCode(opCode uint32) {
+	switch opCode {
+	case MESSAGE_NOOP:
+		fallthrough
+	case MESSAGE_SELECT:
+		fallthrough
+	case MESSAGE_JOIN:
+		decoder.Query.OpCode = QueryOpCode(opCode)
+	}
 }
 
-func (decoder *queryMessageDecoder) VisitTableKey(string) {
+func (decoder *queryMessageDecoder) VisitTableKey(table string) {
+	decoder.Query.TableKey = TableName(table)
 }
 
-func (decoder *queryMessageDecoder) VisitJoin(*QueryJoinMessage) {
+func (decoder *queryMessageDecoder) VisitJoin(message *QueryJoinMessage) {
+	decoder.Query.Join.Rows = make([]QueryRowJoin, len(message.Rows))
 }
 
 func (decoder *queryMessageDecoder) LeaveJoin(*QueryJoinMessage) {
 }
 
-func (decoder *queryMessageDecoder) VisitRowJoin(int, *QueryRowJoinMessage) {
+func (decoder *queryMessageDecoder) VisitRowJoin(position int, message *QueryRowJoinMessage) {
+	row := &decoder.Query.Join.Rows[position]
+	decoder.decodeRowJoin(row, message)
 }
 
-func (decoder *queryMessageDecoder) VisitSelect(*QuerySelectMessage) {
+func (decoder *queryMessageDecoder) VisitSelect(message *QuerySelectMessage) {
+	decoder.Query.Select.Limit = message.Limit
 }
 
 func (decoder *queryMessageDecoder) LeaveSelect(*QuerySelectMessage) {
 }
 
-func (decoder *queryMessageDecoder) configureQueryWhere(frame whereBuilderFrame) {
+func (decoder *queryMessageDecoder) decodeWhere(frame whereBuilderFrame) {
 	msg := frame.message
 	where := frame.where
 	switch msg.OpCode {
@@ -261,15 +273,61 @@ func (decoder *queryMessageDecoder) configureQueryWhere(frame whereBuilderFrame)
 		fallthrough
 	case MESSAGE_OR:
 		fallthrough
+	case MESSAGE_NOOP:
+		fallthrough
 	case MESSAGE_PREDICATE:
 		where.OpCode = QueryWhereOpCode(msg.OpCode)
 	default:
 		decoder.badWhereMessageOpCode(msg)
 	}
+
+	where.Clauses = make([]QueryWhere, len(msg.Clauses))
+	decoder.decodePredicate(&where.Predicate, msg.Predicate)
+}
+
+func (decoder *queryMessageDecoder) decodeRowJoin(row *QueryRowJoin, message *QueryRowJoinMessage) {
+	row.RowKey = RowName(message.Row)
+	row.Entries = map[EntryName]Point{}
+
+	for _, messageEntry := range message.Entries {
+		entry := EntryName(messageEntry.Entry)
+		point := Point(messageEntry.Point)
+		row.Entries[entry] = point
+	}
+}
+
+func (decoder *queryMessageDecoder) decodePredicate(pred *QueryPredicate, message *QueryPredicateMessage) {
+	switch message.OpCode {
+	case MESSAGE_STR_EQ:
+		fallthrough
+	case MESSAGE_STR_NEQ:
+		fallthrough
+	case MESSAGE_PREDICATE_NOOP:
+		pred.OpCode = QueryPredicateOpCode(message.OpCode)
+	default:
+		decoder.badPredicateMessageOpCode(message)
+	}
+
+	pred.Literals = make([]string, len(message.Literals))
+	for i, lit := range message.Literals {
+		pred.Literals[i] = lit
+	}
+
+	pred.Keys = make([]EntryName, len(message.Keys))
+	for i, key := range message.Keys {
+		pred.Keys[i] = EntryName(key)
+	}
+
+	pred.IncludeRowKey = message.Userow
 }
 
 func (decoder *queryMessageDecoder) badWhereMessageOpCode(message *QueryWhereMessage) {
 	err := fmt.Errorf("Bad queryWhereMessageOpCode: %v", message)
+	decoder.collectError(err)
+}
+
+func (decoder *queryMessageDecoder) badPredicateMessageOpCode(message *QueryPredicateMessage) {
+	err := fmt.Errorf("Bad queryPredicateMessageOpCode: %v", message)
 	decoder.collectError(err)
 }
 
@@ -376,4 +434,10 @@ const (
 	MESSAGE_AND
 	MESSAGE_OR
 	MESSAGE_PREDICATE
+)
+
+const (
+	MESSAGE_PREDICATE_NOOP = uint32(iota)
+	MESSAGE_STR_EQ
+	MESSAGE_STR_NEQ
 )
