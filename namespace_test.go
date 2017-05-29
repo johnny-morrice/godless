@@ -12,6 +12,11 @@ import (
 )
 
 func (ns Namespace) Generate(rand *rand.Rand, size int) reflect.Value {
+	gen := genNamespace(rand, size)
+	return reflect.ValueOf(gen)
+}
+
+func genNamespace(rand *rand.Rand, size int) Namespace {
 	const maxStr = 100
 	const tableFudge = 0.125
 	const rowFudge = 0.25
@@ -47,7 +52,7 @@ func (ns Namespace) Generate(rand *rand.Rand, size int) reflect.Value {
 		gen.addTable(tableName, table)
 	}
 
-	return reflect.ValueOf(gen)
+	return gen
 }
 
 // Fudge to generate count of sample data.

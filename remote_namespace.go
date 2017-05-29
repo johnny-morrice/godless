@@ -78,7 +78,7 @@ func (rn *remoteNamespace) getReflectIndex() APIResponse {
 		return response
 	}
 
-	response.ReflectResponse.Index = index.APIIndex()
+	response.ReflectResponse.Index = index
 
 	return response
 }

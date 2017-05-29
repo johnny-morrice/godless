@@ -5,6 +5,21 @@ type IndexStreamEntry struct {
 	Links     []IPFSPath
 }
 
+func (entry IndexStreamEntry) Equals(other IndexStreamEntry) bool {
+	if entry.TableName != other.TableName {
+		return false
+	}
+
+	for i, myLink := range entry.Links {
+		otherLink := other.Links[i]
+		if myLink != otherLink {
+			return false
+		}
+	}
+
+	return true
+}
+
 func ReadIndexEntryMessage(message *IndexEntryMessage) IndexStreamEntry {
 	entry := IndexStreamEntry{
 		TableName: TableName(message.Table),

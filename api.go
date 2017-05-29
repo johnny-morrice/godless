@@ -47,15 +47,10 @@ type APIReflectRequest struct {
 	Command APIReflectionType
 }
 
-// FIXME dubious type screams design flaw.
-type APIRemoteIndex struct {
-	Index map[string][]string
-}
-
 type APIReflectResponse struct {
-	Namespace Namespace      `json:",omitEmpty"`
-	Path      string         `json:",omitEmpty"`
-	Index     APIRemoteIndex `json:",omitEmpty"`
+	Namespace Namespace            `json:",omitEmpty"`
+	Path      string               `json:",omitEmpty"`
+	Index     RemoteNamespaceIndex `json:",omitEmpty"`
 }
 
 type APIMessageType uint8
@@ -78,7 +73,6 @@ func (resp APIResponse) Equals(other APIResponse) bool {
 	ok := resp.Msg == other.Msg
 	ok = ok && resp.Err == other.Err
 	ok = ok && resp.Type == other.Type
-	ok = ok && resp.ReflectResponse.Path == other.ReflectResponse.Path
 
 	if resp.Type == API_QUERY {
 		if len(resp.QueryResponse.Rows) != len(other.QueryResponse.Rows) {
@@ -89,9 +83,17 @@ func (resp APIResponse) Equals(other APIResponse) bool {
 			return false
 		}
 	} else if resp.Type == API_REFLECT {
-		// FIXME
-		logerr("TODO Equals not implemented for API_REFLECT type")
-		return false
+		if resp.ReflectResponse.Path != other.ReflectResponse.Path {
+			return false
+		}
+
+		if !resp.ReflectResponse.Index.Equals(other.ReflectResponse.Index) {
+			return false
+		}
+
+		if !resp.ReflectResponse.Namespace.Equals(other.ReflectResponse.Namespace) {
+			return false
+		}
 	}
 
 	return true

@@ -2,6 +2,7 @@ package godless
 
 import (
 	"bytes"
+	"errors"
 	"math/rand"
 	"reflect"
 	"testing"
@@ -11,11 +12,45 @@ import (
 func (resp APIResponse) Generate(rand *rand.Rand, size int) reflect.Value {
 	gen := APIResponse{}
 
+	text := randLetters(rand, size)
 	if rand.Float32() < 0.5 {
+		gen.Msg = text
+	} else {
+		gen.Err = errors.New(text)
+	}
 
+	if rand.Float32() < 0.5 {
+		gen.Type = API_QUERY
+		if gen.Err != nil {
+			gen.QueryResponse = genQueryResponse(rand, size)
+		}
+	} else {
+		gen.Type = API_REFLECT
+		if gen.Err != nil {
+			gen.ReflectResponse = genReflectResponse(rand, size)
+		}
 	}
 
 	return reflect.ValueOf(gen)
+}
+
+func genQueryResponse(rand *rand.Rand, size int) APIQueryResponse {
+	return APIQueryResponse{}
+}
+
+func genReflectResponse(rand *rand.Rand, size int) APIReflectResponse {
+	gen := APIReflectResponse{}
+
+	branch := rand.Float32()
+	if branch < 0.333 {
+		gen.Path = randLetters(rand, size)
+	} else if branch < 0.666 {
+		gen.Namespace = genNamespace(rand, size)
+	} else {
+		gen.Index = genIndex(rand, size)
+	}
+
+	return gen
 }
 
 func TestEncodeAPIResponse(t *testing.T) {

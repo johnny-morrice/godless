@@ -79,8 +79,8 @@ func MakeIndexMessage(index RemoteNamespaceIndex) *IndexMessage {
 	return MakeIndexStreamMessage(stream)
 }
 
-func (rni RemoteNamespaceIndex) joinStreamEntry(entry IndexStreamEntry) RemoteNamespaceIndex {
-	cpy := rni.Copy()
+func (index RemoteNamespaceIndex) joinStreamEntry(entry IndexStreamEntry) RemoteNamespaceIndex {
+	cpy := index.Copy()
 	addrs := make([]RemoteStoreAddress, len(entry.Links))
 
 	for i, l := range entry.Links {
@@ -92,27 +92,25 @@ func (rni RemoteNamespaceIndex) joinStreamEntry(entry IndexStreamEntry) RemoteNa
 	return cpy
 }
 
-func (rni RemoteNamespaceIndex) APIIndex() APIRemoteIndex {
-	apiIndex := APIRemoteIndex{
-		Index: map[string][]string{},
-	}
+func (index RemoteNamespaceIndex) Equals(other RemoteNamespaceIndex) bool {
+	stream := MakeIndexStream(index)
+	otherStream := MakeIndexStream(other)
 
-	for table, addrs := range rni.Index {
-		apiAddrs := make([]string, len(addrs))
-		for i, a := range addrs {
-			apiAddrs[i] = a.Path()
+	for i, entry := range stream {
+		otherEntry := otherStream[i]
+		if !entry.Equals(otherEntry) {
+			return false
 		}
-		apiIndex.Index[string(table)] = apiAddrs
 	}
 
-	return apiIndex
+	return true
 }
 
-func (rni RemoteNamespaceIndex) AllTables() []TableName {
-	tables := make([]TableName, len(rni.Index))
+func (index RemoteNamespaceIndex) AllTables() []TableName {
+	tables := make([]TableName, len(index.Index))
 
 	i := 0
-	for name := range rni.Index {
+	for name := range index.Index {
 		tables[i] = name
 		i++
 	}
@@ -120,8 +118,8 @@ func (rni RemoteNamespaceIndex) AllTables() []TableName {
 	return tables
 }
 
-func (rni RemoteNamespaceIndex) GetTableAddrs(tableName TableName) ([]RemoteStoreAddress, error) {
-	indices, ok := rni.Index[tableName]
+func (index RemoteNamespaceIndex) GetTableAddrs(tableName TableName) ([]RemoteStoreAddress, error) {
+	indices, ok := index.Index[tableName]
 
 	if !ok {
 		return nil, fmt.Errorf("No table in index: '%v'", tableName)
@@ -130,10 +128,10 @@ func (rni RemoteNamespaceIndex) GetTableAddrs(tableName TableName) ([]RemoteStor
 	return indices, nil
 }
 
-func (rni RemoteNamespaceIndex) JoinNamespace(addr RemoteStoreAddress, namespace Namespace) RemoteNamespaceIndex {
+func (index RemoteNamespaceIndex) JoinNamespace(addr RemoteStoreAddress, namespace Namespace) RemoteNamespaceIndex {
 	tables := namespace.GetTableNames()
 
-	joined := rni.Copy()
+	joined := index.Copy()
 	for _, t := range tables {
 		joined.addTable(t, addr)
 	}
@@ -141,19 +139,19 @@ func (rni RemoteNamespaceIndex) JoinNamespace(addr RemoteStoreAddress, namespace
 	return joined
 }
 
-func (rni RemoteNamespaceIndex) addTable(table TableName, addr ...RemoteStoreAddress) {
-	if addrs, ok := rni.Index[table]; ok {
+func (index RemoteNamespaceIndex) addTable(table TableName, addr ...RemoteStoreAddress) {
+	if addrs, ok := index.Index[table]; ok {
 		normal := normalStoreAddress(append(addrs, addr...))
-		rni.Index[table] = normal
+		index.Index[table] = normal
 	} else {
-		rni.Index[table] = addr
+		index.Index[table] = addr
 	}
 }
 
-func (rni RemoteNamespaceIndex) Copy() RemoteNamespaceIndex {
+func (index RemoteNamespaceIndex) Copy() RemoteNamespaceIndex {
 	cpy := EmptyRemoteNamespaceIndex()
 
-	for table, addrs := range rni.Index {
+	for table, addrs := range index.Index {
 		addrCopy := make([]RemoteStoreAddress, len(addrs))
 		for i, a := range addrs {
 			addrCopy[i] = a
