@@ -35,7 +35,11 @@ func (resp APIResponse) Generate(rand *rand.Rand, size int) reflect.Value {
 }
 
 func genQueryResponse(rand *rand.Rand, size int) APIQueryResponse {
-	return APIQueryResponse{}
+	gen := APIQueryResponse{}
+	ns := genNamespace(rand, size)
+	stream := MakeNamespaceStream(ns)
+	gen.Rows = stream
+	return gen
 }
 
 func genReflectResponse(rand *rand.Rand, size int) APIReflectResponse {
