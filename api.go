@@ -1,8 +1,6 @@
 package godless
 
-import (
-	"encoding/json"
-)
+import "io"
 
 type APIService interface {
 	APICloserService
@@ -69,21 +67,50 @@ const (
 )
 
 type APIResponse struct {
-	Err             error
 	Msg             string
+	Err             error
 	Type            APIMessageType
 	QueryResponse   APIQueryResponse   `json:",omitEmpty"`
 	ReflectResponse APIReflectResponse `json:",omitEmpty"`
 }
 
-func (response APIResponse) RenderJSON() (string, error) {
-	bs, err := json.MarshalIndent(response, "", "\t")
+func (resp APIResponse) Equals(other APIResponse) bool {
+	ok := resp.Msg == other.Msg
+	ok = ok && resp.Err == other.Err
+	ok = ok && resp.Type == other.Type
+	ok = ok && resp.ReflectResponse.Path == other.ReflectResponse.Path
 
-	if err != nil {
-		return "", err
+	if resp.Type == API_QUERY {
+		if len(resp.QueryResponse.Rows) != len(other.QueryResponse.Rows) {
+			return false
+		}
+
+		if !StreamEquals(resp.QueryResponse.Rows, other.QueryResponse.Rows) {
+			return false
+		}
+	} else if resp.Type == API_REFLECT {
+		// FIXME
+		logerr("TODO Equals not implemented for API_REFLECT type")
+		return false
 	}
 
-	return string(bs), nil
+	return true
+}
+
+func EncodeAPIResponse(resp APIResponse, w io.Writer) error {
+	return nil
+}
+
+func DecodeAPIResponse(r io.Reader) (APIResponse, error) {
+	return RESPONSE_FAIL, nil
+}
+
+func EncodeAPIResponseText(resp APIResponse, w io.Writer) error {
+	return nil
+}
+
+func DecodeAPIResponseText(r io.Reader) (APIResponse, error) {
+	return RESPONSE_FAIL, nil
 }
 
 var RESPONSE_FAIL_MSG = "error"

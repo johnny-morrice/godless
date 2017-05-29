@@ -221,7 +221,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		q.Visit(selector)
 		actual := selector.RunQuery()
 		expected := expect[i]
-		if !apiResponseEq(actual, expected) {
+		if !expected.Equals(actual) {
 			if actual.QueryResponse.Rows == nil {
 				t.Error("actual.QueryResponse.Rows was nil")
 			}
@@ -523,30 +523,6 @@ func mktable(name string, rows []lib.Row) lib.Table {
 	}
 
 	return table
-}
-
-func apiResponseEq(a, b lib.APIResponse) bool {
-	if a.Msg != b.Msg {
-		return false
-	}
-
-	if a.Err != b.Err {
-		return false
-	}
-
-	if a.Type != b.Type {
-		return false
-	}
-
-	if len(a.QueryResponse.Rows) != len(b.QueryResponse.Rows) {
-		return false
-	}
-
-	if !lib.StreamEquals(a.QueryResponse.Rows, b.QueryResponse.Rows) {
-		return false
-	}
-
-	return true
 }
 
 const MAIN_TABLE_KEY = lib.TableName("The Table")
