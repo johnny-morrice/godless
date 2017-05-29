@@ -10,6 +10,11 @@ import (
 
 func (resp APIResponse) Generate(rand *rand.Rand, size int) reflect.Value {
 	gen := APIResponse{}
+
+	if rand.Float32() < 0.5 {
+
+	}
+
 	return reflect.ValueOf(gen)
 }
 

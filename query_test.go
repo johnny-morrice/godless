@@ -75,7 +75,7 @@ func genQueryWhere(rand *rand.Rand, size int, depth int) QueryWhere {
 	const CLAUSE_SCALE = 0.8
 
 	gen := QueryWhere{}
-	if rand.Float32()/float32(depth) > 0.8 {
+	if rand.Float32()/float32(depth) > 0.4 {
 		if rand.Float32() > 0.5 {
 			gen.OpCode = AND
 		} else {
