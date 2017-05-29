@@ -22,7 +22,21 @@ message IndexEntryMessage {
 }
 
 message APIResponseMessage {
+	string message = 1;
+	string error = 2;
+	uint32 type = 3;
+	APIQueryResponseMessage queryResponse = 4;
+	APIReflectResponseMessage refelectResponse = 5;
+}
 
+message APIQueryResponseMessage {
+	repeated NamespaceEntryMessage rows = 1;
+}
+
+message APIReflectResponseMessage {
+	string path = 1;
+	IndexMessage index = 2;
+	NamespaceMessage namespace = 3;
 }
 
 message QueryMessage {

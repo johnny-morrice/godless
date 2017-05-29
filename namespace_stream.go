@@ -71,11 +71,31 @@ func (stream byNamespaceStreamOrder) Less(i, j int) bool {
 		return false
 	}
 
-	minSize := imin(len(a.Points), len(b.Points))
+	return pointLess(a.Points, b.Points)
+}
+
+type byEntryOrder []Entry
+
+func (entries byEntryOrder) Len() int {
+	return len(entries)
+}
+
+func (entries byEntryOrder) Swap(i, j int) {
+	entries[i], entries[j] = entries[j], entries[i]
+}
+
+func (entries byEntryOrder) Less(i, j int) bool {
+	a := entries[i]
+	b := entries[j]
+	return pointLess(a.Set, b.Set)
+}
+
+func pointLess(a, b []Point) bool {
+	minSize := imin(len(a), len(b))
 
 	for i := 0; i < minSize; i++ {
-		ap := a.Points[i]
-		bp := b.Points[j]
+		ap := a[i]
+		bp := b[i]
 		if ap < bp {
 			return true
 		} else if ap > bp {
@@ -83,7 +103,7 @@ func (stream byNamespaceStreamOrder) Less(i, j int) bool {
 		}
 	}
 
-	return len(a.Points) < len(b.Points)
+	return len(a) < len(b)
 }
 
 func MakeStreamEntry(tname TableName, rname RowName, ename EntryName, entry Entry) NamespaceStreamEntry {
@@ -93,6 +113,38 @@ func MakeStreamEntry(tname TableName, rname RowName, ename EntryName, entry Entr
 		Entry:  ename,
 		Points: entry.GetValues(),
 	}
+}
+
+func MakeRowStream(tableKey TableName, rowKey RowName, row Row) []NamespaceStreamEntry {
+	count := len(row.Entries)
+	entryKeys := make([]string, count)
+	i := 0
+	for ek, _ := range row.Entries {
+		entryKeys[i] = string(ek)
+		i++
+	}
+	sort.Strings(entryKeys)
+
+	entries := make([]Entry, count)
+	for i, ek := range entryKeys {
+		entry := row.Entries[EntryName(ek)]
+		entries[i] = entry
+	}
+
+	sort.Sort(byEntryOrder(entries))
+
+	stream := make([]NamespaceStreamEntry, count)
+	for i, e := range entries {
+		entryKey := EntryName(entryKeys[i])
+		stream[i] = NamespaceStreamEntry{
+			Points: e.Set,
+			Table:  tableKey,
+			Row:    rowKey,
+			Entry:  entryKey,
+		}
+	}
+
+	return stream
 }
 
 func MakeNamespaceStream(ns Namespace) []NamespaceStreamEntry {

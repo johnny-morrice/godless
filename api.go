@@ -33,7 +33,7 @@ func (arf APIResponderFunc) RunQuery() APIResponse {
 }
 
 type APIQueryResponse struct {
-	Rows []Row
+	Rows []NamespaceStreamEntry
 }
 
 type APIReflectionType uint16

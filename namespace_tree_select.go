@@ -18,7 +18,7 @@ func MakeNamespaceTreeSelect(namespace NamespaceTree) *NamespaceTreeSelect {
 	return &NamespaceTreeSelect{
 		Namespace: namespace,
 		crit: &rowCriteria{
-			result: []Row{},
+			result: []NamespaceStreamEntry{},
 		},
 	}
 }
@@ -94,7 +94,7 @@ type rowCriteria struct {
 	tableKey  TableName
 	count     int
 	limit     int
-	result    []Row
+	result    []NamespaceStreamEntry
 	rootWhere *QueryWhere
 }
 
@@ -125,8 +125,8 @@ func (crit *rowCriteria) selectMatching(namespace Namespace) (bool, error) {
 	return false, nil
 }
 
-func (crit *rowCriteria) findRows(namespace Namespace) []Row {
-	out := []Row{}
+func (crit *rowCriteria) findRows(namespace Namespace) []NamespaceStreamEntry {
+	out := []NamespaceStreamEntry{}
 
 	table, err := namespace.GetTable(crit.tableKey)
 
@@ -135,7 +135,10 @@ func (crit *rowCriteria) findRows(namespace Namespace) []Row {
 	}
 
 	if crit.rootWhere.OpCode == WHERE_NOOP {
-		return table.AllRows()
+		subNamespace := MakeNamespace(map[TableName]Table{
+			crit.tableKey: table,
+		})
+		return MakeNamespaceStream(subNamespace)
 	}
 
 	table.Foreachrow(RowConsumerFunc(func(rowKey RowName, r Row) {
@@ -143,7 +146,8 @@ func (crit *rowCriteria) findRows(namespace Namespace) []Row {
 		where := makeWhereStack(crit.rootWhere)
 
 		if eval.evaluate(where) {
-			out = append(out, r)
+			stream := MakeRowStream(crit.tableKey, rowKey, r)
+			out = append(out, stream...)
 		}
 	}))
 
