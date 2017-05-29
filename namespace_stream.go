@@ -10,6 +10,36 @@ type NamespaceStreamEntry struct {
 	Points []Point
 }
 
+func (entry NamespaceStreamEntry) Equals(other NamespaceStreamEntry) bool {
+	ok := entry.Table == other.Table
+	ok = ok && entry.Row == other.Row
+	ok = ok && entry.Entry == other.Entry
+
+	if !ok {
+		return false
+	}
+
+	for i, myPoint := range entry.Points {
+		theirPoint := other.Points[i]
+		if myPoint != theirPoint {
+			return false
+		}
+	}
+
+	return true
+}
+
+func StreamEquals(a, b []NamespaceStreamEntry) bool {
+	for i, ar := range a {
+		br := b[i]
+		if !ar.Equals(br) {
+			return false
+		}
+	}
+
+	return true
+}
+
 func ReadNamespaceEntryMessage(message *NamespaceEntryMessage) NamespaceStreamEntry {
 	entry := NamespaceStreamEntry{
 		Table:  TableName(message.Table),
@@ -113,6 +143,13 @@ func MakeStreamEntry(tname TableName, rname RowName, ename EntryName, entry Entr
 		Entry:  ename,
 		Points: entry.GetValues(),
 	}
+}
+
+func MakeTableStream(tableKey TableName, table Table) []NamespaceStreamEntry {
+	subNamespace := MakeNamespace(map[TableName]Table{
+		tableKey: table,
+	})
+	return MakeNamespaceStream(subNamespace)
 }
 
 func MakeRowStream(tableKey TableName, rowKey RowName, row Row) []NamespaceStreamEntry {

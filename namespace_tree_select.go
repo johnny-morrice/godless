@@ -2,6 +2,7 @@ package godless
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/pkg/errors"
 )
@@ -46,7 +47,9 @@ func (visitor *NamespaceTreeSelect) RunQuery() APIResponse {
 	}
 
 	response := RESPONSE_QUERY
-	response.QueryResponse.Rows = visitor.crit.result
+	stream := visitor.crit.result
+	sort.Sort(byNamespaceStreamOrder(stream))
+	response.QueryResponse.Rows = stream
 	return response
 }
 
@@ -135,10 +138,7 @@ func (crit *rowCriteria) findRows(namespace Namespace) []NamespaceStreamEntry {
 	}
 
 	if crit.rootWhere.OpCode == WHERE_NOOP {
-		subNamespace := MakeNamespace(map[TableName]Table{
-			crit.tableKey: table,
-		})
-		return MakeNamespaceStream(subNamespace)
+		return MakeTableStream(crit.tableKey, table)
 	}
 
 	table.Foreachrow(RowConsumerFunc(func(rowKey RowName, r Row) {

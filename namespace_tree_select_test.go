@@ -13,11 +13,14 @@ import (
 // The various where predicates are tested elsewhere.  This test focusses
 // on whether the correct rows will be discovered for any predicate.
 func TestRowCriteria_findRows(t *testing.T) {
+	pointA := []Point{"hello"}
+	pointB := []Point{"world"}
+
 	rowA := MakeRow(map[EntryName]Entry{
-		"foo": MakeEntry([]Point{"hello"}),
+		"foo": MakeEntry(pointA),
 	})
 	rowB := MakeRow(map[EntryName]Entry{
-		"bar": MakeEntry([]Point{"world"}),
+		"bar": MakeEntry(pointB),
 	})
 
 	namespace := MakeNamespace(map[TableName]Table{
@@ -28,12 +31,33 @@ func TestRowCriteria_findRows(t *testing.T) {
 		}),
 	})
 
-	expected := [][]Row{
-		[]Row{
-			rowA,
+	streamEntryA := NamespaceStreamEntry{
+		Table:  TABLE_KEY,
+		Row:    "a",
+		Entry:  "foo",
+		Points: pointA,
+	}
+
+	streamEntryB := NamespaceStreamEntry{
+		Table:  TABLE_KEY,
+		Row:    "b",
+		Entry:  "bar",
+		Points: pointB,
+	}
+
+	streamEntryC := NamespaceStreamEntry{
+		Table:  TABLE_KEY,
+		Row:    "c",
+		Entry:  "bar",
+		Points: pointB,
+	}
+
+	expected := [][]NamespaceStreamEntry{
+		[]NamespaceStreamEntry{
+			streamEntryA,
 		},
-		[]Row{
-			rowB, rowB,
+		[]NamespaceStreamEntry{
+			streamEntryB, streamEntryC,
 		},
 	}
 

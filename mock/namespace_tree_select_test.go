@@ -176,28 +176,28 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		},
 	}
 
-	responseA := lib.RESPONSE_OK
-	responseA.QueryResponse.Rows = rowsA()
+	responseA := lib.RESPONSE_QUERY
+	responseA.QueryResponse.Rows = streamA()
 
-	responseB := lib.RESPONSE_OK
-	responseB.QueryResponse.Rows = append(rowsB(), rowsC()...)
+	responseB := lib.RESPONSE_QUERY
+	responseB.QueryResponse.Rows = append(streamB(), streamC()...)
 
-	responseC := lib.RESPONSE_OK
-	responseC.QueryResponse.Rows = rowsC()
+	responseC := lib.RESPONSE_QUERY
+	responseC.QueryResponse.Rows = streamC()
 
-	responseD := lib.RESPONSE_OK
-	responseD.QueryResponse.Rows = rowsD()
+	responseD := lib.RESPONSE_QUERY
+	responseD.QueryResponse.Rows = streamD()
 
-	responseE := lib.RESPONSE_OK
-	responseE.QueryResponse.Rows = rowsE()
+	responseE := lib.RESPONSE_QUERY
+	responseE.QueryResponse.Rows = streamE()
 
-	responseF := lib.RESPONSE_OK
+	responseF := lib.RESPONSE_QUERY
 
-	responseG := lib.RESPONSE_OK
-	responseG.QueryResponse.Rows = rowsF()
+	responseG := lib.RESPONSE_QUERY
+	responseG.QueryResponse.Rows = streamF()
 
-	responseH := lib.RESPONSE_OK
-	responseH.QueryResponse.Rows = rowsG()
+	responseH := lib.RESPONSE_QUERY
+	responseH.QueryResponse.Rows = streamG()
 
 	expect := []lib.APIResponse{
 		responseA,
@@ -219,17 +219,18 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 	for i, q := range queries {
 		selector := lib.MakeNamespaceTreeSelect(mock)
 		q.Visit(selector)
-		resp := selector.RunQuery()
-
-		if !apiResponseEq(resp, expect[i]) {
-			if resp.QueryResponse.Rows == nil {
-				t.Error("resp.QueryResponse.Rows was nil")
-			}
-			if resp.Err != nil {
-				t.Error("resp.Err was", resp.Err)
+		actual := selector.RunQuery()
+		expected := expect[i]
+		if !apiResponseEq(actual, expected) {
+			if actual.QueryResponse.Rows == nil {
+				t.Error("actual.QueryResponse.Rows was nil")
 			}
 
-			t.Error("Case", i, "Expected", expect[i], "but receieved", resp)
+			if actual.Err != nil {
+				t.Error("actual.Err was", actual.Err)
+			}
+
+			t.Error("Case", i, "Expected", expected, "but receieved", actual)
 		}
 	}
 }
@@ -452,6 +453,34 @@ func tableZ() lib.Table {
 	return mktable("Z", rowsZ())
 }
 
+func streamA() []lib.NamespaceStreamEntry {
+	return lib.MakeTableStream(MAIN_TABLE_KEY, tableA())
+}
+
+func streamB() []lib.NamespaceStreamEntry {
+	return lib.MakeTableStream(MAIN_TABLE_KEY, tableB())
+}
+
+func streamC() []lib.NamespaceStreamEntry {
+	return lib.MakeTableStream(MAIN_TABLE_KEY, tableC())
+}
+
+func streamD() []lib.NamespaceStreamEntry {
+	return lib.MakeTableStream(MAIN_TABLE_KEY, tableD())
+}
+
+func streamE() []lib.NamespaceStreamEntry {
+	return lib.MakeTableStream(MAIN_TABLE_KEY, tableE())
+}
+
+func streamF() []lib.NamespaceStreamEntry {
+	return lib.MakeTableStream(MAIN_TABLE_KEY, tableF())
+}
+
+func streamG() []lib.NamespaceStreamEntry {
+	return lib.MakeTableStream(ALT_TABLE_KEY, tableG())
+}
+
 func feedNamespace(ntr lib.NamespaceTreeReader) {
 	ntr.ReadNamespace(mkselectns())
 }
@@ -505,28 +534,16 @@ func apiResponseEq(a, b lib.APIResponse) bool {
 		return false
 	}
 
+	if a.Type != b.Type {
+		return false
+	}
+
 	if len(a.QueryResponse.Rows) != len(b.QueryResponse.Rows) {
 		return false
 	}
 
-	if !rowsEq(a.QueryResponse.Rows, b.QueryResponse.Rows) {
+	if !lib.StreamEquals(a.QueryResponse.Rows, b.QueryResponse.Rows) {
 		return false
-	}
-
-	return true
-}
-
-func rowsEq(a, b []lib.Row) bool {
-	for _, ar := range a {
-		found := false
-		for _, br := range b {
-			if ar.Equals(br) {
-				found = true
-			}
-		}
-		if !found {
-			return false
-		}
 	}
 
 	return true
