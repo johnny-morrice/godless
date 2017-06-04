@@ -47,10 +47,13 @@ func genReflectResponse(rand *rand.Rand, size int) APIReflectResponse {
 
 	branch := rand.Float32()
 	if branch < 0.333 {
+		gen.Type = REFLECT_HEAD_PATH
 		gen.Path = randLetters(rand, size)
 	} else if branch < 0.666 {
+		gen.Type = REFLECT_DUMP_NAMESPACE
 		gen.Namespace = genNamespace(rand, size)
 	} else {
+		gen.Type = REFLECT_INDEX
 		gen.Index = genIndex(rand, size)
 	}
 

@@ -1,19 +1,26 @@
 package godless
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 func MakeAPIResponseMessage(resp APIResponse) *APIResponseMessage {
 	message := &APIResponseMessage{
-		Error:   resp.Err.Error(),
 		Message: resp.Msg,
 		Type:    uint32(resp.Type),
+	}
+
+	if resp.Err != nil {
+		message.Error = resp.Err.Error()
+		return message
 	}
 
 	switch resp.Type {
 	case API_QUERY:
 		message.QueryResponse = makeAPIQueryResponseMessage(resp.QueryResponse)
 	case API_REFLECT:
-		message.RefelectResponse = makeAPIReflectMessage(resp.ReflectResponse)
+		message.ReflectResponse = makeAPIReflectMessage(resp.ReflectResponse)
 	default:
 		panic(fmt.Sprintf("Unknown APIResponse.Type: %v", resp))
 	}
@@ -22,26 +29,71 @@ func MakeAPIResponseMessage(resp APIResponse) *APIResponseMessage {
 }
 
 func ReadAPIResponseMessage(message *APIResponseMessage) APIResponse {
-	return RESPONSE_FAIL
+	resp := APIResponse{
+		Msg:  message.Message,
+		Type: APIMessageType(message.Type),
+	}
+
+	if message.Error != "" {
+		resp.Err = errors.New(message.Error)
+		return resp
+	}
+
+	switch resp.Type {
+	case API_QUERY:
+		resp.QueryResponse = readAPIQueryResponse(message.QueryResponse)
+	case API_REFLECT:
+		resp.ReflectResponse = readAPIReflectResponse(message.ReflectResponse)
+	default:
+		// TODO dupe code
+		panic(fmt.Sprintf("Unknown APIResponse.Type: %v", message))
+	}
+
+	return resp
 }
 
-func makeAPIQueryResponseMessage(response APIQueryResponse) *APIQueryResponseMessage {
-	ns := MakeNamespaceStreamMessage(response.Rows)
+func makeAPIQueryResponseMessage(resp APIQueryResponse) *APIQueryResponseMessage {
+	ns := MakeNamespaceStreamMessage(resp.Rows)
 	message := &APIQueryResponseMessage{Namespace: ns}
 	return message
 }
 
-func makeAPIReflectMessage(response APIReflectResponse) *APIReflectResponseMessage {
-	message := &APIReflectResponseMessage{Type: uint32(response.Type)}
+func makeAPIReflectMessage(resp APIReflectResponse) *APIReflectResponseMessage {
+	message := &APIReflectResponseMessage{Type: uint32(resp.Type)}
 
-	switch response.Type {
+	switch resp.Type {
 	case REFLECT_HEAD_PATH:
-		message.Path = response.Path
+		message.Path = resp.Path
 	case REFLECT_INDEX:
-		message.Index = MakeIndexMessage(response.Index)
+		message.Index = MakeIndexMessage(resp.Index)
 	case REFLECT_DUMP_NAMESPACE:
-		message.Namespace = MakeNamespaceMessage(response.Namespace)
+		message.Namespace = MakeNamespaceMessage(resp.Namespace)
+	default:
+		panic(fmt.Sprintf("Unknown APIReflectResponse.Type: %v", resp))
 	}
 
 	return message
+}
+
+func readAPIQueryResponse(message *APIQueryResponseMessage) APIQueryResponse {
+	resp := APIQueryResponse{}
+	resp.Rows = ReadNamespaceStreamMessage(message.Namespace)
+	return resp
+}
+
+func readAPIReflectResponse(message *APIReflectResponseMessage) APIReflectResponse {
+	resp := APIReflectResponse{Type: APIReflectionType(message.Type)}
+
+	switch resp.Type {
+	case REFLECT_HEAD_PATH:
+		resp.Path = message.Path
+	case REFLECT_INDEX:
+		resp.Index = ReadIndexMessage(message.Index)
+	case REFLECT_DUMP_NAMESPACE:
+		resp.Namespace = ReadNamespaceMessage(message.Namespace)
+	default:
+		panic(fmt.Sprintf("Unknown APIReflectResponse.Type: %v", message))
+	}
+
+	return resp
 }

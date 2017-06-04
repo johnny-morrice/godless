@@ -26,7 +26,7 @@ message APIResponseMessage {
 	string error = 2;
 	uint32 type = 3;
 	APIQueryResponseMessage queryResponse = 4;
-	APIReflectResponseMessage refelectResponse = 5;
+	APIReflectResponseMessage reflectResponse = 5;
 }
 
 message APIQueryResponseMessage {
