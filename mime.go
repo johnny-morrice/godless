@@ -1,7 +1,7 @@
 package godless
 
 const MIME_QUERY = "text/plain"
-const MIME_JSON = "application/json"
+const MIME_PROTO_TEXT = "application/json"
 const MIME_PROTO = "application/octet-stream"
 
 // TODO That we have a MIME_EMPTY indicates design flaw.

@@ -52,10 +52,10 @@ func (client *Client) SendQuery(query *Query) (*APIResponse, error) {
 	}
 
 	buff := &bytes.Buffer{}
-	encerr := togob(query, buff)
+	encerr := EncodeQuery(query, buff)
 
 	if encerr != nil {
-		return nil, errors.Wrap(encerr, "Gob encode failed")
+		return nil, errors.Wrap(encerr, "SendQuery failed")
 	}
 
 	return client.Post(QUERY_API_ROOT, MIME_PROTO, buff)
@@ -73,19 +73,18 @@ func (client *Client) Post(path, bodyType string, body io.Reader) (*APIResponse,
 
 	defer resp.Body.Close()
 
-	var apiresp *APIResponse
+	var apiresp APIResponse
 	ct := resp.Header[CONTENT_TYPE]
+	// TODO this is a bit horrible.
 	if resp.StatusCode == 200 {
 		if linearContains(ct, MIME_PROTO) {
-			apiresp = &APIResponse{}
-			err = degob(apiresp, resp.Body)
+			apiresp, err = DecodeAPIResponse(resp.Body)
 		} else {
 			return nil, incorrectContentType(resp.StatusCode, ct)
 		}
 	} else if resp.StatusCode == 500 {
 		if linearContains(ct, MIME_PROTO) {
-			apiresp = &APIResponse{}
-			err = degob(apiresp, resp.Body)
+			apiresp, err = DecodeAPIResponseText(resp.Body)
 		} else {
 			return nil, incorrectContentType(resp.StatusCode, ct)
 		}
@@ -109,7 +108,7 @@ func (client *Client) Post(path, bodyType string, body io.Reader) (*APIResponse,
 	}
 
 	if apiresp.Err == nil {
-		return apiresp, nil
+		return &apiresp, nil
 	} else {
 		return nil, errors.Wrap(apiresp.Err, "API returned error")
 	}

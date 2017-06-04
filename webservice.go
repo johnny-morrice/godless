@@ -69,8 +69,7 @@ func (service *WebService) queryRun(rw http.ResponseWriter, req *http.Request) {
 			query, err = CompileQuery(queryText)
 		}
 	} else {
-		query = &Query{}
-		degob(query, req.Body)
+		query, err = DecodeQuery(req.Body)
 	}
 
 	if err != nil {
@@ -110,20 +109,21 @@ func (service *WebService) respond(rw http.ResponseWriter, respch <-chan APIResp
 	}
 }
 
+// TODO why are we sending errors in plaintext again?
 func sendErr(rw http.ResponseWriter, err error) error {
 	message := APIResponse{
 		Err: err,
 	}
 
 	buff := bytes.Buffer{}
-	encerr := tojson(&message, &buff)
+	encerr := EncodeAPIResponseText(message, &buff)
 
 	if encerr != nil {
 		panic(fmt.Sprintf("Bug encoding json error message: '%v'; ", encerr))
 	}
 
 	rw.WriteHeader(400)
-	rw.Header()["Content-Type"] = []string{MIME_JSON}
+	rw.Header()["Content-Type"] = []string{MIME_PROTO_TEXT}
 	_, senderr := rw.Write(buff.Bytes())
 
 	if senderr != nil {
