@@ -17,6 +17,16 @@ func imin(a, b int) int {
 	return b
 }
 
+func linearContains(sl []string, term string) bool {
+	for _, s := range sl {
+		if s == term {
+			return true
+		}
+	}
+
+	return false
+}
+
 func writeBytes(bs []byte, w io.Writer) error {
 	written, err := w.Write(bs)
 

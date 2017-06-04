@@ -103,7 +103,7 @@ func (service *WebService) respond(rw http.ResponseWriter, respch <-chan APIResp
 
 	resp := <-respch
 
-	err = sendGob(rw, resp)
+	err = sendMessage(rw, resp)
 
 	if err != nil {
 		logerr("Error sending response: %v", err)
@@ -133,21 +133,21 @@ func sendErr(rw http.ResponseWriter, err error) error {
 	return nil
 }
 
-func sendGob(rw http.ResponseWriter, gobber interface{}) error {
+func sendMessage(rw http.ResponseWriter, resp APIResponse) error {
 	// Encode gob into buffer first to check for encoding errors.
 	// TODO is that actually a good idea?
 	buff := &bytes.Buffer{}
-	encerr := togob(gobber, buff)
+	encerr := EncodeAPIResponse(resp, buff)
 
 	if encerr != nil {
-		panic(fmt.Sprintf("BUG encoding gob: %v", encerr))
+		panic(fmt.Sprintf("BUG encoding resp: %v", encerr))
 	}
 
-	rw.Header()[CONTENT_TYPE] = []string{MIME_GOB}
+	rw.Header()[CONTENT_TYPE] = []string{MIME_PROTO}
 	_, senderr := rw.Write(buff.Bytes())
 
 	if senderr != nil {
-		return errors.Wrap(senderr, "sendGob failed")
+		return errors.Wrap(senderr, "sendMessage failed")
 	}
 
 	return nil
@@ -157,19 +157,9 @@ func needsParse(req *http.Request) (bool, error) {
 	ct := req.Header[CONTENT_TYPE]
 	if linearContains(ct, MIME_QUERY) {
 		return true, nil
-	} else if linearContains(ct, MIME_GOB) {
+	} else if linearContains(ct, MIME_PROTO) {
 		return false, nil
 	} else {
 		return false, fmt.Errorf("No suitable MIME in request: '%v'", ct)
 	}
-}
-
-func linearContains(sl []string, term string) bool {
-	for _, s := range sl {
-		if s == term {
-			return true
-		}
-	}
-
-	return false
 }

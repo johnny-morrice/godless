@@ -58,7 +58,7 @@ func (client *Client) SendQuery(query *Query) (*APIResponse, error) {
 		return nil, errors.Wrap(encerr, "Gob encode failed")
 	}
 
-	return client.Post(QUERY_API_ROOT, MIME_GOB, buff)
+	return client.Post(QUERY_API_ROOT, MIME_PROTO, buff)
 }
 
 func (client *Client) Post(path, bodyType string, body io.Reader) (*APIResponse, error) {
@@ -76,14 +76,14 @@ func (client *Client) Post(path, bodyType string, body io.Reader) (*APIResponse,
 	var apiresp *APIResponse
 	ct := resp.Header[CONTENT_TYPE]
 	if resp.StatusCode == 200 {
-		if linearContains(ct, MIME_GOB) {
+		if linearContains(ct, MIME_PROTO) {
 			apiresp = &APIResponse{}
 			err = degob(apiresp, resp.Body)
 		} else {
 			return nil, incorrectContentType(resp.StatusCode, ct)
 		}
 	} else if resp.StatusCode == 500 {
-		if linearContains(ct, MIME_GOB) {
+		if linearContains(ct, MIME_PROTO) {
 			apiresp = &APIResponse{}
 			err = degob(apiresp, resp.Body)
 		} else {
