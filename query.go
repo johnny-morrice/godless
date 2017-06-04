@@ -8,11 +8,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"sort"
 
-	"github.com/gogo/protobuf/proto"
 	"github.com/pkg/errors"
 )
 
@@ -256,12 +254,7 @@ func EncodeQuery(query *Query, w io.Writer) error {
 
 	message := MakeQueryMessage(query)
 
-	bs, err := proto.Marshal(message)
-	if err != nil {
-		return errors.Wrap(err, failMsg)
-	}
-
-	err = writeBytes(bs, w)
+	err := encode(message, w)
 
 	if err != nil {
 		return errors.Wrap(err, failMsg)
@@ -272,14 +265,9 @@ func EncodeQuery(query *Query, w io.Writer) error {
 
 func DecodeQuery(r io.Reader) (*Query, error) {
 	const failMsg = "DecodeQuery failed"
-	bs, err := ioutil.ReadAll(r)
-
-	if err != nil {
-		return nil, errors.Wrap(err, failMsg)
-	}
-
 	message := &QueryMessage{}
-	err = proto.Unmarshal(bs, message)
+
+	err := decode(message, r)
 
 	if err != nil {
 		return nil, errors.Wrap(err, failMsg)

@@ -30,13 +30,14 @@ message APIResponseMessage {
 }
 
 message APIQueryResponseMessage {
-	repeated NamespaceEntryMessage rows = 1;
+	NamespaceMessage namespace = 1;
 }
 
 message APIReflectResponseMessage {
-	string path = 1;
-	IndexMessage index = 2;
-	NamespaceMessage namespace = 3;
+	uint32 type = 1;
+	string path = 2;
+	IndexMessage index = 3;
+	NamespaceMessage namespace = 4;
 }
 
 message QueryMessage {

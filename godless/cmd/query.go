@@ -68,14 +68,14 @@ var queryCmd = &cobra.Command{
 			return
 		}
 
-		var json string
-		json, err = response.RenderJSON()
+		var text string
+		text, err = response.AsText()
 
 		if err != nil {
 			die(err)
 		}
 
-		fmt.Println(json)
+		fmt.Println(text)
 	},
 }
 

@@ -5,10 +5,8 @@ package godless
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"sort"
 
-	"github.com/gogo/protobuf/proto"
 	"github.com/pkg/errors"
 )
 
@@ -43,12 +41,7 @@ func EncodeNamespace(ns Namespace, w io.Writer) error {
 
 	message := MakeNamespaceMessage(ns)
 
-	bs, err := proto.Marshal(message)
-	if err != nil {
-		return errors.Wrap(err, failMsg)
-	}
-
-	err = writeBytes(bs, w)
+	err := encode(message, w)
 
 	if err != nil {
 		return errors.Wrap(err, failMsg)
@@ -59,14 +52,8 @@ func EncodeNamespace(ns Namespace, w io.Writer) error {
 
 func DecodeNamespace(r io.Reader) (Namespace, error) {
 	const failMsg = "DecodeNamespace failed"
-	bs, err := ioutil.ReadAll(r)
-
-	if err != nil {
-		return EmptyNamespace(), errors.Wrap(err, failMsg)
-	}
-
 	message := &NamespaceMessage{}
-	err = proto.Unmarshal(bs, message)
+	err := decode(message, r)
 
 	if err != nil {
 		return EmptyNamespace(), errors.Wrap(err, failMsg)

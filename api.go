@@ -1,6 +1,11 @@
 package godless
 
-import "io"
+import (
+	"bytes"
+	"io"
+
+	"github.com/pkg/errors"
+)
 
 type APIService interface {
 	APICloserService
@@ -48,6 +53,7 @@ type APIReflectRequest struct {
 }
 
 type APIReflectResponse struct {
+	Type      APIReflectionType
 	Namespace Namespace            `json:",omitEmpty"`
 	Path      string               `json:",omitEmpty"`
 	Index     RemoteNamespaceIndex `json:",omitEmpty"`
@@ -67,6 +73,19 @@ type APIResponse struct {
 	Type            APIMessageType
 	QueryResponse   APIQueryResponse   `json:",omitEmpty"`
 	ReflectResponse APIReflectResponse `json:",omitEmpty"`
+}
+
+func (resp APIResponse) AsText() (string, error) {
+	const failMsg = "AsText failed"
+
+	w := &bytes.Buffer{}
+	err := EncodeAPIResponseText(resp, w)
+
+	if err != nil {
+		return "", errors.Wrap(err, failMsg)
+	}
+
+	return w.String(), nil
 }
 
 func (resp APIResponse) Equals(other APIResponse) bool {
@@ -100,19 +119,59 @@ func (resp APIResponse) Equals(other APIResponse) bool {
 }
 
 func EncodeAPIResponse(resp APIResponse, w io.Writer) error {
+	const failMsg = "EncodeAPIResponse failed"
+
+	message := MakeAPIResponseMessage(resp)
+
+	err := encode(message, w)
+
+	if err != nil {
+		return errors.Wrap(err, failMsg)
+	}
+
 	return nil
 }
 
 func DecodeAPIResponse(r io.Reader) (APIResponse, error) {
-	return RESPONSE_FAIL, nil
+	const failMsg = "DecodeAPIResponse failed"
+
+	message := &APIResponseMessage{}
+
+	err := decode(message, r)
+
+	if err != nil {
+		return RESPONSE_FAIL, errors.Wrap(err, failMsg)
+	}
+
+	return ReadAPIResponseMessage(message), nil
 }
 
 func EncodeAPIResponseText(resp APIResponse, w io.Writer) error {
+	const failMsg = "EncodeAPIResponseText failed"
+
+	message := MakeAPIResponseMessage(resp)
+
+	err := encodeText(message, w)
+
+	if err != nil {
+		return errors.Wrap(err, failMsg)
+	}
+
 	return nil
 }
 
 func DecodeAPIResponseText(r io.Reader) (APIResponse, error) {
-	return RESPONSE_FAIL, nil
+	const failMsg = "DecodeAPIResponseText failed"
+
+	message := &APIResponseMessage{}
+
+	err := decodeText(message, r)
+
+	if err != nil {
+		return RESPONSE_FAIL, errors.Wrap(err, failMsg)
+	}
+
+	return ReadAPIResponseMessage(message), nil
 }
 
 var RESPONSE_FAIL_MSG = "error"
