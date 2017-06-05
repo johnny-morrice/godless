@@ -21,34 +21,34 @@ $ godless serve
 Run plumbing query command:
 
 ```
-$ godless query --query "join books rows (@key=book50, authorName='EL James', publisher='Don\'t wanna know')"
-2017/04/20 15:57:24 DEBUG HTTP POST to http://localhost:8085/api/query/run
-{
-	"Err": null,
-	"Msg": "ok",
-	"Rows": null,
-	"QueryId": ""
-}
+$ godless query --query 'join books rows (@key=book50, authorName="EL James", publisher="Don''t wanna know")'
+2017/06/05 15:41:54 DEBUG HTTP POST to http://localhost:8085/api/query
+2017/06/05 15:41:54 DEBUG making query response: {[]}
+message: "ok"
+error: ""
+type: 1
+queryResponse: <
+  namespace: <
+  >
+>
 
-$ godless query --query "select books where str_eq(@key, 'book50') limit 1"                                  
-2017/04/20 15:34:53 DEBUG HTTP POST to http://localhost:8085/api/query/run
-{
-	"Err": null,
-	"Msg": "ok",
-	"Rows": [
-		{
-			"Entries": {
-				"authorName": [
-					"EL James"
-				],
-				"publisher": [
-					"Don't wanna know"
-				]
-			}
-		}
-	],
-	"QueryId": ""
-}
+$ godless query --query 'select books where str_eq(@key, "book50") limit 1'
+2017/06/05 15:42:11 DEBUG HTTP POST to http://localhost:8085/api/query
+2017/06/05 15:42:11 DEBUG making query response: {[{books book50 authorName [Dont wanna know]}]}
+message: "ok"
+error: ""
+type: 1
+queryResponse: <
+  namespace: <
+    entries: <
+      table: "books"
+      row: "book50"
+      entry: "authorName"
+      points: "Dont wanna know"
+    >
+  >
+>
+
 ```
 
 ## Installing
