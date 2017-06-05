@@ -59,8 +59,8 @@ func TestRunQueryJoinSuccess(t *testing.T) {
 	query.Visit(joiner)
 	resp := joiner.RunQuery()
 
-	if !lib.RESPONSE_OK.Equals(resp) {
-		t.Error("Expected", lib.RESPONSE_OK, "but was", resp)
+	if !lib.RESPONSE_QUERY.Equals(resp) {
+		t.Error("Expected", lib.RESPONSE_QUERY, "but was", resp)
 	}
 }
 
@@ -105,6 +105,10 @@ func TestRunQueryJoinFailure(t *testing.T) {
 
 	if resp.Err == nil {
 		t.Error("Expected response Err")
+	}
+
+	if resp.Type != lib.API_QUERY {
+		t.Error("Unexpected response Type")
 	}
 }
 

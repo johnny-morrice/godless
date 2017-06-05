@@ -17,6 +17,7 @@ func MakeNamespaceTreeJoin(ns NamespaceTree) *NamespaceTreeJoin {
 
 func (visitor *NamespaceTreeJoin) RunQuery() APIResponse {
 	fail := RESPONSE_FAIL
+	fail.Type = API_QUERY
 
 	err := visitor.Error()
 	if err != nil {
