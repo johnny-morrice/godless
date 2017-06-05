@@ -104,7 +104,25 @@ func apiResponseEncodeTextOk(resp APIResponse) bool {
 
 func apiResponseTestWithSerializer(expected APIResponse, pass func(APIResponse) APIResponse) bool {
 	actual := pass(expected)
-	return expected.Equals(actual)
+	same := expected.Equals(actual)
+
+	if !same {
+		expectText, exErr := expected.AsText()
+
+		if exErr != nil {
+			panic(exErr)
+		}
+
+		actualText, acErr := actual.AsText()
+
+		if acErr != nil {
+			panic(acErr)
+		}
+
+		logDiff(expectText, actualText)
+	}
+
+	return same
 }
 
 func apiResponseSerializationPass(resp APIResponse) APIResponse {

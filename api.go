@@ -90,27 +90,41 @@ func (resp APIResponse) AsText() (string, error) {
 
 func (resp APIResponse) Equals(other APIResponse) bool {
 	ok := resp.Msg == other.Msg
-	ok = ok && resp.Err == other.Err
+	ok = ok && resp.Err.Error() == other.Err.Error()
 	ok = ok && resp.Type == other.Type
+
+	if !ok {
+		logwarn("not ok")
+		logwarn("resp.Msg '%v' other.Msg '%v'", resp.Msg, other.Msg)
+		logwarn("resp.Err '%v' other.Err '%v'", resp.Err, other.Err)
+		logwarn("resp.Type %v other.Type %v", resp.Type, other.Type)
+		return false
+	}
 
 	if resp.Type == API_QUERY {
 		if len(resp.QueryResponse.Rows) != len(other.QueryResponse.Rows) {
+			logwarn("rows have unequal length")
+			logwarn("resp %v other %v", len(resp.QueryResponse.Rows), len(other.QueryResponse.Rows))
 			return false
 		}
 
 		if !StreamEquals(resp.QueryResponse.Rows, other.QueryResponse.Rows) {
+			logwarn("rows not equal")
 			return false
 		}
 	} else if resp.Type == API_REFLECT {
 		if resp.ReflectResponse.Path != other.ReflectResponse.Path {
+			logwarn("path not equal")
 			return false
 		}
 
 		if !resp.ReflectResponse.Index.Equals(other.ReflectResponse.Index) {
+			logwarn("index not equal")
 			return false
 		}
 
 		if !resp.ReflectResponse.Namespace.Equals(other.ReflectResponse.Namespace) {
+			logwarn("namespace not equal")
 			return false
 		}
 	}

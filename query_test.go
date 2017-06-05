@@ -249,6 +249,8 @@ func logDiff(old, new string) {
 		}
 	}
 
+	logerr("logdiff called but no difference found")
+
 }
 
 func queryEncodeOk(expected *Query) bool {
