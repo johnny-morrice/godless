@@ -12,23 +12,23 @@ import (
 func (resp APIResponse) Generate(rand *rand.Rand, size int) reflect.Value {
 	gen := APIResponse{}
 
-	text := randLetters(rand, size)
-	if rand.Float32() < 0.5 {
-		gen.Msg = text
-	} else {
-		gen.Err = errors.New(text)
-	}
+	gen.Msg = randLetters(rand, size)
 
 	if rand.Float32() < 0.5 {
 		gen.Type = API_QUERY
-		if gen.Err != nil {
-			gen.QueryResponse = genQueryResponse(rand, size)
-		}
 	} else {
 		gen.Type = API_REFLECT
-		if gen.Err != nil {
+	}
+
+	if rand.Float32() < 0.5 {
+		if gen.Type == API_QUERY {
+			gen.QueryResponse = genQueryResponse(rand, size)
+		} else {
 			gen.ReflectResponse = genReflectResponse(rand, size)
 		}
+	} else {
+		errText := randPoint(rand, size)
+		gen.Err = errors.New(errText)
 	}
 
 	return reflect.ValueOf(gen)

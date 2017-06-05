@@ -1,30 +1,24 @@
 package godless
 
-import (
-	"math/rand"
-	"reflect"
-	"testing/quick"
-)
+import "math/rand"
 
 func genIndex(rand *rand.Rand, size int) RemoteNamespaceIndex {
-	mapType := reflect.TypeOf(map[string][]string{})
-	value, ok := quick.Value(mapType, rand)
-
-	if !ok {
-		panic("Could not generate index")
-	}
-
-	textMap := value.Interface().(map[string][]string)
-
 	index := EmptyRemoteNamespaceIndex()
+	const ADDR_SCALE = 1
+	const KEY_SCALE = 0.5
+	const PATH_SCALE = 0.5
 
-	for k, vs := range textMap {
-		addrs := make([]RemoteStoreAddress, len(vs))
-		for i, v := range vs {
-			addrs[i] = IPFSPath(v)
+	for i := 0; i < size; i++ {
+		keyCount := genCountRange(rand, 1, size, KEY_SCALE)
+		indexKey := TableName(randPoint(rand, keyCount))
+		addrCount := genCountRange(rand, 1, size, ADDR_SCALE)
+		addrs := make([]RemoteStoreAddress, addrCount)
+		for j := 0; j < addrCount; j++ {
+			pathCount := genCountRange(rand, 1, size, PATH_SCALE)
+			a := randPoint(rand, pathCount)
+			addrs[j] = IPFSPath(a)
 		}
 
-		indexKey := TableName(k)
 		index.Index[indexKey] = addrs
 	}
 

@@ -90,15 +90,21 @@ func (resp APIResponse) AsText() (string, error) {
 
 func (resp APIResponse) Equals(other APIResponse) bool {
 	ok := resp.Msg == other.Msg
-	ok = ok && resp.Err.Error() == other.Err.Error()
 	ok = ok && resp.Type == other.Type
 
 	if !ok {
 		logwarn("not ok")
-		logwarn("resp.Msg '%v' other.Msg '%v'", resp.Msg, other.Msg)
-		logwarn("resp.Err '%v' other.Err '%v'", resp.Err, other.Err)
-		logwarn("resp.Type %v other.Type %v", resp.Type, other.Type)
 		return false
+	}
+
+	if resp.Err != nil {
+		if other.Err == nil {
+			logwarn("err not equal")
+			return false
+		} else if resp.Err.Error() != other.Err.Error() {
+			logwarn("err text not equal")
+			return false
+		}
 	}
 
 	if resp.Type == API_QUERY {

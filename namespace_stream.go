@@ -208,6 +208,8 @@ func MakeNamespaceStreamMessage(stream []NamespaceStreamEntry) *NamespaceMessage
 		message.Entries[i] = MakeNamespaceEntryMessage(entry)
 	}
 
+	assertLenEquals(stream, message.Entries)
+
 	return message
 }
 
@@ -217,6 +219,8 @@ func ReadNamespaceStreamMessage(message *NamespaceMessage) []NamespaceStreamEntr
 	for i, emsg := range message.Entries {
 		stream[i] = ReadNamespaceEntryMessage(emsg)
 	}
+
+	assertLenEquals(message.Entries, stream)
 
 	return stream
 }

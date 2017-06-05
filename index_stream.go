@@ -1,5 +1,7 @@
 package godless
 
+import "sort"
+
 type IndexStreamEntry struct {
 	TableName TableName
 	Links     []IPFSPath
@@ -103,6 +105,8 @@ func MakeIndexStream(index RemoteNamespaceIndex) []IndexStreamEntry {
 		stream[i] = entry
 		i++
 	}
+
+	sort.Sort(byIndexStreamOrder(stream))
 
 	return stream
 }

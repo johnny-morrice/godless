@@ -34,10 +34,10 @@ func genNamespace(rand *rand.Rand, size int) Namespace {
 		for j := 0; j < rowCount; j++ {
 			rowName := RowName(randLetters(rand, maxStr))
 			row := EmptyRow()
-			entryCount := genCount(rand, size, entryFudge)
+			entryCount := genCountRange(rand, 1, size, entryFudge)
 			for k := 0; k < entryCount; k++ {
 				entryName := EntryName(randLetters(rand, maxStr))
-				pointCount := genCount(rand, size, pointFudge)
+				pointCount := genCountRange(rand, 1, size, pointFudge)
 				points := make([]Point, pointCount)
 
 				for m := 0; m < pointCount; m++ {
