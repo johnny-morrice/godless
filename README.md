@@ -21,7 +21,7 @@ $ godless serve
 Run plumbing query command:
 
 ```
-$ godless query --query 'join books rows (@key=book50, authorName="EL James", publisher="Don''t wanna know")'
+$ godless query --query 'join books rows (@key=book50, authorName="EL James", publisher="Dont wanna know")'
 2017/06/05 15:41:54 DEBUG HTTP POST to http://localhost:8085/api/query
 message: "ok"
 error: ""
