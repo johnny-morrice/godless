@@ -18,7 +18,6 @@ func MakeAPIResponseMessage(resp APIResponse) *APIResponseMessage {
 
 	switch resp.Type {
 	case API_QUERY:
-		logdbg("making query response: %v", resp.QueryResponse)
 		message.QueryResponse = makeAPIQueryResponseMessage(resp.QueryResponse)
 	case API_REFLECT:
 		message.ReflectResponse = makeAPIReflectMessage(resp.ReflectResponse)
