@@ -35,7 +35,7 @@ func (visitor *NamespaceTreeJoin) RunQuery() APIResponse {
 		return fail
 	}
 
-	return RESPONSE_OK
+	return RESPONSE_QUERY
 }
 
 func (visitor *NamespaceTreeJoin) VisitOpCode(opCode QueryOpCode) {
