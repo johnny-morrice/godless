@@ -153,35 +153,10 @@ func MakeTableStream(tableKey TableName, table Table) []NamespaceStreamEntry {
 }
 
 func MakeRowStream(tableKey TableName, rowKey RowName, row Row) []NamespaceStreamEntry {
-	count := len(row.Entries)
-	entryKeys := make([]string, count)
-	i := 0
-	for ek, _ := range row.Entries {
-		entryKeys[i] = string(ek)
-		i++
-	}
-	sort.Strings(entryKeys)
-
-	entries := make([]Entry, count)
-	for i, ek := range entryKeys {
-		entry := row.Entries[EntryName(ek)]
-		entries[i] = entry
-	}
-
-	sort.Sort(byEntryOrder(entries))
-
-	stream := make([]NamespaceStreamEntry, count)
-	for i, e := range entries {
-		entryKey := EntryName(entryKeys[i])
-		stream[i] = NamespaceStreamEntry{
-			Points: e.Set,
-			Table:  tableKey,
-			Row:    rowKey,
-			Entry:  entryKey,
-		}
-	}
-
-	return stream
+	table := MakeTable(map[RowName]Row{
+		rowKey: row,
+	})
+	return MakeTableStream(tableKey, table)
 }
 
 func MakeNamespaceStream(ns Namespace) []NamespaceStreamEntry {

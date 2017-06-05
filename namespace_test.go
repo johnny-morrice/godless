@@ -11,17 +11,68 @@ import (
 	"time"
 )
 
+func TestMakeRowStream(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+		return
+	}
+
+	config := &quick.Config{
+		MaxCount: ENCODE_REPEAT_COUNT,
+	}
+
+	err := quick.Check(rowStreamOk, config)
+
+	if err != nil {
+		t.Error("Unexpected error:", trim(err))
+	}
+}
+
+func rowStreamOk(expected Row) bool {
+	const tableKey = "tableKey"
+	const rowKey = "rowKey"
+	stream := MakeRowStream(tableKey, rowKey, expected)
+	ns := ReadNamespaceStream(stream)
+	table := ns.Tables[tableKey]
+	actual := table.Rows[rowKey]
+	return expected.Equals(actual)
+}
+
+func (row Row) Generate(rand *rand.Rand, size int) reflect.Value {
+	gen := genRow(rand, size)
+	return reflect.ValueOf(gen)
+}
+
 func (ns Namespace) Generate(rand *rand.Rand, size int) reflect.Value {
 	gen := genNamespace(rand, size)
 	return reflect.ValueOf(gen)
+}
+
+func genRow(rand *rand.Rand, size int) Row {
+	const maxStr = 100
+	const entryFudge = 0.65
+	const pointFudge = 0.85
+	row := EmptyRow()
+	entryCount := genCountRange(rand, 1, size, entryFudge)
+	for k := 0; k < entryCount; k++ {
+		entryName := EntryName(randLetters(rand, maxStr))
+		pointCount := genCountRange(rand, 1, size, pointFudge)
+		points := make([]Point, pointCount)
+
+		for m := 0; m < pointCount; m++ {
+			points[m] = Point(randLetters(rand, maxStr))
+		}
+
+		entry := MakeEntry(points)
+		row.addEntry(entryName, entry)
+	}
+	return row
 }
 
 func genNamespace(rand *rand.Rand, size int) Namespace {
 	const maxStr = 100
 	const tableFudge = 0.125
 	const rowFudge = 0.25
-	const entryFudge = 0.65
-	const pointFudge = 0.85
 
 	gen := EmptyNamespace()
 
@@ -33,20 +84,7 @@ func genNamespace(rand *rand.Rand, size int) Namespace {
 		rowCount := genCount(rand, size, rowFudge)
 		for j := 0; j < rowCount; j++ {
 			rowName := RowName(randLetters(rand, maxStr))
-			row := EmptyRow()
-			entryCount := genCountRange(rand, 1, size, entryFudge)
-			for k := 0; k < entryCount; k++ {
-				entryName := EntryName(randLetters(rand, maxStr))
-				pointCount := genCountRange(rand, 1, size, pointFudge)
-				points := make([]Point, pointCount)
-
-				for m := 0; m < pointCount; m++ {
-					points[m] = Point(randLetters(rand, maxStr))
-				}
-
-				entry := MakeEntry(points)
-				row.addEntry(entryName, entry)
-			}
+			row := genRow(rand, size)
 			table.addRow(rowName, row)
 		}
 		gen.addTable(tableName, table)

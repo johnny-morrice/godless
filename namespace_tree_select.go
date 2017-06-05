@@ -52,6 +52,7 @@ func (visitor *NamespaceTreeSelect) RunQuery() APIResponse {
 	stream := visitor.crit.result
 	sort.Sort(byNamespaceStreamOrder(stream))
 	response.QueryResponse.Rows = stream
+	logdbg("stream: %v", stream)
 	return response
 }
 

@@ -31,8 +31,8 @@ queryResponse: <
   >
 >
 
-$ godless query --query 'select books where str_eq(@key, "book50") limit 1'
-2017/06/05 15:42:11 DEBUG HTTP POST to http://localhost:8085/api/query
+$ godless query --query 'select books where str_eq(@key, "book50") limit 10'                                 
+2017/06/05 16:38:59 DEBUG HTTP POST to http://localhost:8085/api/query
 message: "ok"
 error: ""
 type: 1
@@ -42,10 +42,17 @@ queryResponse: <
       table: "books"
       row: "book50"
       entry: "authorName"
+      points: "EL James"
+    >
+    entries: <
+      table: "books"
+      row: "book50"
+      entry: "publisher"
       points: "Dont wanna know"
     >
   >
 >
+
 
 ```
 
