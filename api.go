@@ -36,7 +36,7 @@ func (arf APIResponderFunc) RunQuery() APIResponse {
 }
 
 type APIQueryResponse struct {
-	Rows []NamespaceStreamEntry
+	Entries []NamespaceStreamEntry
 }
 
 type APIReflectionType uint16
@@ -108,13 +108,13 @@ func (resp APIResponse) Equals(other APIResponse) bool {
 	}
 
 	if resp.Type == API_QUERY {
-		if len(resp.QueryResponse.Rows) != len(other.QueryResponse.Rows) {
+		if len(resp.QueryResponse.Entries) != len(other.QueryResponse.Entries) {
 			logwarn("rows have unequal length")
-			logwarn("resp %v other %v", len(resp.QueryResponse.Rows), len(other.QueryResponse.Rows))
+			logwarn("resp %v other %v", len(resp.QueryResponse.Entries), len(other.QueryResponse.Entries))
 			return false
 		}
 
-		if !StreamEquals(resp.QueryResponse.Rows, other.QueryResponse.Rows) {
+		if !StreamEquals(resp.QueryResponse.Entries, other.QueryResponse.Entries) {
 			logwarn("rows not equal")
 			return false
 		}

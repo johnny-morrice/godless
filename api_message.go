@@ -53,7 +53,7 @@ func ReadAPIResponseMessage(message *APIResponseMessage) APIResponse {
 }
 
 func makeAPIQueryResponseMessage(resp APIQueryResponse) *APIQueryResponseMessage {
-	ns := MakeNamespaceStreamMessage(resp.Rows)
+	ns := MakeNamespaceStreamMessage(resp.Entries)
 	message := &APIQueryResponseMessage{Namespace: ns}
 	return message
 }
@@ -77,7 +77,7 @@ func makeAPIReflectMessage(resp APIReflectResponse) *APIReflectResponseMessage {
 
 func readAPIQueryResponse(message *APIQueryResponseMessage) APIQueryResponse {
 	resp := APIQueryResponse{}
-	resp.Rows = ReadNamespaceStreamMessage(message.Namespace)
+	resp.Entries = ReadNamespaceStreamMessage(message.Namespace)
 	return resp
 }
 

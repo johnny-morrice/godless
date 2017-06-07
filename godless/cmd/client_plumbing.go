@@ -22,20 +22,24 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
 	lib "github.com/johnny-morrice/godless"
 )
 
-// queryCmd represents the query command
-var queryCmd = &cobra.Command{
-	Use:   "query",
+// clientPlumbingCmd represents the query command
+var clientPlumbingCmd = &cobra.Command{
+	Use:   "plumbing",
 	Short: "Query a godless server",
-	Long:  `Send a query to a godless server over HTTP.`,
+	Long:  `Send a query to a godless server over HTTP.  User must specify either --reflect or --query.`,
 	// TODO tidy method.
 	Run: func(cmd *cobra.Command, args []string) {
+		var query *lib.Query
 		client := lib.MakeClient(serverAddr)
+
+		validateClientPlumbingArgs(cmd)
 
 		if source != "" || analyse {
 			q, err := lib.CompileQuery(source)
@@ -48,26 +52,42 @@ var queryCmd = &cobra.Command{
 		}
 
 		if analyse {
-			format := "Query analysis for:\n\n%s\n\n%v\n\n"
-			fmt.Printf(format, source, query.Analyse())
-			fmt.Println("Syntax tree:\n\n")
-			query.Parser.PrintSyntaxTree()
+			err := analyseQuery(query)
+
+			if err != nil {
+				die(err)
+			}
 		}
 
 		if dryrun {
 			return
 		}
 
-		response, err := runClient(client)
+		response, err := sendQuery(client, query)
 
 		if err != nil {
 			die(err)
 		}
 
-		if response == nil {
-			return
-		}
+		outputResponse(response)
+	},
+}
 
+var source string
+var analyse bool
+var dryrun bool
+var binary bool
+var reflect string
+
+func outputResponse(response lib.APIResponse) {
+	var err error
+	if binary {
+		err = lib.EncodeAPIResponse(response, os.Stdout)
+
+		if err != nil {
+			die(err)
+		}
+	} else {
 		var text string
 		text, err = response.AsText()
 
@@ -76,34 +96,40 @@ var queryCmd = &cobra.Command{
 		}
 
 		fmt.Println(text)
-	},
+	}
 }
 
-var query *lib.Query
-var source string
-var analyse bool
-var noparse bool
-var serverAddr string
-var dryrun bool
-var reflect string
+func validateClientPlumbingArgs(cmd *cobra.Command) {
+	if source == "" && reflect == "" {
+		err := cmd.Help()
 
-func runClient(client *lib.Client) (*lib.APIResponse, error) {
-	if query != nil {
-		if noparse {
-			return client.SendRawQuery(source)
-		} else {
-			return client.SendQuery(query)
+		if err != nil {
+			die(err)
 		}
+	}
+}
+
+func analyseQuery(query *lib.Query) error {
+	format := "Query analysis for:\n\n%s\n\n%v\n\n"
+	fmt.Printf(format, source, query.Analyse())
+	fmt.Println("Syntax tree:\n\n")
+	query.Parser.PrintSyntaxTree()
+	return query.PrettyPrint(os.Stdout)
+}
+
+func sendQuery(client *lib.Client, query *lib.Query) (lib.APIResponse, error) {
+	if query != nil {
+		return client.SendQuery(query)
 	} else if reflect != "" {
 		reflectType, err := parseReflect()
 
 		if err != nil {
-			return nil, err
+			return lib.RESPONSE_FAIL, err
 		}
 
 		return client.SendReflection(reflectType)
 	} else {
-		return nil, nil
+		panic("Validation should prevent this contingency")
 	}
 }
 
@@ -121,12 +147,11 @@ func parseReflect() (lib.APIReflectionType, error) {
 }
 
 func init() {
-	RootCmd.AddCommand(queryCmd)
+	clientCmd.AddCommand(clientPlumbingCmd)
 
-	queryCmd.Flags().BoolVar(&dryrun, "dryrun", false, "Don't send query to server")
-	queryCmd.Flags().StringVar(&source, "query", "", "Godless NoSQL query text")
-	queryCmd.Flags().BoolVar(&analyse, "analyse", false, "Analyse query")
-	queryCmd.Flags().BoolVar(&noparse, "noparse", false, "Send raw query text to server.")
-	queryCmd.Flags().StringVar(&serverAddr, "server", "localhost:8085", "Server address")
-	queryCmd.Flags().StringVar(&reflect, "reflect", "", "Reflect on server state")
+	clientPlumbingCmd.Flags().StringVar(&reflect, "reflect", "", "Reflect on server state. (index|head|namespace)")
+	clientPlumbingCmd.Flags().BoolVar(&binary, "binary", false, "Output protocol buffer binary")
+	clientPlumbingCmd.Flags().BoolVar(&dryrun, "dryrun", false, "Don't send query to server")
+	clientPlumbingCmd.Flags().StringVar(&source, "query", "", "Godless NoSQL query text")
+	clientPlumbingCmd.Flags().BoolVar(&analyse, "analyse", false, "Analyse query")
 }

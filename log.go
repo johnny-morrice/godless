@@ -9,16 +9,41 @@ import (
 
 // Really basic logging helpers follow.
 
-func logdbg(msg string, args ...interface{}) {
-	logMsg("DEBUG", msg, args...)
+type LogLevel uint8
+
+const (
+	LOG_DEBUG = LogLevel(iota)
+	LOG_WARN
+	LOG_ERR
+	LOG_NOTHING
+)
+
+var __LOG_LEVEL LogLevel
+
+func SetDebugLevel(level LogLevel) {
+	__LOG_LEVEL = level
 }
 
-func logerr(msg string, args ...interface{}) {
-	logMsg("ERROR", msg, args...)
+func init() {
+	SetDebugLevel(LOG_DEBUG)
+}
+
+func logdbg(msg string, args ...interface{}) {
+	if __LOG_LEVEL < LOG_WARN {
+		logMsg("DEBUG", msg, args...)
+	}
 }
 
 func logwarn(msg string, args ...interface{}) {
-	logMsg("WARN", msg, args...)
+	if __LOG_LEVEL < LOG_ERR {
+		logMsg("WARN", msg, args...)
+	}
+}
+
+func logerr(msg string, args ...interface{}) {
+	if __LOG_LEVEL < LOG_NOTHING {
+		logMsg("ERROR", msg, args...)
+	}
 }
 
 func logdie(msg string, args ...interface{}) {

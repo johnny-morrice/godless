@@ -177,27 +177,27 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 	}
 
 	responseA := lib.RESPONSE_QUERY
-	responseA.QueryResponse.Rows = streamA()
+	responseA.QueryResponse.Entries = streamA()
 
 	responseB := lib.RESPONSE_QUERY
-	responseB.QueryResponse.Rows = append(streamB(), streamC()...)
+	responseB.QueryResponse.Entries = append(streamB(), streamC()...)
 
 	responseC := lib.RESPONSE_QUERY
-	responseC.QueryResponse.Rows = streamC()
+	responseC.QueryResponse.Entries = streamC()
 
 	responseD := lib.RESPONSE_QUERY
-	responseD.QueryResponse.Rows = streamD()
+	responseD.QueryResponse.Entries = streamD()
 
 	responseE := lib.RESPONSE_QUERY
-	responseE.QueryResponse.Rows = streamE()
+	responseE.QueryResponse.Entries = streamE()
 
 	responseF := lib.RESPONSE_QUERY
 
 	responseG := lib.RESPONSE_QUERY
-	responseG.QueryResponse.Rows = streamF()
+	responseG.QueryResponse.Entries = streamF()
 
 	responseH := lib.RESPONSE_QUERY
-	responseH.QueryResponse.Rows = streamG()
+	responseH.QueryResponse.Entries = streamG()
 
 	expect := []lib.APIResponse{
 		responseA,
@@ -222,8 +222,8 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		actual := selector.RunQuery()
 		expected := expect[i]
 		if !expected.Equals(actual) {
-			if actual.QueryResponse.Rows == nil {
-				t.Error("actual.QueryResponse.Rows was nil")
+			if actual.QueryResponse.Entries == nil {
+				t.Error("actual.QueryResponse.Entries was nil")
 			}
 
 			if actual.Err != nil {
