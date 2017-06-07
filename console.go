@@ -10,7 +10,7 @@ func TerminalConsole(addr string) error {
 	fmt.Println("Data found in the APIResponse should be formatted in a human readable manner.")
 	fmt.Println("")
 	fmt.Println("Some functions that will help:")
-	fmt.Println("\tClient.SendQuery(query *Query) APIResponse")
+	fmt.Println("\tClient.SendQuery(query *Query) (APIResponse, error)")
 	fmt.Println("\tCompileQuery(source string) *Query")
 	fmt.Println("")
 	fmt.Println("Use this terminal package:")
