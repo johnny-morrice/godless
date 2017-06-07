@@ -67,5 +67,5 @@ Check out the [releases page](https://github.com/johnny-morrice/godless/releases
 ### For Golang programmers
 
 ```
-go get github.com/johnny-morrice/godless
+go get github.com/johnny-morrice/godless/...
 ```
