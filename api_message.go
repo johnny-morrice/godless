@@ -21,6 +21,7 @@ func MakeAPIResponseMessage(resp APIResponse) *APIResponseMessage {
 		message.QueryResponse = makeAPIQueryResponseMessage(resp.QueryResponse)
 	case API_REFLECT:
 		message.ReflectResponse = makeAPIReflectMessage(resp.ReflectResponse)
+	case API_REPLICATE:
 	default:
 		panic(fmt.Sprintf("Unknown APIResponse.Type: %v", resp))
 	}
@@ -44,6 +45,7 @@ func ReadAPIResponseMessage(message *APIResponseMessage) APIResponse {
 		resp.QueryResponse = readAPIQueryResponse(message.QueryResponse)
 	case API_REFLECT:
 		resp.ReflectResponse = readAPIReflectResponse(message.ReflectResponse)
+	case API_REPLICATE:
 	default:
 		// TODO dupe code
 		panic(fmt.Sprintf("Unknown APIResponse.Type: %v", message))
