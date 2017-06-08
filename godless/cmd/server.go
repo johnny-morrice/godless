@@ -21,6 +21,8 @@
 package cmd
 
 import (
+	"time"
+
 	lib "github.com/johnny-morrice/godless"
 	"github.com/spf13/cobra"
 )
@@ -57,6 +59,7 @@ var serveCmd = &cobra.Command{
 }
 
 var addr string
+var interval time.Duration
 
 func disconnect(store lib.RemoteStore) {
 	err := store.Disconnect()
@@ -79,7 +82,7 @@ func serve(kvNamespace lib.KvNamespace) error {
 		return webErr
 	}
 
-	replicateStopCh, peerErr := lib.Replicate(api, peers)
+	replicateStopCh, peerErr := lib.Replicate(api, interval, peers)
 
 	if peerErr != nil {
 		return peerErr
@@ -106,4 +109,5 @@ func init() {
 	storeCmd.AddCommand(serveCmd)
 
 	serveCmd.Flags().StringVar(&addr, "address", "localhost:8085", "Listen address for server")
+	serveCmd.Flags().DurationVar(&interval, "interval", time.Second*1, "Interval between replications")
 }

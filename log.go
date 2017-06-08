@@ -13,8 +13,9 @@ type LogLevel uint8
 
 const (
 	LOG_DEBUG = LogLevel(iota)
+	LOG_INFO
 	LOG_WARN
-	LOG_ERR
+	LOG_ERROR
 	LOG_NOTHING
 )
 
@@ -29,19 +30,25 @@ func init() {
 }
 
 func logdbg(msg string, args ...interface{}) {
-	if __LOG_LEVEL < LOG_WARN {
+	if __LOG_LEVEL <= LOG_DEBUG {
 		logMsg("DEBUG", msg, args...)
 	}
 }
 
+func loginfo(msg string, args ...interface{}) {
+	if __LOG_LEVEL <= LOG_INFO {
+		logMsg("INFO", msg, args)
+	}
+}
+
 func logwarn(msg string, args ...interface{}) {
-	if __LOG_LEVEL < LOG_ERR {
+	if __LOG_LEVEL <= LOG_WARN {
 		logMsg("WARN", msg, args...)
 	}
 }
 
 func logerr(msg string, args ...interface{}) {
-	if __LOG_LEVEL < LOG_NOTHING {
+	if __LOG_LEVEL <= LOG_ERROR {
 		logMsg("ERROR", msg, args...)
 	}
 }

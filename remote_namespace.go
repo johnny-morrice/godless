@@ -50,6 +50,7 @@ func (rn *remoteNamespace) Replicate(peerAddr RemoteStoreAddress, kvq KvQuery) {
 }
 
 func (rn *remoteNamespace) joinPeerIndex(peerAddr RemoteStoreAddress) APIResponse {
+	// TODO implement
 	failResponse := RESPONSE_FAIL
 	failResponse.Type = API_REPLICATE
 
@@ -71,6 +72,7 @@ func (rn *remoteNamespace) joinPeerIndex(peerAddr RemoteStoreAddress) APIRespons
 }
 
 func (rn *remoteNamespace) loadPeerIndex(peerAddr RemoteStoreAddress) (RemoteNamespaceIndex, error) {
+	// TODO implement
 	return EmptyRemoteNamespaceIndex(), nil
 }
 

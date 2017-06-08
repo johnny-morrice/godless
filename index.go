@@ -80,10 +80,12 @@ func MakeIndexMessage(index RemoteNamespaceIndex) *IndexMessage {
 }
 
 func (index RemoteNamespaceIndex) IsEmpty() bool {
+	// TODO implement
 	return false
 }
 
 func (index RemoteNamespaceIndex) JoinIndex(other RemoteNamespaceIndex) RemoteNamespaceIndex {
+	// TODO implement
 	return EmptyRemoteNamespaceIndex()
 }
 
