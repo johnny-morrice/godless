@@ -22,19 +22,19 @@ package cmd
 
 import "github.com/spf13/cobra"
 
-// clientCmd represents the client command
-var clientCmd = &cobra.Command{
-	Use:   "client",
-	Short: "Godless frontent",
-	Long: `godless client provides a frontend to the godless p2p node.  For a terminal console, do:
+// queryCmd represents the client command
+var queryCmd = &cobra.Command{
+	Use:   "query",
+	Short: "Godless frontend",
+	Long: `godless query provides a frontend to the godless p2p node.  For a terminal console, do:
 
-	godless client console`,
+	godless query console`,
 }
 
 func init() {
-	RootCmd.AddCommand(clientCmd)
+	RootCmd.AddCommand(queryCmd)
 
-	clientCmd.PersistentFlags().StringVar(&serverAddr, "server", "localhost:8085", "Server address")
+	queryCmd.PersistentFlags().StringVar(&serverAddr, "server", "localhost:8085", "Server address")
 }
 
 var serverAddr string

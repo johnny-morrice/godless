@@ -42,5 +42,5 @@ var clientConsoleCmd = &cobra.Command{
 }
 
 func init() {
-	clientCmd.AddCommand(clientConsoleCmd)
+	queryCmd.AddCommand(clientConsoleCmd)
 }

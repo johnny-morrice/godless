@@ -147,7 +147,7 @@ func parseReflect() (lib.APIReflectionType, error) {
 }
 
 func init() {
-	clientCmd.AddCommand(clientPlumbingCmd)
+	queryCmd.AddCommand(clientPlumbingCmd)
 
 	clientPlumbingCmd.Flags().StringVar(&reflect, "reflect", "", "Reflect on server state. (index|head|namespace)")
 	clientPlumbingCmd.Flags().BoolVar(&binary, "binary", false, "Output protocol buffer binary")

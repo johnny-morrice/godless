@@ -14,8 +14,6 @@
 package cmd
 
 import (
-	"strings"
-
 	"github.com/spf13/cobra"
 
 	lib "github.com/johnny-morrice/godless"
@@ -40,7 +38,7 @@ var storeCmd = &cobra.Command{
 }
 
 var indexHash string
-var peerNames string
+var peerNames []string
 var peers []lib.RemoteStoreAddress
 var ipfsService string
 
@@ -48,15 +46,14 @@ func init() {
 	RootCmd.AddCommand(storeCmd)
 
 	storeCmd.PersistentFlags().StringVar(&indexHash, "index", "", "IPFS hash of godless index")
-	storeCmd.PersistentFlags().StringVar(&peerNames, "peers", "", "Comma separated list of IPNS peer names")
+	storeCmd.PersistentFlags().StringSliceVar(&peerNames, "peers", []string{}, "Comma separated list of IPNS peer names")
 	storeCmd.PersistentFlags().StringVar(&ipfsService, "ipfs", "http://localhost:5001", "IPFS webservice URL")
 }
 
 func readPeers() {
-	splitNames := strings.Split(peerNames, ",")
-	peers = make([]lib.RemoteStoreAddress, len(splitNames))
+	peers = make([]lib.RemoteStoreAddress, len(peerNames))
 
-	for i, n := range splitNames {
+	for i, n := range peerNames {
 		peers[i] = lib.IPFSPath(n)
 	}
 }
