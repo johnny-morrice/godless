@@ -93,11 +93,11 @@ func serve(kvNamespace lib.KvNamespace) error {
 }
 
 func makeKvNamespace(store lib.RemoteStore) (lib.KvNamespace, error) {
-	if indexHash == "" {
+	if hash == "" {
 		namespace := lib.EmptyNamespace()
 		return lib.PersistNewRemoteNamespace(store, namespace)
 	} else {
-		index := lib.IPFSPath(indexHash)
+		index := lib.IPFSPath(hash)
 		return lib.LoadRemoteNamespace(store, index)
 	}
 }

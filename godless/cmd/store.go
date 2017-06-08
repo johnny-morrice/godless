@@ -37,7 +37,7 @@ var storeCmd = &cobra.Command{
 	},
 }
 
-var indexHash string
+var hash string
 var peerNames []string
 var peers []lib.RemoteStoreAddress
 var ipfsService string
@@ -45,7 +45,7 @@ var ipfsService string
 func init() {
 	RootCmd.AddCommand(storeCmd)
 
-	storeCmd.PersistentFlags().StringVar(&indexHash, "index", "", "IPFS hash of godless index")
+	storeCmd.PersistentFlags().StringVar(&hash, "hash", "", "IPFS hash")
 	storeCmd.PersistentFlags().StringSliceVar(&peerNames, "peers", []string{}, "Comma separated list of IPNS peer names")
 	storeCmd.PersistentFlags().StringVar(&ipfsService, "ipfs", "http://localhost:5001", "IPFS webservice URL")
 }

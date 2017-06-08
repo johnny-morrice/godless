@@ -76,12 +76,12 @@ var clientPlumbingCmd = &cobra.Command{
 var source string
 var analyse bool
 var dryrun bool
-var binary bool
+var queryBinary bool
 var reflect string
 
 func outputResponse(response lib.APIResponse) {
 	var err error
-	if binary {
+	if queryBinary {
 		err = lib.EncodeAPIResponse(response, os.Stdout)
 
 		if err != nil {
@@ -150,7 +150,7 @@ func init() {
 	queryCmd.AddCommand(clientPlumbingCmd)
 
 	clientPlumbingCmd.Flags().StringVar(&reflect, "reflect", "", "Reflect on server state. (index|head|namespace)")
-	clientPlumbingCmd.Flags().BoolVar(&binary, "binary", false, "Output protocol buffer binary")
+	clientPlumbingCmd.Flags().BoolVar(&queryBinary, "binary", false, "Output protocol buffer binary")
 	clientPlumbingCmd.Flags().BoolVar(&dryrun, "dryrun", false, "Don't send query to server")
 	clientPlumbingCmd.Flags().StringVar(&source, "query", "", "Godless NoSQL query text")
 	clientPlumbingCmd.Flags().BoolVar(&analyse, "analyse", false, "Analyse query")
