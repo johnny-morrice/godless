@@ -64,6 +64,7 @@ func (rn *remoteNamespace) RunKvReflection(reflect APIReflectRequest, kvq KvQuer
 func (rn *remoteNamespace) getReflectHead() APIResponse {
 	response := RESPONSE_REFLECT
 	response.ReflectResponse.Path = rn.Addr.Path()
+	response.ReflectResponse.Type = REFLECT_HEAD_PATH
 	return response
 }
 
@@ -79,18 +80,21 @@ func (rn *remoteNamespace) getReflectIndex() APIResponse {
 	}
 
 	response.ReflectResponse.Index = index
+	response.ReflectResponse.Type = REFLECT_INDEX
 
 	return response
 }
 
 func (rn *remoteNamespace) dumpReflectNamespaces() APIResponse {
 	response := RESPONSE_REFLECT
+	response.ReflectResponse.Type = REFLECT_DUMP_NAMESPACE
 
 	index, err := rn.loadIndex()
 
 	if err != nil {
 		response.Msg = RESPONSE_FAIL_MSG
 		response.Err = errors.Wrap(err, "dumpReflectNamespace failed")
+		response.Type = API_REFLECT
 		return response
 	}
 
