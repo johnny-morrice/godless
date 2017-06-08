@@ -30,6 +30,12 @@ var storeCmd = &cobra.Command{
 	godless store serve`,
 	Run: func(cmd *cobra.Command, args []string) {
 		readPeers()
+
+		err := cmd.Help()
+
+		if err != nil {
+			die(err)
+		}
 	},
 }
 
