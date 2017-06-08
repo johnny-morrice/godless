@@ -31,14 +31,12 @@ var serveCmd = &cobra.Command{
 	Short: "Run a Godless server",
 	Long:  `A godless server listens to queries over HTTP.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		var err error
 		var kvNamespace lib.KvNamespace
-		var webStopCh chan<- interface{}
-		var replicateStopCh chan<- interface{}
 
 		store := lib.MakeIPFSPeer(ipfsService)
-		err = store.Connect()
-		defer store.Disconnect()
+		err := store.Connect()
+
+		defer disconnect(store)
 
 		if err != nil {
 			die(err)
@@ -50,33 +48,49 @@ var serveCmd = &cobra.Command{
 			die(err)
 		}
 
-		api, errch := lib.LaunchKeyValueStore(kvNamespace)
-
-		webService := &lib.WebService{
-			API: api,
-		}
-
-		webStopCh, err = lib.Serve(addr, webService.Handler())
+		err = serve(kvNamespace)
 
 		if err != nil {
 			die(err)
 		}
-
-		replicateStopCh, err = lib.Replicate(api, peers)
-
-		if err != nil {
-			die(err)
-		}
-
-		err = <-errch
-		webStopCh <- nil
-		replicateStopCh <- nil
-
-		die(err)
 	},
 }
 
 var addr string
+
+func disconnect(store lib.RemoteStore) {
+	err := store.Disconnect()
+
+	if err != nil {
+		die(err)
+	}
+}
+
+func serve(kvNamespace lib.KvNamespace) error {
+	api, apiErrCh := lib.LaunchKeyValueStore(kvNamespace)
+
+	webService := &lib.WebService{
+		API: api,
+	}
+
+	webStopCh, webErr := lib.Serve(addr, webService.Handler())
+
+	if webErr != nil {
+		return webErr
+	}
+
+	replicateStopCh, peerErr := lib.Replicate(api, peers)
+
+	if peerErr != nil {
+		return peerErr
+	}
+
+	apiErr := <-apiErrCh
+	webStopCh <- nil
+	replicateStopCh <- nil
+
+	return apiErr
+}
 
 func makeKvNamespace(store lib.RemoteStore) (lib.KvNamespace, error) {
 	if indexHash == "" {
