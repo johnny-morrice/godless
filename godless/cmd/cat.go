@@ -14,7 +14,6 @@
 package cmd
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -34,37 +33,33 @@ var catCmd = &cobra.Command{
 	Long: `Read a namespace, index, query, or API response from the remote store or filesystem.
 
 The default behaviour is to read binary data and output text.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		validateStoreCatArgs(cmd)
+}
 
-		input, openErr := catOpen()
+func catMessage(cmd *cobra.Command, streamer catStreamer) {
+	validateStoreCatArgs(cmd)
 
-		if openErr != nil {
-			die(openErr)
-		}
+	input, openErr := catOpen()
 
-		defer drainInput(input)
+	if openErr != nil {
+		die(openErr)
+	}
 
-		streamer := makeCatStreamer()
-		message, decodeErr := streamer.decode(input)
+	defer drainInput(input)
 
-		if decodeErr != nil {
-			die(decodeErr)
-		}
+	message, decodeErr := streamer.decode(input)
 
-		encodeErr := catEncode(message)
+	if decodeErr != nil {
+		die(decodeErr)
+	}
 
-		if encodeErr != nil {
-			die(encodeErr)
-		}
-	},
+	encodeErr := catEncode(message)
+
+	if encodeErr != nil {
+		die(encodeErr)
+	}
 }
 
 var filePath string
-var isNamespace bool
-var isIndex bool
-var isQuery bool
-var isAPIResponse bool
 var catBinaryOut bool
 var catBinaryIn bool
 
@@ -144,20 +139,6 @@ func catDecode(r io.Reader, message proto.Message) error {
 	return proto.UnmarshalText(string(bs), message)
 }
 
-func makeCatStreamer() catStreamer {
-	if isNamespace {
-		return namespaceStreamer{}
-	} else if isAPIResponse {
-		return apiStreamer{}
-	} else if isQuery {
-		return queryStreamer{}
-	} else if isIndex {
-		return indexStreamer{}
-	} else {
-		panic("Unknown streamer type")
-	}
-}
-
 func catOpen() (io.ReadCloser, error) {
 	if hash != "" {
 		// I imagined I'd use the godless library for this, but cat
@@ -173,12 +154,9 @@ func catOpen() (io.ReadCloser, error) {
 }
 
 func validateStoreCatArgs(cmd *cobra.Command) {
-	var hint error
-
 	sourceCount := countNonEmpty([]string{filePath, hash})
-	dataTypeCount := countTrue([]bool{isNamespace, isIndex, isQuery, isAPIResponse})
 
-	if sourceCount == 0 && dataTypeCount == 0 {
+	if sourceCount == 0 {
 		err := cmd.Help()
 
 		if err != nil {
@@ -189,14 +167,7 @@ func validateStoreCatArgs(cmd *cobra.Command) {
 	}
 
 	if sourceCount != 1 {
-		hint = joinError(hint, "Must specify one of --file or --hash")
-	}
-
-	if dataTypeCount != 1 {
-		hint = joinError(hint, "Must specify one data type (e.g. --namespace)")
-	}
-
-	if hint != nil {
+		hint := errors.New("Must specify one of --file or --hash")
 		die(hint)
 	}
 }
@@ -212,33 +183,10 @@ func countNonEmpty(args []string) int {
 	return count
 }
 
-func countTrue(args []bool) int {
-	count := 0
-	for _, a := range args {
-		if a {
-			count++
-		}
-	}
-
-	return count
-}
-
-func joinError(err error, msg string) error {
-	if err == nil {
-		return errors.New(msg)
-	}
-
-	return fmt.Errorf("%v\n%s", err.Error(), msg)
-}
-
 func init() {
 	storeCmd.AddCommand(catCmd)
 
-	catCmd.Flags().StringVar(&filePath, "file", "", "Filename")
-	catCmd.Flags().BoolVar(&isNamespace, "namespace", false, "Cat a Namespace")
-	catCmd.Flags().BoolVar(&isIndex, "index", false, "Cat an Index")
-	catCmd.Flags().BoolVar(&isQuery, "query", false, "Cat a Query")
-	catCmd.Flags().BoolVar(&isAPIResponse, "api", false, "Cat an APIResponse")
-	catCmd.Flags().BoolVar(&catBinaryIn, "binaryInput", true, "Input is binary")
-	catCmd.Flags().BoolVar(&catBinaryOut, "binaryOutput", false, "Output is binary")
+	catCmd.PersistentFlags().StringVar(&filePath, "file", "", "Filename")
+	catCmd.PersistentFlags().BoolVar(&catBinaryIn, "binaryInput", true, "Input is binary")
+	catCmd.PersistentFlags().BoolVar(&catBinaryOut, "binaryOutput", false, "Output is binary")
 }
