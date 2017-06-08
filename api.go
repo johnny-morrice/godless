@@ -11,6 +11,7 @@ type APIService interface {
 	APICloserService
 	APIQueryService
 	APIReflectService
+	APIPeerService
 }
 
 type APICloserService interface {
@@ -23,6 +24,10 @@ type APIReflectService interface {
 
 type APIQueryService interface {
 	RunQuery(*Query) (<-chan APIResponse, error)
+}
+
+type APIPeerService interface {
+	Replicate(peerAddr RemoteStoreAddress) (<-chan APIResponse, error)
 }
 
 type APIResponder interface {
@@ -65,6 +70,7 @@ const (
 	API_MESSAGE_NOOP = APIMessageType(iota)
 	API_QUERY
 	API_REFLECT
+	API_REPLICATE
 )
 
 type APIResponse struct {
@@ -199,4 +205,5 @@ var RESPONSE_OK_MSG = "ok"
 var RESPONSE_OK APIResponse = APIResponse{Msg: RESPONSE_OK_MSG}
 var RESPONSE_FAIL APIResponse = APIResponse{Msg: RESPONSE_FAIL_MSG}
 var RESPONSE_QUERY APIResponse = APIResponse{Msg: RESPONSE_OK_MSG, Type: API_QUERY}
+var RESPONSE_REPLICATE APIResponse = APIResponse{Msg: RESPONSE_OK_MSG, Type: API_REPLICATE}
 var RESPONSE_REFLECT APIResponse = APIResponse{Msg: RESPONSE_OK_MSG, Type: API_REFLECT}

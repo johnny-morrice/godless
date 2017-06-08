@@ -33,23 +33,18 @@ var serveCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		var err error
 		var kvNamespace lib.KvNamespace
-		var stopch chan<- interface{}
+		var webStopCh chan<- interface{}
+		var replicateStopCh chan<- interface{}
 
-		peer := lib.MakeIPFSPeer(peerUrl)
-		err = peer.Connect()
-		defer peer.Disconnect()
+		store := lib.MakeIPFSPeer(ipfsService)
+		err = store.Connect()
+		defer store.Disconnect()
 
 		if err != nil {
 			die(err)
 		}
 
-		if hash == "" {
-			namespace := lib.EmptyNamespace()
-			kvNamespace, err = lib.PersistNewRemoteNamespace(peer, namespace)
-		} else {
-			index := lib.IPFSPath(hash)
-			kvNamespace, err = lib.LoadRemoteNamespace(peer, index)
-		}
+		kvNamespace, err = makeKvNamespace(store)
 
 		if err != nil {
 			die(err)
@@ -57,31 +52,44 @@ var serveCmd = &cobra.Command{
 
 		api, errch := lib.LaunchKeyValueStore(kvNamespace)
 
-		service := &lib.WebService{
+		webService := &lib.WebService{
 			API: api,
 		}
 
-		stopch, err = lib.Serve(addr, service.Handler())
+		webStopCh, err = lib.Serve(addr, webService.Handler())
+
+		if err != nil {
+			die(err)
+		}
+
+		replicateStopCh, err = lib.Replicate(api, peers)
 
 		if err != nil {
 			die(err)
 		}
 
 		err = <-errch
-		stopch <- nil
+		webStopCh <- nil
+		replicateStopCh <- nil
 
 		die(err)
 	},
 }
 
 var addr string
-var hash string
-var peerUrl string
+
+func makeKvNamespace(store lib.RemoteStore) (lib.KvNamespace, error) {
+	if indexHash == "" {
+		namespace := lib.EmptyNamespace()
+		return lib.PersistNewRemoteNamespace(store, namespace)
+	} else {
+		index := lib.IPFSPath(indexHash)
+		return lib.LoadRemoteNamespace(store, index)
+	}
+}
 
 func init() {
-	RootCmd.AddCommand(serveCmd)
+	storeCmd.AddCommand(serveCmd)
 
 	serveCmd.Flags().StringVar(&addr, "address", "localhost:8085", "Listen address for server")
-	serveCmd.Flags().StringVar(&hash, "hash", "", "IPFS hash of namespace head")
-	serveCmd.Flags().StringVar(&peerUrl, "peer", "http://localhost:5001", "IPFS peer URL")
 }

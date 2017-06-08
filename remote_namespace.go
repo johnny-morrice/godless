@@ -5,16 +5,17 @@ import (
 )
 
 type remoteNamespace struct {
-	Update Namespace
-	Store  RemoteStore
-	Addr   RemoteStoreAddress
+	NamespaceUpdate Namespace
+	IndexUpdate     RemoteNamespaceIndex
+	Store           RemoteStore
+	Addr            RemoteStoreAddress
 }
 
 func LoadRemoteNamespace(store RemoteStore, addr RemoteStoreAddress) (KvNamespaceTree, error) {
 	rn := &remoteNamespace{}
 	rn.Store = store
 	rn.Addr = addr
-	rn.Update = EmptyNamespace()
+	rn.NamespaceUpdate = EmptyNamespace()
 
 	_, err := rn.loadIndex()
 
@@ -31,7 +32,7 @@ func LoadRemoteNamespace(store RemoteStore, addr RemoteStoreAddress) (KvNamespac
 func PersistNewRemoteNamespace(store RemoteStore, namespace Namespace) (KvNamespaceTree, error) {
 	rn := &remoteNamespace{}
 	rn.Store = store
-	rn.Update = namespace
+	rn.NamespaceUpdate = namespace
 
 	kv, err := rn.Persist()
 
@@ -40,6 +41,37 @@ func PersistNewRemoteNamespace(store RemoteStore, namespace Namespace) (KvNamesp
 	}
 
 	return kv.(*remoteNamespace), nil
+}
+
+func (rn *remoteNamespace) Replicate(peerAddr RemoteStoreAddress, kvq KvQuery) {
+	runner := APIResponderFunc(func() APIResponse { return rn.joinPeerIndex(peerAddr) })
+	response := runner.RunQuery()
+	kvq.writeResponse(response)
+}
+
+func (rn *remoteNamespace) joinPeerIndex(peerAddr RemoteStoreAddress) APIResponse {
+	failResponse := RESPONSE_FAIL
+	failResponse.Type = API_REPLICATE
+
+	myIndex, myErr := rn.loadIndex()
+
+	if myErr != nil {
+
+	}
+
+	theirIndex, theirErr := rn.loadPeerIndex(peerAddr)
+
+	if theirErr != nil {
+
+	}
+
+	rn.IndexUpdate = myIndex.JoinIndex(theirIndex)
+
+	return RESPONSE_REPLICATE
+}
+
+func (rn *remoteNamespace) loadPeerIndex(peerAddr RemoteStoreAddress) (RemoteNamespaceIndex, error) {
+	return EmptyRemoteNamespaceIndex(), nil
 }
 
 // TODO there are likely to be many reflection features.  Replace switches with polymorphism.
@@ -130,12 +162,12 @@ func (rn *remoteNamespace) RunKvQuery(query *Query, kvq KvQuery) {
 }
 
 func (rn *remoteNamespace) IsChanged() bool {
-	return !rn.Update.IsEmpty()
+	return !(rn.NamespaceUpdate.IsEmpty() && rn.IndexUpdate.IsEmpty())
 }
 
 func (rn *remoteNamespace) JoinTable(tableKey TableName, table Table) error {
-	joined := rn.Update.JoinTable(tableKey, table)
-	rn.Update = joined
+	joined := rn.NamespaceUpdate.JoinTable(tableKey, table)
+	rn.NamespaceUpdate = joined
 	return nil
 }
 
@@ -232,23 +264,38 @@ func (rn *remoteNamespace) loadIndex() (RemoteNamespaceIndex, error) {
 
 // Write pending changes to IPFS and return the new parent namespace.
 func (rn *remoteNamespace) Persist() (KvNamespace, error) {
-	namespace := rn.Update
-	namespaceAddr, nserr := rn.persistNamespace(namespace)
+	const failMsg = "Persist failed"
 
-	if nserr != nil {
-		return nil, nserr
+	var nsIndex RemoteNamespaceIndex
+
+	if !rn.NamespaceUpdate.IsEmpty() {
+		var updateErr error
+		nsIndex, updateErr = rn.indexNamespace(rn.NamespaceUpdate)
+
+		if updateErr != nil {
+			return nil, errors.Wrap(updateErr, failMsg)
+		}
 	}
 
-	indexAddr, indexerr := rn.persistIndex(namespaceAddr, namespace)
+	index, loadErr := rn.loadIndex()
 
-	if indexerr != nil {
-		return nil, indexerr
+	if loadErr != nil {
+		return nil, errors.Wrap(loadErr, failMsg)
+	}
+
+	index = index.JoinIndex(nsIndex)
+	index = index.JoinIndex(rn.IndexUpdate)
+
+	indexAddr, indexErr := rn.persistIndex(index)
+
+	if indexErr != nil {
+		return nil, errors.Wrap(indexErr, failMsg)
 	}
 
 	out := &remoteNamespace{
-		Addr:   indexAddr,
-		Store:  rn.Store,
-		Update: EmptyNamespace(),
+		Addr:            indexAddr,
+		Store:           rn.Store,
+		NamespaceUpdate: EmptyNamespace(),
 	}
 
 	return out, nil
@@ -268,19 +315,29 @@ func (rn *remoteNamespace) persistNamespace(namespace Namespace) (RemoteStoreAdd
 	return namespaceAddr, nil
 }
 
-func (rn *remoteNamespace) persistIndex(addr RemoteStoreAddress, namespace Namespace) (RemoteStoreAddress, error) {
-	index, loaderr := rn.loadIndex()
+func (rn *remoteNamespace) indexNamespace(namespace Namespace) (RemoteNamespaceIndex, error) {
+	namespaceAddr, nserr := rn.persistNamespace(namespace)
 
-	if loaderr != nil {
-		return nil, errors.Wrap(loaderr, "persistIndex failed")
+	if nserr != nil {
+		return EmptyRemoteNamespaceIndex(), errors.Wrap(nserr, "indexNamespace failed")
 	}
 
-	newIndex := index.JoinNamespace(addr, namespace)
+	tableNames := namespace.GetTableNames()
+
+	indices := map[TableName]RemoteStoreAddress{}
+	for _, t := range tableNames {
+		indices[t] = namespaceAddr
+	}
+
+	return MakeRemoteNamespaceIndex(indices), nil
+}
+
+func (rn *remoteNamespace) persistIndex(newIndex RemoteNamespaceIndex) (RemoteStoreAddress, error) {
 	addr, saveerr := rn.Store.AddIndex(newIndex)
 
 	// TODO duplicate code.
 	if saveerr != nil {
-		return nil, errors.Wrap(saveerr, "persistIndex failed")
+		return nil, errors.Wrap(saveerr, "indexNamespaceAddress failed")
 	}
 
 	return addr, nil

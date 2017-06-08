@@ -9,12 +9,21 @@ import (
 type KvNamespace interface {
 	RunKvQuery(*Query, KvQuery)
 	RunKvReflection(APIReflectRequest, KvQuery)
+	Replicate(RemoteStoreAddress, KvQuery)
 	IsChanged() bool
 	Persist() (KvNamespace, error)
 }
 
 type kvRunner interface {
 	Run(KvNamespace, KvQuery)
+}
+
+type kvReplicator struct {
+	peerAddr RemoteStoreAddress
+}
+
+func (replicator kvReplicator) Run(kvn KvNamespace, kvq KvQuery) {
+	kvn.Replicate(replicator.peerAddr, kvq)
 }
 
 type kvQueryRunner struct {
@@ -48,6 +57,13 @@ func MakeKvQuery(query *Query) KvQuery {
 func MakeKvReflect(request APIReflectRequest) KvQuery {
 	return KvQuery{
 		runner:   kvReflectRunner{reflection: request},
+		Response: make(chan APIResponse),
+	}
+}
+
+func MakeKvReplicate(peerAddr RemoteStoreAddress) KvQuery {
+	return KvQuery{
+		runner:   kvReplicator{peerAddr: peerAddr},
 		Response: make(chan APIResponse),
 	}
 }
@@ -99,6 +115,13 @@ func LaunchKeyValueStore(ns KvNamespace) (APIService, <-chan error) {
 type keyValueStore struct {
 	namespace KvNamespace
 	input     chan<- KvQuery
+}
+
+func (kv *keyValueStore) Replicate(peerAddr RemoteStoreAddress) (<-chan APIResponse, error) {
+	kvq := MakeKvReplicate(peerAddr)
+	kv.input <- kvq
+
+	return kvq.Response, nil
 }
 
 func (kv *keyValueStore) RunQuery(query *Query) (<-chan APIResponse, error) {

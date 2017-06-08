@@ -79,6 +79,14 @@ func MakeIndexMessage(index RemoteNamespaceIndex) *IndexMessage {
 	return MakeIndexStreamMessage(stream)
 }
 
+func (index RemoteNamespaceIndex) IsEmpty() bool {
+	return false
+}
+
+func (index RemoteNamespaceIndex) JoinIndex(other RemoteNamespaceIndex) RemoteNamespaceIndex {
+	return EmptyRemoteNamespaceIndex()
+}
+
 func (index RemoteNamespaceIndex) joinStreamEntry(entry IndexStreamEntry) RemoteNamespaceIndex {
 	cpy := index.Copy()
 	addrs := make([]RemoteStoreAddress, len(entry.Links))
