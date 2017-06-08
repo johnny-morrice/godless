@@ -82,10 +82,6 @@ func (client *Client) Post(path, bodyType string, body io.Reader) (APIResponse, 
 }
 
 func (client *Client) decodeHttpResponse(resp *http.Response) (APIResponse, error) {
-	var apiresp APIResponse
-	var err error
-
-	// TODO this is a bit horrible.
 	if resp.StatusCode == WEB_API_SUCCESS {
 		return client.decodeSuccessResponse(resp)
 	} else if resp.StatusCode == WEB_API_ERROR {
@@ -93,8 +89,6 @@ func (client *Client) decodeHttpResponse(resp *http.Response) (APIResponse, erro
 	} else {
 		return client.decodeUnexpectedResponse(resp)
 	}
-
-	return apiresp, err
 }
 
 func (client *Client) decodeFailureResponse(resp *http.Response) (APIResponse, error) {
