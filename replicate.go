@@ -9,11 +9,19 @@ type replicator struct {
 }
 
 func (p2p replicator) replicate(stopch <-chan interface{}) {
+	if len(p2p.peers) == 0 {
+		return
+	}
+
 	timer := time.NewTicker(p2p.interval)
 
 	// The API supports replicating one peer at a time.
 	// The approach taken here is to round robin the peers.
 	for i := 0; ; i++ {
+		if i >= len(p2p.peers) {
+			i = 0
+		}
+
 		peer := p2p.peers[i]
 
 	LOOP:
@@ -25,10 +33,6 @@ func (p2p replicator) replicate(stopch <-chan interface{}) {
 				p2p.replicatePeer(peer)
 				break LOOP
 			}
-		}
-
-		if i >= len(p2p.peers) {
-			i = 0
 		}
 	}
 }
