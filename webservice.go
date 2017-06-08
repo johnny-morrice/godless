@@ -97,7 +97,7 @@ func sendErr(rw http.ResponseWriter, err error) error {
 		panic(fmt.Sprintf("Bug encoding json error message: '%v'; ", encerr))
 	}
 
-	rw.WriteHeader(400)
+	rw.WriteHeader(WEB_API_ERROR)
 	rw.Header()["Content-Type"] = []string{MIME_PROTO_TEXT}
 	_, senderr := rw.Write(buff.Bytes())
 
@@ -127,3 +127,8 @@ func sendMessage(rw http.ResponseWriter, resp APIResponse) error {
 
 	return nil
 }
+
+const (
+	WEB_API_SUCCESS = 200
+	WEB_API_ERROR   = 500
+)

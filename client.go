@@ -86,9 +86,9 @@ func (client *Client) decodeHttpResponse(resp *http.Response) (APIResponse, erro
 	var err error
 
 	// TODO this is a bit horrible.
-	if resp.StatusCode == 200 {
+	if resp.StatusCode == WEB_API_SUCCESS {
 		return client.decodeSuccessResponse(resp)
-	} else if resp.StatusCode == 500 {
+	} else if resp.StatusCode == WEB_API_ERROR {
 		return client.decodeFailureResponse(resp)
 	} else {
 		return client.decodeUnexpectedResponse(resp)
