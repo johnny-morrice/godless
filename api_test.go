@@ -38,7 +38,7 @@ func genQueryResponse(rand *rand.Rand, size int) APIQueryResponse {
 	gen := APIQueryResponse{}
 	ns := genNamespace(rand, size)
 	stream := MakeNamespaceStream(ns)
-	gen.Rows = stream
+	gen.Entries = stream
 	return gen
 }
 

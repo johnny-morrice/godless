@@ -10,6 +10,8 @@ type RemoteStore interface {
 	AddIndex(RemoteNamespaceIndex) (RemoteStoreAddress, error)
 	CatNamespace(RemoteStoreAddress) (RemoteNamespaceRecord, error)
 	CatIndex(RemoteStoreAddress) (RemoteNamespaceIndex, error)
+	SubscribeAddrStream(topic RemoteStoreAddress) (<-chan RemoteStoreAddress, <-chan error)
+	PublishAddr(addr RemoteStoreAddress, topics []RemoteStoreAddress) error
 	Disconnect() error
 }
 

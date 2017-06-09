@@ -21,6 +21,7 @@ func MakeAPIResponseMessage(resp APIResponse) *APIResponseMessage {
 		message.QueryResponse = makeAPIQueryResponseMessage(resp.QueryResponse)
 	case API_REFLECT:
 		message.ReflectResponse = makeAPIReflectMessage(resp.ReflectResponse)
+	case API_REPLICATE:
 	default:
 		panic(fmt.Sprintf("Unknown APIResponse.Type: %v", resp))
 	}
@@ -44,6 +45,7 @@ func ReadAPIResponseMessage(message *APIResponseMessage) APIResponse {
 		resp.QueryResponse = readAPIQueryResponse(message.QueryResponse)
 	case API_REFLECT:
 		resp.ReflectResponse = readAPIReflectResponse(message.ReflectResponse)
+	case API_REPLICATE:
 	default:
 		// TODO dupe code
 		panic(fmt.Sprintf("Unknown APIResponse.Type: %v", message))
@@ -53,7 +55,7 @@ func ReadAPIResponseMessage(message *APIResponseMessage) APIResponse {
 }
 
 func makeAPIQueryResponseMessage(resp APIQueryResponse) *APIQueryResponseMessage {
-	ns := MakeNamespaceStreamMessage(resp.Rows)
+	ns := MakeNamespaceStreamMessage(resp.Entries)
 	message := &APIQueryResponseMessage{Namespace: ns}
 	return message
 }
@@ -77,7 +79,7 @@ func makeAPIReflectMessage(resp APIReflectResponse) *APIReflectResponseMessage {
 
 func readAPIQueryResponse(message *APIQueryResponseMessage) APIQueryResponse {
 	resp := APIQueryResponse{}
-	resp.Rows = ReadNamespaceStreamMessage(message.Namespace)
+	resp.Entries = ReadNamespaceStreamMessage(message.Namespace)
 	return resp
 }
 

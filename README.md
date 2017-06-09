@@ -21,8 +21,8 @@ $ godless serve
 Run plumbing query command:
 
 ```
-$ godless query --query 'join books rows (@key=book50, authorName="EL James", publisher="Dont wanna know")'
-2017/06/05 15:41:54 DEBUG HTTP POST to http://localhost:8085/api/query
+$ godless client plumbing --query 'join books rows (@key=book50, authorName="EL James", publisher="Don'\''t wanna know")'
+2017/06/07 21:07:35 DEBUG HTTP POST to http://localhost:8085/api/query
 message: "ok"
 error: ""
 type: 1
@@ -31,8 +31,8 @@ queryResponse: <
   >
 >
 
-$ godless query --query 'select books where str_eq(@key, "book50") limit 10'                                 
-2017/06/05 16:38:59 DEBUG HTTP POST to http://localhost:8085/api/query
+$ godless client plumbing --query 'select books where str_eq(@key, "book50") limit 10'     
+2017/06/07 21:07:46 DEBUG HTTP POST to http://localhost:8085/api/query
 message: "ok"
 error: ""
 type: 1
@@ -48,12 +48,10 @@ queryResponse: <
       table: "books"
       row: "book50"
       entry: "publisher"
-      points: "Dont wanna know"
+      points: "Don't wanna know"
     >
   >
 >
-
-
 ```
 
 ## Installing

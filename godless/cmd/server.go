@@ -21,67 +21,103 @@
 package cmd
 
 import (
+	"time"
+
 	lib "github.com/johnny-morrice/godless"
 	"github.com/spf13/cobra"
 )
 
 // serveCmd represents the serve command
 var serveCmd = &cobra.Command{
-	Use:   "serve",
+	Use:   "server",
 	Short: "Run a Godless server",
 	Long:  `A godless server listens to queries over HTTP.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		var err error
+		readTopics()
+
 		var kvNamespace lib.KvNamespace
-		var stopch chan<- interface{}
 
-		peer := lib.MakeIPFSPeer(peerUrl)
-		err = peer.Connect()
-		defer peer.Disconnect()
+		store := lib.MakeIPFSPeer(ipfsService)
+		err := store.Connect()
 
-		if err != nil {
-			die(err)
-		}
-
-		if hash == "" {
-			namespace := lib.EmptyNamespace()
-			kvNamespace, err = lib.PersistNewRemoteNamespace(peer, namespace)
-		} else {
-			index := lib.IPFSPath(hash)
-			kvNamespace, err = lib.LoadRemoteNamespace(peer, index)
-		}
+		defer disconnect(store)
 
 		if err != nil {
 			die(err)
 		}
 
-		api, errch := lib.LaunchKeyValueStore(kvNamespace)
-
-		service := &lib.WebService{
-			API: api,
-		}
-
-		stopch, err = lib.Serve(addr, service.Handler())
+		kvNamespace, err = makeKvNamespace(store)
 
 		if err != nil {
 			die(err)
 		}
 
-		err = <-errch
-		stopch <- nil
+		err = serve(kvNamespace, store)
 
-		die(err)
+		if err != nil {
+			die(err)
+		}
 	},
 }
 
 var addr string
-var hash string
-var peerUrl string
+var interval time.Duration
+
+func disconnect(store lib.RemoteStore) {
+	err := store.Disconnect()
+
+	if err != nil {
+		die(err)
+	}
+}
+
+func serve(kvNamespace lib.KvNamespace, store lib.RemoteStore) error {
+	api, apiErrCh := lib.LaunchKeyValueStore(kvNamespace)
+
+	webService := &lib.WebService{
+		API: api,
+	}
+
+	webStopCh, webErr := lib.Serve(addr, webService.Handler())
+
+	if webErr != nil {
+		return webErr
+	}
+
+	replicateStopCh, peerErrCh := lib.Replicate(api, store, interval, pubsubTopics)
+
+	var procErr error
+LOOP:
+	for {
+		select {
+		case apiErr := <-apiErrCh:
+			procErr = apiErr
+			break LOOP
+		case peerErr := <-peerErrCh:
+			procErr = peerErr
+			break LOOP
+		}
+	}
+
+	webStopCh <- nil
+	replicateStopCh <- nil
+
+	return procErr
+}
+
+func makeKvNamespace(store lib.RemoteStore) (lib.KvNamespace, error) {
+	if hash == "" {
+		namespace := lib.EmptyNamespace()
+		return lib.PersistNewRemoteNamespace(store, namespace)
+	} else {
+		index := lib.IPFSPath(hash)
+		return lib.LoadRemoteNamespace(store, index)
+	}
+}
 
 func init() {
-	RootCmd.AddCommand(serveCmd)
+	storeCmd.AddCommand(serveCmd)
 
 	serveCmd.Flags().StringVar(&addr, "address", "localhost:8085", "Listen address for server")
-	serveCmd.Flags().StringVar(&hash, "hash", "", "IPFS hash of namespace head")
-	serveCmd.Flags().StringVar(&peerUrl, "peer", "http://localhost:5001", "IPFS peer URL")
+	serveCmd.Flags().DurationVar(&interval, "interval", time.Minute*1, "Interval between replications")
 }

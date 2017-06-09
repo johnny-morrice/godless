@@ -1,6 +1,5 @@
 package godless
 
-const MIME_QUERY = "text/plain"
 const MIME_PROTO_TEXT = "application/json"
 const MIME_PROTO = "application/octet-stream"
 

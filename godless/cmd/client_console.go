@@ -20,21 +20,27 @@
 
 package cmd
 
-import "github.com/spf13/cobra"
+import (
+	"github.com/spf13/cobra"
 
-// queryCmd represents the client command
-var queryCmd = &cobra.Command{
-	Use:   "query",
-	Short: "Godless frontend",
-	Long: `godless query provides a frontend to the godless p2p node.  For a terminal console, do:
+	lib "github.com/johnny-morrice/godless"
+)
 
-	godless query console`,
+// client_consoleCmd represents the client_console command
+var clientConsoleCmd = &cobra.Command{
+	Use:   "console",
+	Short: "Godless terminal console",
+	Long:  `A REPL console for evaluating godless queries.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		lib.SetDebugLevel(lib.LOG_WARN)
+		err := lib.TerminalConsole(serverAddr)
+
+		if err != nil {
+			die(err)
+		}
+	},
 }
 
 func init() {
-	RootCmd.AddCommand(queryCmd)
-
-	queryCmd.PersistentFlags().StringVar(&serverAddr, "server", "localhost:8085", "Server address")
+	queryCmd.AddCommand(clientConsoleCmd)
 }
-
-var serverAddr string

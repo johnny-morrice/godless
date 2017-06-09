@@ -22,19 +22,29 @@ package cmd
 
 import "github.com/spf13/cobra"
 
-// queryCmd represents the client command
-var queryCmd = &cobra.Command{
-	Use:   "query",
-	Short: "Godless frontend",
-	Long: `godless query provides a frontend to the godless p2p node.  For a terminal console, do:
+// cat_indexCmd represents the cat_index command
+var catIndexCmd = &cobra.Command{
+	Use:   "index",
+	Short: "Read godless data from the remote store or filesystem.",
+	Long: `Read a namespace, index, query, or API response from the remote store or filesystem.
 
-	godless query console`,
+The default behaviour is to read binary data and output text.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		catMessage(cmd, indexStreamer{})
+	},
 }
 
 func init() {
-	RootCmd.AddCommand(queryCmd)
+	catCmd.AddCommand(catIndexCmd)
 
-	queryCmd.PersistentFlags().StringVar(&serverAddr, "server", "localhost:8085", "Server address")
+	// Here you will define your flags and configuration settings.
+
+	// Cobra supports Persistent Flags which will work for this command
+	// and all subcommands, e.g.:
+	// cat_indexCmd.PersistentFlags().String("foo", "", "A help for foo")
+
+	// Cobra supports local flags which will only run when this command
+	// is called directly, e.g.:
+	// cat_indexCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+
 }
-
-var serverAddr string

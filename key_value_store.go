@@ -9,12 +9,21 @@ import (
 type KvNamespace interface {
 	RunKvQuery(*Query, KvQuery)
 	RunKvReflection(APIReflectRequest, KvQuery)
+	Replicate(RemoteStoreAddress, KvQuery)
 	IsChanged() bool
 	Persist() (KvNamespace, error)
 }
 
 type kvRunner interface {
 	Run(KvNamespace, KvQuery)
+}
+
+type kvReplicator struct {
+	peerAddr RemoteStoreAddress
+}
+
+func (replicator kvReplicator) Run(kvn KvNamespace, kvq KvQuery) {
+	kvn.Replicate(replicator.peerAddr, kvq)
 }
 
 type kvQueryRunner struct {
@@ -52,6 +61,13 @@ func MakeKvReflect(request APIReflectRequest) KvQuery {
 	}
 }
 
+func MakeKvReplicate(peerAddr RemoteStoreAddress) KvQuery {
+	return KvQuery{
+		runner:   kvReplicator{peerAddr: peerAddr},
+		Response: make(chan APIResponse),
+	}
+}
+
 // TODO these should make more general sense and be public.
 func (kvq KvQuery) writeResponse(val APIResponse) {
 	kvq.Response <- val
@@ -81,7 +97,6 @@ func LaunchKeyValueStore(ns KvNamespace) (APIService, <-chan error) {
 		defer close(errch)
 		for kvq := range interact {
 
-			logdbg("Key Value API received query")
 			err := kv.transact(kvq)
 
 			if err != nil {
@@ -101,8 +116,22 @@ type keyValueStore struct {
 	input     chan<- KvQuery
 }
 
+func (kv *keyValueStore) Replicate(peerAddr RemoteStoreAddress) (<-chan APIResponse, error) {
+	loginfo("APIService Replicating: %v", peerAddr)
+	kvq := MakeKvReplicate(peerAddr)
+	kv.input <- kvq
+
+	return kvq.Response, nil
+}
+
 func (kv *keyValueStore) RunQuery(query *Query) (<-chan APIResponse, error) {
+	if canLog(LOG_INFO) {
+		text := query.PrettyText()
+		loginfo("APIService running Query:\n%v", text)
+	}
+
 	if err := query.Validate(); err != nil {
+		logwarn("Invalid Query")
 		return nil, err
 	}
 	kvq := MakeKvQuery(query)
@@ -113,6 +142,7 @@ func (kv *keyValueStore) RunQuery(query *Query) (<-chan APIResponse, error) {
 }
 
 func (kv *keyValueStore) Reflect(request APIReflectRequest) (<-chan APIResponse, error) {
+	loginfo("APIService running reflect request: %v", request)
 	kvq := MakeKvReflect(request)
 
 	kv.input <- kvq
@@ -128,7 +158,7 @@ func (kv *keyValueStore) transact(kvq KvQuery) error {
 	kvq.Run(kv.namespace)
 
 	if kv.namespace.IsChanged() {
-		logdbg("Persisting new namespace")
+		logdbg("Namespace has been updated")
 		next, err := kv.namespace.Persist()
 
 		if err != nil {

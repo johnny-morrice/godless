@@ -116,13 +116,69 @@ func (peer *IPFSPeer) Disconnect() error {
 	return nil
 }
 
+func (peer *IPFSPeer) PublishAddr(addr RemoteStoreAddress, topics []RemoteStoreAddress) error {
+	const failMsg = "IPFSPeer.PublishAddr failed"
+
+	text := addr.Path()
+
+	for _, t := range topics {
+		topicText := t.Path()
+		err := peer.Shell.PubSubPublish(topicText, text)
+
+		if err != nil {
+			return errors.Wrap(err, failMsg)
+		}
+	}
+
+	return nil
+}
+
+func (peer *IPFSPeer) SubscribeAddrStream(topic RemoteStoreAddress) (<-chan RemoteStoreAddress, <-chan error) {
+	stream := make(chan RemoteStoreAddress)
+	errch := make(chan error)
+
+	go func() {
+		defer close(stream)
+		defer close(errch)
+
+		topicText := topic.Path()
+		subscription, launchErr := peer.Shell.PubSubSubscribe(topicText)
+
+		if launchErr != nil {
+			errch <- launchErr
+			return
+		}
+
+		for {
+			record, recordErr := subscription.Next()
+
+			if recordErr != nil {
+				errch <- recordErr
+				return
+			}
+
+			pubsubPeer := record.From()
+			bs := record.Data()
+			addr := IPFSPath(string(bs))
+
+			stream <- addr
+			loginfo("Subscription update: '%v' from '%v'", addr, pubsubPeer)
+		}
+
+	}()
+
+	return stream, errch
+}
+
 func (peer *IPFSPeer) AddIndex(index RemoteNamespaceIndex) (RemoteStoreAddress, error) {
+	const failMsg = "IPFSPeer.AddIndex failed"
+
 	chunk := makeIpfsIndex(index)
 
-	path, err := peer.add(chunk)
+	path, addErr := peer.add(chunk)
 
-	if err != nil {
-		return nil, errors.Wrap(err, "IPFSPeer.AddIndex failed")
+	if addErr != nil {
+		return nil, errors.Wrap(addErr, failMsg)
 	}
 
 	return path, nil

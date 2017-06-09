@@ -22,19 +22,18 @@ package cmd
 
 import "github.com/spf13/cobra"
 
-// queryCmd represents the client command
-var queryCmd = &cobra.Command{
-	Use:   "query",
-	Short: "Godless frontend",
-	Long: `godless query provides a frontend to the godless p2p node.  For a terminal console, do:
+// cat_namespaceCmd represents the cat_namespace command
+var catNamespaceCmd = &cobra.Command{
+	Use:   "namespace",
+	Short: "Read godless data from the remote store or filesystem.",
+	Long: `Read a namespace, index, query, or API response from the remote store or filesystem.
 
-	godless query console`,
+The default behaviour is to read binary data and output text.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		catMessage(cmd, namespaceStreamer{})
+	},
 }
 
 func init() {
-	RootCmd.AddCommand(queryCmd)
-
-	queryCmd.PersistentFlags().StringVar(&serverAddr, "server", "localhost:8085", "Server address")
+	catCmd.AddCommand(catNamespaceCmd)
 }
-
-var serverAddr string

@@ -11,6 +11,7 @@ type APIService interface {
 	APICloserService
 	APIQueryService
 	APIReflectService
+	APIPeerService
 }
 
 type APICloserService interface {
@@ -25,6 +26,10 @@ type APIQueryService interface {
 	RunQuery(*Query) (<-chan APIResponse, error)
 }
 
+type APIPeerService interface {
+	Replicate(peerAddr RemoteStoreAddress) (<-chan APIResponse, error)
+}
+
 type APIResponder interface {
 	RunQuery() APIResponse
 }
@@ -36,7 +41,7 @@ func (arf APIResponderFunc) RunQuery() APIResponse {
 }
 
 type APIQueryResponse struct {
-	Rows []NamespaceStreamEntry
+	Entries []NamespaceStreamEntry
 }
 
 type APIReflectionType uint16
@@ -65,6 +70,7 @@ const (
 	API_MESSAGE_NOOP = APIMessageType(iota)
 	API_QUERY
 	API_REFLECT
+	API_REPLICATE
 )
 
 type APIResponse struct {
@@ -108,13 +114,13 @@ func (resp APIResponse) Equals(other APIResponse) bool {
 	}
 
 	if resp.Type == API_QUERY {
-		if len(resp.QueryResponse.Rows) != len(other.QueryResponse.Rows) {
+		if len(resp.QueryResponse.Entries) != len(other.QueryResponse.Entries) {
 			logwarn("rows have unequal length")
-			logwarn("resp %v other %v", len(resp.QueryResponse.Rows), len(other.QueryResponse.Rows))
+			logwarn("resp %v other %v", len(resp.QueryResponse.Entries), len(other.QueryResponse.Entries))
 			return false
 		}
 
-		if !StreamEquals(resp.QueryResponse.Rows, other.QueryResponse.Rows) {
+		if !StreamEquals(resp.QueryResponse.Entries, other.QueryResponse.Entries) {
 			logwarn("rows not equal")
 			return false
 		}
@@ -199,4 +205,5 @@ var RESPONSE_OK_MSG = "ok"
 var RESPONSE_OK APIResponse = APIResponse{Msg: RESPONSE_OK_MSG}
 var RESPONSE_FAIL APIResponse = APIResponse{Msg: RESPONSE_FAIL_MSG}
 var RESPONSE_QUERY APIResponse = APIResponse{Msg: RESPONSE_OK_MSG, Type: API_QUERY}
+var RESPONSE_REPLICATE APIResponse = APIResponse{Msg: RESPONSE_OK_MSG, Type: API_REPLICATE}
 var RESPONSE_REFLECT APIResponse = APIResponse{Msg: RESPONSE_OK_MSG, Type: API_REFLECT}

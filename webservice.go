@@ -26,20 +26,23 @@ func (service *WebService) Handler() http.Handler {
 	reflectMux.HandleFunc("/index", service.reflectIndex)
 	reflectMux.HandleFunc("/namespace", service.reflectDumpNamespace)
 
-	topLevel.HandleFunc(QUERY_API_ROOT, service.queryRun)
+	topLevel.HandleFunc(QUERY_API_ROOT, service.runQuery)
 
 	return root
 }
 
 func (service *WebService) reflectHead(rw http.ResponseWriter, req *http.Request) {
+	loginfo("WebService reflectHead at: %v", req.RequestURI)
 	service.reflect(rw, APIReflectRequest{Command: REFLECT_HEAD_PATH})
 }
 
 func (service *WebService) reflectIndex(rw http.ResponseWriter, req *http.Request) {
+	loginfo("WebService reflectIndex at: %v", req.RequestURI)
 	service.reflect(rw, APIReflectRequest{Command: REFLECT_INDEX})
 }
 
 func (service *WebService) reflectDumpNamespace(rw http.ResponseWriter, req *http.Request) {
+	loginfo("WebService reflectDumpNamespace at: %v", req.RequestURI)
 	service.reflect(rw, APIReflectRequest{Command: REFLECT_DUMP_NAMESPACE})
 }
 
@@ -48,36 +51,17 @@ func (service *WebService) reflect(rw http.ResponseWriter, reflection APIReflect
 	service.respond(rw, respch, err)
 }
 
-func (service *WebService) queryRun(rw http.ResponseWriter, req *http.Request) {
-	var query *Query
-	var err error
-	var isText bool
-
-	isText, err = needsParse(req)
+func (service *WebService) runQuery(rw http.ResponseWriter, req *http.Request) {
+	loginfo("WebService runQuery at: %v", req.RequestURI)
+	query, err := DecodeQuery(req.Body)
 
 	if err != nil {
 		invalidRequest(rw, err)
 		return
 	}
 
-	if isText {
-		buff := bytes.Buffer{}
-		_, err = buff.ReadFrom(req.Body)
-
-		if err != nil {
-			queryText := buff.String()
-			query, err = CompileQuery(queryText)
-		}
-	} else {
-		query, err = DecodeQuery(req.Body)
-	}
-
-	if err != nil {
-		invalidRequest(rw, err)
-		return
-	}
-
-	service.runQuery(rw, query)
+	respch, err := service.API.RunQuery(query)
+	service.respond(rw, respch, err)
 }
 
 func invalidRequest(rw http.ResponseWriter, err error) {
@@ -86,11 +70,6 @@ func invalidRequest(rw http.ResponseWriter, err error) {
 	if reportErr != nil {
 		logerr("Error sending JSON error report: '%v'", reportErr)
 	}
-}
-
-func (service *WebService) runQuery(rw http.ResponseWriter, query *Query) {
-	respch, err := service.API.RunQuery(query)
-	service.respond(rw, respch, err)
 }
 
 // TODO more coherency.
@@ -122,7 +101,7 @@ func sendErr(rw http.ResponseWriter, err error) error {
 		panic(fmt.Sprintf("Bug encoding json error message: '%v'; ", encerr))
 	}
 
-	rw.WriteHeader(400)
+	rw.WriteHeader(WEB_API_ERROR)
 	rw.Header()["Content-Type"] = []string{MIME_PROTO_TEXT}
 	_, senderr := rw.Write(buff.Bytes())
 
@@ -153,13 +132,7 @@ func sendMessage(rw http.ResponseWriter, resp APIResponse) error {
 	return nil
 }
 
-func needsParse(req *http.Request) (bool, error) {
-	ct := req.Header[CONTENT_TYPE]
-	if linearContains(ct, MIME_QUERY) {
-		return true, nil
-	} else if linearContains(ct, MIME_PROTO) {
-		return false, nil
-	} else {
-		return false, fmt.Errorf("No suitable MIME in request: '%v'", ct)
-	}
-}
+const (
+	WEB_API_SUCCESS = 200
+	WEB_API_ERROR   = 500
+)
