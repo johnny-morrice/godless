@@ -9,19 +9,21 @@ Godless is a CRDT database, and query language, that uses [Interplanetary Filesy
 Run IPFS:
 
 ```
-$ ipfs daemon --offline
+$ ipfs daemon --enable-pubsub-experiment
 ```
 
 Run server:
 
 ```
-$ godless serve
+$ godless store server --topics=godless
 ```
+
+Any other godless server that uses the same topic will replicate all data.
 
 Run plumbing query command:
 
 ```
-$ godless client plumbing --query 'join books rows (@key=book50, authorName="EL James", publisher="Don'\''t wanna know")'
+$ godless query plumbing --query 'join books rows (@key=book50, authorName="EL James", publisher="Don'\''t wanna know")'
 2017/06/07 21:07:35 DEBUG HTTP POST to http://localhost:8085/api/query
 message: "ok"
 error: ""
@@ -31,7 +33,7 @@ queryResponse: <
   >
 >
 
-$ godless client plumbing --query 'select books where str_eq(@key, "book50") limit 10'     
+$ godless query plumbing --query 'select books where str_eq(@key, "book50") limit 10'     
 2017/06/07 21:07:46 DEBUG HTTP POST to http://localhost:8085/api/query
 message: "ok"
 error: ""
