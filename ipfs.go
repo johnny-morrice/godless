@@ -138,7 +138,7 @@ func (peer *IPFSPeer) DereferenceIndex(name RemoteStoreAddress) (RemoteNamespace
 }
 
 func (peer *IPFSPeer) UpdateIndex(index RemoteNamespaceIndex) (RemoteStoreAddress, error) {
-	const failMsg = "IPFSPeer.AddIndex failed"
+	const failMsg = "IPFSPeer.UpdateIndex failed"
 
 	chunk := makeIpfsIndex(index)
 
@@ -151,7 +151,7 @@ func (peer *IPFSPeer) UpdateIndex(index RemoteNamespaceIndex) (RemoteStoreAddres
 	key, keyErr := peer.GetMyKey()
 
 	if keyErr != nil {
-		return nil, errors.Wrap(err, failMsg)
+		return nil, errors.Wrap(keyErr, failMsg)
 	}
 
 	pubErr := peer.Shell.Publish(key.Path(), path.Path())
@@ -168,14 +168,15 @@ func (peer *IPFSPeer) UpdateIndex(index RemoteNamespaceIndex) (RemoteStoreAddres
 func (peer *IPFSPeer) GetMyKey() (RemoteStoreAddress, error) {
 	const failMsg = "IPFSPeer.GetMyKey failed"
 	if peer.MyKey == nil {
-		const noPeer = ""
-		peerInfo, err := peer.Shell.FindPeer(noPeer)
+		idInfo, err := peer.Shell.ID()
 
 		if err != nil {
 			return nil, errors.Wrap(err, failMsg)
 		}
 
-		peer.MyKey = IPFSPath(peerInfo.ID)
+		peer.MyKey = IPFSPath(idInfo.ID)
+
+		loginfo("Found self peer ID: %v", peer.MyKey)
 	}
 
 	return peer.MyKey, nil
