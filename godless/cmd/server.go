@@ -35,7 +35,7 @@ var serveCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		var kvNamespace lib.KvNamespace
 
-		store := lib.MakeIPFSPeer(ipfsService)
+		store := lib.MakeIPFSPeer(ipfsService, ipfsOffline)
 		err := store.Connect()
 
 		defer disconnect(store)

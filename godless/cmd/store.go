@@ -41,6 +41,7 @@ var hash string
 var peerNames []string
 var peers []lib.RemoteStoreAddress
 var ipfsService string
+var ipfsOffline bool
 
 func init() {
 	RootCmd.AddCommand(storeCmd)
@@ -48,6 +49,7 @@ func init() {
 	storeCmd.PersistentFlags().StringVar(&hash, "hash", "", "IPFS hash")
 	storeCmd.PersistentFlags().StringSliceVar(&peerNames, "peers", []string{}, "Comma separated list of IPNS peer names")
 	storeCmd.PersistentFlags().StringVar(&ipfsService, "ipfs", "http://localhost:5001", "IPFS webservice URL")
+	storeCmd.PersistentFlags().BoolVar(&ipfsOffline, "offline", false, "IPFS Service is in Offline Mode")
 }
 
 func readPeers() {

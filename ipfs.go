@@ -87,16 +87,18 @@ func (index *IPFSIndex) decode(r io.Reader) error {
 
 // TODO Don't use Shell directly - invent an interface.  This would enable mocking.
 type IPFSPeer struct {
-	Url    string
-	Client *http.Client
-	Shell  *ipfs.Shell
-	MyKey  RemoteStoreAddress
+	Offline bool
+	Url     string
+	Client  *http.Client
+	Shell   *ipfs.Shell
+	MyKey   RemoteStoreAddress
 }
 
-func MakeIPFSPeer(url string) RemoteStore {
+func MakeIPFSPeer(url string, offline bool) RemoteStore {
 	peer := &IPFSPeer{
-		Url:    url,
-		Client: defaultHttpClient(),
+		Url:     url,
+		Client:  defaultHttpClient(),
+		Offline: offline,
 	}
 
 	return peer
@@ -142,31 +144,41 @@ func (peer *IPFSPeer) UpdateIndex(index RemoteNamespaceIndex) (RemoteStoreAddres
 
 	chunk := makeIpfsIndex(index)
 
-	path, err := peer.add(chunk)
+	path, addErr := peer.add(chunk)
 
-	if err != nil {
-		return nil, errors.Wrap(err, failMsg)
+	if addErr != nil {
+		return nil, errors.Wrap(addErr, failMsg)
 	}
 
-	key, keyErr := peer.GetMyKey()
+	if !peer.Offline {
+		key, keyErr := peer.GetMyKey()
 
-	if keyErr != nil {
-		return nil, errors.Wrap(keyErr, failMsg)
+		if keyErr != nil {
+			return nil, errors.Wrap(keyErr, failMsg)
+		}
+
+		publishKey := key.Path()
+		publishValue := path.Path()
+		pubErr := peer.Shell.Publish(publishKey, publishValue)
+
+		if pubErr != nil {
+			logerr("Failed to publish '%v' on key '%v'", publishValue, publishKey)
+			return nil, errors.Wrap(pubErr, failMsg)
+		}
+
+		loginfo("Published '%v' on key '%v'", publishValue, publishKey)
 	}
-
-	pubErr := peer.Shell.Publish(key.Path(), path.Path())
-
-	if pubErr != nil {
-		return nil, errors.Wrap(pubErr, failMsg)
-	}
-
-	loginfo("Published '%v' on key '%v'", path, key)
 
 	return path, nil
 }
 
 func (peer *IPFSPeer) GetMyKey() (RemoteStoreAddress, error) {
 	const failMsg = "IPFSPeer.GetMyKey failed"
+
+	if peer.Offline {
+		return nil, fmt.Errorf("%s: unavailable in offline mode", failMsg)
+	}
+
 	if peer.MyKey == nil {
 		idInfo, err := peer.Shell.ID()
 
