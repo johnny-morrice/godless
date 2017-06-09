@@ -90,6 +90,7 @@ type IPFSPeer struct {
 	Url    string
 	Client *http.Client
 	Shell  *ipfs.Shell
+	MyKey  RemoteStoreAddress
 }
 
 func MakeIPFSPeer(url string) RemoteStore {
@@ -136,16 +137,48 @@ func (peer *IPFSPeer) DereferenceIndex(name RemoteStoreAddress) (RemoteNamespace
 	return index, nil
 }
 
-func (peer *IPFSPeer) AddIndex(index RemoteNamespaceIndex) (RemoteStoreAddress, error) {
+func (peer *IPFSPeer) UpdateIndex(index RemoteNamespaceIndex) (RemoteStoreAddress, error) {
+	const failMsg = "IPFSPeer.AddIndex failed"
+
 	chunk := makeIpfsIndex(index)
 
 	path, err := peer.add(chunk)
 
 	if err != nil {
-		return nil, errors.Wrap(err, "IPFSPeer.AddIndex failed")
+		return nil, errors.Wrap(err, failMsg)
 	}
 
+	key, keyErr := peer.GetMyKey()
+
+	if keyErr != nil {
+		return nil, errors.Wrap(err, failMsg)
+	}
+
+	pubErr := peer.Shell.Publish(key.Path(), path.Path())
+
+	if pubErr != nil {
+		return nil, errors.Wrap(pubErr, failMsg)
+	}
+
+	loginfo("Published '%v' on key '%v'", path, key)
+
 	return path, nil
+}
+
+func (peer *IPFSPeer) GetMyKey() (RemoteStoreAddress, error) {
+	const failMsg = "IPFSPeer.GetMyKey failed"
+	if peer.MyKey == nil {
+		const noPeer = ""
+		peerInfo, err := peer.Shell.FindPeer(noPeer)
+
+		if err != nil {
+			return nil, errors.Wrap(err, failMsg)
+		}
+
+		peer.MyKey = IPFSPath(peerInfo.ID)
+	}
+
+	return peer.MyKey, nil
 }
 
 func (peer *IPFSPeer) CatIndex(addr RemoteStoreAddress) (RemoteNamespaceIndex, error) {

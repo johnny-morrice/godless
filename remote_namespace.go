@@ -343,7 +343,7 @@ func (rn *remoteNamespace) indexNamespace(namespaceAddr RemoteStoreAddress, name
 
 func (rn *remoteNamespace) persistIndex(newIndex RemoteNamespaceIndex) (RemoteStoreAddress, error) {
 	const failMsg = "remoteNamespace.persistIndex failed"
-	addr, saveerr := rn.Store.AddIndex(newIndex)
+	addr, saveerr := rn.Store.UpdateIndex(newIndex)
 
 	if saveerr != nil {
 		return nil, errors.Wrap(saveerr, failMsg)
