@@ -3,23 +3,81 @@ package godless
 import (
 	"sync"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 type replicator struct {
 	topics   []RemoteStoreAddress
 	interval time.Duration
-	api      APIPeerService
+	api      APIService
 	store    RemoteStore
 	errch    chan<- error
 	stopch   <-chan interface{}
 }
 
 func (p2p replicator) publishAllTopics() {
+	if len(p2p.topics) == 0 {
+		loginfo("No topics, not publishing.")
+		return
+	}
 
+	ticker := time.NewTicker(p2p.interval)
+	defer ticker.Stop()
+LOOP:
+	for {
+		select {
+		case <-p2p.stopch:
+			break LOOP
+		case <-ticker.C:
+			p2p.publishIndex()
+		}
+	}
+}
+
+func (p2p replicator) publishIndex() {
+	loginfo("Publishing index...")
+
+	addr, reflectErr := p2p.sendReflectRequest()
+
+	if reflectErr != nil {
+		logerr("Failed to reflect for index address: %v", reflectErr)
+	}
+
+	// TODO ReflectResponse.Path should be RemoteStoreAddress.
+	head := IPFSPath(addr.ReflectResponse.Path)
+
+	publishErr := p2p.store.PublishAddr(head, p2p.topics)
+
+	if publishErr != nil {
+		logerr("Failed to publish index: %v", publishErr)
+	}
+}
+
+func (p2p replicator) sendReflectRequest() (APIResponse, error) {
+	failResp := RESPONSE_FAIL
+	failResp.Type = API_REFLECT
+
+	request := APIReflectRequest{Command: REFLECT_HEAD_PATH}
+	respch, err := p2p.api.Reflect(request)
+
+	if err != nil {
+		return failResp, errors.Wrap(err, "Reflection failed (Early API failure) for: %v %v")
+	}
+
+	resp := <-respch
+	loginfo("Reflection API Response message: %v", resp.Msg)
+
+	if resp.Err != nil {
+		return resp, resp.Err
+	}
+
+	return resp, nil
 }
 
 func (p2p replicator) subscribeAllTopics() {
 	if len(p2p.topics) == 0 {
+		loginfo("No topics, not subscribing")
 		return
 	}
 
@@ -62,6 +120,8 @@ func (p2p replicator) subscribeTopic(topic RemoteStoreAddress) {
 }
 
 func (p2p replicator) sendReplicateRequest(head RemoteStoreAddress) {
+	loginfo("Replicating from: %v", head)
+
 	respch, err := p2p.api.Replicate(head)
 
 	if err != nil {
@@ -76,7 +136,7 @@ func (p2p replicator) sendReplicateRequest(head RemoteStoreAddress) {
 	}
 }
 
-func Replicate(api APIPeerService, store RemoteStore, interval time.Duration, topics []RemoteStoreAddress) (chan<- interface{}, <-chan error) {
+func Replicate(api APIService, store RemoteStore, interval time.Duration, topics []RemoteStoreAddress) (chan<- interface{}, <-chan error) {
 	stopch := make(chan interface{}, 1)
 	errch := make(chan error, len(topics))
 

@@ -33,9 +33,11 @@ var serveCmd = &cobra.Command{
 	Short: "Run a Godless server",
 	Long:  `A godless server listens to queries over HTTP.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		readTopics()
+
 		var kvNamespace lib.KvNamespace
 
-		store := lib.MakeIPFSPeer(ipfsService, ipfsOffline)
+		store := lib.MakeIPFSPeer(ipfsService)
 		err := store.Connect()
 
 		defer disconnect(store)
@@ -88,7 +90,7 @@ func serve(kvNamespace lib.KvNamespace, store lib.RemoteStore) error {
 LOOP:
 	for {
 		select {
-		case apiErr, ok := <-apiErrCh:
+		case apiErr := <-apiErrCh:
 			procErr = apiErr
 			break LOOP
 		case peerErr := <-peerErrCh:
@@ -117,5 +119,5 @@ func init() {
 	storeCmd.AddCommand(serveCmd)
 
 	serveCmd.Flags().StringVar(&addr, "address", "localhost:8085", "Listen address for server")
-	serveCmd.Flags().DurationVar(&interval, "interval", time.Second*1, "Interval between replications")
+	serveCmd.Flags().DurationVar(&interval, "interval", time.Minute*1, "Interval between replications")
 }

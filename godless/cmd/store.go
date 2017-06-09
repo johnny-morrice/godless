@@ -27,8 +27,6 @@ var storeCmd = &cobra.Command{
 
 	godless store serve`,
 	Run: func(cmd *cobra.Command, args []string) {
-		readPeers()
-
 		err := cmd.Help()
 
 		if err != nil {
@@ -41,7 +39,6 @@ var hash string
 var pubsubTopicNames []string
 var pubsubTopics []lib.RemoteStoreAddress
 var ipfsService string
-var ipfsOffline bool
 
 func init() {
 	RootCmd.AddCommand(storeCmd)
@@ -49,10 +46,9 @@ func init() {
 	storeCmd.PersistentFlags().StringVar(&hash, "hash", "", "IPFS hash")
 	storeCmd.PersistentFlags().StringSliceVar(&pubsubTopicNames, "topics", []string{}, "Comma separated list of pubsub topics")
 	storeCmd.PersistentFlags().StringVar(&ipfsService, "ipfs", "http://localhost:5001", "IPFS webservice URL")
-	storeCmd.PersistentFlags().BoolVar(&ipfsOffline, "offline", false, "IPFS Service is in Offline Mode")
 }
 
-func readPeers() {
+func readTopics() {
 	pubsubTopics = make([]lib.RemoteStoreAddress, len(pubsubTopicNames))
 
 	for i, n := range pubsubTopicNames {

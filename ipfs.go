@@ -87,17 +87,15 @@ func (index *IPFSIndex) decode(r io.Reader) error {
 
 // TODO Don't use Shell directly - invent an interface.  This would enable mocking.
 type IPFSPeer struct {
-	Offline bool
-	Url     string
-	Client  *http.Client
-	Shell   *ipfs.Shell
+	Url    string
+	Client *http.Client
+	Shell  *ipfs.Shell
 }
 
-func MakeIPFSPeer(url string, offline bool) RemoteStore {
+func MakeIPFSPeer(url string) RemoteStore {
 	peer := &IPFSPeer{
-		Url:     url,
-		Client:  defaultHttpClient(),
-		Offline: offline,
+		Url:    url,
+		Client: defaultHttpClient(),
 	}
 
 	return peer
@@ -115,6 +113,23 @@ func (peer *IPFSPeer) Connect() error {
 
 func (peer *IPFSPeer) Disconnect() error {
 	// Nothing to do.
+	return nil
+}
+
+func (peer *IPFSPeer) PublishAddr(addr RemoteStoreAddress, topics []RemoteStoreAddress) error {
+	const failMsg = "IPFSPeer.PublishAddr failed"
+
+	text := addr.Path()
+
+	for _, t := range topics {
+		topicText := t.Path()
+		err := peer.Shell.PubSubPublish(topicText, text)
+
+		if err != nil {
+			return errors.Wrap(err, failMsg)
+		}
+	}
+
 	return nil
 }
 
