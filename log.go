@@ -29,26 +29,30 @@ func init() {
 	SetDebugLevel(LOG_DEBUG)
 }
 
+func canLog(level LogLevel) bool {
+	return __LOG_LEVEL <= level
+}
+
 func logdbg(msg string, args ...interface{}) {
-	if __LOG_LEVEL <= LOG_DEBUG {
+	if canLog(LOG_DEBUG) {
 		logMsg("DEBUG", msg, args...)
 	}
 }
 
 func loginfo(msg string, args ...interface{}) {
-	if __LOG_LEVEL <= LOG_INFO {
-		logMsg("INFO", msg, args)
+	if canLog(LOG_INFO) {
+		logMsg("INFO", msg, args...)
 	}
 }
 
 func logwarn(msg string, args ...interface{}) {
-	if __LOG_LEVEL <= LOG_WARN {
+	if canLog(LOG_WARN) {
 		logMsg("WARN", msg, args...)
 	}
 }
 
 func logerr(msg string, args ...interface{}) {
-	if __LOG_LEVEL <= LOG_ERROR {
+	if canLog(LOG_ERROR) {
 		logMsg("ERROR", msg, args...)
 	}
 }

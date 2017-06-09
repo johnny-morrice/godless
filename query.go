@@ -338,12 +338,7 @@ func (query *Query) opcodePanic() {
 	panic(fmt.Sprintf("Unknown Query OpCode: %v", query.OpCode))
 }
 
-func logQuery(query *Query) {
-	text := prettyQueryText(query)
-	logdbg(text)
-}
-
-func prettyQueryText(query *Query) string {
+func (query *Query) PrettyText() string {
 	buff := &bytes.Buffer{}
 	err := query.PrettyPrint(buff)
 

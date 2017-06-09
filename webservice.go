@@ -32,14 +32,17 @@ func (service *WebService) Handler() http.Handler {
 }
 
 func (service *WebService) reflectHead(rw http.ResponseWriter, req *http.Request) {
+	loginfo("WebService reflectHead at: %v", req.RequestURI)
 	service.reflect(rw, APIReflectRequest{Command: REFLECT_HEAD_PATH})
 }
 
 func (service *WebService) reflectIndex(rw http.ResponseWriter, req *http.Request) {
+	loginfo("WebService reflectIndex at: %v", req.RequestURI)
 	service.reflect(rw, APIReflectRequest{Command: REFLECT_INDEX})
 }
 
 func (service *WebService) reflectDumpNamespace(rw http.ResponseWriter, req *http.Request) {
+	loginfo("WebService reflectDumpNamespace at: %v", req.RequestURI)
 	service.reflect(rw, APIReflectRequest{Command: REFLECT_DUMP_NAMESPACE})
 }
 
@@ -49,6 +52,7 @@ func (service *WebService) reflect(rw http.ResponseWriter, reflection APIReflect
 }
 
 func (service *WebService) runQuery(rw http.ResponseWriter, req *http.Request) {
+	loginfo("WebService runQuery at: %v", req.RequestURI)
 	query, err := DecodeQuery(req.Body)
 
 	if err != nil {

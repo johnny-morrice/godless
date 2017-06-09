@@ -97,7 +97,6 @@ func LaunchKeyValueStore(ns KvNamespace) (APIService, <-chan error) {
 		defer close(errch)
 		for kvq := range interact {
 
-			logdbg("Key Value API received query")
 			err := kv.transact(kvq)
 
 			if err != nil {
@@ -118,6 +117,7 @@ type keyValueStore struct {
 }
 
 func (kv *keyValueStore) Replicate(peerAddr RemoteStoreAddress) (<-chan APIResponse, error) {
+	loginfo("APIService Replicating: %v", peerAddr)
 	kvq := MakeKvReplicate(peerAddr)
 	kv.input <- kvq
 
@@ -125,7 +125,13 @@ func (kv *keyValueStore) Replicate(peerAddr RemoteStoreAddress) (<-chan APIRespo
 }
 
 func (kv *keyValueStore) RunQuery(query *Query) (<-chan APIResponse, error) {
+	if canLog(LOG_INFO) {
+		text := query.PrettyText()
+		loginfo("APIService running Query:\n%v", text)
+	}
+
 	if err := query.Validate(); err != nil {
+		logwarn("Invalid Query")
 		return nil, err
 	}
 	kvq := MakeKvQuery(query)
@@ -136,6 +142,7 @@ func (kv *keyValueStore) RunQuery(query *Query) (<-chan APIResponse, error) {
 }
 
 func (kv *keyValueStore) Reflect(request APIReflectRequest) (<-chan APIResponse, error) {
+	loginfo("APIService running reflect request: %v", request)
 	kvq := MakeKvReflect(request)
 
 	kv.input <- kvq
@@ -151,7 +158,7 @@ func (kv *keyValueStore) transact(kvq KvQuery) error {
 	kvq.Run(kv.namespace)
 
 	if kv.namespace.IsChanged() {
-		logdbg("Persisting new namespace")
+		logdbg("Namespace has been updated")
 		next, err := kv.namespace.Persist()
 
 		if err != nil {

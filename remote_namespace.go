@@ -152,8 +152,6 @@ func (rn *remoteNamespace) dumpReflectNamespaces() APIResponse {
 func (rn *remoteNamespace) RunKvQuery(query *Query, kvq KvQuery) {
 	var runner APIResponder
 
-	logQuery(query)
-
 	switch query.OpCode {
 	case JOIN:
 		visitor := MakeNamespaceTreeJoin(rn)
