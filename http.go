@@ -17,4 +17,4 @@ func defaultHttpClient() *http.Client {
 	return __client
 }
 
-const __DEFAULT_TIMEOUT = 60 * time.Second
+const __DEFAULT_TIMEOUT = 10 * time.Minute
