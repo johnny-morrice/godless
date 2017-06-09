@@ -17,7 +17,7 @@ func LoadRemoteNamespace(store RemoteStore, addr RemoteStoreAddress) (KvNamespac
 	rn.Addr = addr
 	rn.NamespaceUpdate = EmptyNamespace()
 
-	_, err := rn.loadIndex()
+	_, err := rn.loadCurrentIndex()
 
 	// We don't use the index for anything at this point.
 	logdbg("Index found at '%v'", addr)
@@ -49,21 +49,24 @@ func (rn *remoteNamespace) Replicate(peerAddr RemoteStoreAddress, kvq KvQuery) {
 	kvq.writeResponse(response)
 }
 
-func (rn *remoteNamespace) joinPeerIndex(peerAddr RemoteStoreAddress) APIResponse {
-	// TODO implement
+func (rn *remoteNamespace) joinPeerIndex(peerName RemoteStoreAddress) APIResponse {
+	const failMsg = "remoteNamespace.joinPeerIndex failed"
+
 	failResponse := RESPONSE_FAIL
 	failResponse.Type = API_REPLICATE
 
-	myIndex, myErr := rn.loadIndex()
+	myIndex, myErr := rn.loadCurrentIndex()
 
 	if myErr != nil {
-
+		failResponse.Err = errors.Wrap(myErr, failMsg)
+		return failResponse
 	}
 
-	theirIndex, theirErr := rn.loadPeerIndex(peerAddr)
+	theirIndex, theirErr := rn.Store.DereferenceIndex(peerName)
 
 	if theirErr != nil {
-
+		failResponse.Err = errors.Wrap(theirErr, failMsg)
+		return failResponse
 	}
 
 	rn.IndexUpdate = myIndex.JoinIndex(theirIndex)
@@ -71,9 +74,8 @@ func (rn *remoteNamespace) joinPeerIndex(peerAddr RemoteStoreAddress) APIRespons
 	return RESPONSE_REPLICATE
 }
 
-func (rn *remoteNamespace) loadPeerIndex(peerAddr RemoteStoreAddress) (RemoteNamespaceIndex, error) {
-	// TODO implement
-	return EmptyRemoteNamespaceIndex(), nil
+func (rn *remoteNamespace) loadIndex(indexAddr RemoteStoreAddress) (RemoteNamespaceIndex, error) {
+	return rn.Store.CatIndex(indexAddr)
 }
 
 // TODO there are likely to be many reflection features.  Replace switches with polymorphism.
@@ -103,13 +105,14 @@ func (rn *remoteNamespace) getReflectHead() APIResponse {
 }
 
 func (rn *remoteNamespace) getReflectIndex() APIResponse {
+	const failMsg = "remoteNamespace.getReflectIndex failed"
 	response := RESPONSE_REFLECT
 
-	index, err := rn.loadIndex()
+	index, err := rn.loadCurrentIndex()
 
 	if err != nil {
 		response.Msg = RESPONSE_FAIL_MSG
-		response.Err = errors.Wrap(err, "getReflectIndex failed")
+		response.Err = errors.Wrap(err, failMsg)
 		return response
 	}
 
@@ -120,14 +123,15 @@ func (rn *remoteNamespace) getReflectIndex() APIResponse {
 }
 
 func (rn *remoteNamespace) dumpReflectNamespaces() APIResponse {
+	const failMsg = "remoteNamespace.dumpReflectNamespace failed"
 	response := RESPONSE_REFLECT
 	response.ReflectResponse.Type = REFLECT_DUMP_NAMESPACE
 
-	index, err := rn.loadIndex()
+	index, err := rn.loadCurrentIndex()
 
 	if err != nil {
 		response.Msg = RESPONSE_FAIL_MSG
-		response.Err = errors.Wrap(err, "dumpReflectNamespace failed")
+		response.Err = errors.Wrap(err, failMsg)
 		response.Type = API_REFLECT
 		return response
 	}
@@ -178,10 +182,12 @@ func (rn *remoteNamespace) JoinTable(tableKey TableName, table Table) error {
 }
 
 func (rn *remoteNamespace) LoadTraverse(nttr NamespaceTreeTableReader) error {
-	index, indexerr := rn.loadIndex()
+	const failMsg = "remoteNamespace.LoadTraverse failed"
+
+	index, indexerr := rn.loadCurrentIndex()
 
 	if indexerr != nil {
-		return errors.Wrap(indexerr, "LoadTraverse failed")
+		return errors.Wrap(indexerr, failMsg)
 	}
 
 	tableAddrs := rn.findTableAddrs(index, nttr)
@@ -218,7 +224,7 @@ func (rn *remoteNamespace) namespaceLoader(addrs []RemoteStoreAddress) (<-chan N
 			nsr, err := rn.Store.CatNamespace(a)
 
 			if err != nil {
-				logerr("namespaceLoader failed: %v", err)
+				logerr("remoteNamespace.namespaceLoader failed: %v", err)
 				return
 			}
 
@@ -253,40 +259,42 @@ func (rn *remoteNamespace) findTableAddrs(index RemoteNamespaceIndex, tableHints
 
 // Load chunks over IPFS
 // TODO opportunity to query IPFS in parallel?
-func (rn *remoteNamespace) loadIndex() (RemoteNamespaceIndex, error) {
-	if rn.Addr == nil {
-		// panic("tried to load remoteNamespace with empty Addr")
-		return EMPTY_INDEX, nil
-	}
-
-	index, err := rn.Store.CatIndex(rn.Addr)
-
-	if err != nil {
-		return RemoteNamespaceIndex{}, errors.Wrap(err, "Error in remoteNamespace CatNamespace")
-	}
-
-	return index, nil
+func (rn *remoteNamespace) loadCurrentIndex() (RemoteNamespaceIndex, error) {
+	return rn.loadIndex(rn.Addr)
 }
 
 // Write pending changes to IPFS and return the new parent namespace.
 func (rn *remoteNamespace) Persist() (KvNamespace, error) {
-	const failMsg = "Persist failed"
+	const failMsg = "remoteNamespace.Persist failed"
 
 	var nsIndex RemoteNamespaceIndex
+	var index RemoteNamespaceIndex
+	var namespaceAddr RemoteStoreAddress
+	var nsErr error
 
+	// TODO tidy up
 	if !rn.NamespaceUpdate.IsEmpty() {
+		namespaceAddr, nsErr = rn.persistNamespace(rn.NamespaceUpdate)
+
+		if nsErr != nil {
+			return nil, errors.Wrap(nsErr, failMsg)
+		}
+
 		var updateErr error
-		nsIndex, updateErr = rn.indexNamespace(rn.NamespaceUpdate)
+		nsIndex, updateErr = rn.indexNamespace(namespaceAddr, rn.NamespaceUpdate)
 
 		if updateErr != nil {
 			return nil, errors.Wrap(updateErr, failMsg)
 		}
 	}
 
-	index, loadErr := rn.loadIndex()
+	if rn.Addr != nil {
+		var loadErr error
+		index, loadErr = rn.loadCurrentIndex()
 
-	if loadErr != nil {
-		return nil, errors.Wrap(loadErr, failMsg)
+		if loadErr != nil {
+			return nil, errors.Wrap(loadErr, failMsg)
+		}
 	}
 
 	index = index.JoinIndex(nsIndex)
@@ -308,25 +316,22 @@ func (rn *remoteNamespace) Persist() (KvNamespace, error) {
 }
 
 func (rn *remoteNamespace) persistNamespace(namespace Namespace) (RemoteStoreAddress, error) {
+	const failMsg = "remoteNamespace.persistNamespace failed"
 	part := RemoteNamespaceRecord{Namespace: namespace}
 
 	namespaceAddr, err := rn.Store.AddNamespace(part)
 
 	if err != nil {
-		return nil, errors.Wrap(err, "Error adding remoteNamespace to Store")
+		return nil, errors.Wrap(err, failMsg)
 	}
 
-	logdbg("Persisted Namespace at: %v", namespaceAddr)
+	loginfo("Persisted Namespace at: %v", namespaceAddr)
 
 	return namespaceAddr, nil
 }
 
-func (rn *remoteNamespace) indexNamespace(namespace Namespace) (RemoteNamespaceIndex, error) {
-	namespaceAddr, nserr := rn.persistNamespace(namespace)
-
-	if nserr != nil {
-		return EmptyRemoteNamespaceIndex(), errors.Wrap(nserr, "indexNamespace failed")
-	}
+func (rn *remoteNamespace) indexNamespace(namespaceAddr RemoteStoreAddress, namespace Namespace) (RemoteNamespaceIndex, error) {
+	const failMsg = "remoteNamespace.indexNamespace failed"
 
 	tableNames := namespace.GetTableNames()
 
@@ -339,12 +344,14 @@ func (rn *remoteNamespace) indexNamespace(namespace Namespace) (RemoteNamespaceI
 }
 
 func (rn *remoteNamespace) persistIndex(newIndex RemoteNamespaceIndex) (RemoteStoreAddress, error) {
+	const failMsg = "remoteNamespace.persistIndex failed"
 	addr, saveerr := rn.Store.AddIndex(newIndex)
 
-	// TODO duplicate code.
 	if saveerr != nil {
-		return nil, errors.Wrap(saveerr, "indexNamespaceAddress failed")
+		return nil, errors.Wrap(saveerr, failMsg)
 	}
+
+	loginfo("Persisted Index at %v", addr)
 
 	return addr, nil
 }

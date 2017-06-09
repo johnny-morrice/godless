@@ -10,6 +10,7 @@ type RemoteStore interface {
 	AddIndex(RemoteNamespaceIndex) (RemoteStoreAddress, error)
 	CatNamespace(RemoteStoreAddress) (RemoteNamespaceRecord, error)
 	CatIndex(RemoteStoreAddress) (RemoteNamespaceIndex, error)
+	DereferenceIndex(RemoteStoreAddress) (RemoteNamespaceIndex, error)
 	Disconnect() error
 }
 

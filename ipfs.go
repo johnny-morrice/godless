@@ -116,6 +116,26 @@ func (peer *IPFSPeer) Disconnect() error {
 	return nil
 }
 
+func (peer *IPFSPeer) DereferenceIndex(name RemoteStoreAddress) (RemoteNamespaceIndex, error) {
+	const failMsg = "IPFSPeer.DereferenceIndex failed"
+
+	id := castIPFSPath(name)
+	resolved, resolveErr := peer.Shell.Resolve(string(id))
+
+	if resolveErr != nil {
+		return EMPTY_INDEX, errors.Wrap(resolveErr, failMsg)
+	}
+
+	indexAddr := IPFSPath(resolved)
+	index, catErr := peer.CatIndex(indexAddr)
+
+	if catErr != nil {
+		return EMPTY_INDEX, errors.Wrap(catErr, failMsg)
+	}
+
+	return index, nil
+}
+
 func (peer *IPFSPeer) AddIndex(index RemoteNamespaceIndex) (RemoteStoreAddress, error) {
 	chunk := makeIpfsIndex(index)
 
