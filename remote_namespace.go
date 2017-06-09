@@ -49,7 +49,7 @@ func (rn *remoteNamespace) Replicate(peerAddr RemoteStoreAddress, kvq KvQuery) {
 	kvq.writeResponse(response)
 }
 
-func (rn *remoteNamespace) joinPeerIndex(peerName RemoteStoreAddress) APIResponse {
+func (rn *remoteNamespace) joinPeerIndex(peerAddr RemoteStoreAddress) APIResponse {
 	const failMsg = "remoteNamespace.joinPeerIndex failed"
 
 	failResponse := RESPONSE_FAIL
@@ -62,7 +62,7 @@ func (rn *remoteNamespace) joinPeerIndex(peerName RemoteStoreAddress) APIRespons
 		return failResponse
 	}
 
-	theirIndex, theirErr := rn.Store.DereferenceIndex(peerName)
+	theirIndex, theirErr := rn.loadIndex(peerAddr)
 
 	if theirErr != nil {
 		failResponse.Err = errors.Wrap(theirErr, failMsg)
@@ -343,7 +343,7 @@ func (rn *remoteNamespace) indexNamespace(namespaceAddr RemoteStoreAddress, name
 
 func (rn *remoteNamespace) persistIndex(newIndex RemoteNamespaceIndex) (RemoteStoreAddress, error) {
 	const failMsg = "remoteNamespace.persistIndex failed"
-	addr, saveerr := rn.Store.UpdateIndex(newIndex)
+	addr, saveerr := rn.Store.AddIndex(newIndex)
 
 	if saveerr != nil {
 		return nil, errors.Wrap(saveerr, failMsg)

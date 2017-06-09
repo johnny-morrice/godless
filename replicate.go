@@ -1,68 +1,107 @@
 package godless
 
-import "time"
+import (
+	"sync"
+	"time"
+)
 
 type replicator struct {
-	peers    []RemoteStoreAddress
+	topics   []RemoteStoreAddress
 	interval time.Duration
 	api      APIPeerService
+	store    RemoteStore
+	errch    chan<- error
+	stopch   <-chan interface{}
 }
 
-func (p2p replicator) replicate(stopch <-chan interface{}) {
-	if len(p2p.peers) == 0 {
+func (p2p replicator) publishAllTopics() {
+
+}
+
+func (p2p replicator) subscribeAllTopics() {
+	if len(p2p.topics) == 0 {
 		return
 	}
 
-	timer := time.NewTicker(p2p.interval)
+	wg := &sync.WaitGroup{}
+	for _, t := range p2p.topics {
+		topic := t
+		wg.Add(1)
+		go func() {
+			p2p.subscribeTopic(topic)
+			wg.Done()
+		}()
+	}
 
-	// The API supports replicating one peer at a time.
-	// The approach taken here is to round robin the peers.
-	for i := 0; ; i++ {
-		if i >= len(p2p.peers) {
-			i = 0
-		}
+	wg.Wait()
+}
 
-		peer := p2p.peers[i]
+func (p2p replicator) subscribeTopic(topic RemoteStoreAddress) {
+	headch, errch := p2p.store.SubscribeAddrStream(topic)
 
+	go func() {
 	LOOP:
 		for {
 			select {
-			case <-stopch:
-				return
-			case <-timer.C:
-				p2p.replicatePeer(peer)
+			case head, present := <-headch:
+				if !present {
+					break LOOP
+				}
+
+				p2p.sendReplicateRequest(head)
+			case err, present := <-errch:
+				if present {
+					p2p.errch <- err
+				}
+				break LOOP
+			case <-p2p.stopch:
 				break LOOP
 			}
 		}
-	}
+	}()
 }
 
-func (p2p replicator) replicatePeer(peer RemoteStoreAddress) {
-	respch, err := p2p.api.Replicate(peer)
+func (p2p replicator) sendReplicateRequest(head RemoteStoreAddress) {
+	respch, err := p2p.api.Replicate(head)
 
 	if err != nil {
-		logerr("Replication failed (early API error): %v", err)
+		logerr("Replication failed (Early API failure) for '%v': %v", head, err)
+		return
 	}
 
 	resp := <-respch
-
-	if resp.Err == nil {
-		loginfo("Replicated peer '%v': '%v'", resp.Msg)
-	} else {
-		logerr("Replication error (%v): %v", resp.Msg, resp.Err)
+	loginfo("Replication API Response message: %v", resp.Msg)
+	if resp.Err != nil {
+		logerr("Replication failed for '%v': %v", head, resp.Err)
 	}
 }
 
-func Replicate(api APIPeerService, interval time.Duration, peers []RemoteStoreAddress) (chan<- interface{}, error) {
-	stopch := make(chan interface{})
+func Replicate(api APIPeerService, store RemoteStore, interval time.Duration, topics []RemoteStoreAddress) (chan<- interface{}, <-chan error) {
+	stopch := make(chan interface{}, 1)
+	errch := make(chan error, len(topics))
 
 	p2p := replicator{
-		peers:    peers,
+		topics:   topics,
 		interval: interval,
 		api:      api,
+		errch:    errch,
+		stopch:   stopch,
+		store:    store,
 	}
 
-	go p2p.replicate(stopch)
+	wg := &sync.WaitGroup{}
+	wg.Add(__REPLICATION_PROCESS_COUNT)
+	go func() {
+		p2p.subscribeAllTopics()
+		wg.Done()
+	}()
 
-	return stopch, nil
+	go func() {
+		go p2p.publishAllTopics()
+		wg.Done()
+	}()
+
+	return stopch, errch
 }
+
+const __REPLICATION_PROCESS_COUNT = 2

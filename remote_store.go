@@ -7,10 +7,10 @@ import "sort"
 type RemoteStore interface {
 	Connect() error
 	AddNamespace(RemoteNamespaceRecord) (RemoteStoreAddress, error)
-	UpdateIndex(RemoteNamespaceIndex) (RemoteStoreAddress, error)
+	AddIndex(RemoteNamespaceIndex) (RemoteStoreAddress, error)
 	CatNamespace(RemoteStoreAddress) (RemoteNamespaceRecord, error)
 	CatIndex(RemoteStoreAddress) (RemoteNamespaceIndex, error)
-	DereferenceIndex(RemoteStoreAddress) (RemoteNamespaceIndex, error)
+	SubscribeAddrStream(topic RemoteStoreAddress) (<-chan RemoteStoreAddress, <-chan error)
 	Disconnect() error
 }
 

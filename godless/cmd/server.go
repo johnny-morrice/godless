@@ -50,7 +50,7 @@ var serveCmd = &cobra.Command{
 			die(err)
 		}
 
-		err = serve(kvNamespace)
+		err = serve(kvNamespace, store)
 
 		if err != nil {
 			die(err)
@@ -69,7 +69,7 @@ func disconnect(store lib.RemoteStore) {
 	}
 }
 
-func serve(kvNamespace lib.KvNamespace) error {
+func serve(kvNamespace lib.KvNamespace, store lib.RemoteStore) error {
 	api, apiErrCh := lib.LaunchKeyValueStore(kvNamespace)
 
 	webService := &lib.WebService{
@@ -82,17 +82,25 @@ func serve(kvNamespace lib.KvNamespace) error {
 		return webErr
 	}
 
-	replicateStopCh, peerErr := lib.Replicate(api, interval, peers)
+	replicateStopCh, peerErrCh := lib.Replicate(api, store, interval, pubsubTopics)
 
-	if peerErr != nil {
-		return peerErr
+	var procErr error
+LOOP:
+	for {
+		select {
+		case apiErr, ok := <-apiErrCh:
+			procErr = apiErr
+			break LOOP
+		case peerErr := <-peerErrCh:
+			procErr = peerErr
+			break LOOP
+		}
 	}
 
-	apiErr := <-apiErrCh
 	webStopCh <- nil
 	replicateStopCh <- nil
 
-	return apiErr
+	return procErr
 }
 
 func makeKvNamespace(store lib.RemoteStore) (lib.KvNamespace, error) {

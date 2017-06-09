@@ -38,8 +38,8 @@ var storeCmd = &cobra.Command{
 }
 
 var hash string
-var peerNames []string
-var peers []lib.RemoteStoreAddress
+var pubsubTopicNames []string
+var pubsubTopics []lib.RemoteStoreAddress
 var ipfsService string
 var ipfsOffline bool
 
@@ -47,15 +47,15 @@ func init() {
 	RootCmd.AddCommand(storeCmd)
 
 	storeCmd.PersistentFlags().StringVar(&hash, "hash", "", "IPFS hash")
-	storeCmd.PersistentFlags().StringSliceVar(&peerNames, "peers", []string{}, "Comma separated list of IPNS peer names")
+	storeCmd.PersistentFlags().StringSliceVar(&pubsubTopicNames, "topics", []string{}, "Comma separated list of pubsub topics")
 	storeCmd.PersistentFlags().StringVar(&ipfsService, "ipfs", "http://localhost:5001", "IPFS webservice URL")
 	storeCmd.PersistentFlags().BoolVar(&ipfsOffline, "offline", false, "IPFS Service is in Offline Mode")
 }
 
 func readPeers() {
-	peers = make([]lib.RemoteStoreAddress, len(peerNames))
+	pubsubTopics = make([]lib.RemoteStoreAddress, len(pubsubTopicNames))
 
-	for i, n := range peerNames {
-		peers[i] = lib.IPFSPath(n)
+	for i, n := range pubsubTopicNames {
+		pubsubTopics[i] = lib.IPFSPath(n)
 	}
 }
