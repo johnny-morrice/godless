@@ -193,7 +193,7 @@ func (peer *IPFSPeer) SubscribeAddrStream(topic RemoteStoreAddress) (<-chan Remo
 
 			if recordErr != nil {
 				errch <- recordErr
-				return
+				continue
 			}
 
 			pubsubPeer := record.From()

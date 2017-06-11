@@ -109,8 +109,14 @@ func (rn *remoteNamespace) RunKvReflection(reflect APIReflectRequest, kvq KvQuer
 // TODO Not sure if best place for these to live.
 func (rn *remoteNamespace) getReflectHead() APIResponse {
 	response := RESPONSE_REFLECT
-	response.ReflectResponse.Path = rn.Addr.Path()
 	response.ReflectResponse.Type = REFLECT_HEAD_PATH
+
+	if rn.Addr == nil {
+		response.Err = errors.New("No index available")
+	} else {
+		response.ReflectResponse.Path = rn.Addr.Path()
+	}
+
 	return response
 }
 
