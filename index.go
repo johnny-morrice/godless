@@ -9,16 +9,16 @@ import (
 	"github.com/pkg/errors"
 )
 
-type RemoteNamespaceIndex struct {
+type Index struct {
 	Index map[TableName][]RemoteStoreAddress
 }
 
-func EmptyRemoteNamespaceIndex() RemoteNamespaceIndex {
-	return MakeRemoteNamespaceIndex(map[TableName]RemoteStoreAddress{})
+func EmptyIndex() Index {
+	return MakeIndex(map[TableName]RemoteStoreAddress{})
 }
 
-func MakeRemoteNamespaceIndex(indices map[TableName]RemoteStoreAddress) RemoteNamespaceIndex {
-	out := RemoteNamespaceIndex{
+func MakeIndex(indices map[TableName]RemoteStoreAddress) Index {
+	out := Index{
 		Index: map[TableName][]RemoteStoreAddress{},
 	}
 
@@ -30,7 +30,7 @@ func MakeRemoteNamespaceIndex(indices map[TableName]RemoteStoreAddress) RemoteNa
 }
 
 // Just encode as Gob for now.
-func EncodeIndex(index RemoteNamespaceIndex, w io.Writer) error {
+func EncodeIndex(index Index, w io.Writer) error {
 	const failMsg = "EncodeIndex failed"
 
 	message := MakeIndexMessage(index)
@@ -50,7 +50,7 @@ func EncodeIndex(index RemoteNamespaceIndex, w io.Writer) error {
 	return nil
 }
 
-func DecodeIndex(r io.Reader) (RemoteNamespaceIndex, error) {
+func DecodeIndex(r io.Reader) (Index, error) {
 	const failMsg = "DecodeIndex failed"
 
 	message := &IndexMessage{}
@@ -69,21 +69,21 @@ func DecodeIndex(r io.Reader) (RemoteNamespaceIndex, error) {
 	return ReadIndexMessage(message), nil
 }
 
-func ReadIndexMessage(message *IndexMessage) RemoteNamespaceIndex {
+func ReadIndexMessage(message *IndexMessage) Index {
 	stream := ReadIndexStreamMessage(message)
 	return ReadIndexStream(stream)
 }
 
-func MakeIndexMessage(index RemoteNamespaceIndex) *IndexMessage {
+func MakeIndexMessage(index Index) *IndexMessage {
 	stream := MakeIndexStream(index)
 	return MakeIndexStreamMessage(stream)
 }
 
-func (index RemoteNamespaceIndex) IsEmpty() bool {
+func (index Index) IsEmpty() bool {
 	return len(index.Index) == 0
 }
 
-func (index RemoteNamespaceIndex) JoinIndex(other RemoteNamespaceIndex) RemoteNamespaceIndex {
+func (index Index) JoinIndex(other Index) Index {
 	cpy := index.Copy()
 
 	for table, addrs := range other.Index {
@@ -93,7 +93,7 @@ func (index RemoteNamespaceIndex) JoinIndex(other RemoteNamespaceIndex) RemoteNa
 	return cpy
 }
 
-func (index RemoteNamespaceIndex) joinStreamEntry(entry IndexStreamEntry) RemoteNamespaceIndex {
+func (index Index) joinStreamEntry(entry IndexStreamEntry) Index {
 	cpy := index.Copy()
 	addrs := make([]RemoteStoreAddress, len(entry.Links))
 
@@ -106,7 +106,7 @@ func (index RemoteNamespaceIndex) joinStreamEntry(entry IndexStreamEntry) Remote
 	return cpy
 }
 
-func (index RemoteNamespaceIndex) Equals(other RemoteNamespaceIndex) bool {
+func (index Index) Equals(other Index) bool {
 	stream := MakeIndexStream(index)
 	otherStream := MakeIndexStream(other)
 
@@ -120,7 +120,7 @@ func (index RemoteNamespaceIndex) Equals(other RemoteNamespaceIndex) bool {
 	return true
 }
 
-func (index RemoteNamespaceIndex) AllTables() []TableName {
+func (index Index) AllTables() []TableName {
 	tables := make([]TableName, len(index.Index))
 
 	i := 0
@@ -132,7 +132,7 @@ func (index RemoteNamespaceIndex) AllTables() []TableName {
 	return tables
 }
 
-func (index RemoteNamespaceIndex) GetTableAddrs(tableName TableName) ([]RemoteStoreAddress, error) {
+func (index Index) GetTableAddrs(tableName TableName) ([]RemoteStoreAddress, error) {
 	indices, ok := index.Index[tableName]
 
 	if !ok {
@@ -142,7 +142,7 @@ func (index RemoteNamespaceIndex) GetTableAddrs(tableName TableName) ([]RemoteSt
 	return indices, nil
 }
 
-func (index RemoteNamespaceIndex) JoinNamespace(addr RemoteStoreAddress, namespace Namespace) RemoteNamespaceIndex {
+func (index Index) JoinNamespace(addr RemoteStoreAddress, namespace Namespace) Index {
 	tables := namespace.GetTableNames()
 
 	joined := index.Copy()
@@ -153,7 +153,7 @@ func (index RemoteNamespaceIndex) JoinNamespace(addr RemoteStoreAddress, namespa
 	return joined
 }
 
-func (index RemoteNamespaceIndex) addTable(table TableName, addr ...RemoteStoreAddress) {
+func (index Index) addTable(table TableName, addr ...RemoteStoreAddress) {
 	if addrs, ok := index.Index[table]; ok {
 		normal := normalStoreAddress(append(addrs, addr...))
 		index.Index[table] = normal
@@ -162,8 +162,8 @@ func (index RemoteNamespaceIndex) addTable(table TableName, addr ...RemoteStoreA
 	}
 }
 
-func (index RemoteNamespaceIndex) Copy() RemoteNamespaceIndex {
-	cpy := EmptyRemoteNamespaceIndex()
+func (index Index) Copy() Index {
+	cpy := EmptyIndex()
 
 	for table, addrs := range index.Index {
 		addrCopy := make([]RemoteStoreAddress, len(addrs))
@@ -176,4 +176,4 @@ func (index RemoteNamespaceIndex) Copy() RemoteNamespaceIndex {
 	return cpy
 }
 
-var __EMPTY_INDEX RemoteNamespaceIndex
+var __EMPTY_INDEX Index

@@ -2,6 +2,8 @@ package godless
 
 import (
 	"bytes"
+	"fmt"
+	"io"
 	"math/rand"
 	"reflect"
 	"runtime"
@@ -154,7 +156,7 @@ func BenchmarkNamespaceEncoding(b *testing.B) {
 	}
 }
 
-func TestNamespaceEncoding(t *testing.T) {
+func TestEncodeNamespace(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
 		return
@@ -171,30 +173,37 @@ func TestNamespaceEncoding(t *testing.T) {
 	}
 }
 
-func TestNamespaceStableEncoding(t *testing.T) {
-	entryA := MakeEntry([]Point{"hiya"})
-	entryB := MakeEntry([]Point{"whatcha"})
-	expected := MakeNamespace(map[TableName]Table{
-		"foo": MakeTable(map[RowName]Row{
-			"bar": MakeRow(map[EntryName]Entry{
-				"zob": entryA,
-			}),
-			"baz": MakeRow(map[EntryName]Entry{
-				"zob": entryB,
-			}),
-		}),
-	})
+func TestEncodeNamespaceStable(t *testing.T) {
+	const size = 50
+	namespace := genNamespace(__RAND, size)
 
-	for i := 0; i < ENCODE_REPEAT_COUNT; i++ {
-		actual := namespaceSerializationPass(expected)
-		assertNamespaceEquals(t, expected, actual)
+	buff := &bytes.Buffer{}
+	err := EncodeNamespace(namespace, buff)
+
+	if err != nil {
+		panic(err)
 	}
+
+	expected := buff.Bytes()
+	assertEncodingStable(t, expected, func(w io.Writer) {
+		err := EncodeNamespace(namespace, w)
+
+		if err != nil {
+			panic(err)
+		}
+	})
 }
 
 func trim(err error) string {
 	msg := err.Error()
 
-	return msg[:TRIM_LENGTH] + "..."
+	const elipses = "..."
+
+	if len(msg) < TRIM_LENGTH+len(elipses) {
+		return msg
+	} else {
+		return msg[:TRIM_LENGTH] + elipses
+	}
 }
 
 func namespaceEncodeOk(randomNs Namespace) bool {
@@ -762,6 +771,32 @@ func assertNonNilError(t *testing.T, err error) {
 	}
 }
 
+func assertBytesEqual(t *testing.T, expected, actual []byte) {
+	if len(expected) != len(actual) {
+		t.Error("Expected bytes length", len(expected), "but received", len(actual))
+		return
+	}
+
+	for i, e := range expected {
+		a := actual[i]
+
+		if e != a {
+			t.Error(fmt.Sprintf("Expected %v but received %v at position %v", e, a, i))
+		}
+	}
+}
+
+func assertEncodingStable(t *testing.T, expected []byte, encoder func(io.Writer)) {
+	for i := 0; i < ENCODE_REPEAT_COUNT; i++ {
+		buff := &bytes.Buffer{}
+		encoder(buff)
+
+		actual := buff.Bytes()
+
+		assertBytesEqual(t, expected, actual)
+	}
+}
+
 func debugLine(t *testing.T) {
 	_, _, line, ok := runtime.Caller(CALLER_DEPTH)
 
@@ -776,3 +811,11 @@ const CALLER_DEPTH = 2
 const TRIM_LENGTH = 500
 const ENCODE_REPEAT_COUNT = 50
 const SYMBOLS = "!@#$5^&*()'|:;-_~"
+
+var __RAND *rand.Rand
+
+func init() {
+	seed := time.Now().UnixNano()
+	src := rand.NewSource(seed)
+	__RAND = rand.New(src)
+}

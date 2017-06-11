@@ -96,7 +96,7 @@ func (stream byIndexStreamOrder) Less(i, j int) bool {
 	return len(a.Links) < len(b.Links)
 }
 
-func MakeIndexStream(index RemoteNamespaceIndex) []IndexStreamEntry {
+func MakeIndexStream(index Index) []IndexStreamEntry {
 	stream := make([]IndexStreamEntry, len(index.Index))
 
 	i := 0
@@ -111,8 +111,8 @@ func MakeIndexStream(index RemoteNamespaceIndex) []IndexStreamEntry {
 	return stream
 }
 
-func ReadIndexStream(stream []IndexStreamEntry) RemoteNamespaceIndex {
-	index := EmptyRemoteNamespaceIndex()
+func ReadIndexStream(stream []IndexStreamEntry) Index {
+	index := EmptyIndex()
 
 	for _, entry := range stream {
 		index = index.joinStreamEntry(entry)

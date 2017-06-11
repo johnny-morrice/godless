@@ -61,7 +61,7 @@ type APIReflectResponse struct {
 	Type      APIReflectionType
 	Namespace Namespace            `json:",omitEmpty"`
 	Path      string               `json:",omitEmpty"`
-	Index     RemoteNamespaceIndex `json:",omitEmpty"`
+	Index     Index `json:",omitEmpty"`
 }
 
 type APIMessageType uint8

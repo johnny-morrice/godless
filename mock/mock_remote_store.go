@@ -29,7 +29,7 @@ func (_m *MockRemoteStore) EXPECT() *_MockRemoteStoreRecorder {
 	return _m.recorder
 }
 
-func (_m *MockRemoteStore) AddIndex(_param0 godless.RemoteNamespaceIndex) (godless.RemoteStoreAddress, error) {
+func (_m *MockRemoteStore) AddIndex(_param0 godless.Index) (godless.RemoteStoreAddress, error) {
 	ret := _m.ctrl.Call(_m, "AddIndex", _param0)
 	ret0, _ := ret[0].(godless.RemoteStoreAddress)
 	ret1, _ := ret[1].(error)
@@ -51,9 +51,9 @@ func (_mr *_MockRemoteStoreRecorder) AddNamespace(arg0 interface{}) *gomock.Call
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "AddNamespace", arg0)
 }
 
-func (_m *MockRemoteStore) CatIndex(_param0 godless.RemoteStoreAddress) (godless.RemoteNamespaceIndex, error) {
+func (_m *MockRemoteStore) CatIndex(_param0 godless.RemoteStoreAddress) (godless.Index, error) {
 	ret := _m.ctrl.Call(_m, "CatIndex", _param0)
-	ret0, _ := ret[0].(godless.RemoteNamespaceIndex)
+	ret0, _ := ret[0].(godless.Index)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

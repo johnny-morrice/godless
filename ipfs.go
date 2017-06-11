@@ -61,10 +61,10 @@ type decoder interface {
 }
 
 type IPFSIndex struct {
-	Index RemoteNamespaceIndex
+	Index Index
 }
 
-func makeIpfsIndex(index RemoteNamespaceIndex) *IPFSIndex {
+func makeIpfsIndex(index Index) *IPFSIndex {
 	return &IPFSIndex{
 		Index: index,
 	}
@@ -209,7 +209,7 @@ func (peer *IPFSPeer) SubscribeAddrStream(topic RemoteStoreAddress) (<-chan Remo
 	return stream, errch
 }
 
-func (peer *IPFSPeer) AddIndex(index RemoteNamespaceIndex) (RemoteStoreAddress, error) {
+func (peer *IPFSPeer) AddIndex(index Index) (RemoteStoreAddress, error) {
 	const failMsg = "IPFSPeer.AddIndex failed"
 
 	if verr := peer.validateShell(); verr != nil {
@@ -227,7 +227,7 @@ func (peer *IPFSPeer) AddIndex(index RemoteNamespaceIndex) (RemoteStoreAddress, 
 	return path, nil
 }
 
-func (peer *IPFSPeer) CatIndex(addr RemoteStoreAddress) (RemoteNamespaceIndex, error) {
+func (peer *IPFSPeer) CatIndex(addr RemoteStoreAddress) (Index, error) {
 	if verr := peer.validateShell(); verr != nil {
 		return __EMPTY_INDEX, verr
 	}
