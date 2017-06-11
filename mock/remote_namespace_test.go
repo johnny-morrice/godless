@@ -16,7 +16,7 @@ func TestLoadRemoteNamespaceSuccess(t *testing.T) {
 	mock := NewMockRemoteStore(ctrl)
 	addr := lib.IPFSPath("The Index")
 
-	mock.EXPECT().CatIndex(addr).Return(lib.EMPTY_INDEX, nil)
+	mock.EXPECT().CatIndex(addr).Return(lib.EmptyRemoteNamespaceIndex(), nil)
 
 	ns, err := lib.LoadRemoteNamespace(mock, addr)
 
@@ -36,7 +36,7 @@ func TestLoadRemoteNamespaceFailure(t *testing.T) {
 	mock := NewMockRemoteStore(ctrl)
 	addr := lib.IPFSPath("The Index")
 
-	mock.EXPECT().CatIndex(addr).Return(lib.EMPTY_INDEX, errors.New("expected error"))
+	mock.EXPECT().CatIndex(addr).Return(lib.EmptyRemoteNamespaceIndex(), errors.New("expected error"))
 
 	ns, err := lib.LoadRemoteNamespace(mock, addr)
 
@@ -54,16 +54,24 @@ func TestPersistNewRemoteNamespaceSuccess(t *testing.T) {
 	defer ctrl.Finish()
 
 	mock := NewMockRemoteStore(ctrl)
-	namespace := lib.EmptyNamespace()
+
+	addr := lib.IPFSPath("The Index")
+	index := lib.MakeRemoteNamespaceIndex(map[lib.TableName]lib.RemoteStoreAddress{
+		MAIN_TABLE_KEY: addr,
+	})
+	namespace := lib.MakeNamespace(map[lib.TableName]lib.Table{
+		MAIN_TABLE_KEY: lib.MakeTable(map[lib.RowName]lib.Row{
+			"A row": lib.MakeRow(map[lib.EntryName]lib.Entry{
+				"A thing": lib.MakeEntry([]lib.Point{"hi"}),
+			}),
+		}),
+	})
 	record := lib.RemoteNamespaceRecord{
 		Namespace: namespace,
 	}
-	addr := lib.IPFSPath("The Index")
-	index := lib.EMPTY_INDEX
-	joinedIndex := index.JoinNamespace(addr, namespace)
 
-	mock.EXPECT().AddIndex(joinedIndex).Return(addr, nil)
 	mock.EXPECT().AddNamespace(mtchrd(record)).Return(addr, nil)
+	mock.EXPECT().AddIndex(index).Return(addr, nil)
 
 	ns, err := lib.PersistNewRemoteNamespace(mock, namespace)
 
@@ -82,11 +90,8 @@ func TestPersistNewRemoteNamespaceFailure(t *testing.T) {
 
 	mock := NewMockRemoteStore(ctrl)
 	namespace := lib.EmptyNamespace()
-	record := lib.RemoteNamespaceRecord{
-		Namespace: namespace,
-	}
 
-	mock.EXPECT().AddNamespace(mtchrd(record)).Return(nil, errors.New("Expected error"))
+	mock.EXPECT().AddIndex(gomock.Any()).Return(nil, errors.New("Expected error"))
 
 	ns, err := lib.PersistNewRemoteNamespace(mock, namespace)
 
@@ -286,36 +291,50 @@ func TestPersistSuccess(t *testing.T) {
 
 	mock := NewMockRemoteStore(ctrl)
 
-	addrA := lib.RemoteStoreAddress(lib.IPFSPath("Addr A"))
+	// addrA := lib.RemoteStoreAddress(lib.IPFSPath("Addr A"))
 	addrB := lib.RemoteStoreAddress(lib.IPFSPath("Addr B"))
 	addrIndexA := lib.RemoteStoreAddress(lib.IPFSPath("Addr Index A"))
 	addrIndexB := lib.RemoteStoreAddress(lib.IPFSPath("Addr Index B"))
 	tableB := lib.MakeTable(map[lib.RowName]lib.Row{
 		"Row B": lib.MakeRow(map[lib.EntryName]lib.Entry{
-			"Entry B": lib.MakeEntry([]lib.Point{"Entry B"}),
+			"Entry B": lib.MakeEntry([]lib.Point{"Point B"}),
 		}),
 	})
+
+	// TODO not fully decided whether this test should do the initial persist too.
+
+	// tableAName := lib.TableName("Table A")
+	// namespaceA := lib.MakeNamespace(map[lib.TableName]lib.Table{
+	// 	tableAName: lib.MakeTable(map[lib.RowName]lib.Row{
+	// 		"Row Q": lib.MakeRow(map[lib.EntryName]lib.Entry{
+	// 			"Entry Q": lib.MakeEntry([]lib.Point{"hi"}),
+	// 		}),
+	// 	}),
+	// })
 	namespaceA := lib.EmptyNamespace()
 	tableBName := lib.TableName("Table B")
 	namespaceB := namespaceA.JoinTable(tableBName, tableB)
 
-	recordA := lib.RemoteNamespaceRecord{
-		Namespace: namespaceA,
-	}
+	// recordA := lib.RemoteNamespaceRecord{
+	// 	Namespace: namespaceA,
+	// }
 
 	recordB := lib.RemoteNamespaceRecord{
 		Namespace: namespaceB,
 	}
 
+	// indexA := lib.MakeRemoteNamespaceIndex(map[lib.TableName]lib.RemoteStoreAddress{
+	// 	tableAName: addrA,
+	// })
 	indexA := lib.EmptyRemoteNamespaceIndex()
 
 	indexB := indexA.JoinNamespace(addrB, namespaceB)
 
-	mock.EXPECT().AddIndex(indexA).Return(addrIndexA, nil)
+	// mock.EXPECT().AddNamespace(mtchrd(recordA)).Return(addrA, nil)
+	mock.EXPECT().AddIndex(gomock.Any()).Return(addrIndexA, nil)
+	mock.EXPECT().AddNamespace(mtchrd(recordB)).Return(addrB, nil)
 	mock.EXPECT().CatIndex(addrIndexA).Return(indexA, nil)
 	mock.EXPECT().AddIndex(indexB).Return(addrIndexB, nil)
-	mock.EXPECT().AddNamespace(mtchrd(recordA)).Return(addrA, nil)
-	mock.EXPECT().AddNamespace(mtchrd(recordB)).Return(addrB, nil)
 
 	ns1, perr1 := lib.PersistNewRemoteNamespace(mock, namespaceA)
 
@@ -350,7 +369,6 @@ func TestPersistFailure(t *testing.T) {
 
 	mock := NewMockRemoteStore(ctrl)
 
-	addr := lib.RemoteStoreAddress(lib.IPFSPath("Index Thing"))
 	table := lib.MakeTable(map[lib.RowName]lib.Row{
 		"Row Key": lib.MakeRow(map[lib.EntryName]lib.Entry{
 			"Entry Key": lib.MakeEntry([]lib.Point{"Entry Point"}),
@@ -359,16 +377,11 @@ func TestPersistFailure(t *testing.T) {
 	namespace := lib.EmptyNamespace()
 	nextNamespace := namespace.JoinTable("Table Key", table)
 
-	recordA := lib.RemoteNamespaceRecord{
-		Namespace: namespace,
-	}
-
 	recordB := lib.RemoteNamespaceRecord{
 		Namespace: nextNamespace,
 	}
 
 	mock.EXPECT().AddIndex(lib.EmptyRemoteNamespaceIndex())
-	mock.EXPECT().AddNamespace(mtchrd(recordA)).Return(addr, nil)
 	mock.EXPECT().AddNamespace(mtchrd(recordB)).Return(nil, errors.New("Expected error"))
 
 	ns1, perr1 := lib.PersistNewRemoteNamespace(mock, namespace)

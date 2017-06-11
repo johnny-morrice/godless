@@ -57,13 +57,13 @@ func DecodeIndex(r io.Reader) (RemoteNamespaceIndex, error) {
 	bs, err := ioutil.ReadAll(r)
 
 	if err != nil {
-		return EMPTY_INDEX, errors.Wrap(err, failMsg)
+		return __EMPTY_INDEX, errors.Wrap(err, failMsg)
 	}
 
 	err = proto.Unmarshal(bs, message)
 
 	if err != nil {
-		return EMPTY_INDEX, errors.Wrap(err, failMsg)
+		return __EMPTY_INDEX, errors.Wrap(err, failMsg)
 	}
 
 	return ReadIndexMessage(message), nil
@@ -176,4 +176,4 @@ func (index RemoteNamespaceIndex) Copy() RemoteNamespaceIndex {
 	return cpy
 }
 
-var EMPTY_INDEX RemoteNamespaceIndex
+var __EMPTY_INDEX RemoteNamespaceIndex

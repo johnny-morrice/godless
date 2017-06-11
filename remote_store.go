@@ -64,4 +64,4 @@ type RemoteNamespaceRecord struct {
 	Namespace Namespace
 }
 
-var EMPTY_RECORD RemoteNamespaceRecord
+var __EMPTY_RECORD RemoteNamespaceRecord

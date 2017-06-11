@@ -50,7 +50,7 @@ func PersistNewRemoteNamespace(store RemoteStore, namespace Namespace) (KvNamesp
 
 func (rn *remoteNamespace) Reset() {
 	rn.NamespaceUpdate = EmptyNamespace()
-	rn.IndexUpdate = EMPTY_INDEX
+	rn.IndexUpdate = __EMPTY_INDEX
 }
 
 func (rn *remoteNamespace) Replicate(peerAddr RemoteStoreAddress, kvq KvQuery) {

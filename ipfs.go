@@ -229,7 +229,7 @@ func (peer *IPFSPeer) AddIndex(index RemoteNamespaceIndex) (RemoteStoreAddress, 
 
 func (peer *IPFSPeer) CatIndex(addr RemoteStoreAddress) (RemoteNamespaceIndex, error) {
 	if verr := peer.validateShell(); verr != nil {
-		return EMPTY_INDEX, verr
+		return __EMPTY_INDEX, verr
 	}
 
 	path := castIPFSPath(addr)
@@ -238,7 +238,7 @@ func (peer *IPFSPeer) CatIndex(addr RemoteStoreAddress) (RemoteNamespaceIndex, e
 	caterr := peer.cat(path, chunk)
 
 	if caterr != nil {
-		return EMPTY_INDEX, errors.Wrap(caterr, "IPFSPeer.CatNamespace failed")
+		return __EMPTY_INDEX, errors.Wrap(caterr, "IPFSPeer.CatNamespace failed")
 	}
 
 	return chunk.Index, nil
@@ -262,7 +262,7 @@ func (peer *IPFSPeer) AddNamespace(record RemoteNamespaceRecord) (RemoteStoreAdd
 
 func (peer *IPFSPeer) CatNamespace(addr RemoteStoreAddress) (RemoteNamespaceRecord, error) {
 	if verr := peer.validateShell(); verr != nil {
-		return EMPTY_RECORD, verr
+		return __EMPTY_RECORD, verr
 	}
 
 	path := castIPFSPath(addr)
@@ -271,7 +271,7 @@ func (peer *IPFSPeer) CatNamespace(addr RemoteStoreAddress) (RemoteNamespaceReco
 	caterr := peer.cat(path, chunk)
 
 	if caterr != nil {
-		return EMPTY_RECORD, errors.Wrap(caterr, "IPFSPeer.CatNamespace failed")
+		return __EMPTY_RECORD, errors.Wrap(caterr, "IPFSPeer.CatNamespace failed")
 	}
 
 	record := RemoteNamespaceRecord{Namespace: chunk.Namespace}
