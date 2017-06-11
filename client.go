@@ -18,7 +18,7 @@ type Client struct {
 func MakeClient(addr string) *Client {
 	return &Client{
 		Addr: addr,
-		Http: defaultHttpClient(),
+		Http: defaultFrontentClient(),
 	}
 }
 

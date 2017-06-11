@@ -113,7 +113,12 @@ LOOP:
 func makeKvNamespace(store lib.RemoteStore) (lib.KvNamespace, error) {
 	if hash == "" {
 		namespace := lib.EmptyNamespace()
-		return lib.PersistNewRemoteNamespace(store, namespace)
+		if earlyConnect {
+			return lib.PersistNewRemoteNamespace(store, namespace)
+		} else {
+			return lib.MakeRemoteNamespace(store, namespace), nil
+		}
+
 	} else {
 		index := lib.IPFSPath(hash)
 		return lib.LoadRemoteNamespace(store, index)

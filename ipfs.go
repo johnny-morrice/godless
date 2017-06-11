@@ -95,7 +95,7 @@ type IPFSPeer struct {
 func MakeIPFSPeer(url string) RemoteStore {
 	peer := &IPFSPeer{
 		Url:    url,
-		Client: defaultHttpClient(),
+		Client: defaultBackendClient(),
 	}
 
 	return peer
@@ -116,8 +116,20 @@ func (peer *IPFSPeer) Disconnect() error {
 	return nil
 }
 
+func (peer *IPFSPeer) validateShell() error {
+	if peer.Shell == nil {
+		return peer.Connect()
+	}
+
+	return nil
+}
+
 func (peer *IPFSPeer) PublishAddr(addr RemoteStoreAddress, topics []RemoteStoreAddress) error {
 	const failMsg = "IPFSPeer.PublishAddr failed"
+
+	if verr := peer.validateShell(); verr != nil {
+		return verr
+	}
 
 	text := addr.Path()
 
@@ -137,9 +149,22 @@ func (peer *IPFSPeer) SubscribeAddrStream(topic RemoteStoreAddress) (<-chan Remo
 	stream := make(chan RemoteStoreAddress)
 	errch := make(chan error)
 
+	tidy := func() {
+		close(stream)
+		close(errch)
+	}
+
+	if verr := peer.validateShell(); verr != nil {
+		go func() {
+			errch <- verr
+			defer tidy()
+		}()
+
+		return stream, errch
+	}
+
 	go func() {
-		defer close(stream)
-		defer close(errch)
+		defer tidy()
 
 		topicText := topic.Path()
 		subscription, launchErr := peer.Shell.PubSubSubscribe(topicText)
@@ -173,6 +198,10 @@ func (peer *IPFSPeer) SubscribeAddrStream(topic RemoteStoreAddress) (<-chan Remo
 func (peer *IPFSPeer) AddIndex(index RemoteNamespaceIndex) (RemoteStoreAddress, error) {
 	const failMsg = "IPFSPeer.AddIndex failed"
 
+	if verr := peer.validateShell(); verr != nil {
+		return nil, verr
+	}
+
 	chunk := makeIpfsIndex(index)
 
 	path, addErr := peer.add(chunk)
@@ -185,6 +214,10 @@ func (peer *IPFSPeer) AddIndex(index RemoteNamespaceIndex) (RemoteStoreAddress, 
 }
 
 func (peer *IPFSPeer) CatIndex(addr RemoteStoreAddress) (RemoteNamespaceIndex, error) {
+	if verr := peer.validateShell(); verr != nil {
+		return EMPTY_INDEX, verr
+	}
+
 	path := castIPFSPath(addr)
 
 	chunk := &IPFSIndex{}
@@ -198,6 +231,10 @@ func (peer *IPFSPeer) CatIndex(addr RemoteStoreAddress) (RemoteNamespaceIndex, e
 }
 
 func (peer *IPFSPeer) AddNamespace(record RemoteNamespaceRecord) (RemoteStoreAddress, error) {
+	if verr := peer.validateShell(); verr != nil {
+		return nil, verr
+	}
+
 	chunk := makeIpfsRecord(record.Namespace)
 
 	path, err := peer.add(chunk)
@@ -210,6 +247,10 @@ func (peer *IPFSPeer) AddNamespace(record RemoteNamespaceRecord) (RemoteStoreAdd
 }
 
 func (peer *IPFSPeer) CatNamespace(addr RemoteStoreAddress) (RemoteNamespaceRecord, error) {
+	if verr := peer.validateShell(); verr != nil {
+		return EMPTY_RECORD, verr
+	}
+
 	path := castIPFSPath(addr)
 
 	chunk := &IPFSRecord{}

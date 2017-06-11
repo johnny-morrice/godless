@@ -5,16 +5,28 @@ import (
 	"time"
 )
 
-var __client *http.Client
+var __backendClient *http.Client
+var __frontendClient *http.Client
 
-func defaultHttpClient() *http.Client {
-	if __client == nil {
-		__client = &http.Client{
-			Timeout: time.Duration(__DEFAULT_TIMEOUT),
+func defaultFrontentClient() *http.Client {
+	if __frontendClient == nil {
+		__frontendClient = &http.Client{
+			Timeout: time.Duration(__FRONTEND_TIMEOUT),
 		}
 	}
 
-	return __client
+	return __frontendClient
 }
 
-const __DEFAULT_TIMEOUT = 10 * time.Minute
+func defaultBackendClient() *http.Client {
+	if __backendClient == nil {
+		__backendClient = &http.Client{
+			Timeout: time.Duration(__BACKEND_TIMEOUT),
+		}
+	}
+
+	return __backendClient
+}
+
+const __BACKEND_TIMEOUT = 10 * time.Minute
+const __FRONTEND_TIMEOUT = 1 * time.Minute

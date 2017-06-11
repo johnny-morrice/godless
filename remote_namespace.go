@@ -29,10 +29,15 @@ func LoadRemoteNamespace(store RemoteStore, addr RemoteStoreAddress) (KvNamespac
 	return rn, nil
 }
 
-func PersistNewRemoteNamespace(store RemoteStore, namespace Namespace) (KvNamespaceTree, error) {
+func MakeRemoteNamespace(store RemoteStore, namespace Namespace) KvNamespaceTree {
 	rn := &remoteNamespace{}
 	rn.Store = store
 	rn.NamespaceUpdate = namespace
+	return rn
+}
+
+func PersistNewRemoteNamespace(store RemoteStore, namespace Namespace) (KvNamespaceTree, error) {
+	rn := MakeRemoteNamespace(store, namespace)
 
 	kv, err := rn.Persist()
 
