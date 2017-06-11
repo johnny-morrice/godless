@@ -42,6 +42,7 @@ func (p2p replicator) publishIndex() {
 
 	if reflectErr != nil {
 		logerr("Failed to reflect for index address: %v", reflectErr)
+		return
 	}
 
 	// TODO ReflectResponse.Path should be RemoteStoreAddress.
@@ -108,9 +109,10 @@ func (p2p replicator) subscribeTopic(topic RemoteStoreAddress) {
 
 				p2p.sendReplicateRequest(head)
 			case err, present := <-errch:
-				if present {
-					p2p.errch <- err
+				if !present {
+					break LOOP
 				}
+				loginfo("Subscription error: %v", err)
 				break LOOP
 			case <-p2p.stopch:
 				break LOOP
