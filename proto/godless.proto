@@ -1,0 +1,80 @@
+syntax = "proto3";
+package proto;
+
+message NamespaceMessage {
+	repeated NamespaceEntryMessage entries = 1;
+}
+
+message NamespaceEntryMessage {
+	string table = 1;
+	string row = 2;
+	string entry = 3;
+	repeated string points = 4;
+}
+
+message IndexMessage {
+	repeated IndexEntryMessage entries = 1;
+}
+
+message IndexEntryMessage {
+	string table = 1;
+	repeated string links = 2;
+}
+
+message APIResponseMessage {
+	string message = 1;
+	string error = 2;
+	uint32 type = 3;
+	APIQueryResponseMessage queryResponse = 4;
+	APIReflectResponseMessage reflectResponse = 5;
+}
+
+message APIQueryResponseMessage {
+	NamespaceMessage namespace = 1;
+}
+
+message APIReflectResponseMessage {
+	uint32 type = 1;
+	string path = 2;
+	IndexMessage index = 3;
+	NamespaceMessage namespace = 4;
+}
+
+message QueryMessage {
+	uint32 opCode = 1;
+	string table = 2;
+	QueryJoinMessage join = 3;
+	QuerySelectMessage select = 4;
+}
+
+message QueryJoinMessage {
+	repeated QueryRowJoinMessage rows = 1;
+}
+
+message QueryRowJoinMessage {
+	string row = 1;
+	repeated QueryRowJoinEntryMessage entries = 2;
+}
+
+message QueryRowJoinEntryMessage {
+	string entry = 1;
+	string point = 2;
+}
+
+message QuerySelectMessage {
+	uint32 limit = 1;
+	QueryWhereMessage where = 2;
+}
+
+message QueryWhereMessage {
+	uint32 opCode = 1;
+	QueryPredicateMessage predicate = 2;
+	repeated QueryWhereMessage clauses = 3;
+}
+
+message QueryPredicateMessage {
+	uint32 opCode = 1;
+	repeated string keys = 2;
+	repeated string literals = 3;
+	bool userow = 4;
+}

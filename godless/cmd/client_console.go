@@ -21,9 +21,9 @@
 package cmd
 
 import (
+	"github.com/johnny-morrice/godless/cli"
+	"github.com/johnny-morrice/godless/log"
 	"github.com/spf13/cobra"
-
-	lib "github.com/johnny-morrice/godless"
 )
 
 // client_consoleCmd represents the client_console command
@@ -32,8 +32,8 @@ var clientConsoleCmd = &cobra.Command{
 	Short: "Godless terminal console",
 	Long:  `A REPL console for evaluating godless queries.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		lib.SetDebugLevel(lib.LOG_WARN)
-		err := lib.TerminalConsole(serverAddr)
+		log.SetLevel(log.LOG_WARN)
+		err := cli.TerminalConsole(serverAddr)
 
 		if err != nil {
 			die(err)

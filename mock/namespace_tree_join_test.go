@@ -4,7 +4,10 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	lib "github.com/johnny-morrice/godless"
+	"github.com/johnny-morrice/godless/api"
+	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/internal/eval"
+	"github.com/johnny-morrice/godless/query"
 	"github.com/pkg/errors"
 )
 
@@ -14,27 +17,27 @@ func TestRunQueryJoinSuccess(t *testing.T) {
 
 	mock := NewMockNamespaceTree(ctrl)
 
-	query := &lib.Query{
-		OpCode:   lib.JOIN,
+	query := &query.Query{
+		OpCode:   query.JOIN,
 		TableKey: MAIN_TABLE_KEY,
-		Join: lib.QueryJoin{
-			Rows: []lib.QueryRowJoin{
-				lib.QueryRowJoin{
+		Join: query.QueryJoin{
+			Rows: []query.QueryRowJoin{
+				query.QueryRowJoin{
 					RowKey: "Row A",
-					Entries: map[lib.EntryName]lib.Point{
+					Entries: map[crdt.EntryName]crdt.Point{
 						"Entry A": "Point A",
 						"Entry B": "Point B",
 					},
 				},
-				lib.QueryRowJoin{
+				query.QueryRowJoin{
 					RowKey: "Row B",
-					Entries: map[lib.EntryName]lib.Point{
+					Entries: map[crdt.EntryName]crdt.Point{
 						"Entry C": "Point C",
 					},
 				},
-				lib.QueryRowJoin{
+				query.QueryRowJoin{
 					RowKey: "Row A",
-					Entries: map[lib.EntryName]lib.Point{
+					Entries: map[crdt.EntryName]crdt.Point{
 						"Entry A": "Point D",
 						"Entry D": "Point E",
 					},
@@ -43,24 +46,24 @@ func TestRunQueryJoinSuccess(t *testing.T) {
 		},
 	}
 
-	table := lib.MakeTable(map[lib.RowName]lib.Row{
-		"Row A": lib.MakeRow(map[lib.EntryName]lib.Entry{
-			"Entry A": lib.MakeEntry([]lib.Point{"Point A", "Point D"}),
-			"Entry B": lib.MakeEntry([]lib.Point{"Point B"}),
-			"Entry D": lib.MakeEntry([]lib.Point{"Point E"}),
+	table := crdt.MakeTable(map[crdt.RowName]crdt.Row{
+		"Row A": crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
+			"Entry A": crdt.MakeEntry([]crdt.Point{"Point A", "Point D"}),
+			"Entry B": crdt.MakeEntry([]crdt.Point{"Point B"}),
+			"Entry D": crdt.MakeEntry([]crdt.Point{"Point E"}),
 		}),
-		"Row B": lib.MakeRow(map[lib.EntryName]lib.Entry{
-			"Entry C": lib.MakeEntry([]lib.Point{"Point C"}),
+		"Row B": crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
+			"Entry C": crdt.MakeEntry([]crdt.Point{"Point C"}),
 		}),
 	})
 	mock.EXPECT().JoinTable(MAIN_TABLE_KEY, mtchtable(table)).Return(nil)
 
-	joiner := lib.MakeNamespaceTreeJoin(mock)
+	joiner := eval.MakeNamespaceTreeJoin(mock)
 	query.Visit(joiner)
 	resp := joiner.RunQuery()
 
-	if !lib.RESPONSE_QUERY.Equals(resp) {
-		t.Error("Expected", lib.RESPONSE_QUERY, "but was", resp)
+	if !api.RESPONSE_QUERY.Equals(resp) {
+		t.Error("Expected", api.RESPONSE_QUERY, "but was", resp)
 	}
 }
 
@@ -70,14 +73,14 @@ func TestRunQueryJoinFailure(t *testing.T) {
 
 	mock := NewMockNamespaceTree(ctrl)
 
-	failQuery := &lib.Query{
-		OpCode:   lib.JOIN,
+	failQuery := &query.Query{
+		OpCode:   query.JOIN,
 		TableKey: MAIN_TABLE_KEY,
-		Join: lib.QueryJoin{
-			Rows: []lib.QueryRowJoin{
-				lib.QueryRowJoin{
+		Join: query.QueryJoin{
+			Rows: []query.QueryRowJoin{
+				query.QueryRowJoin{
 					RowKey: "Row A",
-					Entries: map[lib.EntryName]lib.Point{
+					Entries: map[crdt.EntryName]crdt.Point{
 						"Entry A": "Point A",
 						"Entry B": "Point B",
 					},
@@ -86,16 +89,16 @@ func TestRunQueryJoinFailure(t *testing.T) {
 		},
 	}
 
-	table := lib.MakeTable(map[lib.RowName]lib.Row{
-		"Row A": lib.MakeRow(map[lib.EntryName]lib.Entry{
-			"Entry A": lib.MakeEntry([]lib.Point{"Point A"}),
-			"Entry B": lib.MakeEntry([]lib.Point{"Point B"}),
+	table := crdt.MakeTable(map[crdt.RowName]crdt.Row{
+		"Row A": crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
+			"Entry A": crdt.MakeEntry([]crdt.Point{"Point A"}),
+			"Entry B": crdt.MakeEntry([]crdt.Point{"Point B"}),
 		}),
 	})
 
 	mock.EXPECT().JoinTable(MAIN_TABLE_KEY, mtchtable(table)).Return(errors.New("Expected error"))
 
-	joiner := lib.MakeNamespaceTreeJoin(mock)
+	joiner := eval.MakeNamespaceTreeJoin(mock)
 	failQuery.Visit(joiner)
 	resp := joiner.RunQuery()
 
@@ -107,7 +110,7 @@ func TestRunQueryJoinFailure(t *testing.T) {
 		t.Error("Expected response Err")
 	}
 
-	if resp.Type != lib.API_QUERY {
+	if resp.Type != api.API_QUERY {
 		t.Error("Unexpected response Type")
 	}
 }
@@ -118,14 +121,14 @@ func TestRunQueryJoinInvalid(t *testing.T) {
 
 	mock := NewMockNamespaceTree(ctrl)
 
-	invalidQueries := []*lib.Query{
+	invalidQueries := []*query.Query{
 		// Basically wrong.
-		&lib.Query{},
-		&lib.Query{OpCode: lib.SELECT},
+		&query.Query{},
+		&query.Query{OpCode: query.SELECT},
 	}
 
 	for _, q := range invalidQueries {
-		joiner := lib.MakeNamespaceTreeJoin(mock)
+		joiner := eval.MakeNamespaceTreeJoin(mock)
 		q.Visit(joiner)
 		resp := joiner.RunQuery()
 
@@ -139,12 +142,12 @@ func TestRunQueryJoinInvalid(t *testing.T) {
 	}
 }
 
-func mtchtable(t lib.Table) gomock.Matcher {
+func mtchtable(t crdt.Table) gomock.Matcher {
 	return tablematcher{t}
 }
 
 type tablematcher struct {
-	t lib.Table
+	t crdt.Table
 }
 
 func (tm tablematcher) String() string {
@@ -152,7 +155,7 @@ func (tm tablematcher) String() string {
 }
 
 func (tm tablematcher) Matches(v interface{}) bool {
-	other, ok := v.(lib.Table)
+	other, ok := v.(crdt.Table)
 
 	if !ok {
 		return false

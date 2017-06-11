@@ -14,9 +14,8 @@
 package cmd
 
 import (
+	"github.com/johnny-morrice/godless/crdt"
 	"github.com/spf13/cobra"
-
-	lib "github.com/johnny-morrice/godless"
 )
 
 // storeCmd represents the store command
@@ -37,7 +36,7 @@ var storeCmd = &cobra.Command{
 
 var hash string
 var pubsubTopicNames []string
-var pubsubTopics []lib.RemoteStoreAddress
+var pubsubTopics []crdt.RemoteStoreAddress
 var ipfsService string
 
 func init() {
@@ -49,9 +48,9 @@ func init() {
 }
 
 func readTopics() {
-	pubsubTopics = make([]lib.RemoteStoreAddress, len(pubsubTopicNames))
+	pubsubTopics = make([]crdt.RemoteStoreAddress, len(pubsubTopicNames))
 
 	for i, n := range pubsubTopicNames {
-		pubsubTopics[i] = lib.IPFSPath(n)
+		pubsubTopics[i] = crdt.IPFSPath(n)
 	}
 }

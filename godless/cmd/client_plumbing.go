@@ -26,7 +26,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	lib "github.com/johnny-morrice/godless"
+	"github.com/johnny-morrice/godless/api"
+	"github.com/johnny-morrice/godless/internal/service"
+	"github.com/johnny-morrice/godless/query"
 )
 
 // clientPlumbingCmd represents the query command
@@ -36,23 +38,22 @@ var clientPlumbingCmd = &cobra.Command{
 	Long:  `Send a query to a godless server over HTTP.  User must specify either --reflect or --query.`,
 	// TODO tidy method.
 	Run: func(cmd *cobra.Command, args []string) {
-		var query *lib.Query
-		client := lib.MakeClient(serverAddr)
+		var q *query.Query
+		var err error
+		client := service.MakeClient(serverAddr)
 
 		validateClientPlumbingArgs(cmd)
 
 		if source != "" || analyse {
-			q, err := lib.CompileQuery(source)
+			q, err = query.CompileQuery(source)
 
 			if err != nil {
 				die(err)
 			}
-
-			query = q
 		}
 
 		if analyse {
-			err := analyseQuery(query)
+			err = analyseQuery(q)
 
 			if err != nil {
 				die(err)
@@ -63,7 +64,8 @@ var clientPlumbingCmd = &cobra.Command{
 			return
 		}
 
-		response, err := sendQuery(client, query)
+		var response api.APIResponse
+		response, err = sendQuery(client, q)
 
 		if err != nil {
 			die(err)
@@ -79,10 +81,10 @@ var dryrun bool
 var queryBinary bool
 var reflect string
 
-func outputResponse(response lib.APIResponse) {
+func outputResponse(response api.APIResponse) {
 	var err error
 	if queryBinary {
-		err = lib.EncodeAPIResponse(response, os.Stdout)
+		err = api.EncodeAPIResponse(response, os.Stdout)
 
 		if err != nil {
 			die(err)
@@ -109,7 +111,7 @@ func validateClientPlumbingArgs(cmd *cobra.Command) {
 	}
 }
 
-func analyseQuery(query *lib.Query) error {
+func analyseQuery(query *query.Query) error {
 	format := "Query analysis for:\n\n%s\n\n%v\n\n"
 	fmt.Printf(format, source, query.Analyse())
 	fmt.Println("Syntax tree:\n\n")
@@ -117,14 +119,14 @@ func analyseQuery(query *lib.Query) error {
 	return query.PrettyPrint(os.Stdout)
 }
 
-func sendQuery(client *lib.Client, query *lib.Query) (lib.APIResponse, error) {
+func sendQuery(client *service.Client, query *query.Query) (api.APIResponse, error) {
 	if query != nil {
 		return client.SendQuery(query)
 	} else if reflect != "" {
 		reflectType, err := parseReflect()
 
 		if err != nil {
-			return lib.RESPONSE_FAIL, err
+			return api.RESPONSE_FAIL, err
 		}
 
 		return client.SendReflection(reflectType)
@@ -133,16 +135,16 @@ func sendQuery(client *lib.Client, query *lib.Query) (lib.APIResponse, error) {
 	}
 }
 
-func parseReflect() (lib.APIReflectionType, error) {
+func parseReflect() (api.APIReflectionType, error) {
 	switch reflect {
 	case "index":
-		return lib.REFLECT_INDEX, nil
+		return api.REFLECT_INDEX, nil
 	case "head":
-		return lib.REFLECT_HEAD_PATH, nil
+		return api.REFLECT_HEAD_PATH, nil
 	case "namespace":
-		return lib.REFLECT_DUMP_NAMESPACE, nil
+		return api.REFLECT_DUMP_NAMESPACE, nil
 	default:
-		return lib.REFLECT_NOOP, fmt.Errorf("Unknown reflect type: %v", reflect)
+		return api.REFLECT_NOOP, fmt.Errorf("Unknown reflect type: %v", reflect)
 	}
 }
 

@@ -4,26 +4,27 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	lib "github.com/johnny-morrice/godless"
+	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/query"
 )
 
 func TestVisitJoin(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	joinQuery := lib.Query{}
+	joinQuery := query.Query{}
 	joinQuery.TableKey = MAIN_TABLE_KEY
-	joinQuery.OpCode = lib.JOIN
-	joinQuery.Join.Rows = []lib.QueryRowJoin{
-		lib.QueryRowJoin{
+	joinQuery.OpCode = query.JOIN
+	joinQuery.Join.Rows = []query.QueryRowJoin{
+		query.QueryRowJoin{
 			RowKey: "Hello Row",
-			Entries: map[lib.EntryName]lib.Point{
+			Entries: map[crdt.EntryName]crdt.Point{
 				"Entry A": "Point A",
 			},
 		},
-		lib.QueryRowJoin{
+		query.QueryRowJoin{
 			RowKey: "Goodbye Row",
-			Entries: map[lib.EntryName]lib.Point{
+			Entries: map[crdt.EntryName]crdt.Point{
 				"Entry B": "Point B",
 			},
 		},
@@ -32,8 +33,8 @@ func TestVisitJoin(t *testing.T) {
 	visitor := NewMockQueryVisitor(ctrl)
 	c1 := visitor.EXPECT().VisitAST(nil)
 	c2 := visitor.EXPECT().VisitParser(nil)
-	c3 := visitor.EXPECT().VisitOpCode(lib.JOIN)
-	c4 := visitor.EXPECT().VisitTableKey(lib.TableName(MAIN_TABLE_KEY))
+	c3 := visitor.EXPECT().VisitOpCode(query.JOIN)
+	c4 := visitor.EXPECT().VisitTableKey(crdt.TableName(MAIN_TABLE_KEY))
 	c5 := visitor.EXPECT().VisitJoin(&joinQuery.Join)
 	c6 := visitor.EXPECT().VisitRowJoin(0, &joinQuery.Join.Rows[0])
 	c7 := visitor.EXPECT().VisitRowJoin(1, &joinQuery.Join.Rows[1])
@@ -48,31 +49,31 @@ func TestVisitSelect(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	innerWhereA := lib.QueryWhere{}
-	innerWhereA.OpCode = lib.PREDICATE
-	innerWhereA.Predicate = lib.QueryPredicate{
-		OpCode: lib.STR_NEQ,
-		Keys:   []lib.EntryName{"Index this", "Index that"},
+	innerWhereA := query.QueryWhere{}
+	innerWhereA.OpCode = query.PREDICATE
+	innerWhereA.Predicate = query.QueryPredicate{
+		OpCode: query.STR_NEQ,
+		Keys:   []crdt.EntryName{"Index this", "Index that"},
 	}
 
-	innerWhereB := lib.QueryWhere{}
-	innerWhereB.OpCode = lib.PREDICATE
-	innerWhereB.Predicate = lib.QueryPredicate{
-		OpCode:        lib.STR_EQ,
+	innerWhereB := query.QueryWhere{}
+	innerWhereB.OpCode = query.PREDICATE
+	innerWhereB.Predicate = query.QueryPredicate{
+		OpCode:        query.STR_EQ,
 		Literals:      []string{"Match this"},
 		IncludeRowKey: true,
 	}
 
-	outerWhere := lib.QueryWhere{}
-	outerWhere.OpCode = lib.AND
-	outerWhere.Clauses = []lib.QueryWhere{
+	outerWhere := query.QueryWhere{}
+	outerWhere.OpCode = query.AND
+	outerWhere.Clauses = []query.QueryWhere{
 		innerWhereA,
 		innerWhereB,
 	}
 
-	selectQuery := lib.Query{}
+	selectQuery := query.Query{}
 	selectQuery.TableKey = MAIN_TABLE_KEY
-	selectQuery.OpCode = lib.SELECT
+	selectQuery.OpCode = query.SELECT
 	selectQuery.Select.Limit = 5
 	selectQuery.Select.Where = outerWhere
 
@@ -81,7 +82,7 @@ func TestVisitSelect(t *testing.T) {
 	querySelect := &selectQuery.Select
 	c1 := visitor.EXPECT().VisitAST(nil)
 	c2 := visitor.EXPECT().VisitParser(nil)
-	c3 := visitor.EXPECT().VisitOpCode(lib.SELECT)
+	c3 := visitor.EXPECT().VisitOpCode(query.SELECT)
 	c4 := visitor.EXPECT().VisitTableKey(MAIN_TABLE_KEY)
 	c5 := visitor.EXPECT().VisitSelect(querySelect)
 	c6 := visitor.EXPECT().VisitWhere(0, &selectQuery.Select.Where)

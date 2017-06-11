@@ -5,7 +5,10 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	lib "github.com/johnny-morrice/godless"
+	"github.com/johnny-morrice/godless/api"
+	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/internal/eval"
+	"github.com/johnny-morrice/godless/query"
 	"github.com/pkg/errors"
 )
 
@@ -15,191 +18,191 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 
 	mock := NewMockNamespaceTree(ctrl)
 
-	whereA := lib.QueryWhere{
-		OpCode: lib.PREDICATE,
-		Predicate: lib.QueryPredicate{
-			OpCode:   lib.STR_EQ,
+	whereA := query.QueryWhere{
+		OpCode: query.PREDICATE,
+		Predicate: query.QueryPredicate{
+			OpCode:   query.STR_EQ,
 			Literals: []string{"Hi"},
-			Keys:     []lib.EntryName{"Entry A"},
+			Keys:     []crdt.EntryName{"Entry A"},
 		},
 	}
 
-	whereB := lib.QueryWhere{
-		OpCode: lib.PREDICATE,
-		Predicate: lib.QueryPredicate{
-			OpCode:   lib.STR_EQ,
+	whereB := query.QueryWhere{
+		OpCode: query.PREDICATE,
+		Predicate: query.QueryPredicate{
+			OpCode:   query.STR_EQ,
 			Literals: []string{"Hi"},
-			Keys:     []lib.EntryName{"Entry B"},
+			Keys:     []crdt.EntryName{"Entry B"},
 		},
 	}
 
-	whereC := lib.QueryWhere{
-		OpCode: lib.PREDICATE,
-		Predicate: lib.QueryPredicate{
-			OpCode:   lib.STR_NEQ,
+	whereC := query.QueryWhere{
+		OpCode: query.PREDICATE,
+		Predicate: query.QueryPredicate{
+			OpCode:   query.STR_NEQ,
 			Literals: []string{"Hello World"},
-			Keys:     []lib.EntryName{"Entry B"},
+			Keys:     []crdt.EntryName{"Entry B"},
 		},
 	}
 
-	whereD := lib.QueryWhere{
-		OpCode: lib.PREDICATE,
-		Predicate: lib.QueryPredicate{
-			OpCode:   lib.STR_EQ,
+	whereD := query.QueryWhere{
+		OpCode: query.PREDICATE,
+		Predicate: query.QueryPredicate{
+			OpCode:   query.STR_EQ,
 			Literals: []string{"Apple"},
-			Keys:     []lib.EntryName{"Entry C"},
+			Keys:     []crdt.EntryName{"Entry C"},
 		},
 	}
 
-	whereE := lib.QueryWhere{
-		OpCode: lib.PREDICATE,
-		Predicate: lib.QueryPredicate{
-			OpCode:   lib.STR_EQ,
+	whereE := query.QueryWhere{
+		OpCode: query.PREDICATE,
+		Predicate: query.QueryPredicate{
+			OpCode:   query.STR_EQ,
 			Literals: []string{"Orange"},
-			Keys:     []lib.EntryName{"Entry D"},
+			Keys:     []crdt.EntryName{"Entry D"},
 		},
 	}
 
-	whereF := lib.QueryWhere{
-		OpCode: lib.PREDICATE,
-		Predicate: lib.QueryPredicate{
-			OpCode:   lib.STR_EQ,
+	whereF := query.QueryWhere{
+		OpCode: query.PREDICATE,
+		Predicate: query.QueryPredicate{
+			OpCode:   query.STR_EQ,
 			Literals: []string{"Train"},
-			Keys:     []lib.EntryName{"Entry E"},
+			Keys:     []crdt.EntryName{"Entry E"},
 		},
 	}
 
-	whereG := lib.QueryWhere{
-		OpCode: lib.PREDICATE,
-		Predicate: lib.QueryPredicate{
-			OpCode:   lib.STR_EQ,
+	whereG := query.QueryWhere{
+		OpCode: query.PREDICATE,
+		Predicate: query.QueryPredicate{
+			OpCode:   query.STR_EQ,
 			Literals: []string{"Bus"},
-			Keys:     []lib.EntryName{"Entry E"},
+			Keys:     []crdt.EntryName{"Entry E"},
 		},
 	}
 
-	whereH := lib.QueryWhere{
-		OpCode: lib.PREDICATE,
-		Predicate: lib.QueryPredicate{
-			OpCode:   lib.STR_EQ,
+	whereH := query.QueryWhere{
+		OpCode: query.PREDICATE,
+		Predicate: query.QueryPredicate{
+			OpCode:   query.STR_EQ,
 			Literals: []string{"Boat"},
-			Keys:     []lib.EntryName{"Entry E"},
+			Keys:     []crdt.EntryName{"Entry E"},
 		},
 	}
 
-	whereI := lib.QueryWhere{
-		OpCode: lib.PREDICATE,
-		Predicate: lib.QueryPredicate{
-			OpCode:        lib.STR_EQ,
+	whereI := query.QueryWhere{
+		OpCode: query.PREDICATE,
+		Predicate: query.QueryPredicate{
+			OpCode:        query.STR_EQ,
 			IncludeRowKey: true,
 			Literals:      []string{"Row F0"},
 		},
 	}
 
-	queries := []*lib.Query{
+	queries := []*query.Query{
 		// One result
-		&lib.Query{
-			OpCode:   lib.SELECT,
+		&query.Query{
+			OpCode:   query.SELECT,
 			TableKey: MAIN_TABLE_KEY,
-			Select: lib.QuerySelect{
+			Select: query.QuerySelect{
 				Limit: 2,
 				Where: whereA,
 			},
 		},
 		// Multiple results
-		&lib.Query{
-			OpCode:   lib.SELECT,
+		&query.Query{
+			OpCode:   query.SELECT,
 			TableKey: MAIN_TABLE_KEY,
-			Select: lib.QuerySelect{
+			Select: query.QuerySelect{
 				Limit: 2,
 				Where: whereB,
 			},
 		},
 		// STR_NEQ
-		&lib.Query{
-			OpCode:   lib.SELECT,
+		&query.Query{
+			OpCode:   query.SELECT,
 			TableKey: MAIN_TABLE_KEY,
-			Select: lib.QuerySelect{
+			Select: query.QuerySelect{
 				Limit: 2,
 				Where: whereC,
 			},
 		},
 		// AND
-		&lib.Query{
-			OpCode:   lib.SELECT,
+		&query.Query{
+			OpCode:   query.SELECT,
 			TableKey: MAIN_TABLE_KEY,
-			Select: lib.QuerySelect{
+			Select: query.QuerySelect{
 				Limit: 2,
-				Where: lib.QueryWhere{
-					OpCode:  lib.AND,
-					Clauses: []lib.QueryWhere{whereD, whereE},
+				Where: query.QueryWhere{
+					OpCode:  query.AND,
+					Clauses: []query.QueryWhere{whereD, whereE},
 				},
 			},
 		},
 		// OR
-		&lib.Query{
-			OpCode:   lib.SELECT,
+		&query.Query{
+			OpCode:   query.SELECT,
 			TableKey: MAIN_TABLE_KEY,
-			Select: lib.QuerySelect{
+			Select: query.QuerySelect{
 				Limit: 2,
-				Where: lib.QueryWhere{
-					OpCode:  lib.OR,
-					Clauses: []lib.QueryWhere{whereF, whereG},
+				Where: query.QueryWhere{
+					OpCode:  query.OR,
+					Clauses: []query.QueryWhere{whereF, whereG},
 				},
 			},
 		},
 		// No results
-		&lib.Query{
-			OpCode:   lib.SELECT,
+		&query.Query{
+			OpCode:   query.SELECT,
 			TableKey: MAIN_TABLE_KEY,
-			Select: lib.QuerySelect{
+			Select: query.QuerySelect{
 				Limit: 2,
 				Where: whereH,
 			},
 		},
 		// Row key
-		&lib.Query{
-			OpCode:   lib.SELECT,
+		&query.Query{
+			OpCode:   query.SELECT,
 			TableKey: MAIN_TABLE_KEY,
-			Select: lib.QuerySelect{
+			Select: query.QuerySelect{
 				Limit: 2,
 				Where: whereI,
 			},
 		},
 		// No where clause
-		&lib.Query{
-			OpCode:   lib.SELECT,
+		&query.Query{
+			OpCode:   query.SELECT,
 			TableKey: ALT_TABLE_KEY,
-			Select: lib.QuerySelect{
+			Select: query.QuerySelect{
 				Limit: 3,
 			},
 		},
 	}
 
-	responseA := lib.RESPONSE_QUERY
+	responseA := api.RESPONSE_QUERY
 	responseA.QueryResponse.Entries = streamA()
 
-	responseB := lib.RESPONSE_QUERY
+	responseB := api.RESPONSE_QUERY
 	responseB.QueryResponse.Entries = append(streamB(), streamC()...)
 
-	responseC := lib.RESPONSE_QUERY
+	responseC := api.RESPONSE_QUERY
 	responseC.QueryResponse.Entries = streamC()
 
-	responseD := lib.RESPONSE_QUERY
+	responseD := api.RESPONSE_QUERY
 	responseD.QueryResponse.Entries = streamD()
 
-	responseE := lib.RESPONSE_QUERY
+	responseE := api.RESPONSE_QUERY
 	responseE.QueryResponse.Entries = streamE()
 
-	responseF := lib.RESPONSE_QUERY
+	responseF := api.RESPONSE_QUERY
 
-	responseG := lib.RESPONSE_QUERY
+	responseG := api.RESPONSE_QUERY
 	responseG.QueryResponse.Entries = streamF()
 
-	responseH := lib.RESPONSE_QUERY
+	responseH := api.RESPONSE_QUERY
 	responseH.QueryResponse.Entries = streamG()
 
-	expect := []lib.APIResponse{
+	expect := []api.APIResponse{
 		responseA,
 		responseB,
 		responseC,
@@ -217,7 +220,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 	mock.EXPECT().LoadTraverse(gomock.Any()).Return(nil).Do(feedNamespace).Times(len(queries))
 
 	for i, q := range queries {
-		selector := lib.MakeNamespaceTreeSelect(mock)
+		selector := eval.MakeNamespaceTreeSelect(mock)
 		q.Visit(selector)
 		actual := selector.RunQuery()
 		expected := expect[i]
@@ -243,23 +246,23 @@ func TestRunQuerySelectFailure(t *testing.T) {
 
 	mock.EXPECT().LoadTraverse(gomock.Any()).Return(errors.New("Expected Error"))
 
-	failQuery := &lib.Query{
-		OpCode:   lib.SELECT,
+	failQuery := &query.Query{
+		OpCode:   query.SELECT,
 		TableKey: MAIN_TABLE_KEY,
-		Select: lib.QuerySelect{
+		Select: query.QuerySelect{
 			Limit: 2,
-			Where: lib.QueryWhere{
-				OpCode: lib.PREDICATE,
-				Predicate: lib.QueryPredicate{
-					OpCode:   lib.STR_EQ,
+			Where: query.QueryWhere{
+				OpCode: query.PREDICATE,
+				Predicate: query.QueryPredicate{
+					OpCode:   query.STR_EQ,
 					Literals: []string{"Hi"},
-					Keys:     []lib.EntryName{"Entry A"},
+					Keys:     []crdt.EntryName{"Entry A"},
 				},
 			},
 		},
 	}
 
-	selector := lib.MakeNamespaceTreeSelect(mock)
+	selector := eval.MakeNamespaceTreeSelect(mock)
 	failQuery.Visit(selector)
 	resp := selector.RunQuery()
 
@@ -278,45 +281,45 @@ func TestRunQuerySelectInvalid(t *testing.T) {
 
 	mock := NewMockNamespaceTree(ctrl)
 
-	invalidQueries := []*lib.Query{
+	invalidQueries := []*query.Query{
 		// Basically wrong.
-		&lib.Query{},
-		&lib.Query{OpCode: lib.JOIN},
+		&query.Query{},
+		&query.Query{OpCode: query.JOIN},
 		// No limit
-		&lib.Query{
-			Select: lib.QuerySelect{
-				Where: lib.QueryWhere{
-					OpCode: lib.PREDICATE,
-					Predicate: lib.QueryPredicate{
-						OpCode:   lib.STR_EQ,
+		&query.Query{
+			Select: query.QuerySelect{
+				Where: query.QueryWhere{
+					OpCode: query.PREDICATE,
+					Predicate: query.QueryPredicate{
+						OpCode:   query.STR_EQ,
 						Literals: []string{"Hi"},
-						Keys:     []lib.EntryName{"Entry A"},
+						Keys:     []crdt.EntryName{"Entry A"},
 					},
 				},
 			},
 		},
 		// No where OpCode
-		&lib.Query{
-			Select: lib.QuerySelect{
+		&query.Query{
+			Select: query.QuerySelect{
 				Limit: 1,
-				Where: lib.QueryWhere{
-					Predicate: lib.QueryPredicate{
-						OpCode:   lib.STR_EQ,
+				Where: query.QueryWhere{
+					Predicate: query.QueryPredicate{
+						OpCode:   query.STR_EQ,
 						Literals: []string{"Hi"},
-						Keys:     []lib.EntryName{"Entry A"},
+						Keys:     []crdt.EntryName{"Entry A"},
 					},
 				},
 			},
 		},
 		// No predicate OpCode
-		&lib.Query{
-			Select: lib.QuerySelect{
+		&query.Query{
+			Select: query.QuerySelect{
 				Limit: 1,
-				Where: lib.QueryWhere{
-					OpCode: lib.PREDICATE,
-					Predicate: lib.QueryPredicate{
+				Where: query.QueryWhere{
+					OpCode: query.PREDICATE,
+					Predicate: query.QueryPredicate{
 						Literals: []string{"Hi"},
-						Keys:     []lib.EntryName{"Entry A"},
+						Keys:     []crdt.EntryName{"Entry A"},
 					},
 				},
 			},
@@ -324,7 +327,7 @@ func TestRunQuerySelectInvalid(t *testing.T) {
 	}
 
 	for _, q := range invalidQueries {
-		selector := lib.MakeNamespaceTreeSelect(mock)
+		selector := eval.MakeNamespaceTreeSelect(mock)
 		q.Visit(selector)
 		resp := selector.RunQuery()
 
@@ -338,156 +341,156 @@ func TestRunQuerySelectInvalid(t *testing.T) {
 	}
 }
 
-func rowsA() []lib.Row {
-	return []lib.Row{
-		lib.MakeRow(map[lib.EntryName]lib.Entry{
+func rowsA() []crdt.Row {
+	return []crdt.Row{
+		crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
 			// TODO use user concepts to match only the Hi.
-			"Entry A": lib.MakeEntry([]lib.Point{"Hi", "Hello"}),
+			"Entry A": crdt.MakeEntry([]crdt.Point{"Hi", "Hello"}),
 		}),
 	}
 }
 
-func rowsB() []lib.Row {
-	return []lib.Row{
-		lib.MakeRow(map[lib.EntryName]lib.Entry{
-			"Entry B": lib.MakeEntry([]lib.Point{"Hi", "Hello World"}),
+func rowsB() []crdt.Row {
+	return []crdt.Row{
+		crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
+			"Entry B": crdt.MakeEntry([]crdt.Point{"Hi", "Hello World"}),
 		}),
 	}
 }
 
-func rowsC() []lib.Row {
-	return []lib.Row{
-		lib.MakeRow(map[lib.EntryName]lib.Entry{
-			"Entry B": lib.MakeEntry([]lib.Point{"Hi", "Hello Dude"}),
+func rowsC() []crdt.Row {
+	return []crdt.Row{
+		crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
+			"Entry B": crdt.MakeEntry([]crdt.Point{"Hi", "Hello Dude"}),
 		}),
 	}
 }
 
-func rowsD() []lib.Row {
-	return []lib.Row{
-		lib.MakeRow(map[lib.EntryName]lib.Entry{
-			"Entry C": lib.MakeEntry([]lib.Point{"Apple"}),
-			"Entry D": lib.MakeEntry([]lib.Point{"Orange"}),
+func rowsD() []crdt.Row {
+	return []crdt.Row{
+		crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
+			"Entry C": crdt.MakeEntry([]crdt.Point{"Apple"}),
+			"Entry D": crdt.MakeEntry([]crdt.Point{"Orange"}),
 		}),
 	}
 }
 
-func rowsE() []lib.Row {
-	return []lib.Row{
-		lib.MakeRow(map[lib.EntryName]lib.Entry{
-			"Entry E": lib.MakeEntry([]lib.Point{"Bus"}),
+func rowsE() []crdt.Row {
+	return []crdt.Row{
+		crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
+			"Entry E": crdt.MakeEntry([]crdt.Point{"Bus"}),
 		}),
-		lib.MakeRow(map[lib.EntryName]lib.Entry{
-			"Entry E": lib.MakeEntry([]lib.Point{"Train"}),
-		}),
-	}
-}
-
-func rowsF() []lib.Row {
-	return []lib.Row{
-		lib.MakeRow(map[lib.EntryName]lib.Entry{
-			"Entry F": lib.MakeEntry([]lib.Point{"This row", "rocks"}),
+		crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
+			"Entry E": crdt.MakeEntry([]crdt.Point{"Train"}),
 		}),
 	}
 }
 
-func rowsG() []lib.Row {
-	return []lib.Row{
-		lib.MakeRow(map[lib.EntryName]lib.Entry{
-			"Entry Q": lib.MakeEntry([]lib.Point{"Hi", "Folks"}),
+func rowsF() []crdt.Row {
+	return []crdt.Row{
+		crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
+			"Entry F": crdt.MakeEntry([]crdt.Point{"This row", "rocks"}),
 		}),
-		lib.MakeRow(map[lib.EntryName]lib.Entry{
-			"Entry R": lib.MakeEntry([]lib.Point{"Wowzer"}),
+	}
+}
+
+func rowsG() []crdt.Row {
+	return []crdt.Row{
+		crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
+			"Entry Q": crdt.MakeEntry([]crdt.Point{"Hi", "Folks"}),
 		}),
-		lib.MakeRow(map[lib.EntryName]lib.Entry{
-			"Entry S": lib.MakeEntry([]lib.Point{"Trumpet"}),
+		crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
+			"Entry R": crdt.MakeEntry([]crdt.Point{"Wowzer"}),
+		}),
+		crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
+			"Entry S": crdt.MakeEntry([]crdt.Point{"Trumpet"}),
 		}),
 	}
 }
 
 // Non matching rows.
-func rowsZ() []lib.Row {
-	return []lib.Row{
-		lib.MakeRow(map[lib.EntryName]lib.Entry{
-			"Entry A": lib.MakeEntry([]lib.Point{"No", "Match"}),
+func rowsZ() []crdt.Row {
+	return []crdt.Row{
+		crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
+			"Entry A": crdt.MakeEntry([]crdt.Point{"No", "Match"}),
 		}),
-		lib.MakeRow(map[lib.EntryName]lib.Entry{
-			"Entry C": lib.MakeEntry([]lib.Point{"No", "Match", "Here"}),
-			"Entry D": lib.MakeEntry([]lib.Point{"Nada!"}),
+		crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
+			"Entry C": crdt.MakeEntry([]crdt.Point{"No", "Match", "Here"}),
+			"Entry D": crdt.MakeEntry([]crdt.Point{"Nada!"}),
 		}),
-		lib.MakeRow(map[lib.EntryName]lib.Entry{
-			"Entry E": lib.MakeEntry([]lib.Point{"Horse"}),
+		crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
+			"Entry E": crdt.MakeEntry([]crdt.Point{"Horse"}),
 		}),
 	}
 }
 
-func tableA() lib.Table {
+func tableA() crdt.Table {
 	return mktable("A", rowsA())
 }
 
-func tableB() lib.Table {
+func tableB() crdt.Table {
 	return mktable("B", rowsB())
 }
 
-func tableC() lib.Table {
+func tableC() crdt.Table {
 	return mktable("C", rowsC())
 }
 
-func tableD() lib.Table {
+func tableD() crdt.Table {
 	return mktable("D", rowsD())
 }
 
-func tableE() lib.Table {
+func tableE() crdt.Table {
 	return mktable("E", rowsE())
 }
 
-func tableF() lib.Table {
+func tableF() crdt.Table {
 	return mktable("F", rowsF())
 }
 
-func tableG() lib.Table {
+func tableG() crdt.Table {
 	return mktable("G", rowsG())
 }
 
-func tableZ() lib.Table {
+func tableZ() crdt.Table {
 	return mktable("Z", rowsZ())
 }
 
-func streamA() []lib.NamespaceStreamEntry {
-	return lib.MakeTableStream(MAIN_TABLE_KEY, tableA())
+func streamA() []crdt.NamespaceStreamEntry {
+	return crdt.MakeTableStream(MAIN_TABLE_KEY, tableA())
 }
 
-func streamB() []lib.NamespaceStreamEntry {
-	return lib.MakeTableStream(MAIN_TABLE_KEY, tableB())
+func streamB() []crdt.NamespaceStreamEntry {
+	return crdt.MakeTableStream(MAIN_TABLE_KEY, tableB())
 }
 
-func streamC() []lib.NamespaceStreamEntry {
-	return lib.MakeTableStream(MAIN_TABLE_KEY, tableC())
+func streamC() []crdt.NamespaceStreamEntry {
+	return crdt.MakeTableStream(MAIN_TABLE_KEY, tableC())
 }
 
-func streamD() []lib.NamespaceStreamEntry {
-	return lib.MakeTableStream(MAIN_TABLE_KEY, tableD())
+func streamD() []crdt.NamespaceStreamEntry {
+	return crdt.MakeTableStream(MAIN_TABLE_KEY, tableD())
 }
 
-func streamE() []lib.NamespaceStreamEntry {
-	return lib.MakeTableStream(MAIN_TABLE_KEY, tableE())
+func streamE() []crdt.NamespaceStreamEntry {
+	return crdt.MakeTableStream(MAIN_TABLE_KEY, tableE())
 }
 
-func streamF() []lib.NamespaceStreamEntry {
-	return lib.MakeTableStream(MAIN_TABLE_KEY, tableF())
+func streamF() []crdt.NamespaceStreamEntry {
+	return crdt.MakeTableStream(MAIN_TABLE_KEY, tableF())
 }
 
-func streamG() []lib.NamespaceStreamEntry {
-	return lib.MakeTableStream(ALT_TABLE_KEY, tableG())
+func streamG() []crdt.NamespaceStreamEntry {
+	return crdt.MakeTableStream(ALT_TABLE_KEY, tableG())
 }
 
-func feedNamespace(ntr lib.NamespaceTreeReader) {
+func feedNamespace(ntr api.NamespaceTreeReader) {
 	ntr.ReadNamespace(mkselectns())
 }
 
-func mkselectns() lib.Namespace {
-	namespace := lib.EmptyNamespace()
-	mainTables := []lib.Table{
+func mkselectns() crdt.Namespace {
+	namespace := crdt.EmptyNamespace()
+	mainTables := []crdt.Table{
 		tableA(),
 		tableB(),
 		tableC(),
@@ -496,11 +499,11 @@ func mkselectns() lib.Namespace {
 		tableF(),
 		tableZ(),
 	}
-	altTables := []lib.Table{
+	altTables := []crdt.Table{
 		tableG(),
 	}
 
-	tables := map[lib.TableName][]lib.Table{
+	tables := map[crdt.TableName][]crdt.Table{
 		MAIN_TABLE_KEY: mainTables,
 		ALT_TABLE_KEY:  altTables,
 	}
@@ -514,16 +517,16 @@ func mkselectns() lib.Namespace {
 	return namespace
 }
 
-func mktable(name string, rows []lib.Row) lib.Table {
-	table := lib.EmptyTable()
+func mktable(name string, rows []crdt.Row) crdt.Table {
+	table := crdt.EmptyTable()
 
 	for i, r := range rows {
-		rowKey := lib.RowName(fmt.Sprintf("Row %v%v", name, i))
+		rowKey := crdt.RowName(fmt.Sprintf("Row %v%v", name, i))
 		table = table.JoinRow(rowKey, r)
 	}
 
 	return table
 }
 
-const MAIN_TABLE_KEY = lib.TableName("The Table")
-const ALT_TABLE_KEY = lib.TableName("Another table")
+const MAIN_TABLE_KEY = crdt.TableName("The Table")
+const ALT_TABLE_KEY = crdt.TableName("Another table")

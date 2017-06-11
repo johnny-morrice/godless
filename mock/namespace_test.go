@@ -4,23 +4,23 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	lib "github.com/johnny-morrice/godless"
+	"github.com/johnny-morrice/godless/crdt"
 )
 
 func TestTableForeachrow(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	emptyRow := lib.EmptyRow()
-	fullRow := lib.MakeRow(map[lib.EntryName]lib.Entry{
-		"baz": lib.EmptyEntry(),
+	emptyRow := crdt.EmptyRow()
+	fullRow := crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
+		"baz": crdt.EmptyEntry(),
 	})
 
 	mock := NewMockRowConsumer(ctrl)
-	mock.EXPECT().Accept(lib.RowName("foo"), emptyRow)
-	mock.EXPECT().Accept(lib.RowName("bar"), fullRow)
+	mock.EXPECT().Accept(crdt.RowName("foo"), emptyRow)
+	mock.EXPECT().Accept(crdt.RowName("bar"), fullRow)
 
-	table := lib.MakeTable(map[lib.RowName]lib.Row{
+	table := crdt.MakeTable(map[crdt.RowName]crdt.Row{
 		"foo": emptyRow,
 		"bar": fullRow,
 	})

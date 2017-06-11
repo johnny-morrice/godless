@@ -20,8 +20,12 @@
 
 package main
 
-import "github.com/johnny-morrice/godless/godless/cmd"
+import (
+	"github.com/johnny-morrice/godless/godless/cmd"
+	"github.com/johnny-morrice/godless/log"
+)
 
 func main() {
+	log.SetLevel(log.LOG_DEBUG)
 	cmd.Execute()
 }

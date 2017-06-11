@@ -18,12 +18,12 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/gogo/protobuf/proto"
+	pb "github.com/gogo/protobuf/proto"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	ipfs "github.com/ipfs/go-ipfs-api"
-	lib "github.com/johnny-morrice/godless"
+	"github.com/johnny-morrice/godless/proto"
 )
 
 // catCmd represents the cat command
@@ -74,12 +74,12 @@ func drainInput(r io.ReadCloser) {
 }
 
 type catStreamer interface {
-	decode(io.Reader) (proto.Message, error)
+	decode(io.Reader) (pb.Message, error)
 }
 
-func catEncode(message proto.Message) error {
+func catEncode(message pb.Message) error {
 	if catBinaryOut {
-		bs, err := proto.Marshal(message)
+		bs, err := pb.Marshal(message)
 
 		if err != nil {
 			return err
@@ -89,7 +89,7 @@ func catEncode(message proto.Message) error {
 
 		return err
 	} else {
-		return proto.MarshalText(os.Stdout, message)
+		return pb.MarshalText(os.Stdout, message)
 	}
 }
 
@@ -101,31 +101,31 @@ type apiStreamer struct{}
 
 type queryStreamer struct{}
 
-func (streamer namespaceStreamer) decode(r io.Reader) (proto.Message, error) {
-	pb := &lib.NamespaceMessage{}
+func (streamer namespaceStreamer) decode(r io.Reader) (pb.Message, error) {
+	pb := &proto.NamespaceMessage{}
 	err := catDecode(r, pb)
 	return pb, err
 }
 
-func (streamer indexStreamer) decode(r io.Reader) (proto.Message, error) {
-	pb := &lib.IndexMessage{}
+func (streamer indexStreamer) decode(r io.Reader) (pb.Message, error) {
+	pb := &proto.IndexMessage{}
 	err := catDecode(r, pb)
 	return pb, err
 }
 
-func (streamer apiStreamer) decode(r io.Reader) (proto.Message, error) {
-	pb := &lib.APIResponseMessage{}
+func (streamer apiStreamer) decode(r io.Reader) (pb.Message, error) {
+	pb := &proto.APIResponseMessage{}
 	err := catDecode(r, pb)
 	return pb, err
 }
 
-func (streamer queryStreamer) decode(r io.Reader) (proto.Message, error) {
-	pb := &lib.QueryMessage{}
+func (streamer queryStreamer) decode(r io.Reader) (pb.Message, error) {
+	pb := &proto.QueryMessage{}
 	err := catDecode(r, pb)
 	return pb, err
 }
 
-func catDecode(r io.Reader, message proto.Message) error {
+func catDecode(r io.Reader, message pb.Message) error {
 	bs, err := ioutil.ReadAll(r)
 
 	if err != nil {
@@ -133,10 +133,10 @@ func catDecode(r io.Reader, message proto.Message) error {
 	}
 
 	if catBinaryIn {
-		return proto.Unmarshal(bs, message)
+		return pb.Unmarshal(bs, message)
 	}
 
-	return proto.UnmarshalText(string(bs), message)
+	return pb.UnmarshalText(string(bs), message)
 }
 
 func catOpen() (io.ReadCloser, error) {

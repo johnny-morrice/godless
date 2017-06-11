@@ -5,7 +5,10 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	lib "github.com/johnny-morrice/godless"
+	"github.com/johnny-morrice/godless/api"
+	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/internal/service"
+	"github.com/johnny-morrice/godless/query"
 	"github.com/pkg/errors"
 )
 
@@ -14,17 +17,17 @@ func TestRunQueryReadSuccess(t *testing.T) {
 	defer ctrl.Finish()
 
 	mock := NewMockKvNamespace(ctrl)
-	query := &lib.Query{
-		OpCode:   lib.SELECT,
+	query := &query.Query{
+		OpCode:   query.SELECT,
 		TableKey: "Table Key",
-		Select: lib.QuerySelect{
+		Select: query.QuerySelect{
 			Limit: 1,
-			Where: lib.QueryWhere{
-				OpCode: lib.PREDICATE,
-				Predicate: lib.QueryPredicate{
-					OpCode:   lib.STR_EQ,
+			Where: query.QueryWhere{
+				OpCode: query.PREDICATE,
+				Predicate: query.QueryPredicate{
+					OpCode:   query.STR_EQ,
 					Literals: []string{"Hi"},
-					Keys:     []lib.EntryName{"Entry A"},
+					Keys:     []crdt.EntryName{"Entry A"},
 				},
 			},
 		},
@@ -33,7 +36,7 @@ func TestRunQueryReadSuccess(t *testing.T) {
 	mock.EXPECT().IsChanged().Return(false)
 	mock.EXPECT().RunKvQuery(query, kvqmatcher{}).Do(writeStubResponse)
 
-	api, errch := lib.LaunchKeyValueStore(mock)
+	api, errch := service.LaunchKeyValueStore(mock)
 	respch, err := api.RunQuery(query)
 
 	if err != nil {
@@ -53,7 +56,7 @@ func TestRunQueryReadSuccess(t *testing.T) {
 	}
 }
 
-func validateResponseCh(t *testing.T, respch <-chan lib.APIResponse) lib.APIResponse {
+func validateResponseCh(t *testing.T, respch <-chan api.APIResponse) api.APIResponse {
 	timeout := time.NewTimer(__TEST_TIMEOUT)
 
 	for {
@@ -61,7 +64,7 @@ func validateResponseCh(t *testing.T, respch <-chan lib.APIResponse) lib.APIResp
 		case <-timeout.C:
 			t.Error("Timeout reading response")
 			t.FailNow()
-			return lib.APIResponse{}
+			return api.APIResponse{}
 		case r := <-respch:
 			timeout.Stop()
 			return r
@@ -69,8 +72,8 @@ func validateResponseCh(t *testing.T, respch <-chan lib.APIResponse) lib.APIResp
 	}
 }
 
-func writeStubResponse(q *lib.Query, kvq lib.KvQuery) {
-	kvq.Response <- lib.RESPONSE_QUERY
+func writeStubResponse(q *query.Query, kvq api.KvQuery) {
+	kvq.Response <- api.RESPONSE_QUERY
 }
 
 func TestRunQueryWriteSuccess(t *testing.T) {
@@ -78,14 +81,14 @@ func TestRunQueryWriteSuccess(t *testing.T) {
 	defer ctrl.Finish()
 
 	mock := NewMockKvNamespace(ctrl)
-	query := &lib.Query{
-		OpCode:   lib.JOIN,
+	query := &query.Query{
+		OpCode:   query.JOIN,
 		TableKey: "Table Key",
-		Join: lib.QueryJoin{
-			Rows: []lib.QueryRowJoin{
-				lib.QueryRowJoin{
+		Join: query.QueryJoin{
+			Rows: []query.QueryRowJoin{
+				query.QueryRowJoin{
 					RowKey: "Row thing",
-					Entries: map[lib.EntryName]lib.Point{
+					Entries: map[crdt.EntryName]crdt.Point{
 						"Hello": "world",
 					},
 				},
@@ -97,7 +100,7 @@ func TestRunQueryWriteSuccess(t *testing.T) {
 	mock.EXPECT().RunKvQuery(query, kvqmatcher{}).Do(writeStubResponse)
 	mock.EXPECT().Persist().Return(mock, nil)
 
-	api, errch := lib.LaunchKeyValueStore(mock)
+	api, errch := service.LaunchKeyValueStore(mock)
 	actualRespch, err := api.RunQuery(query)
 
 	if err != nil {
@@ -122,14 +125,14 @@ func TestRunQueryWriteFailure(t *testing.T) {
 	defer ctrl.Finish()
 
 	mock := NewMockKvNamespace(ctrl)
-	query := &lib.Query{
-		OpCode:   lib.JOIN,
+	query := &query.Query{
+		OpCode:   query.JOIN,
 		TableKey: "Table Key",
-		Join: lib.QueryJoin{
-			Rows: []lib.QueryRowJoin{
-				lib.QueryRowJoin{
+		Join: query.QueryJoin{
+			Rows: []query.QueryRowJoin{
+				query.QueryRowJoin{
 					RowKey: "Row thing",
-					Entries: map[lib.EntryName]lib.Point{
+					Entries: map[crdt.EntryName]crdt.Point{
 						"Hello": "world",
 					},
 				},
@@ -142,7 +145,7 @@ func TestRunQueryWriteFailure(t *testing.T) {
 	mock.EXPECT().Reset()
 	mock.EXPECT().Persist().Return(nil, errors.New("Expected error"))
 
-	api, errch := lib.LaunchKeyValueStore(mock)
+	api, errch := service.LaunchKeyValueStore(mock)
 	resp, qerr := api.RunQuery(query)
 
 	if qerr != nil {
@@ -172,9 +175,9 @@ func TestRunQueryInvalid(t *testing.T) {
 	defer ctrl.Finish()
 
 	mock := NewMockKvNamespace(ctrl)
-	query := &lib.Query{}
+	query := &query.Query{}
 
-	api, _ := lib.LaunchKeyValueStore(mock)
+	api, _ := service.LaunchKeyValueStore(mock)
 	resp, err := api.RunQuery(query)
 
 	if err == nil {
@@ -196,7 +199,7 @@ func (kvqmatcher) String() string {
 }
 
 func (kvqmatcher) Matches(v interface{}) bool {
-	_, ok := v.(lib.KvQuery)
+	_, ok := v.(api.KvQuery)
 
 	return ok
 }
