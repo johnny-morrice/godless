@@ -90,6 +90,7 @@ type IPFSPeer struct {
 	Url    string
 	Client *http.Client
 	Shell  *ipfs.Shell
+	pinger *ipfs.Shell
 }
 
 func MakeIPFSPeer(url string) RemoteStore {
@@ -102,13 +103,16 @@ func MakeIPFSPeer(url string) RemoteStore {
 }
 
 func (peer *IPFSPeer) Connect() error {
+	loginfo("Connecting...")
 	peer.Shell = ipfs.NewShellWithClient(peer.Url, peer.Client)
+	peer.pinger = ipfs.NewShellWithClient(peer.Url, backendPingClient())
+	err := peer.validateConnection()
 
-	if !peer.Shell.IsUp() {
-		return fmt.Errorf("IPFSPeer is not up at '%v'", peer.Url)
+	if err == nil {
+		loginfo("Connection OK")
 	}
 
-	return nil
+	return err
 }
 
 func (peer *IPFSPeer) Disconnect() error {
@@ -119,6 +123,16 @@ func (peer *IPFSPeer) Disconnect() error {
 func (peer *IPFSPeer) validateShell() error {
 	if peer.Shell == nil {
 		return peer.Connect()
+	}
+
+	return peer.validateConnection()
+}
+
+func (peer *IPFSPeer) validateConnection() error {
+	if peer.pinger.IsUp() {
+		logdbg("Collection check OK")
+	} else {
+		return fmt.Errorf("IPFSPeer is not up at '%v'", peer.Url)
 	}
 
 	return nil
