@@ -43,6 +43,11 @@ func PersistNewRemoteNamespace(store RemoteStore, namespace Namespace) (KvNamesp
 	return kv.(*remoteNamespace), nil
 }
 
+func (rn *remoteNamespace) Reset() {
+	rn.NamespaceUpdate = EmptyNamespace()
+	rn.IndexUpdate = EMPTY_INDEX
+}
+
 func (rn *remoteNamespace) Replicate(peerAddr RemoteStoreAddress, kvq KvQuery) {
 	runner := APIResponderFunc(func() APIResponse { return rn.joinPeerIndex(peerAddr) })
 	response := runner.RunQuery()

@@ -12,6 +12,7 @@ type KvNamespace interface {
 	Replicate(RemoteStoreAddress, KvQuery)
 	IsChanged() bool
 	Persist() (KvNamespace, error)
+	Reset()
 }
 
 type kvRunner interface {
@@ -43,29 +44,29 @@ func (krr kvReflectRunner) Run(kvn KvNamespace, kvq KvQuery) {
 }
 
 type KvQuery struct {
-	runner   kvRunner
-	Response chan APIResponse
+	runner            kvRunner
+	Response          chan APIResponse
+	transactionResult chan APIResponse
+}
+
+func makeApiQuery(runner kvRunner) KvQuery {
+	return KvQuery{
+		runner:            runner,
+		Response:          make(chan APIResponse),
+		transactionResult: make(chan APIResponse),
+	}
 }
 
 func MakeKvQuery(query *Query) KvQuery {
-	return KvQuery{
-		runner:   kvQueryRunner{query: query},
-		Response: make(chan APIResponse),
-	}
+	return makeApiQuery(kvQueryRunner{query: query})
 }
 
 func MakeKvReflect(request APIReflectRequest) KvQuery {
-	return KvQuery{
-		runner:   kvReflectRunner{reflection: request},
-		Response: make(chan APIResponse),
-	}
+	return makeApiQuery(kvReflectRunner{reflection: request})
 }
 
 func MakeKvReplicate(peerAddr RemoteStoreAddress) KvQuery {
-	return KvQuery{
-		runner:   kvReplicator{peerAddr: peerAddr},
-		Response: make(chan APIResponse),
-	}
+	return makeApiQuery(kvReplicator{peerAddr: peerAddr})
 }
 
 // TODO these should make more general sense and be public.
@@ -121,7 +122,7 @@ func (kv *keyValueStore) Replicate(peerAddr RemoteStoreAddress) (<-chan APIRespo
 	kvq := MakeKvReplicate(peerAddr)
 	kv.input <- kvq
 
-	return kvq.Response, nil
+	return kvq.transactionResult, nil
 }
 
 func (kv *keyValueStore) RunQuery(query *Query) (<-chan APIResponse, error) {
@@ -138,7 +139,7 @@ func (kv *keyValueStore) RunQuery(query *Query) (<-chan APIResponse, error) {
 
 	kv.input <- kvq
 
-	return kvq.Response, nil
+	return kvq.transactionResult, nil
 }
 
 func (kv *keyValueStore) Reflect(request APIReflectRequest) (<-chan APIResponse, error) {
@@ -147,7 +148,7 @@ func (kv *keyValueStore) Reflect(request APIReflectRequest) (<-chan APIResponse,
 
 	kv.input <- kvq
 
-	return kvq.Response, nil
+	return kvq.transactionResult, nil
 }
 
 func (kv *keyValueStore) CloseAPI() {
@@ -158,16 +159,15 @@ func (kv *keyValueStore) transact(kvq KvQuery) error {
 	kvq.Run(kv.namespace)
 
 	if kv.namespace.IsChanged() {
-		logdbg("Namespace has been updated")
 		next, err := kv.namespace.Persist()
 
-		if err != nil {
-			return errors.Wrap(err, "KeyValueStore persist failed")
+		if err == nil {
+			kv.namespace = next
+		} else {
+			loginfo("API transaction failed: %v", err)
+			loginfo("Rollback failed persist")
+			kv.namespace.Reset()
 		}
-
-		kv.namespace = next
-	} else {
-		logdbg("Namespace unchanged")
 	}
 
 	return nil

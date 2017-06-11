@@ -77,7 +77,7 @@ func (p2p replicator) sendReflectRequest() (APIResponse, error) {
 
 func (p2p replicator) subscribeAllTopics() {
 	if len(p2p.topics) == 0 {
-		loginfo("No topics, not subscribing")
+		loginfo("No topics, not subscribing.")
 		return
 	}
 
