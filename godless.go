@@ -1,3 +1,10 @@
+// Godless is a peer-to-peer database running over IPFS.
+//
+// Godless uses a Consistent Replicated Data Type called a Namespace to share schemaless data with peers.
+//
+// This package is a facade to Godless internals.
+//
+// Godless is in alpha, and should be considered experimental software.
 package godless
 
 import (
@@ -13,9 +20,12 @@ import (
 	"github.com/johnny-morrice/godless/query"
 )
 
+// WebService is the Godless webservice.
 type WebService interface {
 	Handler() gohttp.Handler
 }
+
+// Client is a Godless HTTP client.
 type Client interface {
 	SendQuery(*query.Query) (api.APIResponse, error)
 	SendReflection(api.APIReflectionType) (api.APIResponse, error)
@@ -31,6 +41,7 @@ func MakeIPFSPeer(url string) api.RemoteStore {
 	return peer
 }
 
+// MakeRemoteNamespace creates a data store representing p2p data.
 func MakeRemoteNamespace(store api.RemoteStore, hash crdt.IPFSPath, earlyConnect bool) (api.RemoteNamespace, error) {
 	if hash == "" {
 		namespace := crdt.EmptyNamespace()
@@ -45,22 +56,27 @@ func MakeRemoteNamespace(store api.RemoteStore, hash crdt.IPFSPath, earlyConnect
 	}
 }
 
+// Run launches the Godless API service.  The API is safe for concurrent access.
 func Run(remoteNamespace api.RemoteNamespace) (api.APIService, <-chan error) {
 	return service.LaunchKeyValueStore(remoteNamespace)
 }
 
+// MakeWebService creates the Godless webservice.
 func MakeWebService(api api.APIService) WebService {
 	return &service.WebService{API: api}
 }
 
+// Serve serves the Godless webservice.  Send an item down the channel to stop the HTTP server.
 func Serve(addr string, webService WebService) (chan<- interface{}, error) {
 	return http.Serve(addr, webService.Handler())
 }
 
+// Replicate shares data via the IPFS pubsub mechanism.  Send an item down the channel to stop replication.
 func Replicate(api api.APIService, store api.RemoteStore, interval time.Duration, topics []crdt.RemoteStoreAddress) (chan<- interface{}, <-chan error) {
 	return service.Replicate(api, store, interval, topics)
 }
 
+// MakeClient creates a Godless HTTP Client.
 func MakeClient(serviceAddr string) Client {
 	return service.MakeClient(serviceAddr)
 }
