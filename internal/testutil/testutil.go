@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/johnny-morrice/godless/log"
 	"github.com/johnny-morrice/godless/internal/constants"
 	"github.com/johnny-morrice/godless/internal/util"
 )

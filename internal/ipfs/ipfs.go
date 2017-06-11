@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	gohttp "net/http"
 
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/johnny-morrice/godless/log"
 	ipfs "github.com/ipfs/go-ipfs-api"
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/internal/http"
