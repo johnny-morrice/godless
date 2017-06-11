@@ -16,7 +16,7 @@ func TestRunQueryReadSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mock := NewMockKvNamespace(ctrl)
+	mock := NewMockRemoteNamespace(ctrl)
 	query := &query.Query{
 		OpCode:   query.SELECT,
 		TableKey: "Table Key",
@@ -80,7 +80,7 @@ func TestRunQueryWriteSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mock := NewMockKvNamespace(ctrl)
+	mock := NewMockRemoteNamespace(ctrl)
 	query := &query.Query{
 		OpCode:   query.JOIN,
 		TableKey: "Table Key",
@@ -124,7 +124,7 @@ func TestRunQueryWriteFailure(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mock := NewMockKvNamespace(ctrl)
+	mock := NewMockRemoteNamespace(ctrl)
 	query := &query.Query{
 		OpCode:   query.JOIN,
 		TableKey: "Table Key",
@@ -174,7 +174,7 @@ func TestRunQueryInvalid(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mock := NewMockKvNamespace(ctrl)
+	mock := NewMockRemoteNamespace(ctrl)
 	query := &query.Query{}
 
 	api, _ := service.LaunchKeyValueStore(mock)

@@ -26,8 +26,6 @@ import (
 	lib "github.com/johnny-morrice/godless"
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
-	"github.com/johnny-morrice/godless/internal/http"
-	"github.com/johnny-morrice/godless/internal/service"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +37,7 @@ var serveCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		readTopics()
 
-		var kvNamespace api.KvNamespace
+		var remoteNamespace api.RemoteNamespace
 
 		store := lib.MakeIPFSPeer(ipfsService)
 		var err error
@@ -54,13 +52,14 @@ var serveCmd = &cobra.Command{
 			defer disconnect(store)
 		}
 
-		kvNamespace, err = makeKvNamespace(store)
+		index := crdt.IPFSPath(hash)
+		remoteNamespace, err = lib.MakeRemoteNamespace(store, index, earlyConnect)
 
 		if err != nil {
 			die(err)
 		}
 
-		err = serve(kvNamespace, store)
+		err = serve(remoteNamespace, store)
 
 		if err != nil {
 			die(err)
@@ -80,20 +79,18 @@ func disconnect(store api.RemoteStore) {
 	}
 }
 
-func serve(kvNamespace api.KvNamespace, store api.RemoteStore) error {
-	api, apiErrCh := service.LaunchKeyValueStore(kvNamespace)
+func serve(remoteNamespace api.RemoteNamespace, store api.RemoteStore) error {
+	api, apiErrCh := lib.Run(remoteNamespace)
 
-	webService := &service.WebService{
-		API: api,
-	}
+	webService := lib.MakeWebService(api)
 
-	webStopCh, webErr := http.Serve(addr, webService.Handler())
+	webStopCh, webErr := lib.Serve(addr, webService)
 
 	if webErr != nil {
 		return webErr
 	}
 
-	replicateStopCh, peerErrCh := service.Replicate(api, store, interval, pubsubTopics)
+	replicateStopCh, peerErrCh := lib.Replicate(api, store, interval, pubsubTopics)
 
 	var procErr error
 LOOP:
@@ -112,21 +109,6 @@ LOOP:
 	replicateStopCh <- nil
 
 	return procErr
-}
-
-func makeKvNamespace(store api.RemoteStore) (api.KvNamespace, error) {
-	if hash == "" {
-		namespace := crdt.EmptyNamespace()
-		if earlyConnect {
-			return service.PersistNewRemoteNamespace(store, namespace)
-		} else {
-			return service.MakeRemoteNamespace(store, namespace), nil
-		}
-
-	} else {
-		index := crdt.IPFSPath(hash)
-		return service.LoadRemoteNamespace(store, index)
-	}
 }
 
 func init() {

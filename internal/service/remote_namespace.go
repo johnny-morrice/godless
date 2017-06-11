@@ -16,7 +16,7 @@ type remoteNamespace struct {
 	Addr            crdt.RemoteStoreAddress
 }
 
-func LoadRemoteNamespace(store api.RemoteStore, addr crdt.RemoteStoreAddress) (api.KvNamespaceTree, error) {
+func LoadRemoteNamespace(store api.RemoteStore, addr crdt.RemoteStoreAddress) (api.RemoteNamespaceTree, error) {
 	rn := &remoteNamespace{}
 	rn.Store = store
 	rn.Addr = addr
@@ -34,14 +34,14 @@ func LoadRemoteNamespace(store api.RemoteStore, addr crdt.RemoteStoreAddress) (a
 	return rn, nil
 }
 
-func MakeRemoteNamespace(store api.RemoteStore, namespace crdt.Namespace) api.KvNamespaceTree {
+func MakeRemoteNamespace(store api.RemoteStore, namespace crdt.Namespace) api.RemoteNamespaceTree {
 	rn := &remoteNamespace{}
 	rn.Store = store
 	rn.NamespaceUpdate = namespace
 	return rn
 }
 
-func PersistNewRemoteNamespace(store api.RemoteStore, namespace crdt.Namespace) (api.KvNamespaceTree, error) {
+func PersistNewRemoteNamespace(store api.RemoteStore, namespace crdt.Namespace) (api.RemoteNamespaceTree, error) {
 	rn := MakeRemoteNamespace(store, namespace)
 
 	kv, err := rn.Persist()
@@ -283,7 +283,7 @@ func (rn *remoteNamespace) loadCurrentIndex() (crdt.Index, error) {
 }
 
 // Write pending changes to IPFS and return the new parent namespace.
-func (rn *remoteNamespace) Persist() (api.KvNamespace, error) {
+func (rn *remoteNamespace) Persist() (api.RemoteNamespace, error) {
 	const failMsg = "remoteNamespace.Persist failed"
 
 	var nsIndex crdt.Index

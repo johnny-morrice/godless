@@ -8,7 +8,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func LaunchKeyValueStore(ns api.KvNamespace) (api.APIService, <-chan error) {
+func LaunchKeyValueStore(ns api.RemoteNamespace) (api.APIService, <-chan error) {
 	interact := make(chan api.KvQuery)
 	errch := make(chan error, 1)
 
@@ -35,7 +35,7 @@ func LaunchKeyValueStore(ns api.KvNamespace) (api.APIService, <-chan error) {
 }
 
 type keyValueStore struct {
-	namespace api.KvNamespace
+	namespace api.RemoteNamespace
 	input     chan<- api.KvQuery
 }
 

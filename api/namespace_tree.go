@@ -7,8 +7,8 @@ type NamespaceTree interface {
 	LoadTraverse(NamespaceTreeTableReader) error
 }
 
-type KvNamespaceTree interface {
-	KvNamespace
+type RemoteNamespaceTree interface {
+	RemoteNamespace
 	NamespaceTree
 }
 

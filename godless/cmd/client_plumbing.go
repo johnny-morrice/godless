@@ -26,8 +26,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/johnny-morrice/godless"
 	"github.com/johnny-morrice/godless/api"
-	"github.com/johnny-morrice/godless/internal/service"
 	"github.com/johnny-morrice/godless/query"
 )
 
@@ -40,7 +40,7 @@ var clientPlumbingCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		var q *query.Query
 		var err error
-		client := service.MakeClient(serverAddr)
+		client := godless.MakeClient(serverAddr)
 
 		validateClientPlumbingArgs(cmd)
 
@@ -119,7 +119,7 @@ func analyseQuery(query *query.Query) error {
 	return query.PrettyPrint(os.Stdout)
 }
 
-func sendQuery(client *service.Client, query *query.Query) (api.APIResponse, error) {
+func sendQuery(client godless.Client, query *query.Query) (api.APIResponse, error) {
 	if query != nil {
 		return client.SendQuery(query)
 	} else if reflect != "" {

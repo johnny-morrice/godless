@@ -1,6 +1,6 @@
 package api
 
-//go:generate mockgen -package mock_godless -destination ../mock/mock_api.go -imports lib=github.com/johnny-morrice/api -self_package lib github.com/johnny-morrice/godless/api KvNamespace,RemoteStore,NamespaceTree,NamespaceTreeTableReader
+//go:generate mockgen -package mock_godless -destination ../mock/mock_api.go -imports lib=github.com/johnny-morrice/api -self_package lib github.com/johnny-morrice/godless/api RemoteNamespace,RemoteStore,NamespaceTree,NamespaceTreeTableReader
 
 import (
 	"bytes"
@@ -81,24 +81,24 @@ type APIResponse struct {
 	ReflectResponse APIReflectResponse `json:",omitEmpty"`
 }
 
-type KvNamespace interface {
+type RemoteNamespace interface {
 	RunKvQuery(*query.Query, KvQuery)
 	RunKvReflection(APIReflectionType, KvQuery)
 	Replicate(crdt.RemoteStoreAddress, KvQuery)
 	IsChanged() bool
-	Persist() (KvNamespace, error)
+	Persist() (RemoteNamespace, error)
 	Reset()
 }
 
 type kvRunner interface {
-	Run(KvNamespace, KvQuery)
+	Run(RemoteNamespace, KvQuery)
 }
 
 type kvReplicator struct {
 	peerAddr crdt.RemoteStoreAddress
 }
 
-func (replicator kvReplicator) Run(kvn KvNamespace, kvq KvQuery) {
+func (replicator kvReplicator) Run(kvn RemoteNamespace, kvq KvQuery) {
 	kvn.Replicate(replicator.peerAddr, kvq)
 }
 
@@ -106,7 +106,7 @@ type kvQueryRunner struct {
 	query *query.Query
 }
 
-func (kqr kvQueryRunner) Run(kvn KvNamespace, kvq KvQuery) {
+func (kqr kvQueryRunner) Run(kvn RemoteNamespace, kvq KvQuery) {
 	kvn.RunKvQuery(kqr.query, kvq)
 }
 
@@ -114,7 +114,7 @@ type kvReflectRunner struct {
 	reflection APIReflectionType
 }
 
-func (krr kvReflectRunner) Run(kvn KvNamespace, kvq KvQuery) {
+func (krr kvReflectRunner) Run(kvn RemoteNamespace, kvq KvQuery) {
 	kvn.RunKvReflection(krr.reflection, kvq)
 }
 
@@ -157,7 +157,7 @@ func (kvq KvQuery) reportSuccess(val APIResponse) {
 	kvq.WriteResponse(val)
 }
 
-func (kvq KvQuery) Run(kvn KvNamespace) {
+func (kvq KvQuery) Run(kvn RemoteNamespace) {
 	kvq.runner.Run(kvn, kvq)
 }
 
