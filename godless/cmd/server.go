@@ -38,12 +38,16 @@ var serveCmd = &cobra.Command{
 		var kvNamespace lib.KvNamespace
 
 		store := lib.MakeIPFSPeer(ipfsService)
-		err := store.Connect()
+		var err error
 
-		defer disconnect(store)
+		if earlyConnect {
+			err := store.Connect()
 
-		if err != nil {
-			die(err)
+			if err != nil {
+				die(err)
+			}
+
+			defer disconnect(store)
 		}
 
 		kvNamespace, err = makeKvNamespace(store)
@@ -62,6 +66,7 @@ var serveCmd = &cobra.Command{
 
 var addr string
 var interval time.Duration
+var earlyConnect bool
 
 func disconnect(store lib.RemoteStore) {
 	err := store.Disconnect()
@@ -120,4 +125,5 @@ func init() {
 
 	serveCmd.Flags().StringVar(&addr, "address", "localhost:8085", "Listen address for server")
 	serveCmd.Flags().DurationVar(&interval, "interval", time.Minute*1, "Interval between replications")
+	serveCmd.Flags().BoolVar(&earlyConnect, "early", false, "Early check on IPFS API access")
 }
