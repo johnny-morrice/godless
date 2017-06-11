@@ -103,13 +103,13 @@ func MakeIPFSPeer(url string) RemoteStore {
 }
 
 func (peer *IPFSPeer) Connect() error {
-	loginfo("Connecting...")
+	loginfo("Connecting to IPFS API...")
 	peer.Shell = ipfs.NewShellWithClient(peer.Url, peer.Client)
 	peer.pinger = ipfs.NewShellWithClient(peer.Url, backendPingClient())
 	err := peer.validateConnection()
 
 	if err == nil {
-		loginfo("Connection OK")
+		loginfo("IPFS API Connection OK")
 	}
 
 	return err
@@ -130,7 +130,7 @@ func (peer *IPFSPeer) validateShell() error {
 
 func (peer *IPFSPeer) validateConnection() error {
 	if peer.pinger.IsUp() {
-		logdbg("Collection check OK")
+		logdbg("IPFS API Connection check OK")
 	} else {
 		return fmt.Errorf("IPFSPeer is not up at '%v'", peer.Url)
 	}

@@ -1,8 +1,8 @@
 package mock_godless
 
 import (
-	"reflect"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	lib "github.com/johnny-morrice/godless"
@@ -31,24 +31,46 @@ func TestRunQueryReadSuccess(t *testing.T) {
 	}
 
 	mock.EXPECT().IsChanged().Return(false)
-	mock.EXPECT().RunKvQuery(query, kvqmatcher{})
+	mock.EXPECT().RunKvQuery(query, kvqmatcher{}).Do(writeStubResponse)
 
 	api, errch := lib.LaunchKeyValueStore(mock)
-	resp, err := api.RunQuery(query)
+	respch, err := api.RunQuery(query)
 
 	if err != nil {
 		t.Error(err)
 	}
 
-	if resp == nil {
+	if respch == nil {
 		t.Error("Response channel was nil")
 	}
+
+	validateResponseCh(t, respch)
 
 	api.CloseAPI()
 
 	for err := range errch {
 		t.Error(err)
 	}
+}
+
+func validateResponseCh(t *testing.T, respch <-chan lib.APIResponse) lib.APIResponse {
+	timeout := time.NewTimer(__TEST_TIMEOUT)
+
+	for {
+		select {
+		case <-timeout.C:
+			t.Error("Timeout reading response")
+			t.FailNow()
+			return lib.APIResponse{}
+		case r := <-respch:
+			timeout.Stop()
+			return r
+		}
+	}
+}
+
+func writeStubResponse(q *lib.Query, kvq lib.KvQuery) {
+	kvq.Response <- lib.RESPONSE_QUERY
 }
 
 func TestRunQueryWriteSuccess(t *testing.T) {
@@ -72,19 +94,21 @@ func TestRunQueryWriteSuccess(t *testing.T) {
 	}
 
 	mock.EXPECT().IsChanged().Return(true)
-	mock.EXPECT().RunKvQuery(query, kvqmatcher{})
+	mock.EXPECT().RunKvQuery(query, kvqmatcher{}).Do(writeStubResponse)
 	mock.EXPECT().Persist().Return(mock, nil)
 
 	api, errch := lib.LaunchKeyValueStore(mock)
-	resp, err := api.RunQuery(query)
+	actualRespch, err := api.RunQuery(query)
 
 	if err != nil {
 		t.Error(err)
 	}
 
-	if resp == nil {
+	if actualRespch == nil {
 		t.Error("Response channel was nil")
 	}
+
+	validateResponseCh(t, actualRespch)
 
 	api.CloseAPI()
 
@@ -114,7 +138,8 @@ func TestRunQueryWriteFailure(t *testing.T) {
 	}
 
 	mock.EXPECT().IsChanged().Return(true)
-	mock.EXPECT().RunKvQuery(query, kvqmatcher{})
+	mock.EXPECT().RunKvQuery(query, kvqmatcher{}).Do(writeStubResponse)
+	mock.EXPECT().Reset()
 	mock.EXPECT().Persist().Return(nil, errors.New("Expected error"))
 
 	api, errch := lib.LaunchKeyValueStore(mock)
@@ -128,15 +153,16 @@ func TestRunQueryWriteFailure(t *testing.T) {
 		t.Error("Response channel was nil")
 	}
 
+	r := validateResponseCh(t, resp)
+
 	api.CloseAPI()
 
-	if err := <-errch; err == nil {
-		t.Error("err was nil")
+	if err := <-errch; err != nil {
+		t.Error("err was not nil")
 	}
 
-	empty := lib.APIResponse{}
-	if r := <-resp; !reflect.DeepEqual(r, empty) {
-		t.Error("Non zero APIResponse")
+	if r.Err != nil {
+		t.Error("Non failure APIResponse")
 	}
 }
 
@@ -174,3 +200,5 @@ func (kvqmatcher) Matches(v interface{}) bool {
 
 	return ok
 }
+
+const __TEST_TIMEOUT = time.Second * 1

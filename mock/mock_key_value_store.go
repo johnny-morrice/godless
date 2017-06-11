@@ -50,6 +50,22 @@ func (_mr *_MockKvNamespaceRecorder) Persist() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Persist")
 }
 
+func (_m *MockKvNamespace) Replicate(_param0 godless.RemoteStoreAddress, _param1 godless.KvQuery) {
+	_m.ctrl.Call(_m, "Replicate", _param0, _param1)
+}
+
+func (_mr *_MockKvNamespaceRecorder) Replicate(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Replicate", arg0, arg1)
+}
+
+func (_m *MockKvNamespace) Reset() {
+	_m.ctrl.Call(_m, "Reset")
+}
+
+func (_mr *_MockKvNamespaceRecorder) Reset() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Reset")
+}
+
 func (_m *MockKvNamespace) RunKvQuery(_param0 *godless.Query, _param1 godless.KvQuery) {
 	_m.ctrl.Call(_m, "RunKvQuery", _param0, _param1)
 }

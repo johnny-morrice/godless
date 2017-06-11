@@ -338,15 +338,11 @@ func (query *Query) opcodePanic() {
 	panic(fmt.Sprintf("Unknown Query OpCode: %v", query.OpCode))
 }
 
-func (query *Query) PrettyText() string {
+func (query *Query) PrettyText() (string, error) {
 	buff := &bytes.Buffer{}
 	err := query.PrettyPrint(buff)
 
-	if err != nil {
-		panic(err)
-	}
-
-	return buff.String()
+	return buff.String(), err
 }
 
 func prettyPrintJson(jsonable interface{}) string {

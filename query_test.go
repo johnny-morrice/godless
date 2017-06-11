@@ -190,8 +190,16 @@ func randEscape(rand *rand.Rand) string {
 	return "\\" + randStr(rand, chars, MIN_CHARS, CHARS_LIM)
 }
 
+func prettyQuery(query *Query) string {
+	text, err := query.PrettyText()
+	if err != nil {
+		panic(err)
+	}
+	return text
+}
+
 func queryParseOk(expected *Query) bool {
-	source := expected.PrettyText()
+	source := prettyQuery(expected)
 	logdbg("Pretty Printed input: \"%v\"", source)
 
 	actual, err := CompileQuery(source)
@@ -203,9 +211,9 @@ func queryParseOk(expected *Query) bool {
 	same := expected.Equals(actual)
 
 	if !same {
-		actualSource := actual.PrettyText()
+		actualSource := prettyQuery(actual)
 		logdbg("Pretty Printed output: \"%v\"", actualSource)
-		logDiff(source, actual.PrettyText())
+		logDiff(source, prettyQuery(actual))
 	}
 
 	return same
@@ -258,8 +266,8 @@ func queryEncodeOk(expected *Query) bool {
 	same := expected.Equals(actual)
 
 	if !same {
-		expectedSource := expected.PrettyText()
-		actualSource := actual.PrettyText()
+		expectedSource := prettyQuery(expected)
+		actualSource := prettyQuery(actual)
 		logDiff(expectedSource, actualSource)
 	}
 

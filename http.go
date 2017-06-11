@@ -28,7 +28,7 @@ func defaultBackendClient() *http.Client {
 }
 
 func backendPingClient() *http.Client {
-	if __pingClient != nil {
+	if __pingClient == nil {
 		__pingClient = makeBackendClient(__PING_TIMEOUT)
 	}
 

@@ -92,3 +92,24 @@ func (_m *MockRemoteStore) Disconnect() error {
 func (_mr *_MockRemoteStoreRecorder) Disconnect() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Disconnect")
 }
+
+func (_m *MockRemoteStore) PublishAddr(_param0 godless.RemoteStoreAddress, _param1 []godless.RemoteStoreAddress) error {
+	ret := _m.ctrl.Call(_m, "PublishAddr", _param0, _param1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockRemoteStoreRecorder) PublishAddr(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "PublishAddr", arg0, arg1)
+}
+
+func (_m *MockRemoteStore) SubscribeAddrStream(_param0 godless.RemoteStoreAddress) (<-chan godless.RemoteStoreAddress, <-chan error) {
+	ret := _m.ctrl.Call(_m, "SubscribeAddrStream", _param0)
+	ret0, _ := ret[0].(<-chan godless.RemoteStoreAddress)
+	ret1, _ := ret[1].(<-chan error)
+	return ret0, ret1
+}
+
+func (_mr *_MockRemoteStoreRecorder) SubscribeAddrStream(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "SubscribeAddrStream", arg0)
+}

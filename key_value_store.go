@@ -97,11 +97,11 @@ func LaunchKeyValueStore(ns KvNamespace) (APIService, <-chan error) {
 	go func() {
 		defer close(errch)
 		for kvq := range interact {
+			loginfo("API received new request")
 
 			err := kv.transact(kvq)
 
 			if err != nil {
-				close(kvq.Response)
 				logerr("key value store died with: %v", err)
 				errch <- errors.Wrap(err, "Key value store died")
 				return
@@ -127,8 +127,13 @@ func (kv *keyValueStore) Replicate(peerAddr RemoteStoreAddress) (<-chan APIRespo
 
 func (kv *keyValueStore) RunQuery(query *Query) (<-chan APIResponse, error) {
 	if canLog(LOG_INFO) {
-		text := query.PrettyText()
-		loginfo("APIService running Query:\n%v", text)
+		text, err := query.PrettyText()
+		if err == nil {
+			loginfo("APIService running Query:\n%v", text)
+		} else {
+			logdbg("Failed to pretty print query: %v", err)
+		}
+
 	}
 
 	if err := query.Validate(); err != nil {
@@ -156,19 +161,37 @@ func (kv *keyValueStore) CloseAPI() {
 }
 
 func (kv *keyValueStore) transact(kvq KvQuery) error {
-	kvq.Run(kv.namespace)
+	go kvq.Run(kv.namespace)
 
+	resp := <-kvq.Response
 	if kv.namespace.IsChanged() {
 		next, err := kv.namespace.Persist()
 
 		if err == nil {
+			loginfo("API transaction OK")
 			kv.namespace = next
 		} else {
-			loginfo("API transaction failed: %v", err)
+			logerr("API transaction failed: %v", err)
 			loginfo("Rollback failed persist")
 			kv.namespace.Reset()
+
+			respText, reportErr := resp.AsText()
+
+			if reportErr != nil {
+				loginfo("Overridden response:\n%v", respText)
+			} else {
+				logwarn("Could not serialize overriden response: %v", reportErr)
+			}
+
+			respType := resp.Type
+			resp = RESPONSE_FAIL
+			resp.Type = respType
 		}
+	} else {
+		loginfo("No API transaction required for read query")
 	}
+
+	kvq.transactionResult <- resp
 
 	return nil
 }
