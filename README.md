@@ -15,10 +15,12 @@ $ ipfs daemon --enable-pubsub-experiment
 Run server:
 
 ```
-$ godless store server --topics=godless
+$ godless store server --early --topics=godless
 ```
 
 Any other godless server that uses the same topic will replicate all data.
+
+The `--early` flag indicates that the server should fail if it can find no running IPFS daemon.
 
 Run plumbing query command:
 
@@ -67,5 +69,5 @@ Check out the [releases page](https://github.com/johnny-morrice/godless/releases
 ### For Golang programmers
 
 ```
-go get github.com/johnny-morrice/godless/...
+go get -u github.com/johnny-morrice/godless/godless
 ```

@@ -67,6 +67,10 @@ func (rn *remoteNamespace) Replicate(peerAddr crdt.RemoteStoreAddress, kvq api.K
 func (rn *remoteNamespace) joinPeerIndex(peerAddr crdt.RemoteStoreAddress) api.APIResponse {
 	const failMsg = "remoteNamespace.joinPeerIndex failed"
 
+	if peerAddr.Path() == rn.Addr.Path() {
+		return api.RESPONSE_REPLICATE
+	}
+
 	failResponse := api.RESPONSE_FAIL
 	failResponse.Type = api.API_REPLICATE
 
@@ -279,6 +283,10 @@ func (rn *remoteNamespace) findTableAddrs(index crdt.Index, tableHints api.Table
 // Load chunks over IPFS
 // TODO opportunity to query IPFS in parallel?
 func (rn *remoteNamespace) loadCurrentIndex() (crdt.Index, error) {
+	if rn.Addr == nil {
+		return crdt.EmptyIndex(), errors.New("No current index")
+	}
+
 	return rn.loadIndex(rn.Addr)
 }
 
