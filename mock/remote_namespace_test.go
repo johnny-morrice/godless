@@ -89,7 +89,7 @@ func TestPersistNewRemoteNamespaceFailure(t *testing.T) {
 	mock := NewMockRemoteStore(ctrl)
 	namespace := crdt.EmptyNamespace()
 
-	mock.EXPECT().AddIndex(gomock.Any()).Return(nil, errors.New("Expected error"))
+	mock.EXPECT().AddIndex(gomock.Any()).Return(crdt.NIL_PATH, errors.New("Expected error"))
 
 	ns, err := service.PersistNewRemoteNamespace(mock, namespace)
 
@@ -355,7 +355,7 @@ func TestPersistFailure(t *testing.T) {
 	nextNamespace := namespace.JoinTable("Table Key", table)
 
 	mock.EXPECT().AddIndex(crdt.EmptyIndex())
-	mock.EXPECT().AddNamespace(matchns(nextNamespace)).Return(nil, errors.New("Expected error"))
+	mock.EXPECT().AddNamespace(matchns(nextNamespace)).Return(crdt.NIL_PATH, errors.New("Expected error"))
 
 	ns1, perr1 := service.PersistNewRemoteNamespace(mock, namespace)
 
