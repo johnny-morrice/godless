@@ -53,14 +53,14 @@ func MakeIndexEntryMessage(entry IndexStreamEntry) *proto.IndexEntryMessage {
 	return message
 }
 
-func MakeIndexStreamEntry(t TableName, addrs []RemoteStoreAddress) IndexStreamEntry {
+func MakeIndexStreamEntry(t TableName, addrs []IPFSPath) IndexStreamEntry {
 	entry := IndexStreamEntry{
 		TableName: t,
 		Links:     make([]IPFSPath, len(addrs)),
 	}
 
 	for i, a := range addrs {
-		entry.Links[i] = IPFSPath(a.Path())
+		entry.Links[i] = IPFSPath(a)
 	}
 
 	return entry

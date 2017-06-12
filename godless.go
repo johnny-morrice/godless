@@ -72,7 +72,7 @@ func Serve(addr string, webService WebService) (chan<- interface{}, error) {
 }
 
 // Replicate shares data via the IPFS pubsub mechanism.  Send an item down the channel to stop replication.
-func Replicate(api api.APIService, store api.RemoteStore, interval time.Duration, topics []crdt.RemoteStoreAddress) (chan<- interface{}, <-chan error) {
+func Replicate(api api.APIService, store api.RemoteStore, interval time.Duration, topics []crdt.IPFSPath) (chan<- interface{}, <-chan error) {
 	return service.Replicate(api, store, interval, topics)
 }
 

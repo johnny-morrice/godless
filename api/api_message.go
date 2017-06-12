@@ -5,8 +5,8 @@ import (
 	"io"
 
 	"github.com/johnny-morrice/godless/crdt"
-	"github.com/johnny-morrice/godless/proto"
 	"github.com/johnny-morrice/godless/internal/util"
+	"github.com/johnny-morrice/godless/proto"
 	"github.com/pkg/errors"
 )
 
@@ -126,7 +126,7 @@ func makeAPIReflectMessage(resp APIReflectResponse) *proto.APIReflectResponseMes
 
 	switch resp.Type {
 	case REFLECT_HEAD_PATH:
-		message.Path = resp.Path
+		message.Path = string(resp.Path)
 	case REFLECT_INDEX:
 		message.Index = crdt.MakeIndexMessage(resp.Index)
 	case REFLECT_DUMP_NAMESPACE:
@@ -149,7 +149,7 @@ func readAPIReflectResponse(message *proto.APIReflectResponseMessage) APIReflect
 
 	switch resp.Type {
 	case REFLECT_HEAD_PATH:
-		resp.Path = message.Path
+		resp.Path = crdt.IPFSPath(message.Path)
 	case REFLECT_INDEX:
 		resp.Index = crdt.ReadIndexMessage(message.Index)
 	case REFLECT_DUMP_NAMESPACE:

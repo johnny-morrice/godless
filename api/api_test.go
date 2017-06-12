@@ -51,7 +51,7 @@ func genReflectResponse(rand *rand.Rand, size int) APIReflectResponse {
 	branch := rand.Float32()
 	if branch < 0.333 {
 		gen.Type = REFLECT_HEAD_PATH
-		gen.Path = testutil.RandLetters(rand, size)
+		gen.Path = crdt.IPFSPath(testutil.RandLetters(rand, size))
 	} else if branch < 0.666 {
 		gen.Type = REFLECT_DUMP_NAMESPACE
 		gen.Namespace = crdt.GenNamespace(rand, size)

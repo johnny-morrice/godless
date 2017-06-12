@@ -7,22 +7,12 @@ import (
 	"io/ioutil"
 	gohttp "net/http"
 
-	"github.com/johnny-morrice/godless/log"
 	ipfs "github.com/ipfs/go-ipfs-api"
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/internal/http"
+	"github.com/johnny-morrice/godless/log"
 	"github.com/pkg/errors"
 )
-
-func castIPFSPath(addr crdt.RemoteStoreAddress) crdt.IPFSPath {
-	path, ok := addr.(crdt.IPFSPath)
-
-	if !ok {
-		panic("addr was not crdt.IPFSPath")
-	}
-
-	return path
-}
 
 type IPFSRecord struct {
 	Namespace crdt.Namespace
@@ -126,18 +116,18 @@ func (peer *IPFSPeer) validateConnection() error {
 	return nil
 }
 
-func (peer *IPFSPeer) PublishAddr(addr crdt.RemoteStoreAddress, topics []crdt.RemoteStoreAddress) error {
+func (peer *IPFSPeer) PublishAddr(addr crdt.IPFSPath, topics []crdt.IPFSPath) error {
 	const failMsg = "IPFSPeer.PublishAddr failed"
 
 	if verr := peer.validateShell(); verr != nil {
 		return verr
 	}
 
-	text := addr.Path()
+	publishValue := string(addr)
 
 	for _, t := range topics {
-		topicText := t.Path()
-		err := peer.Shell.PubSubPublish(topicText, text)
+		topicText := string(t)
+		err := peer.Shell.PubSubPublish(topicText, publishValue)
 
 		if err != nil {
 			return errors.Wrap(err, failMsg)
@@ -147,8 +137,8 @@ func (peer *IPFSPeer) PublishAddr(addr crdt.RemoteStoreAddress, topics []crdt.Re
 	return nil
 }
 
-func (peer *IPFSPeer) SubscribeAddrStream(topic crdt.RemoteStoreAddress) (<-chan crdt.RemoteStoreAddress, <-chan error) {
-	stream := make(chan crdt.RemoteStoreAddress)
+func (peer *IPFSPeer) SubscribeAddrStream(topic crdt.IPFSPath) (<-chan crdt.IPFSPath, <-chan error) {
+	stream := make(chan crdt.IPFSPath)
 	errch := make(chan error)
 
 	tidy := func() {
@@ -168,7 +158,7 @@ func (peer *IPFSPeer) SubscribeAddrStream(topic crdt.RemoteStoreAddress) (<-chan
 	go func() {
 		defer tidy()
 
-		topicText := topic.Path()
+		topicText := string(topic)
 		subscription, launchErr := peer.Shell.PubSubSubscribe(topicText)
 
 		if launchErr != nil {
@@ -197,11 +187,11 @@ func (peer *IPFSPeer) SubscribeAddrStream(topic crdt.RemoteStoreAddress) (<-chan
 	return stream, errch
 }
 
-func (peer *IPFSPeer) AddIndex(index crdt.Index) (crdt.RemoteStoreAddress, error) {
+func (peer *IPFSPeer) AddIndex(index crdt.Index) (crdt.IPFSPath, error) {
 	const failMsg = "IPFSPeer.AddIndex failed"
 
 	if verr := peer.validateShell(); verr != nil {
-		return nil, verr
+		return crdt.NIL_PATH, verr
 	}
 
 	chunk := makeIpfsIndex(index)
@@ -209,21 +199,19 @@ func (peer *IPFSPeer) AddIndex(index crdt.Index) (crdt.RemoteStoreAddress, error
 	path, addErr := peer.add(chunk)
 
 	if addErr != nil {
-		return nil, errors.Wrap(addErr, failMsg)
+		return crdt.NIL_PATH, errors.Wrap(addErr, failMsg)
 	}
 
 	return path, nil
 }
 
-func (peer *IPFSPeer) CatIndex(addr crdt.RemoteStoreAddress) (crdt.Index, error) {
+func (peer *IPFSPeer) CatIndex(addr crdt.IPFSPath) (crdt.Index, error) {
 	if verr := peer.validateShell(); verr != nil {
 		return crdt.EmptyIndex(), verr
 	}
 
-	path := castIPFSPath(addr)
-
 	chunk := &IPFSIndex{}
-	caterr := peer.cat(path, chunk)
+	caterr := peer.cat(addr, chunk)
 
 	if caterr != nil {
 		return crdt.EmptyIndex(), errors.Wrap(caterr, "IPFSPeer.CatNamespace failed")
@@ -232,9 +220,9 @@ func (peer *IPFSPeer) CatIndex(addr crdt.RemoteStoreAddress) (crdt.Index, error)
 	return chunk.Index, nil
 }
 
-func (peer *IPFSPeer) AddNamespace(namespace crdt.Namespace) (crdt.RemoteStoreAddress, error) {
+func (peer *IPFSPeer) AddNamespace(namespace crdt.Namespace) (crdt.IPFSPath, error) {
 	if verr := peer.validateShell(); verr != nil {
-		return nil, verr
+		return crdt.NIL_PATH, verr
 	}
 
 	chunk := makeIpfsRecord(namespace)
@@ -242,21 +230,19 @@ func (peer *IPFSPeer) AddNamespace(namespace crdt.Namespace) (crdt.RemoteStoreAd
 	path, err := peer.add(chunk)
 
 	if err != nil {
-		return nil, errors.Wrap(err, "IPFSPeer.AddNamespace failed")
+		return crdt.NIL_PATH, errors.Wrap(err, "IPFSPeer.AddNamespace failed")
 	}
 
 	return path, nil
 }
 
-func (peer *IPFSPeer) CatNamespace(addr crdt.RemoteStoreAddress) (crdt.Namespace, error) {
+func (peer *IPFSPeer) CatNamespace(addr crdt.IPFSPath) (crdt.Namespace, error) {
 	if verr := peer.validateShell(); verr != nil {
 		return crdt.EmptyNamespace(), verr
 	}
 
-	path := castIPFSPath(addr)
-
 	chunk := &IPFSRecord{}
-	caterr := peer.cat(path, chunk)
+	caterr := peer.cat(addr, chunk)
 
 	if caterr != nil {
 		return crdt.EmptyNamespace(), errors.Wrap(caterr, "IPFSPeer.CatNamespace failed")
@@ -271,13 +257,13 @@ func (peer *IPFSPeer) add(chunk encoder) (crdt.IPFSPath, error) {
 	err := chunk.encode(buff)
 
 	if err != nil {
-		return "", errors.Wrap(err, failMsg)
+		return crdt.NIL_PATH, errors.Wrap(err, failMsg)
 	}
 
 	path, sherr := peer.Shell.Add(buff)
 
 	if sherr != nil {
-		return "", errors.Wrap(err, failMsg)
+		return crdt.NIL_PATH, errors.Wrap(err, failMsg)
 	}
 
 	return crdt.IPFSPath(path), nil

@@ -2,17 +2,15 @@ package crdt
 
 import "sort"
 
-type RemoteStoreAddress interface {
-	Path() string
-}
-
 type IPFSPath string
 
-func (path IPFSPath) Path() string {
-	return string(path)
+const NIL_PATH IPFSPath = ""
+
+func IsNilPath(path IPFSPath) bool {
+	return path == NIL_PATH
 }
 
-type byPath []RemoteStoreAddress
+type byPath []IPFSPath
 
 func (addrs byPath) Len() int {
 	return len(addrs)
@@ -23,26 +21,26 @@ func (addrs byPath) Swap(i, j int) {
 }
 
 func (addrs byPath) Less(i, j int) bool {
-	return addrs[i].Path() < addrs[j].Path()
+	return addrs[i] < addrs[j]
 }
 
-func normalStoreAddress(addrs []RemoteStoreAddress) []RemoteStoreAddress {
+func normalStoreAddress(addrs []IPFSPath) []IPFSPath {
 	uniq := uniqStoreAddress(addrs)
 	sort.Sort(byPath(uniq))
 	return uniq
 }
 
-func uniqStoreAddress(addrs []RemoteStoreAddress) []RemoteStoreAddress {
-	dedupe := map[string]RemoteStoreAddress{}
+func uniqStoreAddress(addrs []IPFSPath) []IPFSPath {
+	dedupe := map[IPFSPath]IPFSPath{}
 
 	for _, a := range addrs {
-		path := a.Path()
+		path := a
 		if _, present := dedupe[path]; !present {
 			dedupe[path] = a
 		}
 	}
 
-	uniq := make([]RemoteStoreAddress, len(dedupe))
+	uniq := make([]IPFSPath, len(dedupe))
 
 	i := 0
 	for _, a := range dedupe {

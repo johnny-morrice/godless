@@ -11,7 +11,7 @@ import (
 )
 
 type replicator struct {
-	topics   []crdt.RemoteStoreAddress
+	topics   []crdt.IPFSPath
 	interval time.Duration
 	api      api.APIService
 	store    api.RemoteStore
@@ -48,7 +48,7 @@ func (p2p replicator) publishIndex() {
 		return
 	}
 
-	// TODO ReflectResponse.Path should be crdt.RemoteStoreAddress.
+	// TODO ReflectResponse.Path should be crdt.IPFSPath.
 	head := crdt.IPFSPath(addr.ReflectResponse.Path)
 
 	publishErr := p2p.store.PublishAddr(head, p2p.topics)
@@ -97,7 +97,7 @@ func (p2p replicator) subscribeAllTopics() {
 	wg.Wait()
 }
 
-func (p2p replicator) subscribeTopic(topic crdt.RemoteStoreAddress) {
+func (p2p replicator) subscribeTopic(topic crdt.IPFSPath) {
 	headch, errch := p2p.store.SubscribeAddrStream(topic)
 
 	go func() {
@@ -123,7 +123,7 @@ func (p2p replicator) subscribeTopic(topic crdt.RemoteStoreAddress) {
 	}()
 }
 
-func (p2p replicator) sendReplicateRequest(head crdt.RemoteStoreAddress) {
+func (p2p replicator) sendReplicateRequest(head crdt.IPFSPath) {
 	log.Info("Replicating from: %v", head)
 
 	respch, err := p2p.api.Replicate(head)
@@ -140,7 +140,7 @@ func (p2p replicator) sendReplicateRequest(head crdt.RemoteStoreAddress) {
 	}
 }
 
-func Replicate(api api.APIService, store api.RemoteStore, interval time.Duration, topics []crdt.RemoteStoreAddress) (chan<- interface{}, <-chan error) {
+func Replicate(api api.APIService, store api.RemoteStore, interval time.Duration, topics []crdt.IPFSPath) (chan<- interface{}, <-chan error) {
 	stopch := make(chan interface{}, 1)
 	errch := make(chan error, len(topics))
 

@@ -13,10 +13,10 @@ type remoteNamespace struct {
 	NamespaceUpdate crdt.Namespace
 	IndexUpdate     crdt.Index
 	Store           api.RemoteStore
-	Addr            crdt.RemoteStoreAddress
+	Addr            crdt.IPFSPath
 }
 
-func LoadRemoteNamespace(store api.RemoteStore, addr crdt.RemoteStoreAddress) (api.RemoteNamespaceTree, error) {
+func LoadRemoteNamespace(store api.RemoteStore, addr crdt.IPFSPath) (api.RemoteNamespaceTree, error) {
 	rn := &remoteNamespace{}
 	rn.Store = store
 	rn.Addr = addr
@@ -58,16 +58,16 @@ func (rn *remoteNamespace) Reset() {
 	rn.IndexUpdate = crdt.EmptyIndex()
 }
 
-func (rn *remoteNamespace) Replicate(peerAddr crdt.RemoteStoreAddress, kvq api.KvQuery) {
+func (rn *remoteNamespace) Replicate(peerAddr crdt.IPFSPath, kvq api.KvQuery) {
 	runner := api.APIResponderFunc(func() api.APIResponse { return rn.joinPeerIndex(peerAddr) })
 	response := runner.RunQuery()
 	kvq.WriteResponse(response)
 }
 
-func (rn *remoteNamespace) joinPeerIndex(peerAddr crdt.RemoteStoreAddress) api.APIResponse {
+func (rn *remoteNamespace) joinPeerIndex(peerAddr crdt.IPFSPath) api.APIResponse {
 	const failMsg = "remoteNamespace.joinPeerIndex failed"
 
-	if peerAddr.Path() == rn.Addr.Path() {
+	if peerAddr == rn.Addr {
 		return api.RESPONSE_REPLICATE
 	}
 
@@ -93,7 +93,7 @@ func (rn *remoteNamespace) joinPeerIndex(peerAddr crdt.RemoteStoreAddress) api.A
 	return api.RESPONSE_REPLICATE
 }
 
-func (rn *remoteNamespace) loadIndex(indexAddr crdt.RemoteStoreAddress) (crdt.Index, error) {
+func (rn *remoteNamespace) loadIndex(indexAddr crdt.IPFSPath) (crdt.Index, error) {
 	return rn.Store.CatIndex(indexAddr)
 }
 
@@ -120,10 +120,10 @@ func (rn *remoteNamespace) getReflectHead() api.APIResponse {
 	response := api.RESPONSE_REFLECT
 	response.ReflectResponse.Type = api.REFLECT_HEAD_PATH
 
-	if rn.Addr == nil {
+	if crdt.IsNilPath(rn.Addr) {
 		response.Err = errors.New("No index available")
 	} else {
-		response.ReflectResponse.Path = rn.Addr.Path()
+		response.ReflectResponse.Path = rn.Addr
 	}
 
 	return response
@@ -218,7 +218,7 @@ func (rn *remoteNamespace) LoadTraverse(nttr api.NamespaceTreeTableReader) error
 	return rn.traverseTableNamespaces(tableAddrs, nttr)
 }
 
-func (rn *remoteNamespace) traverseTableNamespaces(tableAddrs []crdt.RemoteStoreAddress, f api.NamespaceTreeReader) error {
+func (rn *remoteNamespace) traverseTableNamespaces(tableAddrs []crdt.IPFSPath, f api.NamespaceTreeReader) error {
 	nsch, cancelch := rn.namespaceLoader(tableAddrs)
 	defer close(cancelch)
 	for ns := range nsch {
@@ -237,7 +237,7 @@ func (rn *remoteNamespace) traverseTableNamespaces(tableAddrs []crdt.RemoteStore
 }
 
 // Preload namespaces while the previous is analysed.
-func (rn *remoteNamespace) namespaceLoader(addrs []crdt.RemoteStoreAddress) (<-chan crdt.Namespace, chan<- struct{}) {
+func (rn *remoteNamespace) namespaceLoader(addrs []crdt.IPFSPath) (<-chan crdt.Namespace, chan<- struct{}) {
 	nsch := make(chan crdt.Namespace)
 	cancelch := make(chan struct{}, 1)
 
@@ -267,8 +267,8 @@ func (rn *remoteNamespace) namespaceLoader(addrs []crdt.RemoteStoreAddress) (<-c
 	return nsch, cancelch
 }
 
-func (rn *remoteNamespace) findTableAddrs(index crdt.Index, tableHints api.TableHinter) []crdt.RemoteStoreAddress {
-	out := []crdt.RemoteStoreAddress{}
+func (rn *remoteNamespace) findTableAddrs(index crdt.Index, tableHints api.TableHinter) []crdt.IPFSPath {
+	out := []crdt.IPFSPath{}
 	for _, t := range tableHints.ReadsTables() {
 		addrs, err := index.GetTableAddrs(t)
 
@@ -283,7 +283,7 @@ func (rn *remoteNamespace) findTableAddrs(index crdt.Index, tableHints api.Table
 // Load chunks over IPFS
 // TODO opportunity to query IPFS in parallel?
 func (rn *remoteNamespace) loadCurrentIndex() (crdt.Index, error) {
-	if rn.Addr == nil {
+	if crdt.IsNilPath(rn.Addr) {
 		return crdt.EmptyIndex(), errors.New("No current index")
 	}
 
@@ -296,7 +296,7 @@ func (rn *remoteNamespace) Persist() (api.RemoteNamespace, error) {
 
 	var nsIndex crdt.Index
 	var index crdt.Index
-	var namespaceAddr crdt.RemoteStoreAddress
+	var namespaceAddr crdt.IPFSPath
 	var nsErr error
 
 	// TODO tidy up
@@ -315,7 +315,7 @@ func (rn *remoteNamespace) Persist() (api.RemoteNamespace, error) {
 		}
 	}
 
-	if rn.Addr != nil {
+	if crdt.IsNilPath(rn.Addr) {
 		var loadErr error
 		index, loadErr = rn.loadCurrentIndex()
 
@@ -342,13 +342,13 @@ func (rn *remoteNamespace) Persist() (api.RemoteNamespace, error) {
 	return out, nil
 }
 
-func (rn *remoteNamespace) persistNamespace(namespace crdt.Namespace) (crdt.RemoteStoreAddress, error) {
+func (rn *remoteNamespace) persistNamespace(namespace crdt.Namespace) (crdt.IPFSPath, error) {
 	const failMsg = "remoteNamespace.persistNamespace failed"
 
 	namespaceAddr, err := rn.Store.AddNamespace(namespace)
 
 	if err != nil {
-		return nil, errors.Wrap(err, failMsg)
+		return crdt.NIL_PATH, errors.Wrap(err, failMsg)
 	}
 
 	log.Info("Persisted crdt.Namespace at: %v", namespaceAddr)
@@ -356,12 +356,12 @@ func (rn *remoteNamespace) persistNamespace(namespace crdt.Namespace) (crdt.Remo
 	return namespaceAddr, nil
 }
 
-func (rn *remoteNamespace) indexNamespace(namespaceAddr crdt.RemoteStoreAddress, namespace crdt.Namespace) (crdt.Index, error) {
+func (rn *remoteNamespace) indexNamespace(namespaceAddr crdt.IPFSPath, namespace crdt.Namespace) (crdt.Index, error) {
 	const failMsg = "remoteNamespace.indexNamespace failed"
 
 	tableNames := namespace.GetTableNames()
 
-	indices := map[crdt.TableName]crdt.RemoteStoreAddress{}
+	indices := map[crdt.TableName]crdt.IPFSPath{}
 	for _, t := range tableNames {
 		indices[t] = namespaceAddr
 	}
@@ -369,12 +369,12 @@ func (rn *remoteNamespace) indexNamespace(namespaceAddr crdt.RemoteStoreAddress,
 	return crdt.MakeIndex(indices), nil
 }
 
-func (rn *remoteNamespace) persistIndex(newIndex crdt.Index) (crdt.RemoteStoreAddress, error) {
+func (rn *remoteNamespace) persistIndex(newIndex crdt.Index) (crdt.IPFSPath, error) {
 	const failMsg = "remoteNamespace.persistIndex failed"
 	addr, saveerr := rn.Store.AddIndex(newIndex)
 
 	if saveerr != nil {
-		return nil, errors.Wrap(saveerr, failMsg)
+		return crdt.NIL_PATH, errors.Wrap(saveerr, failMsg)
 	}
 
 	log.Info("Persisted crdt.Index at %v", addr)

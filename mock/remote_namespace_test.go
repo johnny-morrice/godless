@@ -57,7 +57,7 @@ func TestPersistNewRemoteNamespaceSuccess(t *testing.T) {
 	mock := NewMockRemoteStore(ctrl)
 
 	addr := crdt.IPFSPath("The Index")
-	index := crdt.MakeIndex(map[crdt.TableName]crdt.RemoteStoreAddress{
+	index := crdt.MakeIndex(map[crdt.TableName]crdt.IPFSPath{
 		MAIN_TABLE_KEY: addr,
 	})
 	namespace := crdt.MakeNamespace(map[crdt.TableName]crdt.Table{
@@ -142,7 +142,7 @@ func TestLoadTraverseSuccess(t *testing.T) {
 	namespaceB := empty.JoinTable(tableBName, tableB)
 	namespaceC := empty.JoinTable(tableCName, tableC)
 
-	index := crdt.MakeIndex(map[crdt.TableName]crdt.RemoteStoreAddress{
+	index := crdt.MakeIndex(map[crdt.TableName]crdt.IPFSPath{
 		tableAName: addrA,
 		tableBName: addrB,
 		tableCName: addrC,
@@ -195,7 +195,7 @@ func TestLoadTraverseFailure(t *testing.T) {
 	namespaceA := empty.JoinTable("Table A", tableA)
 
 	tableName := crdt.TableName("Table A")
-	index := crdt.MakeIndex(map[crdt.TableName]crdt.RemoteStoreAddress{
+	index := crdt.MakeIndex(map[crdt.TableName]crdt.IPFSPath{
 		tableName: namespaceAddr,
 	})
 
@@ -240,7 +240,7 @@ func TestLoadTraverseAbort(t *testing.T) {
 	namespaceA := empty.JoinTable("Table A", tableA)
 
 	tableName := crdt.TableName("Table A")
-	index := crdt.MakeIndex(map[crdt.TableName]crdt.RemoteStoreAddress{
+	index := crdt.MakeIndex(map[crdt.TableName]crdt.IPFSPath{
 		tableName: addrA,
 	})
 
@@ -272,10 +272,10 @@ func TestPersistSuccess(t *testing.T) {
 
 	mock := NewMockRemoteStore(ctrl)
 
-	// addrA := crdt.RemoteStoreAddress(crdt.IPFSPath("Addr A"))
-	addrB := crdt.RemoteStoreAddress(crdt.IPFSPath("Addr B"))
-	addrIndexA := crdt.RemoteStoreAddress(crdt.IPFSPath("Addr Index A"))
-	addrIndexB := crdt.RemoteStoreAddress(crdt.IPFSPath("Addr Index B"))
+	// addrA := crdt.IPFSPath(crdt.IPFSPath("Addr A"))
+	addrB := crdt.IPFSPath(crdt.IPFSPath("Addr B"))
+	addrIndexA := crdt.IPFSPath(crdt.IPFSPath("Addr Index A"))
+	addrIndexB := crdt.IPFSPath(crdt.IPFSPath("Addr Index B"))
 	tableB := crdt.MakeTable(map[crdt.RowName]crdt.Row{
 		"Row B": crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
 			"Entry B": crdt.MakeEntry([]crdt.Point{"Point B"}),
@@ -300,7 +300,7 @@ func TestPersistSuccess(t *testing.T) {
 	// 	Namespace: namespaceA,
 	// }
 
-	// indexA := crdt.MakeIndex(map[crdt.TableName]crdt.RemoteStoreAddress{
+	// indexA := crdt.MakeIndex(map[crdt.TableName]crdt.IPFSPath{
 	// 	tableAName: addrA,
 	// })
 	indexA := crdt.EmptyIndex()

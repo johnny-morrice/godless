@@ -31,7 +31,7 @@ type APIQueryService interface {
 }
 
 type APIPeerService interface {
-	Replicate(peerAddr crdt.RemoteStoreAddress) (<-chan APIResponse, error)
+	Replicate(peerAddr crdt.IPFSPath) (<-chan APIResponse, error)
 }
 
 type APIResponder interface {
@@ -60,7 +60,7 @@ const (
 type APIReflectResponse struct {
 	Type      APIReflectionType
 	Namespace crdt.Namespace `json:",omitEmpty"`
-	Path      string         `json:",omitEmpty"`
+	Path      crdt.IPFSPath  `json:",omitEmpty"`
 	Index     crdt.Index     `json:",omitEmpty"`
 }
 
@@ -84,7 +84,7 @@ type APIResponse struct {
 type RemoteNamespace interface {
 	RunKvQuery(*query.Query, KvQuery)
 	RunKvReflection(APIReflectionType, KvQuery)
-	Replicate(crdt.RemoteStoreAddress, KvQuery)
+	Replicate(crdt.IPFSPath, KvQuery)
 	IsChanged() bool
 	Persist() (RemoteNamespace, error)
 	Reset()
@@ -95,7 +95,7 @@ type kvRunner interface {
 }
 
 type kvReplicator struct {
-	peerAddr crdt.RemoteStoreAddress
+	peerAddr crdt.IPFSPath
 }
 
 func (replicator kvReplicator) Run(kvn RemoteNamespace, kvq KvQuery) {
@@ -140,7 +140,7 @@ func MakeKvReflect(request APIReflectionType) KvQuery {
 	return makeApiQuery(kvReflectRunner{reflection: request})
 }
 
-func MakeKvReplicate(peerAddr crdt.RemoteStoreAddress) KvQuery {
+func MakeKvReplicate(peerAddr crdt.IPFSPath) KvQuery {
 	return makeApiQuery(kvReplicator{peerAddr: peerAddr})
 }
 

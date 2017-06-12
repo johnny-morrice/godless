@@ -60,6 +60,38 @@ func TestEncodeIndexStable(t *testing.T) {
 	testutil.AssertEncodingStable(t, expected, encoder)
 }
 
+func TestMakeIndex(t *testing.T) {
+	t.FailNow()
+}
+
+func TestIndexAllTables(t *testing.T) {
+	t.FailNow()
+}
+
+func TestIndexCopy(t *testing.T) {
+	t.FailNow()
+}
+
+func TestIndexEquals(t *testing.T) {
+	t.FailNow()
+}
+
+func TestIndexGetTableAddrs(t *testing.T) {
+	t.FailNow()
+}
+
+func TestIndexIsEmpty(t *testing.T) {
+	t.FailNow()
+}
+
+func TestIndexJoinIndex(t *testing.T) {
+	t.FailNow()
+}
+
+func TestIndexJoinNamespace(t *testing.T) {
+	t.FailNow()
+}
+
 func indexEncodeOk(expected Index) bool {
 	actual := indexSerializationPass(expected)
 	return expected.Equals(actual)

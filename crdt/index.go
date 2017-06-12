@@ -6,28 +6,28 @@ import (
 	"io/ioutil"
 	"math/rand"
 
-	"github.com/johnny-morrice/godless/proto"
 	"github.com/johnny-morrice/godless/internal/testutil"
+	"github.com/johnny-morrice/godless/proto"
 	"github.com/pkg/errors"
 
 	pb "github.com/gogo/protobuf/proto"
 )
 
 type Index struct {
-	Index map[TableName][]RemoteStoreAddress
+	Index map[TableName][]IPFSPath
 }
 
 func EmptyIndex() Index {
-	return MakeIndex(map[TableName]RemoteStoreAddress{})
+	return MakeIndex(map[TableName]IPFSPath{})
 }
 
-func MakeIndex(indices map[TableName]RemoteStoreAddress) Index {
+func MakeIndex(indices map[TableName]IPFSPath) Index {
 	out := Index{
-		Index: map[TableName][]RemoteStoreAddress{},
+		Index: map[TableName][]IPFSPath{},
 	}
 
 	for table, addr := range indices {
-		out.Index[table] = []RemoteStoreAddress{addr}
+		out.Index[table] = []IPFSPath{addr}
 	}
 
 	return out
@@ -99,10 +99,10 @@ func (index Index) JoinIndex(other Index) Index {
 
 func (index Index) joinStreamEntry(entry IndexStreamEntry) Index {
 	cpy := index.Copy()
-	addrs := make([]RemoteStoreAddress, len(entry.Links))
+	addrs := make([]IPFSPath, len(entry.Links))
 
 	for i, l := range entry.Links {
-		addrs[i] = RemoteStoreAddress(l)
+		addrs[i] = IPFSPath(l)
 	}
 
 	cpy.addTable(entry.TableName, addrs...)
@@ -136,7 +136,7 @@ func (index Index) AllTables() []TableName {
 	return tables
 }
 
-func (index Index) GetTableAddrs(tableName TableName) ([]RemoteStoreAddress, error) {
+func (index Index) GetTableAddrs(tableName TableName) ([]IPFSPath, error) {
 	indices, ok := index.Index[tableName]
 
 	if !ok {
@@ -146,7 +146,7 @@ func (index Index) GetTableAddrs(tableName TableName) ([]RemoteStoreAddress, err
 	return indices, nil
 }
 
-func (index Index) JoinNamespace(addr RemoteStoreAddress, namespace Namespace) Index {
+func (index Index) JoinNamespace(addr IPFSPath, namespace Namespace) Index {
 	tables := namespace.GetTableNames()
 
 	joined := index.Copy()
@@ -157,7 +157,7 @@ func (index Index) JoinNamespace(addr RemoteStoreAddress, namespace Namespace) I
 	return joined
 }
 
-func (index Index) addTable(table TableName, addr ...RemoteStoreAddress) {
+func (index Index) addTable(table TableName, addr ...IPFSPath) {
 	if addrs, ok := index.Index[table]; ok {
 		normal := normalStoreAddress(append(addrs, addr...))
 		index.Index[table] = normal
@@ -170,7 +170,7 @@ func (index Index) Copy() Index {
 	cpy := EmptyIndex()
 
 	for table, addrs := range index.Index {
-		addrCopy := make([]RemoteStoreAddress, len(addrs))
+		addrCopy := make([]IPFSPath, len(addrs))
 		for i, a := range addrs {
 			addrCopy[i] = a
 		}
@@ -190,7 +190,7 @@ func GenIndex(rand *rand.Rand, size int) Index {
 		keyCount := testutil.GenCountRange(rand, 1, size, KEY_SCALE)
 		indexKey := TableName(testutil.RandPoint(rand, keyCount))
 		addrCount := testutil.GenCountRange(rand, 1, size, ADDR_SCALE)
-		addrs := make([]RemoteStoreAddress, addrCount)
+		addrs := make([]IPFSPath, addrCount)
 		for j := 0; j < addrCount; j++ {
 			pathCount := testutil.GenCountRange(rand, 1, size, PATH_SCALE)
 			a := testutil.RandPoint(rand, pathCount)

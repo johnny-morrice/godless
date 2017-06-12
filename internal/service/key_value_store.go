@@ -39,7 +39,7 @@ type keyValueStore struct {
 	input     chan<- api.KvQuery
 }
 
-func (kv *keyValueStore) Replicate(peerAddr crdt.RemoteStoreAddress) (<-chan api.APIResponse, error) {
+func (kv *keyValueStore) Replicate(peerAddr crdt.IPFSPath) (<-chan api.APIResponse, error) {
 	log.Info("api.APIService Replicating: %v", peerAddr)
 	kvq := api.MakeKvReplicate(peerAddr)
 	kv.input <- kvq

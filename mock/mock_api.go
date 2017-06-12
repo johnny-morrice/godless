@@ -52,7 +52,7 @@ func (_mr *_MockRemoteNamespaceRecorder) Persist() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Persist")
 }
 
-func (_m *MockRemoteNamespace) Replicate(_param0 crdt.RemoteStoreAddress, _param1 api.KvQuery) {
+func (_m *MockRemoteNamespace) Replicate(_param0 crdt.IPFSPath, _param1 api.KvQuery) {
 	_m.ctrl.Call(_m, "Replicate", _param0, _param1)
 }
 
@@ -105,9 +105,9 @@ func (_m *MockRemoteStore) EXPECT() *_MockRemoteStoreRecorder {
 	return _m.recorder
 }
 
-func (_m *MockRemoteStore) AddIndex(_param0 crdt.Index) (crdt.RemoteStoreAddress, error) {
+func (_m *MockRemoteStore) AddIndex(_param0 crdt.Index) (crdt.IPFSPath, error) {
 	ret := _m.ctrl.Call(_m, "AddIndex", _param0)
-	ret0, _ := ret[0].(crdt.RemoteStoreAddress)
+	ret0, _ := ret[0].(crdt.IPFSPath)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -116,9 +116,9 @@ func (_mr *_MockRemoteStoreRecorder) AddIndex(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "AddIndex", arg0)
 }
 
-func (_m *MockRemoteStore) AddNamespace(_param0 crdt.Namespace) (crdt.RemoteStoreAddress, error) {
+func (_m *MockRemoteStore) AddNamespace(_param0 crdt.Namespace) (crdt.IPFSPath, error) {
 	ret := _m.ctrl.Call(_m, "AddNamespace", _param0)
-	ret0, _ := ret[0].(crdt.RemoteStoreAddress)
+	ret0, _ := ret[0].(crdt.IPFSPath)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -127,7 +127,7 @@ func (_mr *_MockRemoteStoreRecorder) AddNamespace(arg0 interface{}) *gomock.Call
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "AddNamespace", arg0)
 }
 
-func (_m *MockRemoteStore) CatIndex(_param0 crdt.RemoteStoreAddress) (crdt.Index, error) {
+func (_m *MockRemoteStore) CatIndex(_param0 crdt.IPFSPath) (crdt.Index, error) {
 	ret := _m.ctrl.Call(_m, "CatIndex", _param0)
 	ret0, _ := ret[0].(crdt.Index)
 	ret1, _ := ret[1].(error)
@@ -138,7 +138,7 @@ func (_mr *_MockRemoteStoreRecorder) CatIndex(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "CatIndex", arg0)
 }
 
-func (_m *MockRemoteStore) CatNamespace(_param0 crdt.RemoteStoreAddress) (crdt.Namespace, error) {
+func (_m *MockRemoteStore) CatNamespace(_param0 crdt.IPFSPath) (crdt.Namespace, error) {
 	ret := _m.ctrl.Call(_m, "CatNamespace", _param0)
 	ret0, _ := ret[0].(crdt.Namespace)
 	ret1, _ := ret[1].(error)
@@ -169,7 +169,7 @@ func (_mr *_MockRemoteStoreRecorder) Disconnect() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Disconnect")
 }
 
-func (_m *MockRemoteStore) PublishAddr(_param0 crdt.RemoteStoreAddress, _param1 []crdt.RemoteStoreAddress) error {
+func (_m *MockRemoteStore) PublishAddr(_param0 crdt.IPFSPath, _param1 []crdt.IPFSPath) error {
 	ret := _m.ctrl.Call(_m, "PublishAddr", _param0, _param1)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -179,9 +179,9 @@ func (_mr *_MockRemoteStoreRecorder) PublishAddr(arg0, arg1 interface{}) *gomock
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "PublishAddr", arg0, arg1)
 }
 
-func (_m *MockRemoteStore) SubscribeAddrStream(_param0 crdt.RemoteStoreAddress) (<-chan crdt.RemoteStoreAddress, <-chan error) {
+func (_m *MockRemoteStore) SubscribeAddrStream(_param0 crdt.IPFSPath) (<-chan crdt.IPFSPath, <-chan error) {
 	ret := _m.ctrl.Call(_m, "SubscribeAddrStream", _param0)
-	ret0, _ := ret[0].(<-chan crdt.RemoteStoreAddress)
+	ret0, _ := ret[0].(<-chan crdt.IPFSPath)
 	ret1, _ := ret[1].(<-chan error)
 	return ret0, ret1
 }
