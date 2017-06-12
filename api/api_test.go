@@ -75,9 +75,7 @@ func TestEncodeAPIResponse(t *testing.T) {
 
 	err := quick.Check(apiResponseEncodeOk, config)
 
-	if err != nil {
-		t.Error("Unexpected error:", testutil.Trim(err))
-	}
+	testutil.AssertVerboseErrorIsNil(t, err)
 }
 
 func TestEncodeAPIResponseText(t *testing.T) {
@@ -92,9 +90,7 @@ func TestEncodeAPIResponseText(t *testing.T) {
 
 	err := quick.Check(apiResponseEncodeTextOk, config)
 
-	if err != nil {
-		t.Error("Unexpected error:", testutil.Trim(err))
-	}
+	testutil.AssertVerboseErrorIsNil(t, err)
 }
 
 func apiResponseEncodeOk(resp APIResponse) bool {

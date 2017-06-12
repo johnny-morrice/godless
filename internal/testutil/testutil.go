@@ -8,7 +8,9 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/johnny-morrice/godless/internal/constants"
 	"github.com/johnny-morrice/godless/internal/util"
@@ -155,11 +157,19 @@ func Assert(t *testing.T, message string, isOk bool) {
 	}
 }
 
-func AssertEquals(t *testing.T, message string, x, y interface{}) {
-	same := reflect.DeepEqual(x, y)
+func AssertEquals(t *testing.T, message string, expected, actual interface{}) {
+	same := reflect.DeepEqual(expected, actual)
 
 	if !same {
-		t.Errorf("%s: expected '%v' but received '%v'", message, x, y)
+		expectedType := reflect.TypeOf(expected)
+		actualType := reflect.TypeOf(actual)
+		t.Errorf("%s: expected '%v' (%v) but received '%v' (%v)", message, expected, expectedType, actual, actualType)
+	}
+}
+
+func AssertVerboseErrorIsNil(t *testing.T, err error) {
+	if err != nil {
+		t.Error("Unexpected error:", Trim(err))
 	}
 }
 
@@ -209,6 +219,25 @@ const __TRIM_LENGTH = 500
 const ENCODE_REPEAT_COUNT = 50
 
 const KEY_SYMS = constants.ALPHABET + constants.DIGITS
+
+type randGen struct {
+	rand *rand.Rand
+	sync.Mutex
+}
+
+var __rand randGen
+
+func Rand() *rand.Rand {
+	__rand.Lock()
+	if __rand.rand == nil {
+		seed := time.Now().UnixNano()
+		src := rand.NewSource(seed)
+		__rand.rand = rand.New(src)
+	}
+	__rand.Unlock()
+
+	return __rand.rand
+}
 
 // Logging on in test mode!
 func init() {

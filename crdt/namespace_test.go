@@ -24,9 +24,7 @@ func TestMakeRowStream(t *testing.T) {
 
 	err := quick.Check(rowStreamOk, config)
 
-	if err != nil {
-		t.Error("Unexpected error:", testutil.Trim(err))
-	}
+	testutil.AssertVerboseErrorIsNil(t, err)
 }
 
 func rowStreamOk(expected Row) bool {
@@ -78,14 +76,12 @@ func TestEncodeNamespace(t *testing.T) {
 
 	err := quick.Check(namespaceEncodeOk, config)
 
-	if err != nil {
-		t.Error("Unexpected error:", testutil.Trim(err))
-	}
+	testutil.AssertVerboseErrorIsNil(t, err)
 }
 
 func TestEncodeNamespaceStable(t *testing.T) {
 	const size = 50
-	namespace := GenNamespace(__RAND, size)
+	namespace := GenNamespace(testutil.Rand(), size)
 
 	buff := &bytes.Buffer{}
 	err := EncodeNamespace(namespace, buff)
@@ -653,12 +649,4 @@ func assertRowEquals(t *testing.T, expected, actual Row) {
 		testutil.DebugLine(t)
 		t.Error("Expected Row", expected, "but received", actual)
 	}
-}
-
-var __RAND *rand.Rand
-
-func init() {
-	seed := time.Now().UnixNano()
-	src := rand.NewSource(seed)
-	__RAND = rand.New(src)
 }
