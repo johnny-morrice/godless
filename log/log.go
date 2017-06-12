@@ -26,7 +26,7 @@ func SetLevel(level LogLevel) {
 }
 
 func CanLog(level LogLevel) bool {
-	return __LOG_LEVEL > level
+	return __LOG_LEVEL >= level
 }
 
 func Debug(msg string, args ...interface{}) {

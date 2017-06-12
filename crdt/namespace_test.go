@@ -214,13 +214,13 @@ func TestNamespaceGetTable(t *testing.T) {
 
 	assertTableEquals(t, expectedTable, actualTable)
 
-	testutil.AssertNilError(t, err)
+	testutil.AssertNil(t, err)
 
 	actualTable, err = hasNoTable.GetTable("bar")
 
 	assertTableEquals(t, expectedEmptyTable, actualTable)
 
-	testutil.AssertNonNilError(t, err)
+	testutil.AssertNonNil(t, err)
 }
 
 func TestNamespaceEquals(t *testing.T) {

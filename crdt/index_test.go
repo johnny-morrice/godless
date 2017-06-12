@@ -60,12 +60,63 @@ func TestEncodeIndexStable(t *testing.T) {
 	testutil.AssertEncodingStable(t, expected, encoder)
 }
 
+func TestEmptyIndex(t *testing.T) {
+	index := EmptyIndex()
+
+	testutil.AssertEquals(t, "Expected empty index", 0, len(index.Index))
+}
+
 func TestMakeIndex(t *testing.T) {
-	t.FailNow()
+	const table = "Hi"
+	const value = "world"
+	index := MakeIndex(map[TableName]IPFSPath{
+		table: value,
+	})
+
+	testutil.AssertEquals(t, "Expected index length 1", 1, len(index.Index))
+
+	expected := []IPFSPath{value}
+	actual, err := index.GetTableAddrs(table)
+	if err != nil {
+		panic(err)
+	}
+
+	testutil.AssertEquals(t, "Unexpected index addr", expected, actual)
 }
 
 func TestIndexAllTables(t *testing.T) {
-	t.FailNow()
+	if testing.Short() {
+		t.SkipNow()
+		return
+	}
+
+	config := &quick.Config{
+		MaxCount: testutil.ENCODE_REPEAT_COUNT,
+	}
+
+	err := quick.Check(indexAllTablesOk, config)
+
+	if err != nil {
+		t.Error("Unexpected error:", testutil.Trim(err))
+	}
+}
+
+func indexAllTablesOk(index Index) bool {
+	tables := index.AllTables()
+
+	if len(index.Index) != len(tables) {
+		return false
+	}
+
+	for _, t := range tables {
+		_, err := index.GetTableAddrs(t)
+
+		if err != nil {
+			return false
+		}
+	}
+
+	return true
 }
 
 func TestIndexCopy(t *testing.T) {

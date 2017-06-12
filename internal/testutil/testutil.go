@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"reflect"
 	"runtime"
 	"strings"
 	"testing"
 
-	"github.com/johnny-morrice/godless/log"
 	"github.com/johnny-morrice/godless/internal/constants"
 	"github.com/johnny-morrice/godless/internal/util"
+	"github.com/johnny-morrice/godless/log"
 )
 
 func RandKey(rand *rand.Rand, max int) string {
@@ -116,18 +117,12 @@ func DebugLine(t *testing.T) {
 	t.Log("Test failed at line", line)
 }
 
-func AssertNilError(t *testing.T, err error) {
-	if err != nil {
-		DebugLine(t)
-		t.Error("Unexpected error:", err)
-	}
+func AssertNil(t *testing.T, x interface{}) {
+	Assert(t, fmt.Sprintf("Expected nil value but received: %v", x), x == nil)
 }
 
-func AssertNonNilError(t *testing.T, err error) {
-	if err == nil {
-		DebugLine(t)
-		t.Error("Expected error")
-	}
+func AssertNonNil(t *testing.T, x interface{}) {
+	Assert(t, fmt.Sprintf("Expected non nil value"), x != nil)
 }
 
 func AssertBytesEqual(t *testing.T, expected, actual []byte) {
@@ -139,9 +134,7 @@ func AssertBytesEqual(t *testing.T, expected, actual []byte) {
 	for i, e := range expected {
 		a := actual[i]
 
-		if e != a {
-			t.Error(fmt.Sprintf("Expected %v but received %v at position %v", e, a, i))
-		}
+		AssertEquals(t, fmt.Sprintf("Expected %v but received %v at position %v", e, a, i), e, a)
 	}
 }
 
@@ -153,6 +146,20 @@ func AssertEncodingStable(t *testing.T, expected []byte, encoder func(io.Writer)
 		actual := buff.Bytes()
 
 		AssertBytesEqual(t, expected, actual)
+	}
+}
+
+func Assert(t *testing.T, message string, isOk bool) {
+	if !isOk {
+		t.Error(message)
+	}
+}
+
+func AssertEquals(t *testing.T, message string, x, y interface{}) {
+	same := reflect.DeepEqual(x, y)
+
+	if !same {
+		t.Errorf("%s: expected '%v' but received '%v'", message, x, y)
 	}
 }
 
@@ -202,3 +209,8 @@ const __TRIM_LENGTH = 500
 const ENCODE_REPEAT_COUNT = 50
 
 const KEY_SYMS = constants.ALPHABET + constants.DIGITS
+
+// Logging on in test mode!
+func init() {
+	log.SetLevel(log.LOG_DEBUG)
+}
