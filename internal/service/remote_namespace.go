@@ -315,7 +315,7 @@ func (rn *remoteNamespace) Persist() (api.RemoteNamespace, error) {
 		}
 	}
 
-	if crdt.IsNilPath(rn.Addr) {
+	if !crdt.IsNilPath(rn.Addr) {
 		var loadErr error
 		index, loadErr = rn.loadCurrentIndex()
 
