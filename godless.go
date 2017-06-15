@@ -196,8 +196,8 @@ func (godless *Godless) addStopper(stopch chan<- interface{}) {
 }
 
 func (godless *Godless) handleShutdown() {
-	log.Info("Shutting down")
 	<-godless.stopch
+	log.Info("Shutting down")
 	for _, stopper := range godless.stoppers {
 		go close(stopper)
 	}
