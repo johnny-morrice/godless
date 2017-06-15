@@ -42,6 +42,8 @@ type Options struct {
 	IpfsPingTimeout time.Duration
 }
 
+// Godless is a peer-to-peer database.  It shares structured data between peers, using IPFS as a backing store.
+// The core datastructure is a CRDT namespace which resembles a relational scheme in that it has tables, rows, and entries.
 type Godless struct {
 	Options
 	errch    chan error
@@ -53,6 +55,7 @@ type Godless struct {
 	api      api.APIService
 }
 
+// New creates a godless instance, connecting to any services, and providing any services, specified in the options.
 func New(options Options) (*Godless, error) {
 	godless := &Godless{Options: options}
 	setupFuncs := []func() error{
@@ -72,10 +75,13 @@ func New(options Options) (*Godless, error) {
 	return godless, nil
 }
 
+// Errors provides a stream of errors from godless.  Godless will attempt to stay alive under difficult conditions.
+// The returned channel is closed when godless shuts down.
 func (godless *Godless) Errors() <-chan error {
 	return godless.errch
 }
 
+// Shutdown stops all godless processes.  It does not wait for those goroutines to stop.
 func (godless *Godless) Shutdown() {
 	godless.stopch <- godless.stopch
 }
@@ -165,11 +171,6 @@ func (godless *Godless) replicate() error {
 
 	if len(topics) == 0 {
 		return nil
-	}
-
-	if interval == 0 {
-		// FIXME
-		// interval = service.DefaultReplicateInterval
 	}
 
 	ipfsTopics := make([]crdt.IPFSPath, len(topics))
