@@ -144,6 +144,10 @@ func Replicate(api api.APIService, store api.RemoteStore, interval time.Duration
 	stopch := make(chan interface{}, 1)
 	errch := make(chan error, len(topics))
 
+	if interval == 0 {
+		interval = __DEFAULT_REPLICATE_INTERVAL
+	}
+
 	p2p := replicator{
 		topics:   topics,
 		interval: interval,
@@ -169,3 +173,4 @@ func Replicate(api api.APIService, store api.RemoteStore, interval time.Duration
 }
 
 const __REPLICATION_PROCESS_COUNT = 2
+const __DEFAULT_REPLICATE_INTERVAL = time.Second * 10
