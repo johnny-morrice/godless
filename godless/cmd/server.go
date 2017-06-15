@@ -21,11 +21,11 @@
 package cmd
 
 import (
+	"os"
 	"time"
 
+	"github.com/ethereum/go-ethereum/log"
 	lib "github.com/johnny-morrice/godless"
-	"github.com/johnny-morrice/godless/api"
-	"github.com/johnny-morrice/godless/crdt"
 	"github.com/spf13/cobra"
 )
 
@@ -35,35 +35,26 @@ var serveCmd = &cobra.Command{
 	Short: "Run a Godless server",
 	Long:  `A godless server listens to queries over HTTP.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		readTopics()
-
-		var remoteNamespace api.RemoteNamespace
-
-		store := lib.MakeIPFSPeer(ipfsService)
-		var err error
-
-		if earlyConnect {
-			err := store.Connect()
-
-			if err != nil {
-				die(err)
-			}
-
-			defer disconnect(store)
+		options := lib.Options{
+			IpfsServiceUrl:    ipfsService,
+			WebServiceAddr:    addr,
+			IndexHash:         hash,
+			FailEarly:         earlyConnect,
+			ReplicateInterval: interval,
+			Topics:            topics,
 		}
 
-		index := crdt.IPFSPath(hash)
-		remoteNamespace, err = lib.MakeRemoteNamespace(store, index, earlyConnect)
+		godless, err := lib.New(options)
 
 		if err != nil {
 			die(err)
 		}
 
-		err = serve(remoteNamespace, store)
-
-		if err != nil {
-			die(err)
+		for runError := range godless.Errors() {
+			log.Error("%v", runError)
 		}
+
+		defer shutdown(godless)
 	},
 }
 
@@ -71,44 +62,9 @@ var addr string
 var interval time.Duration
 var earlyConnect bool
 
-func disconnect(store api.RemoteStore) {
-	err := store.Disconnect()
-
-	if err != nil {
-		die(err)
-	}
-}
-
-func serve(remoteNamespace api.RemoteNamespace, store api.RemoteStore) error {
-	api, apiErrCh := lib.Run(remoteNamespace)
-
-	webService := lib.MakeWebService(api)
-
-	webStopCh, webErr := lib.Serve(addr, webService)
-
-	if webErr != nil {
-		return webErr
-	}
-
-	replicateStopCh, peerErrCh := lib.Replicate(api, store, interval, pubsubTopics)
-
-	var procErr error
-LOOP:
-	for {
-		select {
-		case apiErr := <-apiErrCh:
-			procErr = apiErr
-			break LOOP
-		case peerErr := <-peerErrCh:
-			procErr = peerErr
-			break LOOP
-		}
-	}
-
-	webStopCh <- nil
-	replicateStopCh <- nil
-
-	return procErr
+func shutdown(godless *lib.Godless) {
+	godless.Shutdown()
+	os.Exit(0)
 }
 
 func init() {

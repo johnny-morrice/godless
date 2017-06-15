@@ -9,21 +9,28 @@ import (
 
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/internal/http"
-	"github.com/johnny-morrice/godless/log"
 	"github.com/johnny-morrice/godless/internal/util"
+	"github.com/johnny-morrice/godless/log"
 	"github.com/johnny-morrice/godless/query"
 	"github.com/pkg/errors"
 )
 
 type Client struct {
-	Addr string
-	Http *gohttp.Client
+	addr string
+	web  *gohttp.Client
 }
 
 func MakeClient(addr string) *Client {
 	return &Client{
-		Addr: addr,
-		Http: http.DefaultFrontentClient(),
+		addr: addr,
+		web:  http.DefaultFrontentClient(),
+	}
+}
+
+func MakeClientWithHttp(addr string, webClient *gohttp.Client) *Client {
+	return &Client{
+		addr: addr,
+		web:  webClient,
 	}
 }
 
@@ -62,10 +69,10 @@ func (client *Client) SendQuery(q *query.Query) (api.APIResponse, error) {
 }
 
 func (client *Client) Post(path, bodyType string, body io.Reader) (api.APIResponse, error) {
-	addr := fmt.Sprintf("http://%s%s%s", client.Addr, API_ROOT, path)
+	addr := fmt.Sprintf("http://%s%s%s", client.addr, API_ROOT, path)
 	log.Info("HTTP POST to %v", addr)
 
-	resp, err := client.Http.Post(addr, bodyType, body)
+	resp, err := client.web.Post(addr, bodyType, body)
 
 	if err != nil {
 		return api.RESPONSE_FAIL, errors.Wrap(err, "HTTP POST failed")

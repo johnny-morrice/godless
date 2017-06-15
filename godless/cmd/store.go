@@ -13,10 +13,7 @@
 
 package cmd
 
-import (
-	"github.com/johnny-morrice/godless/crdt"
-	"github.com/spf13/cobra"
-)
+import "github.com/spf13/cobra"
 
 // storeCmd represents the store command
 var storeCmd = &cobra.Command{
@@ -35,22 +32,13 @@ var storeCmd = &cobra.Command{
 }
 
 var hash string
-var pubsubTopicNames []string
-var pubsubTopics []crdt.IPFSPath
+var topics []string
 var ipfsService string
 
 func init() {
 	RootCmd.AddCommand(storeCmd)
 
 	storeCmd.PersistentFlags().StringVar(&hash, "hash", "", "IPFS hash")
-	storeCmd.PersistentFlags().StringSliceVar(&pubsubTopicNames, "topics", []string{}, "Comma separated list of pubsub topics")
+	storeCmd.PersistentFlags().StringSliceVar(&topics, "topics", []string{}, "Comma separated list of pubsub topics")
 	storeCmd.PersistentFlags().StringVar(&ipfsService, "ipfs", "http://localhost:5001", "IPFS webservice URL")
-}
-
-func readTopics() {
-	pubsubTopics = make([]crdt.IPFSPath, len(pubsubTopicNames))
-
-	for i, n := range pubsubTopicNames {
-		pubsubTopics[i] = crdt.IPFSPath(n)
-	}
 }

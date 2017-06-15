@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	gohttp "net/http"
+	"time"
 
 	ipfs "github.com/ipfs/go-ipfs-api"
 	"github.com/johnny-morrice/godless/crdt"
@@ -74,16 +75,25 @@ func (index *IPFSIndex) decode(r io.Reader) error {
 
 // TODO Don't use Shell directly - invent an interface.  This would enable mocking.
 type IPFSPeer struct {
-	Url    string
-	Client *gohttp.Client
-	Shell  *ipfs.Shell
-	pinger *ipfs.Shell
+	Url         string
+	Client      *gohttp.Client
+	Shell       *ipfs.Shell
+	PingTimeout time.Duration
+	pinger      *ipfs.Shell
 }
 
 func (peer *IPFSPeer) Connect() error {
+	if peer.PingTimeout == 0 {
+		peer.PingTimeout = __DEFAULT_PING_TIMEOUT
+	}
+
+	if peer.Client == nil {
+		peer.Client = http.DefaultBackendClient()
+	}
+
 	log.Info("Connecting to IPFS API...")
 	peer.Shell = ipfs.NewShellWithClient(peer.Url, peer.Client)
-	peer.pinger = ipfs.NewShellWithClient(peer.Url, http.BackendPingClient())
+	peer.pinger = ipfs.NewShellWithClient(peer.Url, cloneWithTimeout(peer.Client, peer.PingTimeout))
 	err := peer.validateConnection()
 
 	if err == nil {
@@ -298,3 +308,15 @@ func (peer *IPFSPeer) cat(path crdt.IPFSPath, out decoder) error {
 
 	return nil
 }
+
+// Using the IPFS webservice API we cannot just set a timeout on a request, but we can provide custom clients.
+func cloneWithTimeout(client *gohttp.Client, timeout time.Duration) *gohttp.Client {
+	cpy := &gohttp.Client{}
+	cpy.CheckRedirect = client.CheckRedirect
+	cpy.Transport = client.Transport
+	cpy.Jar = client.Jar
+	cpy.Timeout = timeout
+	return cpy
+}
+
+const __DEFAULT_PING_TIMEOUT = time.Second * 5

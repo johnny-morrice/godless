@@ -27,14 +27,6 @@ func DefaultBackendClient() *http.Client {
 	return __backendClient
 }
 
-func BackendPingClient() *http.Client {
-	if __pingClient == nil {
-		__pingClient = makeBackendClient(__PING_TIMEOUT)
-	}
-
-	return __pingClient
-}
-
 func makeBackendClient(timeout time.Duration) *http.Client {
 	return &http.Client{
 		Timeout: time.Duration(__BACKEND_TIMEOUT),
