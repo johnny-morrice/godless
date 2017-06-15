@@ -41,7 +41,7 @@ func (kv *keyValueStore) executeLoop(errch chan<- error) {
 			}
 
 			log.Info("API executing request")
-			kvq, ok := anything.(api.KvQuery)
+			kvq, ok := thing.(api.KvQuery)
 
 			if !ok {
 				// errch <- fmt.Errorf("Corrupt queue found a '%v' but expected %v: %v", reflect.TypeOf(anything).Name(), reflect.TypeOf(api.KvQuery{}).Name(), anything)
@@ -94,7 +94,7 @@ func (kv *keyValueStore) replicate(request api.APIRequest) (<-chan api.APIRespon
 	kvq := api.MakeKvReplicate(request)
 	kv.enqueue(kvq)
 
-	return kvq.TrasactionResult, nil
+	return kvq.TransactionResult, nil
 }
 
 func (kv *keyValueStore) runQuery(request api.APIRequest) (<-chan api.APIResponse, error) {
@@ -117,7 +117,7 @@ func (kv *keyValueStore) runQuery(request api.APIRequest) (<-chan api.APIRespons
 
 	kv.enqueue(kvq)
 
-	return kvq.TrasactionResult, nil
+	return kvq.TransactionResult, nil
 }
 
 func (kv *keyValueStore) reflect(request api.APIRequest) (<-chan api.APIResponse, error) {
@@ -126,7 +126,7 @@ func (kv *keyValueStore) reflect(request api.APIRequest) (<-chan api.APIResponse
 
 	kv.enqueue(kvq)
 
-	return kvq.TrasactionResult, nil
+	return kvq.TransactionResult, nil
 }
 
 func (kv *keyValueStore) CloseAPI() {
@@ -146,6 +146,7 @@ func (kv *keyValueStore) transact(kvq api.KvQuery) error {
 
 			if commitFailure != nil {
 				log.Error("Commit failed")
+				convertToFailure(&resp, "commit failed")
 			}
 		} else {
 			log.Error("API transaction failed: %v", err)
@@ -164,15 +165,19 @@ func (kv *keyValueStore) transact(kvq api.KvQuery) error {
 				log.Warn("Could not serialize overriden response: %v", reportErr)
 			}
 
-			respType := resp.Type
-			resp = api.RESPONSE_FAIL
-			resp.Type = respType
+			convertToFailure(&resp, "persist failed")
 		}
 	} else {
 		log.Info("No API transaction required for read query")
 	}
 
-	kvq.TrasactionResult <- resp
+	kvq.TransactionResult <- resp
 
 	return nil
+}
+
+func convertToFailure(resp *api.APIResponse, message string) {
+	respType := resp.Type
+	*resp = api.RESPONSE_FAIL
+	resp.Type = respType
 }

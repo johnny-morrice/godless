@@ -114,7 +114,7 @@ func validateClientPlumbingArgs(cmd *cobra.Command) {
 func analyseQuery(query *query.Query) error {
 	format := "Query analysis for:\n\n%s\n\n%v\n\n"
 	fmt.Printf(format, source, query.Analyse())
-	fmt.Println("Syntax tree:\n\n")
+	fmt.Print("Syntax tree:\n\n\n")
 	query.Parser.PrintSyntaxTree()
 	return query.PrettyPrint(os.Stdout)
 }

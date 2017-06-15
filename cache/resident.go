@@ -67,7 +67,7 @@ func MakeResidentBufferQueue(buffSize int) api.RequestPriorityQueue {
 	return queue
 }
 
-func (queue residentPriorityQueue) Enqueue(request api.APIRequest, data interface{}) error {
+func (queue *residentPriorityQueue) Enqueue(request api.APIRequest, data interface{}) error {
 	item, err := makeResidentQueueItem(request, data)
 
 	if err != nil {
@@ -75,9 +75,9 @@ func (queue residentPriorityQueue) Enqueue(request api.APIRequest, data interfac
 	}
 
 	queue.lockResource()
-
 	queue.Lock()
 	defer queue.Unlock()
+
 	for i := 0; i < len(queue.buff); i++ {
 		spot := &queue.buff[i]
 		if !spot.populated {
@@ -89,7 +89,7 @@ func (queue residentPriorityQueue) Enqueue(request api.APIRequest, data interfac
 	return corruptBuffer
 }
 
-func (queue residentPriorityQueue) Drain() <-chan interface{} {
+func (queue *residentPriorityQueue) Drain() <-chan interface{} {
 	go func() {
 		for {
 			data, err := queue.popFront()
@@ -106,12 +106,12 @@ func (queue residentPriorityQueue) Drain() <-chan interface{} {
 	return queue.datach
 }
 
-func (queue residentPriorityQueue) Close() error {
+func (queue *residentPriorityQueue) Close() error {
 	close(queue.datach)
 	return nil
 }
 
-func (queue residentPriorityQueue) popFront() (interface{}, error) {
+func (queue *residentPriorityQueue) popFront() (interface{}, error) {
 	queue.unlockResource()
 	queue.Lock()
 	defer queue.Unlock()
@@ -142,11 +142,11 @@ func (queue residentPriorityQueue) popFront() (interface{}, error) {
 	return best.data, nil
 }
 
-func (queue residentPriorityQueue) lockResource() {
+func (queue *residentPriorityQueue) lockResource() {
 	queue.semaphore <- struct{}{}
 }
 
-func (queue residentPriorityQueue) unlockResource() {
+func (queue *residentPriorityQueue) unlockResource() {
 	<-queue.semaphore
 }
 

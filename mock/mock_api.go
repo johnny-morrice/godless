@@ -31,6 +31,16 @@ func (_m *MockRemoteNamespace) EXPECT() *_MockRemoteNamespaceRecorder {
 	return _m.recorder
 }
 
+func (_m *MockRemoteNamespace) Commit() error {
+	ret := _m.ctrl.Call(_m, "Commit")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockRemoteNamespaceRecorder) Commit() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Commit")
+}
+
 func (_m *MockRemoteNamespace) IsChanged() bool {
 	ret := _m.ctrl.Call(_m, "IsChanged")
 	ret0, _ := ret[0].(bool)
@@ -41,11 +51,10 @@ func (_mr *_MockRemoteNamespaceRecorder) IsChanged() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsChanged")
 }
 
-func (_m *MockRemoteNamespace) Persist() (api.RemoteNamespace, error) {
+func (_m *MockRemoteNamespace) Persist() error {
 	ret := _m.ctrl.Call(_m, "Persist")
-	ret0, _ := ret[0].(api.RemoteNamespace)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 func (_mr *_MockRemoteNamespaceRecorder) Persist() *gomock.Call {
@@ -60,12 +69,14 @@ func (_mr *_MockRemoteNamespaceRecorder) Replicate(arg0, arg1 interface{}) *gomo
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Replicate", arg0, arg1)
 }
 
-func (_m *MockRemoteNamespace) Reset() {
-	_m.ctrl.Call(_m, "Reset")
+func (_m *MockRemoteNamespace) Rollback() error {
+	ret := _m.ctrl.Call(_m, "Rollback")
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
-func (_mr *_MockRemoteNamespaceRecorder) Reset() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Reset")
+func (_mr *_MockRemoteNamespaceRecorder) Rollback() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Rollback")
 }
 
 func (_m *MockRemoteNamespace) RunKvQuery(_param0 *query.Query, _param1 api.KvQuery) {

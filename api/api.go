@@ -117,18 +117,18 @@ func (krr kvReflectRunner) Run(kvn RemoteNamespace, kvq KvQuery) {
 }
 
 type KvQuery struct {
-	runner           kvRunner
-	Request          APIRequest
-	Response         chan APIResponse
-	TrasactionResult chan APIResponse
+	runner            kvRunner
+	Request           APIRequest
+	Response          chan APIResponse
+	TransactionResult chan APIResponse
 }
 
 func makeApiQuery(request APIRequest, runner kvRunner) KvQuery {
 	return KvQuery{
-		Request:          request,
-		runner:           runner,
-		Response:         make(chan APIResponse),
-		TrasactionResult: make(chan APIResponse),
+		Request:           request,
+		runner:            runner,
+		Response:          make(chan APIResponse),
+		TransactionResult: make(chan APIResponse),
 	}
 }
 
