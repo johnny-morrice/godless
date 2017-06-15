@@ -100,6 +100,8 @@ func (p2p replicator) subscribeAllTopics() {
 func (p2p replicator) subscribeTopic(topic crdt.IPFSPath) {
 	headch, errch := p2p.store.SubscribeAddrStream(topic)
 
+	ticker := time.NewTicker(p2p.interval)
+	defer ticker.Stop()
 	go func() {
 	LOOP:
 		for {
@@ -109,6 +111,7 @@ func (p2p replicator) subscribeTopic(topic crdt.IPFSPath) {
 					break LOOP
 				}
 
+				<-ticker.C
 				p2p.sendReplicateRequest(head)
 			case err, present := <-errch:
 				if !present {
