@@ -13,7 +13,12 @@ type RemoteNamespaceTree interface {
 }
 
 type NamespaceTreeReader interface {
-	ReadNamespace(crdt.Namespace) (bool, error)
+	ReadNamespace(crdt.Namespace) TraversalUpdate
+}
+
+type TraversalUpdate struct {
+	More  bool
+	Error error
 }
 
 type TableHinter interface {
@@ -41,14 +46,14 @@ func (thw tableHinterWrapper) ReadsTables() []crdt.TableName {
 	return thw.hints
 }
 
-func (thw tableHinterWrapper) ReadNamespace(ns crdt.Namespace) (bool, error) {
+func (thw tableHinterWrapper) ReadNamespace(ns crdt.Namespace) TraversalUpdate {
 	return thw.reader.ReadNamespace(ns)
 }
 
 // NamespaceTreeReader functions return true when they have finished reading
 // the tree.
-type NamespaceTreeLambda func(ns crdt.Namespace) (bool, error)
+type NamespaceTreeLambda func(ns crdt.Namespace) TraversalUpdate
 
-func (ntl NamespaceTreeLambda) ReadNamespace(ns crdt.Namespace) (bool, error) {
+func (ntl NamespaceTreeLambda) ReadNamespace(ns crdt.Namespace) TraversalUpdate {
 	return ntl(ns)
 }

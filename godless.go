@@ -44,11 +44,11 @@ func MakeIPFSPeer(url string) api.RemoteStore {
 // MakeRemoteNamespace creates a data store representing p2p data.
 func MakeRemoteNamespace(store api.RemoteStore, hash crdt.IPFSPath, earlyConnect bool) (api.RemoteNamespace, error) {
 	if hash == "" {
-		namespace := crdt.EmptyNamespace()
 		if earlyConnect {
+			namespace := crdt.EmptyNamespace()
 			return service.PersistNewRemoteNamespace(store, namespace)
 		} else {
-			return service.MakeRemoteNamespace(store, namespace), nil
+			return service.MakeRemoteNamespace(store), nil
 		}
 
 	} else {

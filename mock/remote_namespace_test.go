@@ -3,12 +3,154 @@ package mock_godless
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
+	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/internal/service"
+	"github.com/johnny-morrice/godless/internal/testutil"
 	"github.com/pkg/errors"
 )
+
+func TestRemoteNamespaceJoinTable(t *testing.T) {
+	TestRemoteNamespaceReset(t)
+}
+
+func TestRemoteNamespaceReplicate(t *testing.T) {
+	// TODO integration test as design stands.
+}
+
+func TestRemoteNamespaceReset(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockStore := NewMockRemoteStore(ctrl)
+
+	const tableName = "ATableName"
+	const rowName = "ARowName"
+	const entryName = "AEntryName"
+	const point = "APoint"
+	table := crdt.MakeTable(map[crdt.RowName]crdt.Row{
+		rowName: crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
+			entryName: crdt.MakeEntry([]crdt.Point{point}),
+		}),
+	})
+
+	remote := service.MakeRemoteNamespace(mockStore)
+	assertUnchanged(t, remote)
+
+	err := remote.JoinTable(tableName, table)
+	testutil.AssertNil(t, err)
+	assertChanged(t, remote)
+
+	remote.Reset()
+	assertUnchanged(t, remote)
+}
+
+func assertChanged(t *testing.T, remote api.RemoteNamespace) {
+	if !remote.IsChanged() {
+		t.Error("Expected remote change")
+	}
+}
+
+func assertUnchanged(t *testing.T, remote api.RemoteNamespace) {
+	if remote.IsChanged() {
+		t.Error("Unexpected remote change")
+	}
+}
+
+func TestRemoteNamespaceRunKvReflection(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockStore := NewMockRemoteStore(ctrl)
+
+	addrA := crdt.IPFSPath("Addr A")
+	addrB := crdt.IPFSPath("Addr B")
+	addrC := crdt.IPFSPath("Addr C")
+	addrIndex := crdt.IPFSPath("Addr Index")
+
+	empty := crdt.EmptyNamespace()
+	tableA := crdt.MakeTable(map[crdt.RowName]crdt.Row{
+		"Row A": crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
+			"Entry A": crdt.MakeEntry([]crdt.Point{"Point A"}),
+		}),
+	})
+	tableB := crdt.MakeTable(map[crdt.RowName]crdt.Row{
+		"Row B": crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
+			"Entry B": crdt.MakeEntry([]crdt.Point{"Point B"}),
+		}),
+	})
+	tableC := crdt.MakeTable(map[crdt.RowName]crdt.Row{
+		"Row C": crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
+			"Entry C": crdt.MakeEntry([]crdt.Point{"Point C"}),
+		}),
+	})
+
+	const tableAName = "Table A"
+	const tableBName = "Table B"
+	const tableCName = "Table C"
+
+	namespaceA := empty.JoinTable(tableAName, tableA)
+	namespaceB := empty.JoinTable(tableBName, tableB)
+	namespaceC := empty.JoinTable(tableCName, tableC)
+
+	index := crdt.MakeIndex(map[crdt.TableName]crdt.IPFSPath{
+		tableAName: addrA,
+		tableBName: addrB,
+		tableCName: addrC,
+	})
+
+	mockStore.EXPECT().CatIndex(addrIndex).Return(index, nil).AnyTimes()
+	mockStore.EXPECT().CatNamespace(addrA).Return(namespaceA, nil)
+	mockStore.EXPECT().CatNamespace(addrB).Return(namespaceB, nil)
+	mockStore.EXPECT().CatNamespace(addrC).Return(namespaceC, nil)
+
+	joinedNamespace := namespaceA.JoinNamespace(namespaceB)
+	joinedNamespace = joinedNamespace.JoinNamespace(namespaceC)
+
+	remote, err := service.LoadRemoteNamespace(mockStore, addrIndex)
+
+	testutil.AssertNil(t, err)
+
+	testReflectHead(t, remote, addrIndex)
+	testReflectIndex(t, remote, index)
+	testReflectNamespace(t, remote, joinedNamespace)
+}
+
+// FIXME test error path
+func testReflectHead(t *testing.T, remote api.RemoteNamespace, expected crdt.IPFSPath) {
+	resp := reflectOnRemote(remote, api.REFLECT_HEAD_PATH)
+
+	testutil.AssertNil(t, resp.Err)
+	testutil.AssertEquals(t, "Unexpected HEAD path", expected, resp.ReflectResponse.Path)
+}
+
+func testReflectIndex(t *testing.T, remote api.RemoteNamespace, expected crdt.Index) {
+	resp := reflectOnRemote(remote, api.REFLECT_INDEX)
+
+	testutil.AssertNil(t, resp.Err)
+	testutil.Assert(t, "Unexpected index", expected.Equals(resp.ReflectResponse.Index))
+}
+
+func testReflectNamespace(t *testing.T, remote api.RemoteNamespace, expected crdt.Namespace) {
+	resp := reflectOnRemote(remote, api.REFLECT_DUMP_NAMESPACE)
+
+	testutil.AssertNil(t, resp.Err)
+	testutil.Assert(t, "Unexpected namespace", expected.Equals(resp.ReflectResponse.Namespace))
+}
+
+func reflectOnRemote(remote api.RemoteNamespace, reflection api.APIReflectionType) api.APIResponse {
+	request := api.MakeKvReflect(reflection)
+	go request.Run(remote)
+
+	resp := readApiResponse(request)
+
+	return resp
+}
+
+func TestIsChanged(t *testing.T) {
+	TestRemoteNamespaceReset(t)
+}
 
 func TestLoadRemoteNamespaceSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
@@ -103,7 +245,7 @@ func TestPersistNewRemoteNamespaceFailure(t *testing.T) {
 }
 
 func TestRunKvQuery(t *testing.T) {
-	// Wait till query and visitors are tested
+	// TODO integration test as design stands.
 }
 
 func TestLoadTraverseSuccess(t *testing.T) {
@@ -148,6 +290,8 @@ func TestLoadTraverseSuccess(t *testing.T) {
 		tableCName: addrC,
 	})
 
+	keepReading := api.TraversalUpdate{More: true}
+
 	mockStore.EXPECT().CatIndex(addrIndex).Return(index, nil).Times(2)
 
 	mockStore.EXPECT().CatNamespace(addrA).Return(namespaceA, nil)
@@ -155,9 +299,9 @@ func TestLoadTraverseSuccess(t *testing.T) {
 	mockStore.EXPECT().CatNamespace(addrC).Return(namespaceC, nil)
 
 	mockReader.EXPECT().ReadsTables().Return([]crdt.TableName{tableAName, tableBName, tableCName})
-	mockReader.EXPECT().ReadNamespace(matchns(namespaceA)).Return(false, nil)
-	mockReader.EXPECT().ReadNamespace(matchns(namespaceB)).Return(false, nil)
-	mockReader.EXPECT().ReadNamespace(matchns(namespaceC)).Return(false, nil)
+	mockReader.EXPECT().ReadNamespace(matchns(namespaceA)).Return(keepReading)
+	mockReader.EXPECT().ReadNamespace(matchns(namespaceB)).Return(keepReading)
+	mockReader.EXPECT().ReadNamespace(matchns(namespaceC)).Return(keepReading)
 
 	ns, err := service.LoadRemoteNamespace(mockStore, addrIndex)
 
@@ -199,10 +343,11 @@ func TestLoadTraverseFailure(t *testing.T) {
 		tableName: namespaceAddr,
 	})
 
+	badTraverse := api.TraversalUpdate{More: true, Error: errors.New("Expected error")}
 	mockStore.EXPECT().CatNamespace(namespaceAddr).Return(namespaceA, nil)
 	mockStore.EXPECT().CatIndex(indexAddr).Return(index, nil).Times(2)
 	mockReader.EXPECT().ReadsTables().Return([]crdt.TableName{tableName})
-	mockReader.EXPECT().ReadNamespace(matchns(namespaceA)).Return(false, errors.New("Expected error"))
+	mockReader.EXPECT().ReadNamespace(matchns(namespaceA)).Return(badTraverse)
 
 	ns, err := service.LoadRemoteNamespace(mockStore, indexAddr)
 
@@ -244,10 +389,11 @@ func TestLoadTraverseAbort(t *testing.T) {
 		tableName: addrA,
 	})
 
+	abort := api.TraversalUpdate{}
 	mockStore.EXPECT().CatNamespace(addrA).Return(namespaceA, nil)
 	mockStore.EXPECT().CatIndex(addrIndex).Return(index, nil).Times(2)
 	mockReader.EXPECT().ReadsTables().Return([]crdt.TableName{tableName})
-	mockReader.EXPECT().ReadNamespace(matchns(namespaceA)).Return(true, nil)
+	mockReader.EXPECT().ReadNamespace(matchns(namespaceA)).Return(abort)
 
 	ns, err := service.LoadRemoteNamespace(mockStore, addrIndex)
 
@@ -404,4 +550,15 @@ func (nsm nsmatcher) Matches(v interface{}) bool {
 
 func (nsm nsmatcher) String() string {
 	return fmt.Sprintf("matches Namespace: %v", nsm.ns)
+}
+
+func readApiResponse(kvq api.KvQuery) api.APIResponse {
+	const duration = time.Second * 1
+	timeout := time.NewTimer(duration)
+	select {
+	case resp := <-kvq.Response:
+		return resp
+	case <-timeout.C:
+		panic("Timed out")
+	}
 }

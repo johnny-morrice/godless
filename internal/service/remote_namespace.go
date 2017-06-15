@@ -34,15 +34,12 @@ func LoadRemoteNamespace(store api.RemoteStore, addr crdt.IPFSPath) (api.RemoteN
 	return rn, nil
 }
 
-func MakeRemoteNamespace(store api.RemoteStore, namespace crdt.Namespace) api.RemoteNamespaceTree {
-	rn := &remoteNamespace{}
-	rn.Store = store
-	rn.NamespaceUpdate = namespace
-	return rn
+func MakeRemoteNamespace(store api.RemoteStore) api.RemoteNamespaceTree {
+	return &remoteNamespace{Store: store}
 }
 
 func PersistNewRemoteNamespace(store api.RemoteStore, namespace crdt.Namespace) (api.RemoteNamespaceTree, error) {
-	rn := MakeRemoteNamespace(store, namespace)
+	rn := &remoteNamespace{Store: store, NamespaceUpdate: namespace}
 
 	kv, err := rn.Persist()
 
@@ -155,7 +152,7 @@ func (rn *remoteNamespace) dumpReflectNamespaces() api.APIResponse {
 	index, err := rn.loadCurrentIndex()
 
 	if err != nil {
-		response.Msg = api.RESPONSE_FAIL_MSG
+		response = api.RESPONSE_FAIL
 		response.Err = errors.Wrap(err, failMsg)
 		response.Type = api.API_REFLECT
 		return response
@@ -164,12 +161,20 @@ func (rn *remoteNamespace) dumpReflectNamespaces() api.APIResponse {
 	tables := index.AllTables()
 	everything := crdt.EmptyNamespace()
 
-	lambda := api.NamespaceTreeLambda(func(ns crdt.Namespace) (bool, error) {
+	lambda := api.NamespaceTreeLambda(func(ns crdt.Namespace) api.TraversalUpdate {
 		everything = everything.JoinNamespace(ns)
-		return false, nil
+		return api.TraversalUpdate{More: true}
 	})
 	traversal := api.AddTableHints(tables, lambda)
-	rn.LoadTraverse(traversal)
+	err = rn.LoadTraverse(traversal)
+
+	if err != nil {
+		response = api.RESPONSE_FAIL
+		response.Err = errors.Wrap(err, failMsg)
+		response.Type = api.API_REFLECT
+	}
+
+	response.ReflectResponse.Namespace = everything
 	return response
 }
 
@@ -222,14 +227,14 @@ func (rn *remoteNamespace) traverseTableNamespaces(tableAddrs []crdt.IPFSPath, f
 	nsch, cancelch := rn.namespaceLoader(tableAddrs)
 	defer close(cancelch)
 	for ns := range nsch {
-		stop, err := f.ReadNamespace(ns)
+		update := f.ReadNamespace(ns)
 
-		if stop || err != nil {
+		if !(update.More && update.Error == nil) {
 			cancelch <- struct{}{}
 		}
 
-		if err != nil {
-			return errors.Wrap(err, "traverseTableNamespaces failed")
+		if update.Error != nil {
+			return errors.Wrap(update.Error, "traverseTableNamespaces failed")
 		}
 	}
 

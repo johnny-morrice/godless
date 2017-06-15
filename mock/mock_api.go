@@ -252,11 +252,10 @@ func (_m *MockNamespaceTreeTableReader) EXPECT() *_MockNamespaceTreeTableReaderR
 	return _m.recorder
 }
 
-func (_m *MockNamespaceTreeTableReader) ReadNamespace(_param0 crdt.Namespace) (bool, error) {
+func (_m *MockNamespaceTreeTableReader) ReadNamespace(_param0 crdt.Namespace) api.TraversalUpdate {
 	ret := _m.ctrl.Call(_m, "ReadNamespace", _param0)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(api.TraversalUpdate)
+	return ret0
 }
 
 func (_mr *_MockNamespaceTreeTableReaderRecorder) ReadNamespace(arg0 interface{}) *gomock.Call {

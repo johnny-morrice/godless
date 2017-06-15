@@ -105,7 +105,7 @@ type rowCriteria struct {
 	rootWhere *query.QueryWhere
 }
 
-func (crit *rowCriteria) selectMatching(namespace crdt.Namespace) (bool, error) {
+func (crit *rowCriteria) selectMatching(namespace crdt.Namespace) api.TraversalUpdate {
 	remaining := crit.limit - crit.count
 
 	if remaining < 0 {
@@ -113,7 +113,7 @@ func (crit *rowCriteria) selectMatching(namespace crdt.Namespace) (bool, error) 
 	}
 
 	if remaining <= 0 {
-		return true, nil
+		return api.TraversalUpdate{}
 	}
 
 	rows := crit.findRows(namespace)
@@ -129,7 +129,7 @@ func (crit *rowCriteria) selectMatching(namespace crdt.Namespace) (bool, error) 
 	crit.count = crit.count + slurp
 
 	// logdbg("Found %v more results. Total: %v.  Limit: %v.", slurp, crit.count, crit.limit)
-	return false, nil
+	return api.TraversalUpdate{More: true}
 }
 
 func (crit *rowCriteria) findRows(namespace crdt.Namespace) []crdt.NamespaceStreamEntry {
