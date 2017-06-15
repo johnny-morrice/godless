@@ -4,65 +4,91 @@ import (
 	"fmt"
 
 	"github.com/johnny-morrice/godless/api"
-	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/log"
-	"github.com/johnny-morrice/godless/query"
-	"github.com/pkg/errors"
 )
 
-func LaunchKeyValueStore(ns api.RemoteNamespace) (api.APIService, <-chan error) {
-	interact := make(chan api.KvQuery)
+type keyValueStore struct {
+	namespace api.RemoteNamespace
+	queue     api.RequestPriorityQueue
+	semaphore chan interface{}
+}
+
+func LaunchKeyValueStore(ns api.RemoteNamespace, queue api.RequestPriorityQueue, queryLimit int) (api.APIService, <-chan error) {
 	errch := make(chan error, 1)
 
 	kv := &keyValueStore{
 		namespace: ns,
-		input:     interact,
+		queue:     queue,
 	}
-	go func() {
-		defer close(errch)
-		for kvq := range interact {
-			log.Info("API received new request")
 
-			err := kv.transact(kvq)
+	if queryLimit > 0 {
+		kv.semaphore = make(chan interface{}, queryLimit)
+	}
 
-			if err != nil {
-				log.Error("key value store died with: %v", err)
-				errch <- errors.Wrap(err, "Key value store died")
-				return
-			}
-		}
-	}()
+	go kv.executeLoop(errch)
 
 	return kv, errch
 }
 
-type keyValueStore struct {
-	namespace api.RemoteNamespace
-	input     chan<- api.KvQuery
+func (kv *keyValueStore) executeLoop(errch chan<- error) {
+	defer close(errch)
+	for anything := range kv.queue.Drain() {
+		if anything == nil {
+			panic("Drained nil")
+		}
+
+		log.Info("API executing request")
+		kvq, ok := anything.(api.KvQuery)
+
+		if !ok {
+			// errch <- fmt.Errorf("Corrupt queue found a '%v' but expected %v: %v", reflect.TypeOf(anything).Name(), reflect.TypeOf(api.KvQuery{}).Name(), anything)
+			log.Error("Corrupt queue")
+			errch <- fmt.Errorf("Corrupt queue")
+		}
+
+		kv.transact(kvq)
+	}
+}
+
+func (kv *keyValueStore) lockResource() {
+	if kv.semaphore == nil {
+		return
+	}
+
+	kv.semaphore <- struct{}{}
+}
+
+func (kv *keyValueStore) unlockResource() {
+	if kv.semaphore == nil {
+		return
+	}
+
+	<-kv.semaphore
 }
 
 func (kv *keyValueStore) Call(request api.APIRequest) (<-chan api.APIResponse, error) {
 	switch request.Type {
 	case api.API_QUERY:
-		return kv.runQuery(request.Query)
+		return kv.runQuery(request)
 	case api.API_REPLICATE:
-		return kv.replicate(request.Replicate)
+		return kv.replicate(request)
 	case api.API_REFLECT:
-		return kv.reflect(request.Reflection)
+		return kv.reflect(request)
 	default:
 		return nil, fmt.Errorf("Unknown request.Type: %v", request.Type)
 	}
 }
 
-func (kv *keyValueStore) replicate(peerAddr crdt.IPFSPath) (<-chan api.APIResponse, error) {
-	log.Info("api.APIService Replicating: %v", peerAddr)
-	kvq := api.MakeKvReplicate(peerAddr)
-	kv.input <- kvq
+func (kv *keyValueStore) replicate(request api.APIRequest) (<-chan api.APIResponse, error) {
+	log.Info("api.APIService Replicating: %v", request.Replicate)
+	kvq := api.MakeKvReplicate(request)
+	kv.queue.Enqueue(kvq.Request, kvq)
 
 	return kvq.TrasactionResult, nil
 }
 
-func (kv *keyValueStore) runQuery(query *query.Query) (<-chan api.APIResponse, error) {
+func (kv *keyValueStore) runQuery(request api.APIRequest) (<-chan api.APIResponse, error) {
+	query := request.Query
 	if log.CanLog(log.LOG_INFO) {
 		text, err := query.PrettyText()
 		if err == nil {
@@ -77,24 +103,24 @@ func (kv *keyValueStore) runQuery(query *query.Query) (<-chan api.APIResponse, e
 		log.Warn("Invalid query.Query")
 		return nil, err
 	}
-	kvq := api.MakeKvQuery(query)
+	kvq := api.MakeKvQuery(request)
 
-	kv.input <- kvq
+	kv.queue.Enqueue(kvq.Request, kvq)
 
 	return kvq.TrasactionResult, nil
 }
 
-func (kv *keyValueStore) reflect(request api.APIReflectionType) (<-chan api.APIResponse, error) {
-	log.Info("api.APIService running reflect request: %v", request)
+func (kv *keyValueStore) reflect(request api.APIRequest) (<-chan api.APIResponse, error) {
+	log.Info("api.APIService running reflect request: %v", request.Replicate)
 	kvq := api.MakeKvReflect(request)
 
-	kv.input <- kvq
+	kv.queue.Enqueue(kvq.Request, kvq)
 
 	return kvq.TrasactionResult, nil
 }
 
 func (kv *keyValueStore) CloseAPI() {
-	close(kv.input)
+	kv.queue.Close()
 }
 
 func (kv *keyValueStore) transact(kvq api.KvQuery) error {

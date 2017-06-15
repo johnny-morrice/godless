@@ -118,28 +118,30 @@ func (krr kvReflectRunner) Run(kvn RemoteNamespace, kvq KvQuery) {
 
 type KvQuery struct {
 	runner           kvRunner
+	Request          APIRequest
 	Response         chan APIResponse
 	TrasactionResult chan APIResponse
 }
 
-func makeApiQuery(runner kvRunner) KvQuery {
+func makeApiQuery(request APIRequest, runner kvRunner) KvQuery {
 	return KvQuery{
+		Request:          request,
 		runner:           runner,
 		Response:         make(chan APIResponse),
 		TrasactionResult: make(chan APIResponse),
 	}
 }
 
-func MakeKvQuery(query *query.Query) KvQuery {
-	return makeApiQuery(kvQueryRunner{query: query})
+func MakeKvQuery(request APIRequest) KvQuery {
+	return makeApiQuery(request, kvQueryRunner{query: request.Query})
 }
 
-func MakeKvReflect(request APIReflectionType) KvQuery {
-	return makeApiQuery(kvReflectRunner{reflection: request})
+func MakeKvReflect(request APIRequest) KvQuery {
+	return makeApiQuery(request, kvReflectRunner{reflection: request.Reflection})
 }
 
-func MakeKvReplicate(peerAddr crdt.IPFSPath) KvQuery {
-	return makeApiQuery(kvReplicator{peerAddr: peerAddr})
+func MakeKvReplicate(request APIRequest) KvQuery {
+	return makeApiQuery(request, kvReplicator{peerAddr: request.Replicate})
 }
 
 // TODO these should make more general sense and be public.

@@ -42,6 +42,7 @@ var serveCmd = &cobra.Command{
 			FailEarly:         earlyConnect,
 			ReplicateInterval: interval,
 			Topics:            topics,
+			APIQueryLimit:     apiQueryLimit,
 		}
 
 		godless, err := lib.New(options)
@@ -61,6 +62,7 @@ var serveCmd = &cobra.Command{
 var addr string
 var interval time.Duration
 var earlyConnect bool
+var apiQueryLimit int
 
 func shutdown(godless *lib.Godless) {
 	godless.Shutdown()
@@ -73,4 +75,5 @@ func init() {
 	serveCmd.Flags().StringVar(&addr, "address", "localhost:8085", "Listen address for server")
 	serveCmd.Flags().DurationVar(&interval, "interval", time.Minute*1, "Interval between replications")
 	serveCmd.Flags().BoolVar(&earlyConnect, "early", false, "Early check on IPFS API access")
+	serveCmd.Flags().IntVar(&apiQueryLimit, "limit", 1, "Number of simulataneous queries run by the API. limit < 0 for no restrictions.")
 }

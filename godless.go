@@ -41,7 +41,12 @@ type Options struct {
 	IpfsClient *gohttp.Client
 	// IpfsPingTimeout is optional.  Specify a lower timeout for "Am I Connected?" checks.
 	IpfsPingTimeout time.Duration
-	HeadCache       api.HeadCache
+	// HeadCache is optional.  Build a 12-factor app by supplying your own remote cache.
+	HeadCache api.HeadCache
+	// PriorityQueue is optional. Build a 12-factor app by supplying your own remote cache.
+	PriorityQueue api.RequestPriorityQueue
+	// APIQueryLimit is optional.  Tune performance by setting the number of simultaneous queries.
+	APIQueryLimit int
 }
 
 // Godless is a peer-to-peer database.  It shares structured data between peers, using IPFS as a backing store.
@@ -138,7 +143,19 @@ func (godless *Godless) setupNamespace() error {
 }
 
 func (godless *Godless) launchAPI() error {
-	api, errch := service.LaunchKeyValueStore(godless.remote)
+	limit := godless.APIQueryLimit
+
+	if limit == 0 {
+		limit = 1
+	}
+
+	queue := godless.PriorityQueue
+
+	if queue == nil {
+		queue = cache.MakeResidentBufferQueue(cache.DEFAULT_BUFFER_SIZE)
+	}
+
+	api, errch := service.LaunchKeyValueStore(godless.remote, queue, limit)
 
 	godless.addErrors(errch)
 	godless.api = api

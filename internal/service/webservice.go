@@ -18,7 +18,7 @@ const QUERY_API_ROOT = "/query"
 const REFLECT_API_ROOT = "/reflect"
 
 type WebService struct {
-	API api.APIService
+	API api.APIRequestService
 }
 
 func (service *WebService) Handler() gohttp.Handler {
