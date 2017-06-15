@@ -102,15 +102,23 @@ func (kv *keyValueStore) transact(kvq api.KvQuery) error {
 
 	resp := <-kvq.Response
 	if kv.namespace.IsChanged() {
-		next, err := kv.namespace.Persist()
+		err := kv.namespace.Persist()
 
 		if err == nil {
 			log.Info("API transaction OK")
-			kv.namespace = next
+			commitFailure := kv.namespace.Commit()
+
+			if commitFailure != nil {
+				log.Error("Commit failed")
+			}
 		} else {
 			log.Error("API transaction failed: %v", err)
 			log.Info("Rollback failed persist")
-			kv.namespace.Reset()
+			rollbackFailure := kv.namespace.Rollback()
+
+			if rollbackFailure != nil {
+				log.Error("Rollback failure: %v", rollbackFailure)
+			}
 
 			respText, reportErr := resp.AsText()
 

@@ -3,26 +3,27 @@ package api
 import (
 	"crypto"
 
-	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
 )
 
 type HeadCache interface {
-	SetHead(crdt.IPFSPath)
-	GetHead(crdt.IPFSPath)
+	SetHead(head crdt.IPFSPath) error
+	GetHead() (crdt.IPFSPath, error)
+	Rollback() error
+	Commit() error
 }
 
 type RequestPriorityQueue interface {
-	Enqueue(api.APIRequest)
-	PopFront(api.APIRequest)
+	Enqueue(request APIRequest)
+	PopFront() APIRequest
 }
 
 type PublicKeyId string
 type PrivateKeyId string
 
 type KeyCache interface {
-	StorePrivateKey(crypto.PrivateKey) PrivateKeyId
-	GetPrivateKey(PrivateKeyId) crypto.PrivateKey
-	StorePublicKey(crypto.PublicKey) PublicKeyId
-	GetPublicKey(PublicKeyId) crypto.PublicKey
+	StorePrivateKey(priv crypto.PrivateKey) PrivateKeyId
+	GetPrivateKey(privId PrivateKeyId) crypto.PrivateKey
+	StorePublicKey(pub crypto.PublicKey) PublicKeyId
+	GetPublicKey(pubId PublicKeyId) crypto.PublicKey
 }

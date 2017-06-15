@@ -83,8 +83,9 @@ type RemoteNamespace interface {
 	RunKvReflection(APIReflectionType, KvQuery)
 	Replicate(crdt.IPFSPath, KvQuery)
 	IsChanged() bool
-	Persist() (RemoteNamespace, error)
-	Reset()
+	Persist() error
+	Commit() error
+	Rollback() error
 }
 
 type kvRunner interface {

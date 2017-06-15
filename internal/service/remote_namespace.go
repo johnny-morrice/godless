@@ -13,46 +13,36 @@ type remoteNamespace struct {
 	NamespaceUpdate crdt.Namespace
 	IndexUpdate     crdt.Index
 	Store           api.RemoteStore
-	Addr            crdt.IPFSPath
+	Cache           api.HeadCache
 }
 
-func LoadRemoteNamespace(store api.RemoteStore, addr crdt.IPFSPath) (api.RemoteNamespaceTree, error) {
-	rn := &remoteNamespace{}
-	rn.Store = store
-	rn.Addr = addr
-	rn.NamespaceUpdate = crdt.EmptyNamespace()
-
-	_, err := rn.loadCurrentIndex()
-
-	// We don't use the index for anything at this point.
-	log.Debug("crdt.Index found at '%v'", addr)
-
-	if err != nil {
-		return nil, errors.Wrap(err, "Error loading new namespace")
-	}
-
-	return rn, nil
+func MakeRemoteNamespace(store api.RemoteStore, cache api.HeadCache) api.RemoteNamespaceTree {
+	return &remoteNamespace{Store: store, Cache: cache}
 }
 
-func MakeRemoteNamespace(store api.RemoteStore) api.RemoteNamespaceTree {
-	return &remoteNamespace{Store: store}
-}
-
-func PersistNewRemoteNamespace(store api.RemoteStore, namespace crdt.Namespace) (api.RemoteNamespaceTree, error) {
-	rn := &remoteNamespace{Store: store, NamespaceUpdate: namespace}
-
-	kv, err := rn.Persist()
-
-	if err != nil {
-		return nil, err
-	}
-
-	return kv.(*remoteNamespace), nil
-}
-
-func (rn *remoteNamespace) Reset() {
+func (rn *remoteNamespace) Rollback() error {
+	const failMsg = "remoteNamespace.Rollback failed"
 	rn.NamespaceUpdate = crdt.EmptyNamespace()
 	rn.IndexUpdate = crdt.EmptyIndex()
+	err := rn.Cache.Rollback()
+
+	if err != nil {
+		return errors.Wrap(err, failMsg)
+	}
+
+	return nil
+}
+
+func (rn *remoteNamespace) Commit() error {
+	const failMsg = "remoteNamespace.Commit failed"
+
+	err := rn.Cache.Commit()
+
+	if err != nil {
+		return errors.Wrap(err, failMsg)
+	}
+
+	return nil
 }
 
 func (rn *remoteNamespace) Replicate(peerAddr crdt.IPFSPath, kvq api.KvQuery) {
@@ -64,12 +54,19 @@ func (rn *remoteNamespace) Replicate(peerAddr crdt.IPFSPath, kvq api.KvQuery) {
 func (rn *remoteNamespace) joinPeerIndex(peerAddr crdt.IPFSPath) api.APIResponse {
 	const failMsg = "remoteNamespace.joinPeerIndex failed"
 
-	if peerAddr == rn.Addr {
-		return api.RESPONSE_REPLICATE
-	}
-
 	failResponse := api.RESPONSE_FAIL
 	failResponse.Type = api.API_REPLICATE
+
+	myAddr, cacheErr := rn.Cache.GetHead()
+
+	if cacheErr != nil {
+		failResponse.Err = errors.Wrap(cacheErr, failMsg)
+		return failResponse
+	}
+
+	if peerAddr == myAddr {
+		return api.RESPONSE_REPLICATE
+	}
 
 	myIndex, myErr := rn.loadCurrentIndex()
 
@@ -117,10 +114,16 @@ func (rn *remoteNamespace) getReflectHead() api.APIResponse {
 	response := api.RESPONSE_REFLECT
 	response.ReflectResponse.Type = api.REFLECT_HEAD_PATH
 
-	if crdt.IsNilPath(rn.Addr) {
+	myAddr, err := rn.Cache.GetHead()
+
+	if err != nil {
+		response.Err = errors.Wrap(err, "remoteNamespace.getReflectHead failed")
+		response.Msg = api.RESPONSE_FAIL_MSG
+	} else if crdt.IsNilPath(myAddr) {
 		response.Err = errors.New("No index available")
+		response.Msg = api.RESPONSE_FAIL_MSG
 	} else {
-		response.ReflectResponse.Path = rn.Addr
+		response.ReflectResponse.Path = myAddr
 	}
 
 	return response
@@ -288,15 +291,19 @@ func (rn *remoteNamespace) findTableAddrs(index crdt.Index, tableHints api.Table
 // Load chunks over IPFS
 // TODO opportunity to query IPFS in parallel?
 func (rn *remoteNamespace) loadCurrentIndex() (crdt.Index, error) {
-	if crdt.IsNilPath(rn.Addr) {
+	myAddr, err := rn.Cache.GetHead()
+
+	if err != nil {
+		return crdt.EmptyIndex(), errors.Wrap(err, "remoteNamespace.loadCurrentIndex failed")
+	} else if crdt.IsNilPath(myAddr) {
 		return crdt.EmptyIndex(), errors.New("No current index")
 	}
 
-	return rn.loadIndex(rn.Addr)
+	return rn.loadIndex(myAddr)
 }
 
 // Write pending changes to IPFS and return the new parent namespace.
-func (rn *remoteNamespace) Persist() (api.RemoteNamespace, error) {
+func (rn *remoteNamespace) Persist() error {
 	const failMsg = "remoteNamespace.Persist failed"
 
 	var nsIndex crdt.Index
@@ -304,28 +311,36 @@ func (rn *remoteNamespace) Persist() (api.RemoteNamespace, error) {
 	var namespaceAddr crdt.IPFSPath
 	var nsErr error
 
+	log.Info("Persisting RemoteNamespace...")
+
 	// TODO tidy up
 	if !rn.NamespaceUpdate.IsEmpty() {
 		namespaceAddr, nsErr = rn.persistNamespace(rn.NamespaceUpdate)
 
 		if nsErr != nil {
-			return nil, errors.Wrap(nsErr, failMsg)
+			return errors.Wrap(nsErr, failMsg)
 		}
 
 		var updateErr error
 		nsIndex, updateErr = rn.indexNamespace(namespaceAddr, rn.NamespaceUpdate)
 
 		if updateErr != nil {
-			return nil, errors.Wrap(updateErr, failMsg)
+			return errors.Wrap(updateErr, failMsg)
 		}
 	}
 
-	if !crdt.IsNilPath(rn.Addr) {
+	myAddr, cacheErr := rn.Cache.GetHead()
+
+	if cacheErr != nil {
+		return errors.Wrap(cacheErr, failMsg)
+	}
+
+	if !crdt.IsNilPath(myAddr) {
 		var loadErr error
-		index, loadErr = rn.loadCurrentIndex()
+		index, loadErr = rn.loadIndex(myAddr)
 
 		if loadErr != nil {
-			return nil, errors.Wrap(loadErr, failMsg)
+			return errors.Wrap(loadErr, failMsg)
 		}
 	}
 
@@ -335,16 +350,12 @@ func (rn *remoteNamespace) Persist() (api.RemoteNamespace, error) {
 	indexAddr, indexErr := rn.persistIndex(index)
 
 	if indexErr != nil {
-		return nil, errors.Wrap(indexErr, failMsg)
+		return errors.Wrap(indexErr, failMsg)
 	}
 
-	out := &remoteNamespace{
-		Addr:            indexAddr,
-		Store:           rn.Store,
-		NamespaceUpdate: crdt.EmptyNamespace(),
-	}
+	rn.Cache.SetHead(indexAddr)
 
-	return out, nil
+	return nil
 }
 
 func (rn *remoteNamespace) persistNamespace(namespace crdt.Namespace) (crdt.IPFSPath, error) {

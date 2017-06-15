@@ -14,6 +14,7 @@ import (
 	gohttp "net/http"
 
 	"github.com/johnny-morrice/godless/api"
+	"github.com/johnny-morrice/godless/cache"
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/internal/http"
 	"github.com/johnny-morrice/godless/internal/ipfs"
@@ -40,6 +41,7 @@ type Options struct {
 	IpfsClient *gohttp.Client
 	// IpfsPingTimeout is optional.  Specify a lower timeout for "Am I Connected?" checks.
 	IpfsPingTimeout time.Duration
+	HeadCache       api.HeadCache
 }
 
 // Godless is a peer-to-peer database.  It shares structured data between peers, using IPFS as a backing store.
@@ -75,8 +77,7 @@ func New(options Options) (*Godless, error) {
 	return godless, nil
 }
 
-// Errors provides a stream of errors from godless.  Godless will attempt to stay alive under difficult conditions.
-// The returned channel is closed when godless shuts down.
+// Errors provides a stream of errors from godless.  Godless will attempt to handle any errors it can.  Any errors received here indicate that bad things have happened.
 func (godless *Godless) Errors() <-chan error {
 	return godless.errch
 }
@@ -96,44 +97,44 @@ func (godless *Godless) connectIpfs() error {
 		PingTimeout: pingTimeout,
 	}
 
-	// if godless.FailEarly {
-	// 	err := peer.Connect()
-	//
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// }
+	if godless.FailEarly {
+		err := peer.Connect()
+
+		if err != nil {
+			return err
+		}
+	}
 
 	godless.store = peer
 
 	return nil
 }
 
+// MakeRemoteNamespace creates a data store representing p2p data.
 func (godless *Godless) setupNamespace() error {
-	remote, err := godless.makeRemote()
+	headCache := godless.HeadCache
 
-	if err != nil {
-		return err
+	if headCache == nil {
+		headCache = cache.MakeResidentHeadCache()
 	}
 
-	godless.remote = remote
-	return nil
-}
+	if godless.IndexHash != "" {
+		head := crdt.IPFSPath(godless.IndexHash)
+		err := headCache.SetHead(head)
 
-// MakeRemoteNamespace creates a data store representing p2p data.
-func (godless *Godless) makeRemote() (api.RemoteNamespace, error) {
-	if godless.IndexHash == "" {
-		if godless.FailEarly {
-			namespace := crdt.EmptyNamespace()
-			return service.PersistNewRemoteNamespace(godless.store, namespace)
-		} else {
-			return service.MakeRemoteNamespace(godless.store), nil
+		if err != nil {
+			return err
 		}
 
-	} else {
-		path := crdt.IPFSPath(godless.IndexHash)
-		return service.LoadRemoteNamespace(godless.store, path)
+		err = headCache.Commit()
+
+		if err != nil {
+			return err
+		}
 	}
+
+	godless.remote = service.MakeRemoteNamespace(godless.store, headCache)
+	return nil
 }
 
 func (godless *Godless) launchAPI() error {
