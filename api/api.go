@@ -13,25 +13,22 @@ import (
 
 type APIService interface {
 	APICloserService
-	APIQueryService
-	APIReflectService
-	APIPeerService
+	APIRequestService
+}
+
+type APIRequestService interface {
+	Call(APIRequest) (<-chan APIResponse, error)
 }
 
 type APICloserService interface {
 	CloseAPI()
 }
 
-type APIReflectService interface {
-	Reflect(APIReflectionType) (<-chan APIResponse, error)
-}
-
-type APIQueryService interface {
-	RunQuery(*query.Query) (<-chan APIResponse, error)
-}
-
-type APIPeerService interface {
-	Replicate(peerAddr crdt.IPFSPath) (<-chan APIResponse, error)
+type APIRequest struct {
+	Type       APIMessageType
+	Reflection APIReflectionType
+	Query      *query.Query
+	Replicate  crdt.IPFSPath
 }
 
 type APIResponder interface {

@@ -37,7 +37,7 @@ func TestRunQueryReadSuccess(t *testing.T) {
 	mock.EXPECT().RunKvQuery(query, kvqmatcher{}).Do(writeStubResponse)
 
 	api, errch := service.LaunchKeyValueStore(mock)
-	respch, err := api.RunQuery(query)
+	respch, err := runQuery(api, query)
 
 	if err != nil {
 		t.Error(err)
@@ -101,7 +101,7 @@ func TestRunQueryWriteSuccess(t *testing.T) {
 	mock.EXPECT().Persist().Return(mock, nil)
 
 	api, errch := service.LaunchKeyValueStore(mock)
-	actualRespch, err := api.RunQuery(query)
+	actualRespch, err := runQuery(api, query)
 
 	if err != nil {
 		t.Error(err)
@@ -146,7 +146,7 @@ func TestRunQueryWriteFailure(t *testing.T) {
 	mock.EXPECT().Persist().Return(nil, errors.New("Expected error"))
 
 	api, errch := service.LaunchKeyValueStore(mock)
-	resp, qerr := api.RunQuery(query)
+	resp, qerr := runQuery(api, query)
 
 	if qerr != nil {
 		t.Error(qerr)
@@ -178,7 +178,7 @@ func TestRunQueryInvalid(t *testing.T) {
 	query := &query.Query{}
 
 	api, _ := service.LaunchKeyValueStore(mock)
-	resp, err := api.RunQuery(query)
+	resp, err := runQuery(api, query)
 
 	if err == nil {
 		t.Error("err was nil")
@@ -189,6 +189,10 @@ func TestRunQueryInvalid(t *testing.T) {
 	}
 
 	api.CloseAPI()
+}
+
+func runQuery(service api.APIService, query *query.Query) (<-chan api.APIResponse, error) {
+	return service.Call(api.APIRequest{Type: api.API_QUERY, Query: query})
 }
 
 type kvqmatcher struct {

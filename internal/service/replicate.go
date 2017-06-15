@@ -62,7 +62,7 @@ func (p2p replicator) sendReflectRequest() (api.APIResponse, error) {
 	failResp := api.RESPONSE_FAIL
 	failResp.Type = api.API_REFLECT
 
-	respch, err := p2p.api.Reflect(api.REFLECT_HEAD_PATH)
+	respch, err := p2p.api.Call(api.APIRequest{Type: api.API_REFLECT, Reflection: api.REFLECT_HEAD_PATH})
 
 	if err != nil {
 		return failResp, errors.Wrap(err, "Reflection failed (Early API failure) for: %v %v")
@@ -129,7 +129,7 @@ func (p2p replicator) subscribeTopic(topic crdt.IPFSPath) {
 func (p2p replicator) sendReplicateRequest(head crdt.IPFSPath) {
 	log.Info("Replicating from: %v", head)
 
-	respch, err := p2p.api.Replicate(head)
+	respch, err := p2p.api.Call(api.APIRequest{Type: api.API_REPLICATE, Replicate: head})
 
 	if err != nil {
 		log.Error("Replication failed (Early API failure) for '%v': %v", head, err)

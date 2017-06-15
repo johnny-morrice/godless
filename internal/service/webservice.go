@@ -51,7 +51,7 @@ func (service *WebService) reflectDumpNamespace(rw gohttp.ResponseWriter, req *g
 }
 
 func (service *WebService) reflect(rw gohttp.ResponseWriter, reflection api.APIReflectionType) {
-	respch, err := service.API.Reflect(reflection)
+	respch, err := service.API.Call(api.APIRequest{Type: api.API_REFLECT, Reflection: reflection})
 	service.respond(rw, respch, err)
 }
 
@@ -64,7 +64,7 @@ func (service *WebService) runQuery(rw gohttp.ResponseWriter, req *gohttp.Reques
 		return
 	}
 
-	respch, err := service.API.RunQuery(q)
+	respch, err := service.API.Call(api.APIRequest{Type: api.API_QUERY, Query: q})
 	service.respond(rw, respch, err)
 }
 

@@ -1,6 +1,8 @@
 package service
 
 import (
+	"fmt"
+
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/log"
@@ -39,7 +41,20 @@ type keyValueStore struct {
 	input     chan<- api.KvQuery
 }
 
-func (kv *keyValueStore) Replicate(peerAddr crdt.IPFSPath) (<-chan api.APIResponse, error) {
+func (kv *keyValueStore) Call(request api.APIRequest) (<-chan api.APIResponse, error) {
+	switch request.Type {
+	case api.API_QUERY:
+		return kv.runQuery(request.Query)
+	case api.API_REPLICATE:
+		return kv.replicate(request.Replicate)
+	case api.API_REFLECT:
+		return kv.reflect(request.Reflection)
+	default:
+		return nil, fmt.Errorf("Unknown request.Type: %v", request.Type)
+	}
+}
+
+func (kv *keyValueStore) replicate(peerAddr crdt.IPFSPath) (<-chan api.APIResponse, error) {
 	log.Info("api.APIService Replicating: %v", peerAddr)
 	kvq := api.MakeKvReplicate(peerAddr)
 	kv.input <- kvq
@@ -47,7 +62,7 @@ func (kv *keyValueStore) Replicate(peerAddr crdt.IPFSPath) (<-chan api.APIRespon
 	return kvq.TrasactionResult, nil
 }
 
-func (kv *keyValueStore) RunQuery(query *query.Query) (<-chan api.APIResponse, error) {
+func (kv *keyValueStore) runQuery(query *query.Query) (<-chan api.APIResponse, error) {
 	if log.CanLog(log.LOG_INFO) {
 		text, err := query.PrettyText()
 		if err == nil {
@@ -69,7 +84,7 @@ func (kv *keyValueStore) RunQuery(query *query.Query) (<-chan api.APIResponse, e
 	return kvq.TrasactionResult, nil
 }
 
-func (kv *keyValueStore) Reflect(request api.APIReflectionType) (<-chan api.APIResponse, error) {
+func (kv *keyValueStore) reflect(request api.APIReflectionType) (<-chan api.APIResponse, error) {
 	log.Info("api.APIService running reflect request: %v", request)
 	kvq := api.MakeKvReflect(request)
 
