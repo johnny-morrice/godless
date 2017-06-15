@@ -33,20 +33,26 @@ func LaunchKeyValueStore(ns api.RemoteNamespace, queue api.RequestPriorityQueue,
 func (kv *keyValueStore) executeLoop(errch chan<- error) {
 	defer close(errch)
 	for anything := range kv.queue.Drain() {
-		if anything == nil {
-			panic("Drained nil")
-		}
+		thing := anything
+		go func() {
+			kv.lockResource()
+			if thing == nil {
+				panic("Drained nil")
+			}
 
-		log.Info("API executing request")
-		kvq, ok := anything.(api.KvQuery)
+			log.Info("API executing request")
+			kvq, ok := anything.(api.KvQuery)
 
-		if !ok {
-			// errch <- fmt.Errorf("Corrupt queue found a '%v' but expected %v: %v", reflect.TypeOf(anything).Name(), reflect.TypeOf(api.KvQuery{}).Name(), anything)
-			log.Error("Corrupt queue")
-			errch <- fmt.Errorf("Corrupt queue")
-		}
+			if !ok {
+				// errch <- fmt.Errorf("Corrupt queue found a '%v' but expected %v: %v", reflect.TypeOf(anything).Name(), reflect.TypeOf(api.KvQuery{}).Name(), anything)
+				log.Error("Corrupt queue")
+				errch <- fmt.Errorf("Corrupt queue")
+			}
 
-		kv.transact(kvq)
+			kv.transact(kvq)
+			kv.unlockResource()
+		}()
+
 	}
 }
 
@@ -79,10 +85,14 @@ func (kv *keyValueStore) Call(request api.APIRequest) (<-chan api.APIResponse, e
 	}
 }
 
+func (kv *keyValueStore) enqueue(kvq api.KvQuery) {
+	go kv.queue.Enqueue(kvq.Request, kvq)
+}
+
 func (kv *keyValueStore) replicate(request api.APIRequest) (<-chan api.APIResponse, error) {
 	log.Info("api.APIService Replicating: %v", request.Replicate)
 	kvq := api.MakeKvReplicate(request)
-	kv.queue.Enqueue(kvq.Request, kvq)
+	kv.enqueue(kvq)
 
 	return kvq.TrasactionResult, nil
 }
@@ -105,7 +115,7 @@ func (kv *keyValueStore) runQuery(request api.APIRequest) (<-chan api.APIRespons
 	}
 	kvq := api.MakeKvQuery(request)
 
-	kv.queue.Enqueue(kvq.Request, kvq)
+	kv.enqueue(kvq)
 
 	return kvq.TrasactionResult, nil
 }
@@ -114,7 +124,7 @@ func (kv *keyValueStore) reflect(request api.APIRequest) (<-chan api.APIResponse
 	log.Info("api.APIService running reflect request: %v", request.Replicate)
 	kvq := api.MakeKvReflect(request)
 
-	kv.queue.Enqueue(kvq.Request, kvq)
+	kv.enqueue(kvq)
 
 	return kvq.TrasactionResult, nil
 }
