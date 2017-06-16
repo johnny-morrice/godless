@@ -74,12 +74,7 @@ type RemoteNamespace interface {
 	RunKvQuery(*query.Query, KvQuery)
 	RunKvReflection(APIReflectionType, KvQuery)
 	Replicate(crdt.IPFSPath, KvQuery)
-	IsChanged() bool
-	Persist() error
-	Commit() error
-	Rollback() error
-	Lock()
-	Unlock()
+	Close()
 }
 
 type kvRunner interface {
@@ -111,18 +106,16 @@ func (krr kvReflectRunner) Run(kvn RemoteNamespace, kvq KvQuery) {
 }
 
 type KvQuery struct {
-	runner            kvRunner
-	Request           APIRequest
-	Response          chan APIResponse
-	TransactionResult chan APIResponse
+	runner   kvRunner
+	Request  APIRequest
+	Response chan APIResponse
 }
 
 func makeApiQuery(request APIRequest, runner kvRunner) KvQuery {
 	return KvQuery{
-		Request:           request,
-		runner:            runner,
-		Response:          make(chan APIResponse),
-		TransactionResult: make(chan APIResponse),
+		Request:  request,
+		runner:   runner,
+		Response: make(chan APIResponse),
 	}
 }
 

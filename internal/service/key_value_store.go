@@ -36,6 +36,7 @@ func (kv *keyValueStore) executeLoop(errch chan<- error) {
 		thing := anything
 		go func() {
 			kv.lockResource()
+			defer kv.unlockResource()
 			if thing == nil {
 				panic("Drained nil")
 			}
@@ -49,11 +50,14 @@ func (kv *keyValueStore) executeLoop(errch chan<- error) {
 				errch <- fmt.Errorf("Corrupt queue")
 			}
 
-			kv.transact(kvq)
-			kv.unlockResource()
+			kv.run(kvq)
 		}()
 
 	}
+}
+
+func (kv *keyValueStore) run(kvq api.KvQuery) {
+	kvq.Run(kv.namespace)
 }
 
 func (kv *keyValueStore) lockResource() {
@@ -94,7 +98,7 @@ func (kv *keyValueStore) replicate(request api.APIRequest) (<-chan api.APIRespon
 	kvq := api.MakeKvReplicate(request)
 	kv.enqueue(kvq)
 
-	return kvq.TransactionResult, nil
+	return kvq.Response, nil
 }
 
 func (kv *keyValueStore) runQuery(request api.APIRequest) (<-chan api.APIResponse, error) {
@@ -117,7 +121,7 @@ func (kv *keyValueStore) runQuery(request api.APIRequest) (<-chan api.APIRespons
 
 	kv.enqueue(kvq)
 
-	return kvq.TransactionResult, nil
+	return kvq.Response, nil
 }
 
 func (kv *keyValueStore) reflect(request api.APIRequest) (<-chan api.APIResponse, error) {
@@ -126,67 +130,12 @@ func (kv *keyValueStore) reflect(request api.APIRequest) (<-chan api.APIResponse
 
 	kv.enqueue(kvq)
 
-	return kvq.TransactionResult, nil
+	return kvq.Response, nil
 }
 
 func (kv *keyValueStore) CloseAPI() {
+	kv.namespace.Close()
 	kv.queue.Close()
-}
-
-func (kv *keyValueStore) transact(kvq api.KvQuery) error {
-	go kvq.Run(kv.namespace)
-
-	resp := <-kvq.Response
-
-	transactionResult := kv.transactResponse(resp)
-
-	log.Info("API waiting for client...")
-	kvq.TransactionResult <- transactionResult
-	log.Info("API transaction result sent to client")
-	close(kvq.TransactionResult)
-
-	return nil
-}
-
-func (kv *keyValueStore) transactResponse(resp api.APIResponse) api.APIResponse {
-	kv.namespace.Lock()
-	defer kv.namespace.Unlock()
-
-	if kv.namespace.IsChanged() {
-		err := kv.namespace.Persist()
-
-		if err == nil {
-			log.Info("API transaction OK")
-			commitFailure := kv.namespace.Commit()
-
-			if commitFailure != nil {
-				log.Error("Commit failed")
-				convertToFailure(&resp, "commit failed")
-			}
-		} else {
-			log.Error("API transaction failed: %v", err)
-			log.Info("Rollback failed persist")
-			rollbackFailure := kv.namespace.Rollback()
-
-			if rollbackFailure != nil {
-				log.Error("Rollback failure: %v", rollbackFailure)
-			}
-
-			respText, reportErr := resp.AsText()
-
-			if reportErr != nil {
-				log.Info("Overridden response:\n%v", respText)
-			} else {
-				log.Warn("Could not serialize overriden response: %v", reportErr)
-			}
-
-			convertToFailure(&resp, "persist failed")
-		}
-	} else {
-		log.Info("No API transaction required for read query")
-	}
-
-	return resp
 }
 
 func convertToFailure(resp *api.APIResponse, message string) {
