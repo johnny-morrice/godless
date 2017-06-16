@@ -67,12 +67,6 @@ var addr string
 var interval time.Duration
 var earlyConnect bool
 var apiQueryLimit int
-var profileTime time.Duration
-var cpuprof = "cpu.prof"
-
-func cpuProfOutput() (*os.File, error) {
-	return os.Create(cpuprof)
-}
 
 func shutdown(godless *lib.Godless) {
 	godless.Shutdown()
