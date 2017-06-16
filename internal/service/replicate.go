@@ -16,7 +16,7 @@ type replicator struct {
 	api      api.APIService
 	store    api.RemoteStore
 	errch    chan<- error
-	stopch   <-chan interface{}
+	stopch   <-chan struct{}
 }
 
 func (p2p replicator) publishAllTopics() {
@@ -143,8 +143,8 @@ func (p2p replicator) sendReplicateRequest(head crdt.IPFSPath) {
 	}
 }
 
-func Replicate(api api.APIService, store api.RemoteStore, interval time.Duration, topics []crdt.IPFSPath) (chan<- interface{}, <-chan error) {
-	stopch := make(chan interface{}, 1)
+func Replicate(api api.APIService, store api.RemoteStore, interval time.Duration, topics []crdt.IPFSPath) (chan<- struct{}, <-chan error) {
+	stopch := make(chan struct{}, 1)
 	errch := make(chan error, len(topics))
 
 	if interval == 0 {

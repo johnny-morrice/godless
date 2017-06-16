@@ -55,8 +55,8 @@ type Godless struct {
 	Options
 	errch    chan error
 	errwg    sync.WaitGroup
-	stopch   chan interface{}
-	stoppers []chan<- interface{}
+	stopch   chan struct{}
+	stoppers []chan<- struct{}
 	store    api.RemoteStore
 	remote   api.RemoteNamespace
 	api      api.APIService
@@ -89,7 +89,7 @@ func (godless *Godless) Errors() <-chan error {
 
 // Shutdown stops all godless processes.  It does not wait for those goroutines to stop.
 func (godless *Godless) Shutdown() {
-	godless.stopch <- godless.stopch
+	godless.stopch <- struct{}{}
 }
 
 func (godless *Godless) connectIpfs() error {
@@ -203,9 +203,9 @@ func (godless *Godless) replicate() error {
 	return nil
 }
 
-func (godless *Godless) addStopper(stopch chan<- interface{}) {
+func (godless *Godless) addStopper(stopch chan<- struct{}) {
 	if godless.stopch == nil {
-		godless.stopch = make(chan interface{})
+		godless.stopch = make(chan struct{})
 		go func() {
 			godless.handleShutdown()
 		}()

@@ -10,7 +10,7 @@ import (
 type keyValueStore struct {
 	namespace api.RemoteNamespace
 	queue     api.RequestPriorityQueue
-	semaphore chan interface{}
+	semaphore chan struct{}
 }
 
 func LaunchKeyValueStore(ns api.RemoteNamespace, queue api.RequestPriorityQueue, queryLimit int) (api.APIService, <-chan error) {
@@ -22,7 +22,7 @@ func LaunchKeyValueStore(ns api.RemoteNamespace, queue api.RequestPriorityQueue,
 	}
 
 	if queryLimit > 0 {
-		kv.semaphore = make(chan interface{}, queryLimit)
+		kv.semaphore = make(chan struct{}, queryLimit)
 	}
 
 	go kv.executeLoop(errch)

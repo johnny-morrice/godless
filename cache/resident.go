@@ -73,7 +73,7 @@ func MakeResidentHeadCache() api.HeadCache {
 
 type residentPriorityQueue struct {
 	sync.Mutex
-	semaphore chan interface{}
+	semaphore chan struct{}
 	buff      []residentQueueItem
 	datach    chan interface{}
 }
@@ -84,7 +84,7 @@ func MakeResidentBufferQueue(buffSize int) api.RequestPriorityQueue {
 	}
 
 	queue := &residentPriorityQueue{
-		semaphore: make(chan interface{}, buffSize),
+		semaphore: make(chan struct{}, buffSize),
 		buff:      make([]residentQueueItem, buffSize),
 		datach:    make(chan interface{}),
 	}

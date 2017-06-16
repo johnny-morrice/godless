@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func Serve(laddr string, handler http.Handler) (chan<- interface{}, error) {
+func Serve(laddr string, handler http.Handler) (chan<- struct{}, error) {
 	const protocol = "tcp"
 	listener, err := net.Listen(protocol, laddr)
 
@@ -17,7 +17,7 @@ func Serve(laddr string, handler http.Handler) (chan<- interface{}, error) {
 		return nil, errors.Wrap(err, "Serve failed")
 	}
 
-	closer := make(chan interface{})
+	closer := make(chan struct{})
 
 	go func() {
 		<-closer
