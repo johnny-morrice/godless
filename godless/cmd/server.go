@@ -22,7 +22,6 @@ package cmd
 
 import (
 	"os"
-	"runtime/pprof"
 	"time"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -36,46 +35,39 @@ var serveCmd = &cobra.Command{
 	Short: "Run a Godless server",
 	Long:  `A godless server listens to queries over HTTP.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if profile {
-			f, err := cpuProfOutput()
-
-			if err != nil {
-				die(err)
-			}
-
-			pprof.StartCPUProfile(f)
-			defer pprof.StopCPUProfile()
-		}
-
-		options := lib.Options{
-			IpfsServiceUrl:    ipfsService,
-			WebServiceAddr:    addr,
-			IndexHash:         hash,
-			FailEarly:         earlyConnect,
-			ReplicateInterval: interval,
-			Topics:            topics,
-			APIQueryLimit:     apiQueryLimit,
-		}
-
-		godless, err := lib.New(options)
-
-		if err != nil {
-			die(err)
-		}
-
-		for runError := range godless.Errors() {
-			log.Error("%v", runError)
-		}
-
-		defer shutdown(godless)
+		serve()
 	},
+}
+
+func serve() {
+	options := lib.Options{
+		IpfsServiceUrl:    ipfsService,
+		WebServiceAddr:    addr,
+		IndexHash:         hash,
+		FailEarly:         earlyConnect,
+		ReplicateInterval: interval,
+		Topics:            topics,
+		APIQueryLimit:     apiQueryLimit,
+	}
+
+	godless, err := lib.New(options)
+
+	if err != nil {
+		die(err)
+	}
+
+	for runError := range godless.Errors() {
+		log.Error("%v", runError)
+	}
+
+	defer shutdown(godless)
 }
 
 var addr string
 var interval time.Duration
 var earlyConnect bool
 var apiQueryLimit int
-var profile bool = false
+var profileTime time.Duration
 var cpuprof = "cpu.prof"
 
 func cpuProfOutput() (*os.File, error) {
@@ -90,8 +82,8 @@ func shutdown(godless *lib.Godless) {
 func init() {
 	storeCmd.AddCommand(serveCmd)
 
-	serveCmd.Flags().StringVar(&addr, "address", "localhost:8085", "Listen address for server")
-	serveCmd.Flags().DurationVar(&interval, "interval", time.Minute*1, "Interval between replications")
-	serveCmd.Flags().BoolVar(&earlyConnect, "early", false, "Early check on IPFS API access")
-	serveCmd.Flags().IntVar(&apiQueryLimit, "limit", 1, "Number of simulataneous queries run by the API. limit < 0 for no restrictions.")
+	serveCmd.PersistentFlags().StringVar(&addr, "address", "localhost:8085", "Listen address for server")
+	serveCmd.PersistentFlags().DurationVar(&interval, "interval", time.Minute*1, "Interval between replications")
+	serveCmd.PersistentFlags().BoolVar(&earlyConnect, "early", false, "Early check on IPFS API access")
+	serveCmd.PersistentFlags().IntVar(&apiQueryLimit, "limit", 1, "Number of simulataneous queries run by the API. limit < 0 for no restrictions.")
 }
