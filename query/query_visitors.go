@@ -388,8 +388,3 @@ func (visitor *queryValidator) VisitPredicate(predicate *QueryPredicate) {
 		visitor.BadPredicateOpCode(predicate)
 	}
 }
-
-const __ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-const __DIGITS = "0123456789"
-
-const __KEY_SYMS = __ALPHABET + __DIGITS

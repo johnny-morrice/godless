@@ -366,6 +366,8 @@ func (rn *remoteNamespace) Persist() error {
 		return errors.Wrap(setErr, failMsg)
 	}
 
+	log.Info("Persisted RemoteNamespace")
+
 	return nil
 }
 

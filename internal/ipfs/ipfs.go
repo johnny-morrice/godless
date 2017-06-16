@@ -117,9 +117,7 @@ func (peer *IPFSPeer) validateShell() error {
 }
 
 func (peer *IPFSPeer) validateConnection() error {
-	if peer.pinger.IsUp() {
-		log.Debug("IPFS API Connection check OK")
-	} else {
+	if !peer.pinger.IsUp() {
 		return fmt.Errorf("IPFSPeer is not up at '%v'", peer.Url)
 	}
 
@@ -200,6 +198,8 @@ func (peer *IPFSPeer) SubscribeAddrStream(topic crdt.IPFSPath) (<-chan crdt.IPFS
 func (peer *IPFSPeer) AddIndex(index crdt.Index) (crdt.IPFSPath, error) {
 	const failMsg = "IPFSPeer.AddIndex failed"
 
+	log.Info("Adding index to IPFS...")
+
 	if verr := peer.validateShell(); verr != nil {
 		return crdt.NIL_PATH, verr
 	}
@@ -212,10 +212,14 @@ func (peer *IPFSPeer) AddIndex(index crdt.Index) (crdt.IPFSPath, error) {
 		return crdt.NIL_PATH, errors.Wrap(addErr, failMsg)
 	}
 
+	log.Info("Added index")
+
 	return path, nil
 }
 
 func (peer *IPFSPeer) CatIndex(addr crdt.IPFSPath) (crdt.Index, error) {
+	log.Info("Catting index from IPFS...")
+
 	if verr := peer.validateShell(); verr != nil {
 		return crdt.EmptyIndex(), verr
 	}
@@ -227,10 +231,14 @@ func (peer *IPFSPeer) CatIndex(addr crdt.IPFSPath) (crdt.Index, error) {
 		return crdt.EmptyIndex(), errors.Wrap(caterr, "IPFSPeer.CatNamespace failed")
 	}
 
+	log.Info("Catted index")
+
 	return chunk.Index, nil
 }
 
 func (peer *IPFSPeer) AddNamespace(namespace crdt.Namespace) (crdt.IPFSPath, error) {
+	log.Info("Adding Namespace to IPFS...")
+
 	if verr := peer.validateShell(); verr != nil {
 		return crdt.NIL_PATH, verr
 	}
@@ -243,10 +251,14 @@ func (peer *IPFSPeer) AddNamespace(namespace crdt.Namespace) (crdt.IPFSPath, err
 		return crdt.NIL_PATH, errors.Wrap(err, "IPFSPeer.AddNamespace failed")
 	}
 
+	log.Info("Added namespace")
+
 	return path, nil
 }
 
 func (peer *IPFSPeer) CatNamespace(addr crdt.IPFSPath) (crdt.Namespace, error) {
+	log.Info("Catting namespace from IPFS...")
+
 	if verr := peer.validateShell(); verr != nil {
 		return crdt.EmptyNamespace(), verr
 	}
@@ -257,6 +269,8 @@ func (peer *IPFSPeer) CatNamespace(addr crdt.IPFSPath) (crdt.Namespace, error) {
 	if caterr != nil {
 		return crdt.EmptyNamespace(), errors.Wrap(caterr, "IPFSPeer.CatNamespace failed")
 	}
+
+	log.Info("Catted namespace")
 
 	return chunk.Namespace, nil
 }

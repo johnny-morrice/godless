@@ -70,14 +70,6 @@ const (
 	API_REPLICATE
 )
 
-type APIResponse struct {
-	Msg             string
-	Err             error
-	Type            APIMessageType
-	QueryResponse   APIQueryResponse   `json:",omitEmpty"`
-	ReflectResponse APIReflectResponse `json:",omitEmpty"`
-}
-
 type RemoteNamespace interface {
 	RunKvQuery(*query.Query, KvQuery)
 	RunKvReflection(APIReflectionType, KvQuery)
@@ -147,6 +139,7 @@ func MakeKvReplicate(request APIRequest) KvQuery {
 // TODO these should make more general sense and be public.
 func (kvq KvQuery) WriteResponse(val APIResponse) {
 	kvq.Response <- val
+	close(kvq.Response)
 }
 
 func (kvq KvQuery) Error(err error) {
@@ -159,6 +152,18 @@ func (kvq KvQuery) reportSuccess(val APIResponse) {
 
 func (kvq KvQuery) Run(kvn RemoteNamespace) {
 	kvq.runner.Run(kvn, kvq)
+}
+
+type APIResponse struct {
+	Msg             string
+	Err             error
+	Type            APIMessageType
+	QueryResponse   APIQueryResponse   `json:",omitEmpty"`
+	ReflectResponse APIReflectResponse `json:",omitEmpty"`
+}
+
+func (resp APIResponse) IsEmpty() bool {
+	return resp.Equals(APIResponse{})
 }
 
 func (resp APIResponse) AsText() (string, error) {

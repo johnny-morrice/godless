@@ -172,6 +172,7 @@ func (kv *keyValueStore) transact(kvq api.KvQuery) error {
 	}
 
 	kvq.TransactionResult <- resp
+	close(kvq.TransactionResult)
 
 	return nil
 }

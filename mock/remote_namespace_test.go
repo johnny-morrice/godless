@@ -99,7 +99,7 @@ func TestRemoteNamespaceRunKvReflection(t *testing.T) {
 		tableCName: addrC,
 	})
 
-	mockStore.EXPECT().CatIndex(addrIndex).Return(index, nil).AnyTimes()
+	mockStore.EXPECT().CatIndex(addrIndex).Return(index, nil).MinTimes(1)
 	mockStore.EXPECT().CatNamespace(addrA).Return(namespaceA, nil)
 	mockStore.EXPECT().CatNamespace(addrB).Return(namespaceB, nil)
 	mockStore.EXPECT().CatNamespace(addrC).Return(namespaceC, nil)
@@ -197,7 +197,7 @@ func TestLoadTraverseSuccess(t *testing.T) {
 
 	keepReading := api.TraversalUpdate{More: true}
 
-	mockStore.EXPECT().CatIndex(addrIndex).Return(index, nil).AnyTimes()
+	mockStore.EXPECT().CatIndex(addrIndex).Return(index, nil).MinTimes(1)
 
 	mockStore.EXPECT().CatNamespace(addrA).Return(namespaceA, nil)
 	mockStore.EXPECT().CatNamespace(addrB).Return(namespaceB, nil)
@@ -246,7 +246,7 @@ func TestLoadTraverseFailure(t *testing.T) {
 
 	badTraverse := api.TraversalUpdate{More: true, Error: errors.New("Expected error")}
 	mockStore.EXPECT().CatNamespace(namespaceAddr).Return(namespaceA, nil)
-	mockStore.EXPECT().CatIndex(indexAddr).Return(index, nil).AnyTimes()
+	mockStore.EXPECT().CatIndex(indexAddr).Return(index, nil).MinTimes(1)
 	mockReader.EXPECT().ReadsTables().Return([]crdt.TableName{tableName})
 	mockReader.EXPECT().ReadNamespace(matchNamespace(namespaceA)).Return(badTraverse)
 
@@ -288,7 +288,7 @@ func TestLoadTraverseAbort(t *testing.T) {
 
 	abort := api.TraversalUpdate{}
 	mockStore.EXPECT().CatNamespace(addrA).Return(namespaceA, nil)
-	mockStore.EXPECT().CatIndex(addrIndex).Return(index, nil).AnyTimes()
+	mockStore.EXPECT().CatIndex(addrIndex).Return(index, nil).MinTimes(1)
 	mockReader.EXPECT().ReadsTables().Return([]crdt.TableName{tableName})
 	mockReader.EXPECT().ReadNamespace(matchNamespace(namespaceA)).Return(abort)
 
@@ -329,10 +329,10 @@ func TestPersistSuccess(t *testing.T) {
 	indexB := indexA.JoinNamespace(addrB, namespaceB)
 
 	mock.EXPECT().AddNamespace(matchNamespace(namespaceB)).Return(addrB, nil)
-	mock.EXPECT().CatIndex(addrIndexA).Return(indexA, nil).AnyTimes()
+	mock.EXPECT().CatIndex(addrIndexA).Return(indexA, nil).MinTimes(1)
 	mock.EXPECT().AddIndex(matchIndex(indexB)).Return(addrIndexB, nil)
 
-	remote := makeRemote(mock)
+	remote := loadRemote(mock, addrIndexA)
 
 	if remote == nil {
 		t.Error("remote was nil")

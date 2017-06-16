@@ -1,6 +1,7 @@
 package mock_godless
 
 import (
+	"math/rand"
 	"testing"
 	"time"
 
@@ -9,9 +10,87 @@ import (
 	"github.com/johnny-morrice/godless/cache"
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/internal/service"
+	"github.com/johnny-morrice/godless/internal/testutil"
 	"github.com/johnny-morrice/godless/query"
 	"github.com/pkg/errors"
 )
+
+func TestKeyValueStoreITCase(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+		return
+	}
+
+	const queryCount = 1000
+	const genSize = 50
+	const addrIndex = crdt.IPFSPath("Index Addr")
+	const namespaceAddr = crdt.IPFSPath("Namespace Addr")
+	const queryLimit = 50
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mock := NewMockRemoteStore(ctrl)
+
+	queries := make([]*query.Query, queryCount)
+	tables := []crdt.TableName{}
+
+	for i := 0; i < len(queries); i++ {
+		gen := query.GenQuery(testutil.Rand(), genSize)
+
+		if gen.OpCode == query.JOIN {
+			tables = append(tables, gen.TableKey)
+		} else {
+			// Use a real table on occasion :)
+			if rand.Float32() < 0.9 && len(tables) > 0 {
+				randIndex := rand.Intn(len(tables))
+				randTable := tables[randIndex]
+				gen.TableKey = randTable
+			}
+		}
+
+		queries[i] = gen
+	}
+
+	remote := makeRemote(mock)
+	api, errch := launchConcurrentAPI(remote, queryLimit)
+
+	index := crdt.EmptyIndex()
+
+	for _, t := range tables {
+		index = index.JoinTable(t, namespaceAddr)
+	}
+
+	mock.EXPECT().AddIndex(gomock.Any()).MinTimes(1).Return(addrIndex, nil)
+	mock.EXPECT().AddNamespace(gomock.Any()).MinTimes(1).Return(namespaceAddr, nil)
+	mock.EXPECT().CatIndex(gomock.Any()).MinTimes(1).Return(index, nil)
+	mock.EXPECT().CatNamespace(gomock.Any()).MinTimes(1).Return(crdt.EmptyNamespace(), nil)
+
+	go func() {
+		defer api.CloseAPI()
+
+		for _, q := range queries {
+			if rand.Float32() > 0.5 {
+				go checkPlausibleResponse(t, api, q)
+			} else {
+				checkPlausibleResponse(t, api, q)
+			}
+		}
+	}()
+
+	for err := range errch {
+		testutil.AssertNonNil(t, err)
+	}
+}
+
+func checkPlausibleResponse(t *testing.T, service api.APIRequestService, q *query.Query) {
+	respch, _ := runQuery(service, q)
+	resp := <-respch
+
+	if resp.IsEmpty() {
+		t.Error("Response should not be empty")
+	}
+}
 
 func TestRunQueryReadSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
@@ -193,14 +272,18 @@ func TestRunQueryInvalid(t *testing.T) {
 	api.CloseAPI()
 }
 
-func runQuery(service api.APIService, query *query.Query) (<-chan api.APIResponse, error) {
+func runQuery(service api.APIRequestService, query *query.Query) (<-chan api.APIResponse, error) {
 	return service.Call(api.APIRequest{Type: api.API_QUERY, Query: query})
 }
 
-func launchAPI(mock *MockRemoteNamespace) (api.APIService, <-chan error) {
+func launchAPI(remote api.RemoteNamespace) (api.APIService, <-chan error) {
 	const queryLimit = 1
+	return launchConcurrentAPI(remote, queryLimit)
+}
+
+func launchConcurrentAPI(remote api.RemoteNamespace, queryLimit int) (api.APIService, <-chan error) {
 	queue := cache.MakeResidentBufferQueue(cache.DEFAULT_BUFFER_SIZE)
-	return service.LaunchKeyValueStore(mock, queue, queryLimit)
+	return service.LaunchKeyValueStore(remote, queue, queryLimit)
 }
 
 type kvqmatcher struct {

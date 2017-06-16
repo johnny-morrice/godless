@@ -161,6 +161,14 @@ func (index Index) JoinNamespace(addr IPFSPath, namespace Namespace) Index {
 	return joined
 }
 
+func (index Index) JoinTable(table TableName, addr ...IPFSPath) Index {
+	cpy := index.Copy()
+
+	cpy.addTable(table, addr...)
+
+	return cpy
+}
+
 func (index Index) addTable(table TableName, addr ...IPFSPath) {
 	if addrs, ok := index.Index[table]; ok {
 		normal := normalStoreAddress(append(addrs, addr...))
