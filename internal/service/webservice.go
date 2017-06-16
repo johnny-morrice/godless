@@ -107,6 +107,7 @@ func sendErr(rw gohttp.ResponseWriter, err error) error {
 		panic(fmt.Sprintf("Bug encoding json error message: '%v'; ", encerr))
 	}
 
+	log.Info("Sending error APIResponse (%v bytes) to HTTP client...", buff.Len())
 	rw.WriteHeader(WEB_API_ERROR)
 	rw.Header()[http.CONTENT_TYPE] = []string{http.MIME_PROTO_TEXT}
 	_, senderr := rw.Write(buff.Bytes())
@@ -115,12 +116,12 @@ func sendErr(rw gohttp.ResponseWriter, err error) error {
 		return errors.Wrap(senderr, "sendErr failed")
 	}
 
+	log.Info("Sent error response to HTTP client")
+
 	return nil
 }
 
 func sendMessage(rw gohttp.ResponseWriter, resp api.APIResponse) error {
-	log.Info("Returning APIResponse to HTTP client")
-
 	// Encode gob into buffer first to check for encoding errors.
 	// TODO is that actually a good idea?
 	buff := &bytes.Buffer{}
@@ -130,9 +131,7 @@ func sendMessage(rw gohttp.ResponseWriter, resp api.APIResponse) error {
 		panic(fmt.Sprintf("BUG encoding resp: %v", encerr))
 	}
 
-	log.Debug("Will return %v bytes to HTTP client", buff.Len())
-
-	log.Info("Sending response to HTTP client...")
+	log.Info("Sending APIResponse (%v bytes) to HTTP client...", buff.Len())
 	rw.Header()[http.CONTENT_TYPE] = []string{http.MIME_PROTO}
 	_, senderr := rw.Write(buff.Bytes())
 

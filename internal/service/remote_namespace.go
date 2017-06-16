@@ -108,6 +108,8 @@ func (rn *remoteNamespace) loadIndex(indexAddr crdt.IPFSPath) (crdt.Index, error
 		return crdt.EmptyIndex(), errors.Wrap(err, failMsg)
 	}
 
+	go rn.updateIndexCache(indexAddr, index)
+
 	return index, nil
 }
 
@@ -432,14 +434,16 @@ func (rn *remoteNamespace) persistIndex(newIndex crdt.Index) (crdt.IPFSPath, err
 
 	log.Info("Persisted crdt.Index at %v", addr)
 
-	go func() {
-		err := rn.IndexCache.SetIndex(addr, newIndex)
-		if err != nil {
-			log.Error("Failed to update index cache: %v", err)
-		}
-	}()
+	go rn.updateIndexCache(addr, newIndex)
 
 	return addr, nil
+}
+
+func (rn *remoteNamespace) updateIndexCache(addr crdt.IPFSPath, index crdt.Index) {
+	err := rn.IndexCache.SetIndex(addr, index)
+	if err != nil {
+		log.Error("Failed to update index cache: %v", err)
+	}
 }
 
 func (rn *remoteNamespace) getHeadTransaction() (crdt.IPFSPath, error) {

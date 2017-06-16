@@ -133,6 +133,8 @@ func (godless *Godless) setupNamespace() error {
 
 	if godless.IndexHash != "" {
 		head := crdt.IPFSPath(godless.IndexHash)
+		headCache.BeginWriteTransaction()
+
 		err := headCache.SetHead(head)
 
 		if err != nil {
