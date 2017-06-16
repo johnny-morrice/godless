@@ -150,7 +150,6 @@ func catOpen() (io.ReadCloser, error) {
 	} else {
 		panic("no input source")
 	}
-	return nil, nil
 }
 
 func validateStoreCatArgs(cmd *cobra.Command) {
