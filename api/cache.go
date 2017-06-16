@@ -7,6 +7,8 @@ import (
 )
 
 type HeadCache interface {
+	BeginReadTransaction() error
+	BeginWriteTransaction() error
 	SetHead(head crdt.IPFSPath) error
 	GetHead() (crdt.IPFSPath, error)
 	Rollback() error

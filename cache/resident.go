@@ -13,32 +13,57 @@ import (
 
 type residentHeadCache struct {
 	sync.RWMutex
+	writing  bool
+	written  bool
 	current  crdt.IPFSPath
 	previous crdt.IPFSPath
 }
 
-func (cache *residentHeadCache) SetHead(head crdt.IPFSPath) error {
+func (cache *residentHeadCache) BeginReadTransaction() error {
+	cache.RLock()
+	return nil
+}
+
+func (cache *residentHeadCache) BeginWriteTransaction() error {
 	cache.Lock()
+	cache.writing = true
+	return nil
+}
+
+func (cache *residentHeadCache) SetHead(head crdt.IPFSPath) error {
 	cache.previous = cache.current
 	cache.current = head
+	cache.written = true
 	return nil
 }
 
 func (cache *residentHeadCache) Commit() error {
 	cache.previous = ""
-	cache.Unlock()
+	if cache.writing {
+		cache.writing = false
+		cache.written = false
+		cache.Unlock()
+	} else {
+		cache.RUnlock()
+	}
+
 	return nil
 }
 
 func (cache *residentHeadCache) Rollback() error {
-	cache.current = cache.previous
+	if !cache.writing {
+		return errors.New("Cannot rollback on read")
+	}
+
+	if cache.written {
+		cache.current = cache.previous
+	}
+
 	return cache.Commit()
 }
 
 func (cache *residentHeadCache) GetHead() (crdt.IPFSPath, error) {
-	cache.RLock()
 	head := cache.current
-	cache.RUnlock()
 	return head, nil
 }
 

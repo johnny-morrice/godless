@@ -57,7 +57,7 @@ func (rn *remoteNamespace) joinPeerIndex(peerAddr crdt.IPFSPath) api.APIResponse
 	failResponse := api.RESPONSE_FAIL
 	failResponse.Type = api.API_REPLICATE
 
-	myAddr, cacheErr := rn.Cache.GetHead()
+	myAddr, cacheErr := rn.getHeadTransaction()
 
 	if cacheErr != nil {
 		failResponse.Err = errors.Wrap(cacheErr, failMsg)
@@ -114,7 +114,7 @@ func (rn *remoteNamespace) getReflectHead() api.APIResponse {
 	response := api.RESPONSE_REFLECT
 	response.ReflectResponse.Type = api.REFLECT_HEAD_PATH
 
-	myAddr, err := rn.Cache.GetHead()
+	myAddr, err := rn.getHeadTransaction()
 
 	if err != nil {
 		response.Err = errors.Wrap(err, "remoteNamespace.getReflectHead failed")
@@ -291,7 +291,7 @@ func (rn *remoteNamespace) findTableAddrs(index crdt.Index, tableHints api.Table
 // Load chunks over IPFS
 // TODO opportunity to query IPFS in parallel?
 func (rn *remoteNamespace) loadCurrentIndex() (crdt.Index, error) {
-	myAddr, err := rn.Cache.GetHead()
+	myAddr, err := rn.getHeadTransaction()
 
 	if err != nil {
 		return crdt.EmptyIndex(), errors.Wrap(err, "remoteNamespace.loadCurrentIndex failed")
@@ -329,10 +329,18 @@ func (rn *remoteNamespace) Persist() error {
 		}
 	}
 
-	myAddr, cacheErr := rn.Cache.GetHead()
+	newIndex := nsIndex.JoinIndex(rn.IndexUpdate)
+
+	cacheErr := rn.Cache.BeginWriteTransaction()
 
 	if cacheErr != nil {
 		return errors.Wrap(cacheErr, failMsg)
+	}
+
+	myAddr, getErr := rn.Cache.GetHead()
+
+	if getErr != nil {
+		return errors.Wrap(getErr, failMsg)
 	}
 
 	if !crdt.IsNilPath(myAddr) {
@@ -344,8 +352,7 @@ func (rn *remoteNamespace) Persist() error {
 		}
 	}
 
-	index = index.JoinIndex(nsIndex)
-	index = index.JoinIndex(rn.IndexUpdate)
+	index = index.JoinIndex(newIndex)
 
 	indexAddr, indexErr := rn.persistIndex(index)
 
@@ -353,7 +360,11 @@ func (rn *remoteNamespace) Persist() error {
 		return errors.Wrap(indexErr, failMsg)
 	}
 
-	rn.Cache.SetHead(indexAddr)
+	setErr := rn.Cache.SetHead(indexAddr)
+
+	if setErr != nil {
+		return errors.Wrap(setErr, failMsg)
+	}
 
 	return nil
 }
@@ -396,4 +407,27 @@ func (rn *remoteNamespace) persistIndex(newIndex crdt.Index) (crdt.IPFSPath, err
 	log.Info("Persisted crdt.Index at %v", addr)
 
 	return addr, nil
+}
+
+func (rn *remoteNamespace) getHeadTransaction() (crdt.IPFSPath, error) {
+	var path crdt.IPFSPath
+	err := rn.Cache.BeginReadTransaction()
+
+	if err != nil {
+		return crdt.NIL_PATH, err
+	}
+
+	path, err = rn.Cache.GetHead()
+
+	if err != nil {
+		return crdt.NIL_PATH, err
+	}
+
+	err = rn.Cache.Commit()
+
+	if err != nil {
+		return crdt.NIL_PATH, err
+	}
+
+	return path, nil
 }

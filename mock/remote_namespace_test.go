@@ -43,9 +43,6 @@ func TestRemoteNamespaceReset(t *testing.T) {
 	err := remote.JoinTable(tableName, table)
 	testutil.AssertNil(t, err)
 	assertChanged(t, remote)
-
-	remote.Rollback()
-	assertUnchanged(t, remote)
 }
 
 func assertChanged(t *testing.T, remote api.RemoteNamespace) {
@@ -454,6 +451,17 @@ func makeRemote(mock *MockRemoteStore) api.RemoteNamespaceTree {
 
 func loadRemote(mock *MockRemoteStore, addr crdt.IPFSPath) api.RemoteNamespaceTree {
 	cache := cache.MakeResidentHeadCache()
-	cache.SetHead(addr)
+	err := cache.BeginWriteTransaction()
+	panicOnBadInit(err)
+	err = cache.SetHead(addr)
+	panicOnBadInit(err)
+	err = cache.Commit()
+	panicOnBadInit(err)
 	return service.MakeRemoteNamespace(mock, cache)
+}
+
+func panicOnBadInit(err error) {
+	if err != nil {
+		panic(err)
+	}
 }
