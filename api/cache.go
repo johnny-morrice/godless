@@ -16,6 +16,7 @@ type HeadCache interface {
 }
 
 type RequestPriorityQueue interface {
+	Len() int
 	Enqueue(request APIRequest, data interface{}) error
 	Drain() <-chan interface{}
 	Close() error

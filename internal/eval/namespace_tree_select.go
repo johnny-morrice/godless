@@ -5,6 +5,7 @@ import (
 
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/log"
 	"github.com/johnny-morrice/godless/query"
 	"github.com/pkg/errors"
 )
@@ -40,6 +41,7 @@ func (visitor *NamespaceTreeSelect) RunQuery() api.APIResponse {
 		panic("didn't visit query")
 	}
 
+	log.Info("Searching namespaces...")
 	lambda := api.NamespaceTreeLambda(visitor.crit.selectMatching)
 	tables := []crdt.TableName{visitor.crit.tableKey}
 	tableReader := api.AddTableHints(tables, lambda)
@@ -49,6 +51,8 @@ func (visitor *NamespaceTreeSelect) RunQuery() api.APIResponse {
 		fail.Err = errors.Wrap(err, "NamespaceTreeSelect failed")
 		return fail
 	}
+
+	log.Info("Search complete.")
 
 	response := api.RESPONSE_QUERY
 	stream := crdt.JoinStreamEntries(visitor.crit.result)

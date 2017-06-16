@@ -37,11 +37,8 @@ func (kv *keyValueStore) executeLoop(errch chan<- error) {
 		go func() {
 			kv.lockResource()
 			defer kv.unlockResource()
-			if thing == nil {
-				panic("Drained nil")
-			}
 
-			log.Info("API executing request")
+			log.Info("API executing request, %v remain in queue", kv.queue.Len())
 			kvq, ok := thing.(api.KvQuery)
 
 			if !ok {
@@ -57,7 +54,7 @@ func (kv *keyValueStore) executeLoop(errch chan<- error) {
 }
 
 func (kv *keyValueStore) run(kvq api.KvQuery) {
-	kvq.Run(kv.namespace)
+	go kvq.Run(kv.namespace)
 }
 
 func (kv *keyValueStore) lockResource() {
@@ -65,7 +62,9 @@ func (kv *keyValueStore) lockResource() {
 		return
 	}
 
+	log.Debug("API waiting for resource...")
 	kv.semaphore <- struct{}{}
+	log.Debug("API found resource")
 }
 
 func (kv *keyValueStore) unlockResource() {
@@ -73,7 +72,9 @@ func (kv *keyValueStore) unlockResource() {
 		return
 	}
 
+	log.Debug("API releasing resource...")
 	<-kv.semaphore
+	log.Debug("API released resource")
 }
 
 func (kv *keyValueStore) Call(request api.APIRequest) (<-chan api.APIResponse, error) {
@@ -90,6 +91,7 @@ func (kv *keyValueStore) Call(request api.APIRequest) (<-chan api.APIResponse, e
 }
 
 func (kv *keyValueStore) enqueue(kvq api.KvQuery) {
+	log.Info("Enqueing request...")
 	go kv.queue.Enqueue(kvq.Request, kvq)
 }
 

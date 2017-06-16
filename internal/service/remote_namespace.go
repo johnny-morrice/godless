@@ -19,9 +19,23 @@ type addNamespace struct {
 	result    chan addResponse
 }
 
+func (add addNamespace) reply(path crdt.IPFSPath, err error) {
+	go func() {
+		defer close(add.result)
+		add.result <- addResponse{path: path, err: err}
+	}()
+}
+
 type addIndex struct {
 	index  crdt.Index
 	result chan addResponse
+}
+
+func (add addIndex) reply(path crdt.IPFSPath, err error) {
+	go func() {
+		defer close(add.result)
+		add.result <- addResponse{path: path, err: err}
+	}()
 }
 
 type remoteNamespace struct {
@@ -33,7 +47,12 @@ type remoteNamespace struct {
 }
 
 func MakeRemoteNamespace(store api.RemoteStore, headCache api.HeadCache, indexCache api.IndexCache) api.RemoteNamespaceTree {
-	remote := &remoteNamespace{Store: store, HeadCache: headCache, IndexCache: indexCache}
+	remote := &remoteNamespace{Store: store,
+		HeadCache:     headCache,
+		IndexCache:    indexCache,
+		namespaceTube: make(chan addNamespace),
+		indexTube:     make(chan addIndex),
+	}
 	go remote.AddNamespaces()
 	go remote.AddIndices()
 	return remote
@@ -41,35 +60,62 @@ func MakeRemoteNamespace(store api.RemoteStore, headCache api.HeadCache, indexCa
 
 func (rn *remoteNamespace) AddNamespaces() {
 	for tubeItem := range rn.namespaceTube {
-		addNs := tubeItem
+		add := tubeItem
 		go func() {
-			defer close(addNs.result)
-			path, err := rn.Store.AddNamespace(addNs.namespace)
-			addNs.result <- addResponse{path: path, err: err}
+			path, err := rn.Store.AddNamespace(add.namespace)
+			add.reply(path, err)
 		}()
 	}
 }
 
 func (rn *remoteNamespace) AddIndices() {
 	for tubeItem := range rn.indexTube {
-		addIdx := tubeItem
-		index, loadErr := rn.loadCurrentIndex()
+		add := tubeItem
+		index := crdt.EmptyIndex()
 
-		if loadErr != nil {
-			go func() {
-				defer close(addIdx.result)
-				addIdx.result <- addResponse{err: loadErr}
-			}()
-			continue
+		head, headErr := rn.getHeadTransaction()
+
+		if headErr != nil {
+			add.reply(crdt.NIL_PATH, headErr)
 		}
 
-		nextIndex := index.JoinIndex(addIdx.index)
-		path, addErr := rn.Store.AddIndex(nextIndex)
-		go func() {
-			defer close(addIdx.result)
-			addIdx.result <- addResponse{path: path, err: addErr}
-		}()
+		if !crdt.IsNilPath(head) {
+			headIndex, loadErr := rn.loadIndex(head)
+
+			if loadErr != nil {
+				add.reply(crdt.NIL_PATH, loadErr)
+				continue
+			}
+
+			index = headIndex
+		}
+
+		nextIndex := index.JoinIndex(add.index)
+		path, addErr := rn.addIndex(nextIndex)
+
+		if addErr == nil {
+			log.Info("Persisted index at: %v", path)
+			rn.setHeadTransaction(path)
+		}
+
+		add.reply(path, addErr)
 	}
+}
+
+func (rn *remoteNamespace) addIndex(index crdt.Index) (crdt.IPFSPath, error) {
+	const failMsg = "remoteNamespace.addIndex failed"
+	indexAddr, addErr := rn.Store.AddIndex(index)
+
+	if addErr != nil {
+		return crdt.NIL_PATH, errors.Wrap(addErr, failMsg)
+	}
+
+	cacheErr := rn.IndexCache.SetIndex(indexAddr, index)
+	if cacheErr != nil {
+		log.Error("Failed to write index cache for: %v (%v)", indexAddr, cacheErr)
+	}
+
+	return indexAddr, nil
 }
 
 func (rn *remoteNamespace) Close() {
@@ -94,7 +140,7 @@ func (rn *remoteNamespace) joinPeerIndex(peerAddr crdt.IPFSPath) api.APIResponse
 		return failResponse
 	}
 
-	_, perr := rn.persistIndex(theirIndex)
+	_, perr := rn.insertIndex(theirIndex)
 
 	if perr != nil {
 		failResponse.Err = errors.Wrap(perr, failMsg)
@@ -225,6 +271,7 @@ func (rn *remoteNamespace) RunKvQuery(q *query.Query, kvq api.KvQuery) {
 		q.Visit(visitor)
 		runner = visitor
 	case query.SELECT:
+		log.Info("Running select...")
 		visitor := eval.MakeNamespaceTreeSelect(rn)
 		q.Visit(visitor)
 		runner = visitor
@@ -242,7 +289,7 @@ func (rn *remoteNamespace) JoinTable(tableKey crdt.TableName, table crdt.Table) 
 
 	joined := crdt.EmptyNamespace().JoinTable(tableKey, table)
 
-	addr, nsErr := rn.persistNamespace(joined)
+	addr, nsErr := rn.insertNamespace(joined)
 
 	if nsErr != nil {
 		return errors.Wrap(nsErr, failMsg)
@@ -250,7 +297,7 @@ func (rn *remoteNamespace) JoinTable(tableKey crdt.TableName, table crdt.Table) 
 
 	index := crdt.EmptyIndex().JoinTable(tableKey, addr)
 
-	_, indexErr := rn.persistIndex(index)
+	_, indexErr := rn.insertIndex(index)
 
 	if indexErr != nil {
 		return errors.Wrap(indexErr, failMsg)
@@ -277,13 +324,17 @@ func (rn *remoteNamespace) traverseTableNamespaces(tableAddrs []crdt.IPFSPath, f
 	nsch, cancelch := rn.namespaceLoader(tableAddrs)
 	defer close(cancelch)
 	for ns := range nsch {
+		log.Info("Traversing another namespace...")
 		update := f.ReadNamespace(ns)
 
 		if !(update.More && update.Error == nil) {
+			log.Info("Cancelling traverse...")
 			cancelch <- struct{}{}
+			log.Info("Cancelled traverse")
 		}
 
 		if update.Error != nil {
+			log.Info("Aborting traverse with error: %v", update.Error)
 			return errors.Wrap(update.Error, "traverseTableNamespaces failed")
 		}
 	}
@@ -349,7 +400,7 @@ func (rn *remoteNamespace) loadCurrentIndex() (crdt.Index, error) {
 	return rn.loadIndex(myAddr)
 }
 
-func (rn *remoteNamespace) persistNamespace(namespace crdt.Namespace) (crdt.IPFSPath, error) {
+func (rn *remoteNamespace) insertNamespace(namespace crdt.Namespace) (crdt.IPFSPath, error) {
 	const failMsg = "remoteNamespace.persistNamespace failed"
 	resultChan := make(chan addResponse)
 	rn.namespaceTube <- addNamespace{namespace: namespace, result: resultChan}
@@ -363,7 +414,7 @@ func (rn *remoteNamespace) persistNamespace(namespace crdt.Namespace) (crdt.IPFS
 	return result.path, nil
 }
 
-func (rn *remoteNamespace) persistIndex(index crdt.Index) (crdt.IPFSPath, error) {
+func (rn *remoteNamespace) insertIndex(index crdt.Index) (crdt.IPFSPath, error) {
 	const failMsg = "remoteNamespace.persistIndex failed"
 
 	resultChan := make(chan addResponse)
@@ -407,4 +458,20 @@ func (rn *remoteNamespace) getHeadTransaction() (crdt.IPFSPath, error) {
 	}
 
 	return path, nil
+}
+
+func (rn *remoteNamespace) setHeadTransaction(head crdt.IPFSPath) error {
+	err := rn.HeadCache.BeginWriteTransaction()
+
+	if err != nil {
+		return err
+	}
+
+	err = rn.HeadCache.SetHead(head)
+
+	if err != nil {
+		return err
+	}
+
+	return rn.HeadCache.Commit()
 }

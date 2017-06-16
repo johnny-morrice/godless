@@ -183,6 +183,19 @@ func MakeResidentBufferQueue(buffSize int) api.RequestPriorityQueue {
 	return queue
 }
 
+func (queue *residentPriorityQueue) Len() int {
+	queue.Lock()
+	defer queue.Unlock()
+	count := 0
+	for _, item := range queue.buff {
+		if item.populated {
+			count++
+		}
+	}
+
+	return count
+}
+
 func (queue *residentPriorityQueue) Enqueue(request api.APIRequest, data interface{}) error {
 	item, err := makeResidentQueueItem(request, data)
 
@@ -190,17 +203,19 @@ func (queue *residentPriorityQueue) Enqueue(request api.APIRequest, data interfa
 		return errors.Wrap(err, "residentPriorityQueue.Enqueue failed")
 	}
 
-	queue.lockResource()
 	queue.Lock()
 	defer queue.Unlock()
+	queue.lockResource()
 
 	for i := 0; i < len(queue.buff); i++ {
 		spot := &queue.buff[i]
 		if !spot.populated {
 			*spot = item
+			log.Debug("Enqueued item")
 			return nil
 		}
 	}
+	log.Debug("Queued request.")
 
 	return corruptBuffer
 }
@@ -212,6 +227,7 @@ func (queue *residentPriorityQueue) Drain() <-chan interface{} {
 
 			if err != nil {
 				log.Error("Error draining residentPriorityQueue: %v", err)
+				close(queue.datach)
 				return
 			}
 
@@ -255,6 +271,7 @@ func (queue *residentPriorityQueue) popFront() (interface{}, error) {
 	}
 
 	best.populated = false
+
 	return best.data, nil
 }
 

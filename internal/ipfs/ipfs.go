@@ -92,8 +92,10 @@ func (peer *IPFSPeer) Connect() error {
 	}
 
 	log.Info("Connecting to IPFS API...")
+	pingClient := http.DefaultBackendClient()
+	pingClient.Timeout = peer.PingTimeout
 	peer.Shell = ipfs.NewShellWithClient(peer.Url, peer.Client)
-	peer.pinger = ipfs.NewShellWithClient(peer.Url, cloneWithTimeout(peer.Client, peer.PingTimeout))
+	peer.pinger = ipfs.NewShellWithClient(peer.Url, pingClient)
 	err := peer.validateConnection()
 
 	if err == nil {
@@ -321,16 +323,6 @@ func (peer *IPFSPeer) cat(path crdt.IPFSPath, out decoder) error {
 	}
 
 	return nil
-}
-
-// Using the IPFS webservice API we cannot just set a timeout on a request, but we can provide custom clients.
-func cloneWithTimeout(client *gohttp.Client, timeout time.Duration) *gohttp.Client {
-	cpy := &gohttp.Client{}
-	cpy.CheckRedirect = client.CheckRedirect
-	cpy.Transport = client.Transport
-	cpy.Jar = client.Jar
-	cpy.Timeout = timeout
-	return cpy
 }
 
 const __DEFAULT_PING_TIMEOUT = time.Second * 5
