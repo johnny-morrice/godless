@@ -1,4 +1,4 @@
 *.prof
 godless/godless
-godless.test
+*.test
 nohup.out
