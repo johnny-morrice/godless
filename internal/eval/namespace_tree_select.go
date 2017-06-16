@@ -51,11 +51,9 @@ func (visitor *NamespaceTreeSelect) RunQuery() api.APIResponse {
 	}
 
 	response := api.RESPONSE_QUERY
-	stream := visitor.crit.result
+	stream := crdt.JoinStreamEntries(visitor.crit.result)
 
-	namespace := crdt.ReadNamespaceStream(stream)
-
-	response.QueryResponse.Entries = crdt.MakeNamespaceStream(namespace)
+	response.QueryResponse.Entries = stream
 	return response
 }
 

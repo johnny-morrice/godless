@@ -14,6 +14,11 @@ type RowName string
 type EntryName string
 type Point string
 
+func JoinStreamEntries(stream []NamespaceStreamEntry) []NamespaceStreamEntry {
+	ns := ReadNamespaceStream(stream)
+	return MakeNamespaceStream(ns)
+}
+
 // Semi-lattice type that implements our storage
 type Namespace struct {
 	Tables map[TableName]Table
