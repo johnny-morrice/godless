@@ -83,7 +83,7 @@ func (service *WebService) respond(rw gohttp.ResponseWriter, respch <-chan api.A
 		return
 	}
 
-	log.Info("Webservice waiting for API...")
+	log.Info("Webservice waiting for API... on chan %v", respch)
 	resp := <-respch
 	log.Info("Webservice received API response")
 
