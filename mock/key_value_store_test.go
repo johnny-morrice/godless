@@ -124,6 +124,8 @@ func TestRunQueryReadSuccess(t *testing.T) {
 
 	mock.EXPECT().IsChanged().Return(false)
 	mock.EXPECT().RunKvQuery(query, kvqmatcher{}).Do(writeStubResponse)
+	mock.EXPECT().Lock().AnyTimes()
+	mock.EXPECT().Unlock().AnyTimes()
 
 	api, errch := launchAPI(mock)
 	respch, err := runQuery(api, query)
@@ -189,6 +191,8 @@ func TestRunQueryWriteSuccess(t *testing.T) {
 	mock.EXPECT().RunKvQuery(query, kvqmatcher{}).Do(writeStubResponse)
 	mock.EXPECT().Persist().Return(nil)
 	mock.EXPECT().Commit().Return(nil)
+	mock.EXPECT().Lock().AnyTimes()
+	mock.EXPECT().Unlock().AnyTimes()
 
 	api, errch := launchAPI(mock)
 	actualRespch, err := runQuery(api, query)
@@ -234,6 +238,8 @@ func TestRunQueryWriteFailure(t *testing.T) {
 	mock.EXPECT().RunKvQuery(query, kvqmatcher{}).Do(writeStubResponse)
 	mock.EXPECT().Rollback()
 	mock.EXPECT().Persist().Return(errors.New("Expected error"))
+	mock.EXPECT().Lock().AnyTimes()
+	mock.EXPECT().Unlock().AnyTimes()
 
 	api, errch := launchAPI(mock)
 	resp, qerr := runQuery(api, query)
@@ -291,7 +297,7 @@ func launchAPI(remote api.RemoteNamespace) (api.APIService, <-chan error) {
 }
 
 func launchConcurrentAPI(remote api.RemoteNamespace, queryLimit int) (api.APIService, <-chan error) {
-	queue := cache.MakeResidentBufferQueue(cache.DEFAULT_BUFFER_SIZE)
+	queue := cache.MakeResidentBufferQueue(__UNKNOWN_CACHE_SIZE)
 	return service.LaunchKeyValueStore(remote, queue, queryLimit)
 }
 

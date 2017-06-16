@@ -456,19 +456,38 @@ func readApiResponse(kvq api.KvQuery) api.APIResponse {
 }
 
 func makeRemote(mock *MockRemoteStore) api.RemoteNamespaceTree {
-	cache := cache.MakeResidentHeadCache()
-	return service.MakeRemoteNamespace(mock, cache)
+	headCache := cache.MakeResidentHeadCache()
+	indexCache := fakeIndexCache{}
+	return service.MakeRemoteNamespace(mock, headCache, indexCache)
 }
 
 func loadRemote(mock *MockRemoteStore, addr crdt.IPFSPath) api.RemoteNamespaceTree {
-	cache := cache.MakeResidentHeadCache()
-	err := cache.BeginWriteTransaction()
+	headCache := cache.MakeResidentHeadCache()
+	err := headCache.BeginWriteTransaction()
 	panicOnBadInit(err)
-	err = cache.SetHead(addr)
+	err = headCache.SetHead(addr)
 	panicOnBadInit(err)
-	err = cache.Commit()
+	err = headCache.Commit()
 	panicOnBadInit(err)
-	return service.MakeRemoteNamespace(mock, cache)
+
+	indexCache := fakeIndexCache{}
+
+	return service.MakeRemoteNamespace(mock, headCache, indexCache)
+}
+
+type fakeIndexCache struct {
+}
+
+func (cache fakeIndexCache) GetIndex(crdt.IPFSPath) (crdt.Index, error) {
+	return crdt.EmptyIndex(), cache.err()
+}
+
+func (cache fakeIndexCache) SetIndex(crdt.IPFSPath, crdt.Index) error {
+	return cache.err()
+}
+
+func (cache fakeIndexCache) err() error {
+	return errors.New("Not a real index cache")
 }
 
 func panicOnBadInit(err error) {
@@ -476,3 +495,5 @@ func panicOnBadInit(err error) {
 		panic(err)
 	}
 }
+
+const __UNKNOWN_CACHE_SIZE = -1

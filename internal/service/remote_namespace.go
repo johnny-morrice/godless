@@ -99,7 +99,7 @@ func (rn *remoteNamespace) loadIndex(indexAddr crdt.IPFSPath) (crdt.Index, error
 	if cacheErr == nil {
 		return cached, nil
 	} else {
-		log.Warn("Index cache miss for:", indexAddr)
+		log.Warn("Index cache miss for: %v", indexAddr)
 	}
 
 	index, err := rn.Store.CatIndex(indexAddr)
