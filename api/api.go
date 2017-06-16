@@ -146,10 +146,6 @@ func (kvq KvQuery) Error(err error) {
 	kvq.WriteResponse(APIResponse{Err: err})
 }
 
-func (kvq KvQuery) reportSuccess(val APIResponse) {
-	kvq.WriteResponse(val)
-}
-
 func (kvq KvQuery) Run(kvn RemoteNamespace) {
 	kvq.runner.Run(kvn, kvq)
 }
