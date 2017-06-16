@@ -22,7 +22,7 @@ func TestKeyValueStoreITCase(t *testing.T) {
 		return
 	}
 
-	const queryCount = 1000
+	const queryCount = 100
 	const genSize = 50
 	const addrIndex = crdt.IPFSPath("Index Addr")
 	const namespaceAddr = crdt.IPFSPath("Namespace Addr")
@@ -72,14 +72,15 @@ func TestKeyValueStoreITCase(t *testing.T) {
 		wg := &sync.WaitGroup{}
 
 		for _, q := range queries {
+			query := q
 			if rand.Float32() > 0.5 {
 				wg.Add(1)
 				go func() {
-					checkPlausibleResponse(t, api, q)
+					checkPlausibleResponse(t, api, query)
 					wg.Done()
 				}()
 			} else {
-				checkPlausibleResponse(t, api, q)
+				checkPlausibleResponse(t, api, query)
 			}
 		}
 

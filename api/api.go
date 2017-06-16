@@ -78,6 +78,8 @@ type RemoteNamespace interface {
 	Persist() error
 	Commit() error
 	Rollback() error
+	Lock()
+	Unlock()
 }
 
 type kvRunner interface {

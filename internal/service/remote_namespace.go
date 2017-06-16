@@ -1,6 +1,8 @@
 package service
 
 import (
+	"sync"
+
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/internal/eval"
@@ -10,6 +12,7 @@ import (
 )
 
 type remoteNamespace struct {
+	sync.Mutex
 	NamespaceUpdate crdt.Namespace
 	IndexUpdate     crdt.Index
 	Store           api.RemoteStore
@@ -22,6 +25,7 @@ func MakeRemoteNamespace(store api.RemoteStore, cache api.HeadCache) api.RemoteN
 
 func (rn *remoteNamespace) Rollback() error {
 	const failMsg = "remoteNamespace.Rollback failed"
+
 	rn.NamespaceUpdate = crdt.EmptyNamespace()
 	rn.IndexUpdate = crdt.EmptyIndex()
 	err := rn.Cache.Rollback()
@@ -203,10 +207,14 @@ func (rn *remoteNamespace) RunKvQuery(q *query.Query, kvq api.KvQuery) {
 }
 
 func (rn *remoteNamespace) IsChanged() bool {
-	return !(rn.NamespaceUpdate.IsEmpty() && rn.IndexUpdate.IsEmpty())
+	changed := !(rn.NamespaceUpdate.IsEmpty() && rn.IndexUpdate.IsEmpty())
+	return changed
 }
 
+// TODO there should be more clarity on who locks and when.
 func (rn *remoteNamespace) JoinTable(tableKey crdt.TableName, table crdt.Table) error {
+	rn.Lock()
+	defer rn.Unlock()
 	joined := rn.NamespaceUpdate.JoinTable(tableKey, table)
 	rn.NamespaceUpdate = joined
 	return nil
@@ -419,13 +427,14 @@ func (rn *remoteNamespace) getHeadTransaction() (crdt.IPFSPath, error) {
 		return crdt.NIL_PATH, err
 	}
 
+	defer func() {
+		err := rn.Cache.Commit()
+		if err != nil {
+			log.Error("Error commiting cache: %v", err)
+		}
+	}()
+
 	path, err = rn.Cache.GetHead()
-
-	if err != nil {
-		return crdt.NIL_PATH, err
-	}
-
-	err = rn.Cache.Commit()
 
 	if err != nil {
 		return crdt.NIL_PATH, err

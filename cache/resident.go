@@ -38,8 +38,8 @@ func (cache *residentHeadCache) SetHead(head crdt.IPFSPath) error {
 }
 
 func (cache *residentHeadCache) Commit() error {
-	cache.previous = ""
 	if cache.writing {
+		cache.previous = ""
 		cache.writing = false
 		cache.written = false
 		cache.Unlock()

@@ -137,6 +137,19 @@ func (kv *keyValueStore) transact(kvq api.KvQuery) error {
 	go kvq.Run(kv.namespace)
 
 	resp := <-kvq.Response
+
+	transactionResult := kv.transactResponse(resp)
+
+	kvq.TransactionResult <- transactionResult
+	close(kvq.TransactionResult)
+
+	return nil
+}
+
+func (kv *keyValueStore) transactResponse(resp api.APIResponse) api.APIResponse {
+	kv.namespace.Lock()
+	defer kv.namespace.Unlock()
+
 	if kv.namespace.IsChanged() {
 		err := kv.namespace.Persist()
 
@@ -171,10 +184,7 @@ func (kv *keyValueStore) transact(kvq api.KvQuery) error {
 		log.Info("No API transaction required for read query")
 	}
 
-	kvq.TransactionResult <- resp
-	close(kvq.TransactionResult)
-
-	return nil
+	return resp
 }
 
 func convertToFailure(resp *api.APIResponse, message string) {

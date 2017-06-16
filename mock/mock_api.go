@@ -51,6 +51,14 @@ func (_mr *_MockRemoteNamespaceRecorder) IsChanged() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsChanged")
 }
 
+func (_m *MockRemoteNamespace) Lock() {
+	_m.ctrl.Call(_m, "Lock")
+}
+
+func (_mr *_MockRemoteNamespaceRecorder) Lock() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Lock")
+}
+
 func (_m *MockRemoteNamespace) Persist() error {
 	ret := _m.ctrl.Call(_m, "Persist")
 	ret0, _ := ret[0].(error)
@@ -93,6 +101,14 @@ func (_m *MockRemoteNamespace) RunKvReflection(_param0 api.APIReflectionType, _p
 
 func (_mr *_MockRemoteNamespaceRecorder) RunKvReflection(arg0, arg1 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "RunKvReflection", arg0, arg1)
+}
+
+func (_m *MockRemoteNamespace) Unlock() {
+	_m.ctrl.Call(_m, "Unlock")
+}
+
+func (_mr *_MockRemoteNamespaceRecorder) Unlock() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Unlock")
 }
 
 // Mock of RemoteStore interface
