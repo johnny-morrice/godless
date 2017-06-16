@@ -83,7 +83,7 @@ func (service *WebService) respond(rw gohttp.ResponseWriter, respch <-chan api.A
 		return
 	}
 
-	log.Info("Webservice waiting for API... on chan %v", respch)
+	log.Info("Webservice waiting for API...")
 	resp := <-respch
 	log.Info("Webservice received API response")
 
@@ -119,6 +119,8 @@ func sendErr(rw gohttp.ResponseWriter, err error) error {
 }
 
 func sendMessage(rw gohttp.ResponseWriter, resp api.APIResponse) error {
+	log.Info("Returning APIResponse to HTTP client")
+
 	// Encode gob into buffer first to check for encoding errors.
 	// TODO is that actually a good idea?
 	buff := &bytes.Buffer{}
@@ -128,12 +130,17 @@ func sendMessage(rw gohttp.ResponseWriter, resp api.APIResponse) error {
 		panic(fmt.Sprintf("BUG encoding resp: %v", encerr))
 	}
 
+	log.Debug("Will return %v bytes to HTTP client", buff.Len())
+
+	log.Info("Sending response to HTTP client...")
 	rw.Header()[http.CONTENT_TYPE] = []string{http.MIME_PROTO}
 	_, senderr := rw.Write(buff.Bytes())
 
 	if senderr != nil {
 		return errors.Wrap(senderr, "sendMessage failed")
 	}
+
+	log.Info("Sent response to HTTP client")
 
 	return nil
 }

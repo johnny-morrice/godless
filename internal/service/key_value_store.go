@@ -140,7 +140,7 @@ func (kv *keyValueStore) transact(kvq api.KvQuery) error {
 
 	transactionResult := kv.transactResponse(resp)
 
-	log.Info("API waiting for client... on chan %v", kvq.TransactionResult)
+	log.Info("API waiting for client...")
 	kvq.TransactionResult <- transactionResult
 	log.Info("API transaction result sent to client")
 	close(kvq.TransactionResult)

@@ -16,11 +16,12 @@ type remoteNamespace struct {
 	NamespaceUpdate crdt.Namespace
 	IndexUpdate     crdt.Index
 	Store           api.RemoteStore
-	Cache           api.HeadCache
+	HeadCache       api.HeadCache
+	IndexCache      api.IndexCache
 }
 
-func MakeRemoteNamespace(store api.RemoteStore, cache api.HeadCache) api.RemoteNamespaceTree {
-	return &remoteNamespace{Store: store, Cache: cache}
+func MakeRemoteNamespace(store api.RemoteStore, headCache api.HeadCache, indexCache api.IndexCache) api.RemoteNamespaceTree {
+	return &remoteNamespace{Store: store, HeadCache: headCache, IndexCache: indexCache}
 }
 
 func (rn *remoteNamespace) Rollback() error {
@@ -28,7 +29,7 @@ func (rn *remoteNamespace) Rollback() error {
 
 	rn.NamespaceUpdate = crdt.EmptyNamespace()
 	rn.IndexUpdate = crdt.EmptyIndex()
-	err := rn.Cache.Rollback()
+	err := rn.HeadCache.Rollback()
 
 	if err != nil {
 		return errors.Wrap(err, failMsg)
@@ -40,7 +41,7 @@ func (rn *remoteNamespace) Rollback() error {
 func (rn *remoteNamespace) Commit() error {
 	const failMsg = "remoteNamespace.Commit failed"
 
-	err := rn.Cache.Commit()
+	err := rn.HeadCache.Commit()
 
 	if err != nil {
 		return errors.Wrap(err, failMsg)
@@ -92,7 +93,22 @@ func (rn *remoteNamespace) joinPeerIndex(peerAddr crdt.IPFSPath) api.APIResponse
 }
 
 func (rn *remoteNamespace) loadIndex(indexAddr crdt.IPFSPath) (crdt.Index, error) {
-	return rn.Store.CatIndex(indexAddr)
+	const failMsg = "remoteNamespace.loadIndex failed"
+	cached, cacheErr := rn.IndexCache.GetIndex(indexAddr)
+
+	if cacheErr == nil {
+		return cached, nil
+	} else {
+		log.Warn("Index cache miss for:", indexAddr)
+	}
+
+	index, err := rn.Store.CatIndex(indexAddr)
+
+	if err != nil {
+		return crdt.EmptyIndex(), errors.Wrap(err, failMsg)
+	}
+
+	return index, nil
 }
 
 // TODO there are likely to be many reflection features.  Replace switches with polymorphism.
@@ -339,13 +355,13 @@ func (rn *remoteNamespace) Persist() error {
 
 	newIndex := nsIndex.JoinIndex(rn.IndexUpdate)
 
-	cacheErr := rn.Cache.BeginWriteTransaction()
+	cacheErr := rn.HeadCache.BeginWriteTransaction()
 
 	if cacheErr != nil {
 		return errors.Wrap(cacheErr, failMsg)
 	}
 
-	myAddr, getErr := rn.Cache.GetHead()
+	myAddr, getErr := rn.HeadCache.GetHead()
 
 	if getErr != nil {
 		return errors.Wrap(getErr, failMsg)
@@ -368,7 +384,7 @@ func (rn *remoteNamespace) Persist() error {
 		return errors.Wrap(indexErr, failMsg)
 	}
 
-	setErr := rn.Cache.SetHead(indexAddr)
+	setErr := rn.HeadCache.SetHead(indexAddr)
 
 	if setErr != nil {
 		return errors.Wrap(setErr, failMsg)
@@ -416,25 +432,32 @@ func (rn *remoteNamespace) persistIndex(newIndex crdt.Index) (crdt.IPFSPath, err
 
 	log.Info("Persisted crdt.Index at %v", addr)
 
+	go func() {
+		err := rn.IndexCache.SetIndex(addr, newIndex)
+		if err != nil {
+			log.Error("Failed to update index cache: %v", err)
+		}
+	}()
+
 	return addr, nil
 }
 
 func (rn *remoteNamespace) getHeadTransaction() (crdt.IPFSPath, error) {
 	var path crdt.IPFSPath
-	err := rn.Cache.BeginReadTransaction()
+	err := rn.HeadCache.BeginReadTransaction()
 
 	if err != nil {
 		return crdt.NIL_PATH, err
 	}
 
 	defer func() {
-		err := rn.Cache.Commit()
+		err := rn.HeadCache.Commit()
 		if err != nil {
 			log.Error("Error commiting cache: %v", err)
 		}
 	}()
 
-	path, err = rn.Cache.GetHead()
+	path, err = rn.HeadCache.GetHead()
 
 	if err != nil {
 		return crdt.NIL_PATH, err

@@ -3,6 +3,7 @@ package cache
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
@@ -10,6 +11,96 @@ import (
 	"github.com/johnny-morrice/godless/query"
 	"github.com/pkg/errors"
 )
+
+// Memcache style key value store.
+// Will drop oldest.
+type residentIndexCache struct {
+	sync.RWMutex
+	buff  []indexCacheItem
+	assoc map[crdt.IPFSPath]*indexCacheItem
+}
+
+func MakeResidentIndexCache(buffSize int) api.IndexCache {
+	if buffSize <= 0 {
+		buffSize = __DEFAULT_BUFFER_SIZE
+	}
+
+	return &residentIndexCache{
+		buff:  make([]indexCacheItem, buffSize),
+		assoc: map[crdt.IPFSPath]*indexCacheItem{},
+	}
+}
+
+type indexCacheItem struct {
+	key       crdt.IPFSPath
+	index     crdt.Index
+	timestamp int
+}
+
+func (cache *residentIndexCache) GetIndex(indexAddr crdt.IPFSPath) (crdt.Index, error) {
+	cache.RLock()
+	defer cache.RUnlock()
+
+	item, present := cache.assoc[indexAddr]
+
+	if !present {
+		return crdt.EmptyIndex(), fmt.Errorf("No cached index for: %v", indexAddr)
+	}
+
+	return item.index, nil
+}
+
+func (cache *residentIndexCache) SetIndex(indexAddr crdt.IPFSPath, index crdt.Index) error {
+	cache.Lock()
+	defer cache.Unlock()
+
+	item, present := cache.assoc[indexAddr]
+
+	if present {
+		item.timestamp = makeTimestamp()
+		return nil
+	}
+
+	return cache.addNewItem(indexAddr, index)
+}
+
+func (cache *residentIndexCache) addNewItem(indexAddr crdt.IPFSPath, index crdt.Index) error {
+	newItem := indexCacheItem{
+		timestamp: makeTimestamp(),
+		key:       indexAddr,
+		index:     index,
+	}
+
+	bufferedItem := cache.findOldest()
+	*bufferedItem = newItem
+	cache.assoc[indexAddr] = bufferedItem
+	return nil
+}
+
+func (cache *residentIndexCache) findOldest() *indexCacheItem {
+	var oldest *indexCacheItem
+
+	for _, item := range cache.buff {
+		if oldest == nil {
+			oldest = &item
+			continue
+		}
+
+		if item.timestamp < oldest.timestamp {
+			oldest = &item
+		}
+	}
+
+	if oldest == nil {
+		panic("Corrupt buffer")
+	}
+
+	return oldest
+}
+
+func makeTimestamp() int {
+	return time.Now().Nanosecond()
+}
 
 type residentHeadCache struct {
 	sync.RWMutex
@@ -80,7 +171,7 @@ type residentPriorityQueue struct {
 
 func MakeResidentBufferQueue(buffSize int) api.RequestPriorityQueue {
 	if buffSize <= 0 {
-		panic("Expect positive buffSize")
+		buffSize = __DEFAULT_BUFFER_SIZE
 	}
 
 	queue := &residentPriorityQueue{
@@ -226,4 +317,4 @@ const (
 	__UNKNOWN_PRIORITY
 )
 
-const DEFAULT_BUFFER_SIZE = 512
+const __DEFAULT_BUFFER_SIZE = 512

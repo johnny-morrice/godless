@@ -43,6 +43,8 @@ type Options struct {
 	IpfsPingTimeout time.Duration
 	// HeadCache is optional.  Build a 12-factor app by supplying your own remote cache.
 	HeadCache api.HeadCache
+	// IndexCache is optional.  Build a 12-factor app by supplying your own remote cache.
+	IndexCache api.IndexCache
 	// PriorityQueue is optional. Build a 12-factor app by supplying your own remote cache.
 	PriorityQueue api.RequestPriorityQueue
 	// APIQueryLimit is optional.  Tune performance by setting the number of simultaneous queries.
@@ -123,6 +125,12 @@ func (godless *Godless) setupNamespace() error {
 		headCache = cache.MakeResidentHeadCache()
 	}
 
+	indexCache := godless.IndexCache
+
+	if indexCache == nil {
+		indexCache = cache.MakeResidentIndexCache(__BUFFER_SIZE)
+	}
+
 	if godless.IndexHash != "" {
 		head := crdt.IPFSPath(godless.IndexHash)
 		err := headCache.SetHead(head)
@@ -138,7 +146,7 @@ func (godless *Godless) setupNamespace() error {
 		}
 	}
 
-	godless.remote = service.MakeRemoteNamespace(godless.store, headCache)
+	godless.remote = service.MakeRemoteNamespace(godless.store, headCache, indexCache)
 	return nil
 }
 
@@ -152,7 +160,7 @@ func (godless *Godless) launchAPI() error {
 	queue := godless.PriorityQueue
 
 	if queue == nil {
-		queue = cache.MakeResidentBufferQueue(cache.DEFAULT_BUFFER_SIZE)
+		queue = cache.MakeResidentBufferQueue(__BUFFER_SIZE)
 	}
 
 	api, errch := service.LaunchKeyValueStore(godless.remote, queue, limit)
@@ -268,3 +276,6 @@ func breakOnError(pipeline []func() error) error {
 
 	return nil
 }
+
+// We don't know the right buffer size here, so let the cache package handle it.
+const __BUFFER_SIZE = -1

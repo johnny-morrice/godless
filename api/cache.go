@@ -30,3 +30,8 @@ type KeyCache interface {
 	StorePublicKey(pub crypto.PublicKey) (PublicKeyId, error)
 	GetPublicKey(pubId PublicKeyId) (crypto.PublicKey, error)
 }
+
+type IndexCache interface {
+	GetIndex(indexAddr crdt.IPFSPath) (crdt.Index, error)
+	SetIndex(indexAddr crdt.IPFSPath, index crdt.Index) error
+}
