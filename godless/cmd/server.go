@@ -22,6 +22,7 @@ package cmd
 
 import (
 	"os"
+	"runtime/pprof"
 	"time"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -35,6 +36,17 @@ var serveCmd = &cobra.Command{
 	Short: "Run a Godless server",
 	Long:  `A godless server listens to queries over HTTP.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		if profile {
+			f, err := cpuProfOutput()
+
+			if err != nil {
+				die(err)
+			}
+
+			pprof.StartCPUProfile(f)
+			defer pprof.StopCPUProfile()
+		}
+
 		options := lib.Options{
 			IpfsServiceUrl:    ipfsService,
 			WebServiceAddr:    addr,
@@ -63,6 +75,12 @@ var addr string
 var interval time.Duration
 var earlyConnect bool
 var apiQueryLimit int
+var profile bool = false
+var cpuprof = "cpu.prof"
+
+func cpuProfOutput() (*os.File, error) {
+	return os.Create(cpuprof)
+}
 
 func shutdown(godless *lib.Godless) {
 	godless.Shutdown()
