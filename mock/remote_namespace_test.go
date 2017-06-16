@@ -7,6 +7,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/johnny-morrice/godless/api"
+	"github.com/johnny-morrice/godless/cache"
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/internal/service"
 	"github.com/johnny-morrice/godless/internal/testutil"
@@ -36,14 +37,14 @@ func TestRemoteNamespaceReset(t *testing.T) {
 		}),
 	})
 
-	remote := service.MakeRemoteNamespace(mockStore)
+	remote := makeRemote(mockStore)
 	assertUnchanged(t, remote)
 
 	err := remote.JoinTable(tableName, table)
 	testutil.AssertNil(t, err)
 	assertChanged(t, remote)
 
-	remote.Reset()
+	remote.Rollback()
 	assertUnchanged(t, remote)
 }
 
@@ -108,9 +109,7 @@ func TestRemoteNamespaceRunKvReflection(t *testing.T) {
 	joinedNamespace := namespaceA.JoinNamespace(namespaceB)
 	joinedNamespace = joinedNamespace.JoinNamespace(namespaceC)
 
-	remote, err := service.LoadRemoteNamespace(mockStore, addrIndex)
-
-	testutil.AssertNil(t, err)
+	remote := loadRemote(mockStore, addrIndex)
 
 	testReflectHead(t, remote, addrIndex)
 	testReflectIndex(t, remote, index)
@@ -140,7 +139,7 @@ func testReflectNamespace(t *testing.T, remote api.RemoteNamespace, expected crd
 }
 
 func reflectOnRemote(remote api.RemoteNamespace, reflection api.APIReflectionType) api.APIResponse {
-	request := api.MakeKvReflect(reflection)
+	request := api.MakeKvReflect(api.APIRequest{Type: api.API_REFLECT, Reflection: reflection})
 	go request.Run(remote)
 
 	resp := readApiResponse(request)
@@ -150,98 +149,6 @@ func reflectOnRemote(remote api.RemoteNamespace, reflection api.APIReflectionTyp
 
 func TestIsChanged(t *testing.T) {
 	TestRemoteNamespaceReset(t)
-}
-
-func TestLoadRemoteNamespaceSuccess(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mock := NewMockRemoteStore(ctrl)
-	addr := crdt.IPFSPath("The Index")
-
-	mock.EXPECT().CatIndex(addr).Return(crdt.EmptyIndex(), nil)
-
-	ns, err := service.LoadRemoteNamespace(mock, addr)
-
-	if ns == nil {
-		t.Error("ns was nil")
-	}
-
-	if err != nil {
-		t.Error(err)
-	}
-}
-
-func TestLoadRemoteNamespaceFailure(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mock := NewMockRemoteStore(ctrl)
-	addr := crdt.IPFSPath("The Index")
-
-	mock.EXPECT().CatIndex(addr).Return(crdt.EmptyIndex(), errors.New("expected error"))
-
-	ns, err := service.LoadRemoteNamespace(mock, addr)
-
-	if ns != nil {
-		t.Error("ns was not nil")
-	}
-
-	if err == nil {
-		t.Error("err was nil")
-	}
-}
-
-func TestPersistNewRemoteNamespaceSuccess(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mock := NewMockRemoteStore(ctrl)
-
-	addr := crdt.IPFSPath("The Index")
-	index := crdt.MakeIndex(map[crdt.TableName]crdt.IPFSPath{
-		MAIN_TABLE_KEY: addr,
-	})
-	namespace := crdt.MakeNamespace(map[crdt.TableName]crdt.Table{
-		MAIN_TABLE_KEY: crdt.MakeTable(map[crdt.RowName]crdt.Row{
-			"A row": crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-				"A thing": crdt.MakeEntry([]crdt.Point{"hi"}),
-			}),
-		}),
-	})
-
-	mock.EXPECT().AddNamespace(matchns(namespace)).Return(addr, nil)
-	mock.EXPECT().AddIndex(index).Return(addr, nil)
-
-	ns, err := service.PersistNewRemoteNamespace(mock, namespace)
-
-	if ns == nil {
-		t.Error("ns was nil")
-	}
-
-	if err != nil {
-		t.Error(err)
-	}
-}
-
-func TestPersistNewRemoteNamespaceFailure(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mock := NewMockRemoteStore(ctrl)
-	namespace := crdt.EmptyNamespace()
-
-	mock.EXPECT().AddIndex(gomock.Any()).Return(crdt.NIL_PATH, errors.New("Expected error"))
-
-	ns, err := service.PersistNewRemoteNamespace(mock, namespace)
-
-	if ns != nil {
-		t.Error("ns was not nil")
-	}
-
-	if err == nil {
-		t.Error("err was nil")
-	}
 }
 
 func TestRunKvQuery(t *testing.T) {
@@ -303,17 +210,13 @@ func TestLoadTraverseSuccess(t *testing.T) {
 	mockReader.EXPECT().ReadNamespace(matchns(namespaceB)).Return(keepReading)
 	mockReader.EXPECT().ReadNamespace(matchns(namespaceC)).Return(keepReading)
 
-	ns, err := service.LoadRemoteNamespace(mockStore, addrIndex)
+	remote := loadRemote(mockStore, addrIndex)
 
-	if ns == nil {
-		t.Error("ns was nil")
+	if remote == nil {
+		t.Error("remote was nil")
 	}
 
-	if err != nil {
-		t.Error(err)
-	}
-
-	lterr := ns.LoadTraverse(mockReader)
+	lterr := remote.LoadTraverse(mockReader)
 
 	if lterr != nil {
 		t.Error(lterr)
@@ -349,17 +252,13 @@ func TestLoadTraverseFailure(t *testing.T) {
 	mockReader.EXPECT().ReadsTables().Return([]crdt.TableName{tableName})
 	mockReader.EXPECT().ReadNamespace(matchns(namespaceA)).Return(badTraverse)
 
-	ns, err := service.LoadRemoteNamespace(mockStore, indexAddr)
+	remote := loadRemote(mockStore, indexAddr)
 
-	if ns == nil {
-		t.Error("ns was nil")
+	if remote == nil {
+		t.Error("remote was nil")
 	}
 
-	if err != nil {
-		t.Error(err)
-	}
-
-	lterr := ns.LoadTraverse(mockReader)
+	lterr := remote.LoadTraverse(mockReader)
 
 	if lterr == nil {
 		t.Error("lterr was nil")
@@ -395,17 +294,13 @@ func TestLoadTraverseAbort(t *testing.T) {
 	mockReader.EXPECT().ReadsTables().Return([]crdt.TableName{tableName})
 	mockReader.EXPECT().ReadNamespace(matchns(namespaceA)).Return(abort)
 
-	ns, err := service.LoadRemoteNamespace(mockStore, addrIndex)
+	remote := loadRemote(mockStore, addrIndex)
 
-	if ns == nil {
-		t.Error("ns was nil")
+	if remote == nil {
+		t.Error("remote was nil")
 	}
 
-	if err != nil {
-		t.Error(err)
-	}
-
-	lterr := ns.LoadTraverse(mockReader)
+	lterr := remote.LoadTraverse(mockReader)
 
 	if lterr != nil {
 		t.Error(lterr)
@@ -438,9 +333,8 @@ func TestPersistSuccess(t *testing.T) {
 	// 		}),
 	// 	}),
 	// })
-	namespaceA := crdt.EmptyNamespace()
 	tableBName := crdt.TableName("Table B")
-	namespaceB := namespaceA.JoinTable(tableBName, tableB)
+	namespaceB := crdt.EmptyNamespace().JoinTable(tableBName, tableB)
 
 	// recordA := lib.RemoteNamespaceRecord{
 	// 	Namespace: namespaceA,
@@ -459,30 +353,28 @@ func TestPersistSuccess(t *testing.T) {
 	mock.EXPECT().CatIndex(addrIndexA).Return(indexA, nil)
 	mock.EXPECT().AddIndex(indexB).Return(addrIndexB, nil)
 
-	ns1, perr1 := service.PersistNewRemoteNamespace(mock, namespaceA)
+	remote := makeRemote(mock)
 
-	if perr1 != nil {
-		t.Error(perr1)
+	if remote == nil {
+		t.Error("remote was nil")
 	}
 
-	if ns1 == nil {
-		t.Error("ns1 was nil")
-	}
-
-	jerr := ns1.JoinTable(tableBName, tableB)
+	jerr := remote.JoinTable(tableBName, tableB)
 
 	if jerr != nil {
 		t.Error(jerr)
 	}
 
-	ns2, perr2 := ns1.Persist()
+	perr := remote.Persist()
 
-	if perr2 != nil {
-		t.Error(perr2)
+	if perr != nil {
+		t.Error(perr)
 	}
 
-	if ns2 == nil {
-		t.Error("ns2 was nil")
+	cerr := remote.Commit()
+
+	if cerr != nil {
+		t.Error(cerr)
 	}
 }
 
@@ -503,31 +395,23 @@ func TestPersistFailure(t *testing.T) {
 	mock.EXPECT().AddIndex(crdt.EmptyIndex())
 	mock.EXPECT().AddNamespace(matchns(nextNamespace)).Return(crdt.NIL_PATH, errors.New("Expected error"))
 
-	ns1, perr1 := service.PersistNewRemoteNamespace(mock, namespace)
+	remote := makeRemote(mock)
 
-	if perr1 != nil {
-		t.Error(perr1)
-	}
+	testutil.AssertNonNil(t, remote)
 
-	if ns1 == nil {
-		t.Error("ns1 was nil")
-	}
-
-	jerr := ns1.JoinTable("Table Key", table)
+	jerr := remote.JoinTable("Table Key", table)
 
 	if jerr != nil {
 		t.Error(jerr)
 	}
 
-	ns2, perr2 := ns1.Persist()
+	perr := remote.Persist()
 
-	if perr2 == nil {
-		t.Error("perr2 was nil")
-	}
+	testutil.AssertNonNil(t, perr)
 
-	if ns2 != nil {
-		t.Error("ns2 was not nil")
-	}
+	rerr := remote.Rollback()
+
+	testutil.AssertNil(t, rerr)
 }
 
 func matchns(ns crdt.Namespace) gomock.Matcher {
@@ -561,4 +445,15 @@ func readApiResponse(kvq api.KvQuery) api.APIResponse {
 	case <-timeout.C:
 		panic("Timed out")
 	}
+}
+
+func makeRemote(mock *MockRemoteStore) api.RemoteNamespaceTree {
+	cache := cache.MakeResidentHeadCache()
+	return service.MakeRemoteNamespace(mock, cache)
+}
+
+func loadRemote(mock *MockRemoteStore, addr crdt.IPFSPath) api.RemoteNamespaceTree {
+	cache := cache.MakeResidentHeadCache()
+	cache.SetHead(addr)
+	return service.MakeRemoteNamespace(mock, cache)
 }

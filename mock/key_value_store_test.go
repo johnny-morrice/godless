@@ -6,6 +6,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/johnny-morrice/godless/api"
+	"github.com/johnny-morrice/godless/cache"
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/internal/service"
 	"github.com/johnny-morrice/godless/query"
@@ -36,7 +37,7 @@ func TestRunQueryReadSuccess(t *testing.T) {
 	mock.EXPECT().IsChanged().Return(false)
 	mock.EXPECT().RunKvQuery(query, kvqmatcher{}).Do(writeStubResponse)
 
-	api, errch := service.LaunchKeyValueStore(mock)
+	api, errch := launchAPI(mock)
 	respch, err := runQuery(api, query)
 
 	if err != nil {
@@ -100,7 +101,7 @@ func TestRunQueryWriteSuccess(t *testing.T) {
 	mock.EXPECT().RunKvQuery(query, kvqmatcher{}).Do(writeStubResponse)
 	mock.EXPECT().Persist().Return(mock, nil)
 
-	api, errch := service.LaunchKeyValueStore(mock)
+	api, errch := launchAPI(mock)
 	actualRespch, err := runQuery(api, query)
 
 	if err != nil {
@@ -142,10 +143,10 @@ func TestRunQueryWriteFailure(t *testing.T) {
 
 	mock.EXPECT().IsChanged().Return(true)
 	mock.EXPECT().RunKvQuery(query, kvqmatcher{}).Do(writeStubResponse)
-	mock.EXPECT().Reset()
+	mock.EXPECT().Rollback()
 	mock.EXPECT().Persist().Return(nil, errors.New("Expected error"))
 
-	api, errch := service.LaunchKeyValueStore(mock)
+	api, errch := launchAPI(mock)
 	resp, qerr := runQuery(api, query)
 
 	if qerr != nil {
@@ -177,7 +178,7 @@ func TestRunQueryInvalid(t *testing.T) {
 	mock := NewMockRemoteNamespace(ctrl)
 	query := &query.Query{}
 
-	api, _ := service.LaunchKeyValueStore(mock)
+	api, _ := launchAPI(mock)
 	resp, err := runQuery(api, query)
 
 	if err == nil {
@@ -193,6 +194,12 @@ func TestRunQueryInvalid(t *testing.T) {
 
 func runQuery(service api.APIService, query *query.Query) (<-chan api.APIResponse, error) {
 	return service.Call(api.APIRequest{Type: api.API_QUERY, Query: query})
+}
+
+func launchAPI(mock *MockRemoteNamespace) (api.APIService, <-chan error) {
+	const queryLimit = 1
+	queue := cache.MakeResidentBufferQueue(cache.DEFAULT_BUFFER_SIZE)
+	return service.LaunchKeyValueStore(mock, queue, queryLimit)
 }
 
 type kvqmatcher struct {
