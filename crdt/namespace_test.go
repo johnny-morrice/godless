@@ -607,15 +607,6 @@ func TestEntryGetValues(t *testing.T) {
 	}
 }
 
-func Test_uniqPoints(t *testing.T) {
-	expected := []Point{"hello"}
-	input := []Point{"hello", "hello", "hello"}
-	actual := uniqPoints(input)
-	if !reflect.DeepEqual(expected, actual) {
-		t.Error("Expected", expected, "but was", actual)
-	}
-}
-
 func assertEntryEquals(t *testing.T, expected, actual Entry) {
 	if !reflect.DeepEqual(expected, actual) {
 		testutil.DebugLine(t)

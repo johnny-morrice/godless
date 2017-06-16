@@ -328,8 +328,8 @@ func EmptyEntry() Entry {
 }
 
 func MakeEntry(set []Point) Entry {
-	undupes := uniqPoints(set)
-	sort.Sort(byPointValue(undupes))
+	sort.Sort(byPointValue(set))
+	undupes := uniqSorted(set)
 	return Entry{Set: undupes}
 }
 
@@ -380,21 +380,19 @@ func (p byPointValue) Less(i, j int) bool {
 	return p[i] < p[j]
 }
 
-func uniqPoints(dupes []Point) []Point {
-	dedupe := map[Point]struct{}{}
-
-	for _, p := range dupes {
-		if _, present := dedupe[p]; !present {
-			dedupe[p] = struct{}{}
-		}
+func uniqSorted(set []Point) []Point {
+	if len(set) == 0 {
+		return set
 	}
 
-	uniq := make([]Point, len(dedupe))
+	uniq := make([]Point, 1, len(set))
 
-	i := 0
-	for p, _ := range dedupe {
-		uniq[i] = p
-		i++
+	uniq[0] = set[0]
+	for _, p := range set[1:] {
+		last := uniq[len(uniq)-1]
+		if p != last {
+			uniq = append(uniq, p)
+		}
 	}
 
 	return uniq
