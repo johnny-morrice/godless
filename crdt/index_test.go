@@ -244,7 +244,6 @@ func TestIndexJoinIndex(t *testing.T) {
 		// Should have AssertEquals check for Equals method with reflection.
 		testutil.Assert(t, "Expected equal indices", joinedA.Equals(joinedB))
 
-		log.Debug("Checking subsets")
 		assertIndexSubset(t, indexA, joinedA)
 		assertIndexSubset(t, indexB, joinedA)
 	}
