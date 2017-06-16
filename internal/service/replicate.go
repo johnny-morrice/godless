@@ -48,7 +48,6 @@ func (p2p replicator) publishIndex() {
 		return
 	}
 
-	// TODO ReflectResponse.Path should be crdt.IPFSPath.
 	head := crdt.IPFSPath(addr.ReflectResponse.Path)
 
 	publishErr := p2p.store.PublishAddr(head, p2p.topics)
@@ -56,6 +55,8 @@ func (p2p replicator) publishIndex() {
 	if publishErr != nil {
 		log.Error("Failed to publish index: %v", publishErr)
 	}
+
+	log.Info("Published index at %v", head)
 }
 
 func (p2p replicator) sendReflectRequest() (api.APIResponse, error) {
@@ -101,8 +102,8 @@ func (p2p replicator) subscribeTopic(topic crdt.IPFSPath) {
 	headch, errch := p2p.store.SubscribeAddrStream(topic)
 
 	ticker := time.NewTicker(p2p.interval)
-	defer ticker.Stop()
 	go func() {
+		defer ticker.Stop()
 	LOOP:
 		for {
 			select {

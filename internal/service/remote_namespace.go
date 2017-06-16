@@ -76,8 +76,7 @@ func (rn *remoteNamespace) joinPeerIndex(peerAddr crdt.IPFSPath) api.APIResponse
 	myIndex, myErr := rn.loadCurrentIndex()
 
 	if myErr != nil {
-		failResponse.Err = errors.Wrap(myErr, failMsg)
-		return failResponse
+		log.Info("Grabbing first index via replication")
 	}
 
 	theirIndex, theirErr := rn.loadIndex(peerAddr)
