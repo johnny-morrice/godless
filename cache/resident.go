@@ -211,7 +211,6 @@ func (queue *residentPriorityQueue) Enqueue(request api.APIRequest, data interfa
 		spot := &queue.buff[i]
 		if !spot.populated {
 			*spot = item
-			log.Debug("Enqueued item")
 			return nil
 		}
 	}
