@@ -169,27 +169,35 @@ func (peer *IPFSPeer) SubscribeAddrStream(topic crdt.IPFSPath) (<-chan crdt.IPFS
 		defer tidy()
 
 		topicText := string(topic)
-		subscription, launchErr := peer.Shell.PubSubSubscribe(topicText)
 
-		if launchErr != nil {
-			errch <- launchErr
-			return
-		}
+		var subscription *ipfs.PubSubSubscription
 
-		for {
-			record, recordErr := subscription.Next()
+	RESTART:
+		for subscription == nil {
+			var launchErr error
+			log.Info("(Re)starting subscription")
+			subscription, launchErr = peer.Shell.PubSubSubscribe(topicText)
 
-			if recordErr != nil {
-				errch <- recordErr
-				continue
+			if launchErr != nil {
+				log.Error("Subcription launch failed, retrying: %v", launchErr)
 			}
 
-			pubsubPeer := record.From()
-			bs := record.Data()
-			addr := crdt.IPFSPath(string(bs))
+			for {
+				log.Info("Fetching next subscription message...")
+				record, recordErr := subscription.Next()
 
-			stream <- addr
-			log.Info("Subscription update: '%v' from '%v'", addr, pubsubPeer)
+				if recordErr != nil {
+					log.Error("Subscription read failed, continuing: %v", recordErr)
+					continue RESTART
+				}
+
+				pubsubPeer := record.From()
+				bs := record.Data()
+				addr := crdt.IPFSPath(string(bs))
+
+				stream <- addr
+				log.Info("Subscription update: '%v' from '%v'", addr, pubsubPeer)
+			}
 		}
 
 	}()
