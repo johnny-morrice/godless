@@ -99,7 +99,8 @@ func TestRunQueryWriteSuccess(t *testing.T) {
 
 	mock.EXPECT().IsChanged().Return(true)
 	mock.EXPECT().RunKvQuery(query, kvqmatcher{}).Do(writeStubResponse)
-	mock.EXPECT().Persist().Return(mock, nil)
+	mock.EXPECT().Persist().Return(nil)
+	mock.EXPECT().Commit().Return(nil)
 
 	api, errch := launchAPI(mock)
 	actualRespch, err := runQuery(api, query)
@@ -144,7 +145,7 @@ func TestRunQueryWriteFailure(t *testing.T) {
 	mock.EXPECT().IsChanged().Return(true)
 	mock.EXPECT().RunKvQuery(query, kvqmatcher{}).Do(writeStubResponse)
 	mock.EXPECT().Rollback()
-	mock.EXPECT().Persist().Return(nil, errors.New("Expected error"))
+	mock.EXPECT().Persist().Return(errors.New("Expected error"))
 
 	api, errch := launchAPI(mock)
 	resp, qerr := runQuery(api, query)

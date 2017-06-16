@@ -114,6 +114,10 @@ func (index Index) Equals(other Index) bool {
 	stream := MakeIndexStream(index)
 	otherStream := MakeIndexStream(other)
 
+	if len(stream) != len(otherStream) {
+		return false
+	}
+
 	for i, entry := range stream {
 		otherEntry := otherStream[i]
 		if !entry.Equals(otherEntry) {

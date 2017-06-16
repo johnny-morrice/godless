@@ -52,7 +52,7 @@ func (cache *residentHeadCache) Commit() error {
 
 func (cache *residentHeadCache) Rollback() error {
 	if !cache.writing {
-		return errors.New("Cannot rollback on read")
+		return errors.New("Cannot rollback without write")
 	}
 
 	if cache.written {
