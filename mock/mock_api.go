@@ -31,42 +31,12 @@ func (_m *MockRemoteNamespace) EXPECT() *_MockRemoteNamespaceRecorder {
 	return _m.recorder
 }
 
-func (_m *MockRemoteNamespace) Commit() error {
-	ret := _m.ctrl.Call(_m, "Commit")
-	ret0, _ := ret[0].(error)
-	return ret0
+func (_m *MockRemoteNamespace) Close() {
+	_m.ctrl.Call(_m, "Close")
 }
 
-func (_mr *_MockRemoteNamespaceRecorder) Commit() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Commit")
-}
-
-func (_m *MockRemoteNamespace) IsChanged() bool {
-	ret := _m.ctrl.Call(_m, "IsChanged")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-func (_mr *_MockRemoteNamespaceRecorder) IsChanged() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsChanged")
-}
-
-func (_m *MockRemoteNamespace) Lock() {
-	_m.ctrl.Call(_m, "Lock")
-}
-
-func (_mr *_MockRemoteNamespaceRecorder) Lock() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Lock")
-}
-
-func (_m *MockRemoteNamespace) Persist() error {
-	ret := _m.ctrl.Call(_m, "Persist")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-func (_mr *_MockRemoteNamespaceRecorder) Persist() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Persist")
+func (_mr *_MockRemoteNamespaceRecorder) Close() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Close")
 }
 
 func (_m *MockRemoteNamespace) Replicate(_param0 crdt.IPFSPath, _param1 api.KvQuery) {
@@ -75,16 +45,6 @@ func (_m *MockRemoteNamespace) Replicate(_param0 crdt.IPFSPath, _param1 api.KvQu
 
 func (_mr *_MockRemoteNamespaceRecorder) Replicate(arg0, arg1 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Replicate", arg0, arg1)
-}
-
-func (_m *MockRemoteNamespace) Rollback() error {
-	ret := _m.ctrl.Call(_m, "Rollback")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-func (_mr *_MockRemoteNamespaceRecorder) Rollback() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Rollback")
 }
 
 func (_m *MockRemoteNamespace) RunKvQuery(_param0 *query.Query, _param1 api.KvQuery) {
@@ -101,14 +61,6 @@ func (_m *MockRemoteNamespace) RunKvReflection(_param0 api.APIReflectionType, _p
 
 func (_mr *_MockRemoteNamespaceRecorder) RunKvReflection(arg0, arg1 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "RunKvReflection", arg0, arg1)
-}
-
-func (_m *MockRemoteNamespace) Unlock() {
-	_m.ctrl.Call(_m, "Unlock")
-}
-
-func (_mr *_MockRemoteNamespaceRecorder) Unlock() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Unlock")
 }
 
 // Mock of RemoteStore interface

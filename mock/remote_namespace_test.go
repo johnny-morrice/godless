@@ -16,46 +16,11 @@ import (
 )
 
 func TestRemoteNamespaceJoinTable(t *testing.T) {
-	TestRemoteNamespaceReset(t)
+	// TODO...
 }
 
 func TestRemoteNamespaceReplicate(t *testing.T) {
 	// TODO integration test as design stands.
-}
-
-func TestRemoteNamespaceReset(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	mockStore := NewMockRemoteStore(ctrl)
-
-	const tableName = "ATableName"
-	const rowName = "ARowName"
-	const entryName = "AEntryName"
-	const point = "APoint"
-	table := crdt.MakeTable(map[crdt.RowName]crdt.Row{
-		rowName: crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-			entryName: crdt.MakeEntry([]crdt.Point{point}),
-		}),
-	})
-
-	remote := makeRemote(mockStore)
-	assertUnchanged(t, remote)
-
-	err := remote.JoinTable(tableName, table)
-	testutil.AssertNil(t, err)
-	assertChanged(t, remote)
-}
-
-func assertChanged(t *testing.T, remote api.RemoteNamespace) {
-	if !remote.IsChanged() {
-		t.Error("Expected remote change")
-	}
-}
-
-func assertUnchanged(t *testing.T, remote api.RemoteNamespace) {
-	if remote.IsChanged() {
-		t.Error("Unexpected remote change")
-	}
 }
 
 func TestRemoteNamespaceRunKvReflection(t *testing.T) {
@@ -143,10 +108,6 @@ func reflectOnRemote(remote api.RemoteNamespace, reflection api.APIReflectionTyp
 	resp := readApiResponse(request)
 
 	return resp
-}
-
-func TestIsChanged(t *testing.T) {
-	TestRemoteNamespaceReset(t)
 }
 
 func TestRunKvQuery(t *testing.T) {
@@ -343,18 +304,6 @@ func TestPersistSuccess(t *testing.T) {
 	if jerr != nil {
 		t.Error(jerr)
 	}
-
-	perr := remote.Persist()
-
-	if perr != nil {
-		t.Error(perr)
-	}
-
-	cerr := remote.Commit()
-
-	if cerr != nil {
-		t.Error(cerr)
-	}
 }
 
 func TestPersistFailure(t *testing.T) {
@@ -382,17 +331,7 @@ func TestPersistFailure(t *testing.T) {
 
 	jerr := remote.JoinTable("Table Key", table)
 
-	if jerr != nil {
-		t.Error(jerr)
-	}
-
-	perr := remote.Persist()
-
-	testutil.AssertNonNil(t, perr)
-
-	rerr := remote.Rollback()
-
-	testutil.AssertNil(t, rerr)
+	testutil.AssertNonNil(t, jerr)
 }
 
 type nsmatcher struct {

@@ -13,7 +13,6 @@ import (
 	"github.com/johnny-morrice/godless/internal/service"
 	"github.com/johnny-morrice/godless/internal/testutil"
 	"github.com/johnny-morrice/godless/query"
-	"github.com/pkg/errors"
 )
 
 func TestKeyValueStoreITCase(t *testing.T) {
@@ -122,10 +121,8 @@ func TestRunQueryReadSuccess(t *testing.T) {
 		},
 	}
 
-	mock.EXPECT().IsChanged().Return(false)
 	mock.EXPECT().RunKvQuery(query, kvqmatcher{}).Do(writeStubResponse)
-	mock.EXPECT().Lock().AnyTimes()
-	mock.EXPECT().Unlock().AnyTimes()
+	mock.EXPECT().Close()
 
 	api, errch := launchAPI(mock)
 	respch, err := runQuery(api, query)
@@ -187,12 +184,8 @@ func TestRunQueryWriteSuccess(t *testing.T) {
 		},
 	}
 
-	mock.EXPECT().IsChanged().Return(true)
 	mock.EXPECT().RunKvQuery(query, kvqmatcher{}).Do(writeStubResponse)
-	mock.EXPECT().Persist().Return(nil)
-	mock.EXPECT().Commit().Return(nil)
-	mock.EXPECT().Lock().AnyTimes()
-	mock.EXPECT().Unlock().AnyTimes()
+	mock.EXPECT().Close()
 
 	api, errch := launchAPI(mock)
 	actualRespch, err := runQuery(api, query)
@@ -234,12 +227,8 @@ func TestRunQueryWriteFailure(t *testing.T) {
 		},
 	}
 
-	mock.EXPECT().IsChanged().Return(true)
 	mock.EXPECT().RunKvQuery(query, kvqmatcher{}).Do(writeStubResponse)
-	mock.EXPECT().Rollback()
-	mock.EXPECT().Persist().Return(errors.New("Expected error"))
-	mock.EXPECT().Lock().AnyTimes()
-	mock.EXPECT().Unlock().AnyTimes()
+	mock.EXPECT().Close()
 
 	api, errch := launchAPI(mock)
 	resp, qerr := runQuery(api, query)
@@ -272,6 +261,8 @@ func TestRunQueryInvalid(t *testing.T) {
 
 	mock := NewMockRemoteNamespace(ctrl)
 	query := &query.Query{}
+
+	mock.EXPECT().Close()
 
 	api, _ := launchAPI(mock)
 	resp, err := runQuery(api, query)
