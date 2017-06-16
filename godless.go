@@ -253,8 +253,8 @@ func MakeClient(serviceAddr string) Client {
 	return service.MakeClient(serviceAddr)
 }
 
-func MakeClientWithHttp(serviceAddr string, webClient gohttp.Client) Client {
-	return nil
+func MakeClientWithHttp(serviceAddr string, webClient *gohttp.Client) Client {
+	return service.MakeClientWithHttp(serviceAddr, webClient)
 }
 
 func breakOnError(pipeline []func() error) error {

@@ -20,7 +20,11 @@
 
 package cmd
 
-import "github.com/spf13/cobra"
+import (
+	"time"
+
+	"github.com/spf13/cobra"
+)
 
 // queryCmd represents the client command
 var queryCmd = &cobra.Command{
@@ -35,6 +39,8 @@ func init() {
 	RootCmd.AddCommand(queryCmd)
 
 	queryCmd.PersistentFlags().StringVar(&serverAddr, "server", "localhost:8085", "Server address")
+	queryCmd.PersistentFlags().DurationVar(&queryTimeout, "timeout", time.Minute, "Query timeout")
 }
 
 var serverAddr string
+var queryTimeout time.Duration

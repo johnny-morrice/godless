@@ -22,6 +22,7 @@ package cmd
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -40,7 +41,11 @@ var clientPlumbingCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		var q *query.Query
 		var err error
-		client := godless.MakeClient(serverAddr)
+		webClient := &http.Client{
+			Timeout: queryTimeout,
+		}
+
+		client := godless.MakeClientWithHttp(serverAddr, webClient)
 
 		validateClientPlumbingArgs(cmd)
 
