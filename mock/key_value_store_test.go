@@ -2,6 +2,7 @@ package mock_godless
 
 import (
 	"math/rand"
+	"sync"
 	"testing"
 	"time"
 
@@ -68,14 +69,21 @@ func TestKeyValueStoreITCase(t *testing.T) {
 
 	go func() {
 		defer api.CloseAPI()
+		wg := &sync.WaitGroup{}
 
 		for _, q := range queries {
 			if rand.Float32() > 0.5 {
-				go checkPlausibleResponse(t, api, q)
+				wg.Add(1)
+				go func() {
+					checkPlausibleResponse(t, api, q)
+					wg.Done()
+				}()
 			} else {
 				checkPlausibleResponse(t, api, q)
 			}
 		}
+
+		wg.Wait()
 	}()
 
 	for err := range errch {
