@@ -3,9 +3,10 @@ package crdt
 import (
 	"io"
 
+	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/johnny-morrice/godless/internal/debug"
-	"github.com/johnny-morrice/godless/proto"
 	"github.com/johnny-morrice/godless/internal/util"
+	"github.com/johnny-morrice/godless/proto"
 	"github.com/pkg/errors"
 )
 
@@ -14,14 +15,28 @@ func ReadNamespaceEntryMessage(message *proto.NamespaceEntryMessage) NamespaceSt
 		Table:  TableName(message.Table),
 		Row:    RowName(message.Row),
 		Entry:  EntryName(message.Entry),
-		Points: make([]Point, len(message.Points)),
+		Points: make([]StreamPoint, len(message.Points)),
 	}
 
 	for i, p := range message.Points {
-		entry.Points[i] = Point(p)
+		entry.Points[i] = ReadPointMessage(p)
 	}
 
 	return entry
+}
+
+func ReadPointMessage(message *proto.PointMessage) StreamPoint {
+	return StreamPoint{
+		Text:      message.Text,
+		Signature: crypto.SignatureText(message.Signature),
+	}
+}
+
+func MakePointMessage(point StreamPoint) *proto.PointMessage {
+	return &proto.PointMessage{
+		Text:      string(point.Text),
+		Signature: string(point.Signature),
+	}
 }
 
 func MakeNamespaceEntryMessage(entry NamespaceStreamEntry) *proto.NamespaceEntryMessage {
@@ -29,11 +44,11 @@ func MakeNamespaceEntryMessage(entry NamespaceStreamEntry) *proto.NamespaceEntry
 		Table:  string(entry.Table),
 		Row:    string(entry.Row),
 		Entry:  string(entry.Entry),
-		Points: make([]string, len(entry.Points)),
+		Points: make([]*proto.PointMessage, len(entry.Points)),
 	}
 
 	for i, p := range entry.Points {
-		pb.Points[i] = string(p)
+		pb.Points[i] = MakePointMessage(p)
 	}
 
 	return pb

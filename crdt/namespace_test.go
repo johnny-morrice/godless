@@ -9,6 +9,7 @@ import (
 	"testing/quick"
 	"time"
 
+	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/internal/testutil"
 )
 
@@ -338,7 +339,7 @@ func TestTableJoinTable(t *testing.T) {
 func TestTableJoinRow(t *testing.T) {
 	emptyTable := EmptyTable()
 	row := MakeRow(map[EntryName]Entry{
-		"bar": MakeEntry([]Point{"hello"}),
+		"bar": MakeEntry([]Point{crdt.UnsignedPoint("hello")}),
 	})
 
 	expected := MakeTable(map[RowName]Row{
@@ -437,7 +438,7 @@ func TestRowCopy(t *testing.T) {
 
 func TestRowJoinRow(t *testing.T) {
 	emptyEntry := EmptyEntry()
-	fullEntry := MakeEntry([]Point{"hi"})
+	fullEntry := MakeEntry([]Point{crdt.UnsignedPoint("hi")})
 
 	expected := MakeRow(map[EntryName]Entry{
 		"foo": emptyEntry,
@@ -458,7 +459,7 @@ func TestRowJoinRow(t *testing.T) {
 }
 
 func TestRowGetEntry(t *testing.T) {
-	expected := MakeEntry([]Point{"hi"})
+	expected := MakeEntry([]Point{crdt.UnsignedPoint("hi")})
 
 	row := MakeRow(map[EntryName]Entry{
 		"foo": expected,
@@ -475,7 +476,7 @@ func TestRowGetEntry(t *testing.T) {
 
 func TestRowJoinEntry(t *testing.T) {
 	emptyEntry := EmptyEntry()
-	fullEntry := MakeEntry([]Point{"hi"})
+	fullEntry := MakeEntry([]Point{crdt.UnsignedPoint("hi")})
 
 	expected := MakeRow(map[EntryName]Entry{
 		"foo": emptyEntry,
@@ -493,7 +494,7 @@ func TestRowJoinEntry(t *testing.T) {
 
 func TestRowEquals(t *testing.T) {
 	emptyEntry := EmptyEntry()
-	fullEntry := MakeEntry([]Point{"hi"})
+	fullEntry := MakeEntry([]Point{crdt.UnsignedPoint("hi")})
 
 	rows := []Row{
 		EmptyRow(),
@@ -544,9 +545,9 @@ func TestMakeEntry(t *testing.T) {
 	}
 
 	actuals := []Entry{
-		MakeEntry([]Point{"hello", "world"}),
-		MakeEntry([]Point{"world", "hello"}),
-		MakeEntry([]Point{"hello", "hello", "world", "world"}),
+		MakeEntry([]Point{crdt.UnsignedPoint("hello"), crdt.UnsignedPoint("world")}),
+		MakeEntry([]Point{crdt.UnsignedPoint("world"), crdt.UnsignedPoint("hello")}),
+		MakeEntry([]Point{crdt.UnsignedPoint("hello"), crdt.UnsignedPoint("hello"), crdt.UnsignedPoint("world"), crdt.UnsignedPoint("world")}),
 	}
 
 	for _, a := range actuals {
@@ -559,8 +560,8 @@ func TestEntryJoinEntry(t *testing.T) {
 		Set: []Point{"hello", "world"},
 	}
 
-	hello := MakeEntry([]Point{"hello"})
-	world := MakeEntry([]Point{"world"})
+	hello := MakeEntry([]Point{crdt.UnsignedPoint("hello")})
+	world := MakeEntry([]Point{crdt.UnsignedPoint("world")})
 
 	actualFront := hello.JoinEntry(world)
 	actualBack := world.JoinEntry(hello)
@@ -574,8 +575,8 @@ func TestEntryJoinEntry(t *testing.T) {
 func TestEntryEquals(t *testing.T) {
 	entries := []Entry{
 		EmptyEntry(),
-		MakeEntry([]Point{"hi"}),
-		MakeEntry([]Point{"hello", "world"}),
+		MakeEntry([]Point{crdt.UnsignedPoint("hi")}),
+		MakeEntry([]Point{crdt.UnsignedPoint("hello"), crdt.UnsignedPoint("world")}),
 	}
 
 	for i := 0; i < len(entries); i++ {
@@ -600,7 +601,7 @@ func TestEntryEquals(t *testing.T) {
 
 func TestEntryGetValues(t *testing.T) {
 	expected := []Point{"hello"}
-	entry := MakeEntry([]Point{"hello"})
+	entry := MakeEntry([]Point{crdt.UnsignedPoint("hello")})
 	actual := entry.GetValues()
 	if !reflect.DeepEqual(expected, actual) {
 		t.Error("Expected", expected, "but was", actual)

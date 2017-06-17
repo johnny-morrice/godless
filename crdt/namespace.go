@@ -6,13 +6,14 @@ import (
 	"math/rand"
 	"sort"
 
+	"github.com/ethereum/go-ethereum/log"
+	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/johnny-morrice/godless/internal/testutil"
 )
 
 type TableName string
 type RowName string
 type EntryName string
-type Point string
 
 func JoinStreamEntries(stream []NamespaceStreamEntry) []NamespaceStreamEntry {
 	ns := ReadNamespaceStream(stream)
@@ -58,14 +59,33 @@ func (ns Namespace) GetTableNames() []TableName {
 	return tableNames
 }
 
-func (ns Namespace) addStreamEntry(streamEntry NamespaceStreamEntry) {
+type InvalidStreamPoint StreamPoint
+
+// FIXME check error in usages
+func (ns Namespace) addStreamEntry(streamEntry NamespaceStreamEntry) []InvalidStreamPoint {
+	points := make([]Point, len(streamEntry.Points))
+	invalid := make([]InvalidStreamPoint, 0, len(streamEntry.Points))
+
+	for i, p := range streamEntry.Points {
+		point, err := ReadStreamPoint(p)
+
+		if err != nil {
+			log.Error("Invalid stream entry")
+			invalid = append(invalid, InvalidStreamPoint(p))
+		}
+
+		points[i] = point
+	}
+
 	table := MakeTable(map[RowName]Row{
 		streamEntry.Row: MakeRow(map[EntryName]Entry{
-			streamEntry.Entry: MakeEntry(streamEntry.Points),
+			streamEntry.Entry: MakeEntry(points),
 		}),
 	})
 
 	ns.addTable(streamEntry.Table, table)
+
+	return invalid
 }
 
 func (ns Namespace) IsEmpty() bool {
@@ -334,7 +354,7 @@ func EmptyEntry() Entry {
 
 func MakeEntry(set []Point) Entry {
 	sort.Sort(byPointValue(set))
-	undupes := uniqSorted(set)
+	undupes := uniqPointSorted(set)
 	return Entry{Set: undupes}
 }
 
@@ -352,8 +372,10 @@ func (e Entry) Equals(other Entry) bool {
 		return false
 	}
 
-	for i, v := range e.Set {
-		if other.Set[i] != v {
+	for i, myPoint := range e.Set {
+		theirPoint := other.Set[i]
+
+		if !myPoint.Equals(theirPoint) {
 			return false
 		}
 	}
@@ -382,10 +404,10 @@ func (p byPointValue) Swap(i, j int) {
 }
 
 func (p byPointValue) Less(i, j int) bool {
-	return p[i] < p[j]
+	return p[i].Text < p[j].Text
 }
 
-func uniqSorted(set []Point) []Point {
+func uniqPointSorted(set []Point) []Point {
 	if len(set) == 0 {
 		return set
 	}
@@ -394,10 +416,17 @@ func uniqSorted(set []Point) []Point {
 
 	uniq[0] = set[0]
 	for _, p := range set[1:] {
-		last := uniq[len(uniq)-1]
-		if p != last {
+		last := &uniq[len(uniq)-1]
+		if p.Text == last.Text {
+			last.Signatures = append(last.Signatures, p.Signatures...)
+		} else {
 			uniq = append(uniq, p)
 		}
+	}
+
+	for i := 0; i < len(uniq); i++ {
+		point := &uniq[i]
+		point.Signatures = crypto.UniqSignatures(point.Signatures)
 	}
 
 	return uniq
@@ -439,11 +468,43 @@ func genRow(rand *rand.Rand, size int) Row {
 		points := make([]Point, pointCount)
 
 		for m := 0; m < pointCount; m++ {
-			points[m] = Point(testutil.RandLetters(rand, maxStr))
+			points[m] = genPoint(rand, maxStr)
 		}
 
 		entry := MakeEntry(points)
 		row.addEntry(entryName, entry)
 	}
 	return row
+}
+
+func genPoint(rand *rand.Rand, size int) Point {
+	return Point{Text: testutil.RandLetters(rand, size)}
+}
+
+type Point struct {
+	Text       string
+	Signatures []crypto.Signature
+}
+
+// FIXME implement
+func (p Point) Equals(other Point) bool {
+	return false
+}
+
+func (p Point) Verify(publicKey crypto.PublicKey) bool {
+	for _, sig := range p.Signatures {
+		ok := crypto.Verify(publicKey, []byte(p.Text), sig)
+
+		if ok {
+			return true
+		}
+	}
+
+	log.Debug("Signature verification failed for Point")
+
+	return false
+}
+
+func UnsignedPoint(text string) Point {
+	return Point{Text: text}
 }

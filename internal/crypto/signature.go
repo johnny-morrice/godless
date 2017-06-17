@@ -13,6 +13,8 @@ type PublicKeyText string
 
 type PrivateKeyText string
 
+type SignatureText string
+
 func ParsePublicKey(text PublicKeyText) (PublicKey, error) {
 	return PublicKey{}, nil
 }
@@ -21,9 +23,58 @@ func ParsePrivateKey(text PrivateKeyText) (PrivateKey, error) {
 	return PrivateKey{}, nil
 }
 
+func ParseSignature(text SignatureText) (Signature, error) {
+	return Signature{}, nil
+}
+
+func PrintSignature(sig Signature) SignatureText {
+	return ""
+}
+
+func PrintPublicKey(pub PublicKey) PublicKeyText {
+	return ""
+}
+func PrintPrivateKey(priv PrivateKey) PrivateKeyText {
+	return ""
+}
+
+// FIXME implement
+func SortSignatures(sigs []Signature) {
+
+}
+
+// FIXME implement
+func UniqSignatures(sigs []Signature) []Signature {
+	return nil
+}
+
+type bySignatureText []Signature
+
+func (addrs bySignatureText) Len() int {
+	return len(addrs)
+}
+
+func (addrs bySignatureText) Swap(i, j int) {
+	addrs[i], addrs[j] = addrs[j], addrs[i]
+}
+
+// FIXME implement
+func (addrs bySignatureText) Less(i, j int) bool {
+	return false
+}
+
 type Signature struct {
 	r *big.Int
 	s *big.Int
+}
+
+func (sig Signature) Equals(other Signature) bool {
+	return false
+}
+
+// FIXME implement.
+func (sig Signature) TextLess(other Signature) bool {
+	return false
 }
 
 type PrivateKey struct {

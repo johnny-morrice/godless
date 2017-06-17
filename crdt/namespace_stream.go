@@ -3,15 +3,22 @@ package crdt
 import (
 	"sort"
 
+	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/johnny-morrice/godless/internal/util"
+	"github.com/pkg/errors"
 )
+
+type StreamPoint struct {
+	Text      string
+	Signature crypto.SignatureText
+}
 
 // FIXME not really a stream, whole is kept in memory.
 type NamespaceStreamEntry struct {
 	Table  TableName
 	Row    RowName
 	Entry  EntryName
-	Points []Point
+	Points []StreamPoint
 }
 
 func (entry NamespaceStreamEntry) Equals(other NamespaceStreamEntry) bool {
@@ -92,21 +99,28 @@ func (entries byEntryOrder) Swap(i, j int) {
 	entries[i], entries[j] = entries[j], entries[i]
 }
 
+// FIXME actually do comparsion
 func (entries byEntryOrder) Less(i, j int) bool {
-	a := entries[i]
-	b := entries[j]
-	return pointLess(a.Set, b.Set)
+	panic("not implemented")
+	return false
 }
 
-func pointLess(a, b []Point) bool {
+func pointLess(a, b []StreamPoint) bool {
 	minSize := util.Imin(len(a), len(b))
 
 	for i := 0; i < minSize; i++ {
 		ap := a[i]
 		bp := b[i]
-		if ap < bp {
+
+		if ap.Text < bp.Text {
 			return true
-		} else if ap > bp {
+		} else if ap.Text > bp.Text {
+			return false
+		}
+
+		if ap.Signature < bp.Signature {
+			return true
+		} else if ap.Signature > bp.Signature {
 			return false
 		}
 	}
@@ -114,12 +128,62 @@ func pointLess(a, b []Point) bool {
 	return len(a) < len(b)
 }
 
+// TODO does not support unsigned links.
+func MakeStreamPoints(point Point) []StreamPoint {
+	count := 1
+	sigCount := len(point.Signatures)
+	if sigCount > 0 {
+		count = sigCount
+	}
+	stream := make([]StreamPoint, count)
+
+	for _, sig := range point.Signatures {
+		stream = append(stream, MakeStreamPoint(point.Text, sig))
+	}
+
+	return stream
+}
+
+func MakeStreamPoint(text string, sig crypto.Signature) StreamPoint {
+	return StreamPoint{Text: text, Signature: crypto.PrintSignature(sig)}
+}
+
+// TODO should take slice of StreamPoint
+func ReadStreamPoint(stream StreamPoint) (Point, error) {
+	const failMsg = "ReadStreamPoint failed"
+
+	_, err := crypto.ParseSignature(stream.Signature)
+
+	if err != nil {
+		return Point{}, errors.Wrap(err, failMsg)
+	}
+
+	point := Point{
+		Text: stream.Text,
+	}
+
+	panic("not implemented")
+
+	return point, nil
+}
+
 func MakeStreamEntry(tname TableName, rname RowName, ename EntryName, entry Entry) NamespaceStreamEntry {
+	panic("not implemented")
+
+	count := 0
+
+	points := entry.GetValues()
+	streamPoints := make([]StreamPoint, count)
+
+	for _, p := range points {
+		streamPoints = append(streamPoints, MakeStreamPoints(p)...)
+	}
+
 	return NamespaceStreamEntry{
 		Table:  tname,
 		Row:    rname,
 		Entry:  ename,
-		Points: entry.GetValues(),
+		Points: streamPoints,
 	}
 }
 

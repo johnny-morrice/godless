@@ -3,25 +3,24 @@ package crdt
 import (
 	"sort"
 
+	"github.com/ethereum/go-ethereum/log"
+	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/johnny-morrice/godless/proto"
-	"github.com/johnny-morrice/godless/internal/util"
 )
 
 type IndexStreamEntry struct {
 	TableName TableName
-	Links     []IPFSPath
+	Signature crypto.SignatureText
+	Link      IPFSPath
 }
 
 func (entry IndexStreamEntry) Equals(other IndexStreamEntry) bool {
-	if entry.TableName != other.TableName {
-		return false
-	}
+	ok := entry.TableName == other.TableName
+	ok = ok && entry.Link == other.Link
+	ok = ok && entry.Signature == other.Signature
 
-	for i, myLink := range entry.Links {
-		otherLink := other.Links[i]
-		if myLink != otherLink {
-			return false
-		}
+	if !ok {
+		return false
 	}
 
 	return true
@@ -30,11 +29,8 @@ func (entry IndexStreamEntry) Equals(other IndexStreamEntry) bool {
 func ReadIndexEntryMessage(message *proto.IndexEntryMessage) IndexStreamEntry {
 	entry := IndexStreamEntry{
 		TableName: TableName(message.Table),
-		Links:     make([]IPFSPath, len(message.Links)),
-	}
-
-	for i, l := range message.Links {
-		entry.Links[i] = IPFSPath(l)
+		Link:      IPFSPath(message.Link),
+		Signature: crypto.SignatureText(message.Signature),
 	}
 
 	return entry
@@ -42,28 +38,37 @@ func ReadIndexEntryMessage(message *proto.IndexEntryMessage) IndexStreamEntry {
 
 func MakeIndexEntryMessage(entry IndexStreamEntry) *proto.IndexEntryMessage {
 	message := &proto.IndexEntryMessage{
-		Table: string(entry.TableName),
-		Links: make([]string, len(entry.Links)),
-	}
-
-	for i, l := range entry.Links {
-		message.Links[i] = string(l)
+		Table:     string(entry.TableName),
+		Link:      string(entry.Link),
+		Signature: string(entry.Signature),
 	}
 
 	return message
 }
 
-func MakeIndexStreamEntry(t TableName, addrs []IPFSPath) IndexStreamEntry {
-	entry := IndexStreamEntry{
+// TODO does not support unsigned links.
+func MakeIndexStreamEntries(t TableName, addrs []SignedLink) []IndexStreamEntry {
+	count := countAddrEntries(addrs)
+
+	entries := make([]IndexStreamEntry, 0, count)
+
+	for _, link := range addrs {
+		path := link.Link
+		for _, sig := range link.Signatures {
+			entry := MakeIndexStreamEntry(t, path, sig)
+			entries = append(entries, entry)
+		}
+	}
+
+	return entries
+}
+
+func MakeIndexStreamEntry(t TableName, path IPFSPath, sig crypto.Signature) IndexStreamEntry {
+	return IndexStreamEntry{
 		TableName: t,
-		Links:     make([]IPFSPath, len(addrs)),
+		Link:      path,
+		Signature: crypto.PrintSignature(sig),
 	}
-
-	for i, a := range addrs {
-		entry.Links[i] = IPFSPath(a)
-	}
-
-	return entry
 }
 
 type byIndexStreamOrder []IndexStreamEntry
@@ -86,28 +91,28 @@ func (stream byIndexStreamOrder) Less(i, j int) bool {
 		return false
 	}
 
-	minSize := util.Imin(len(a.Links), len(b.Links))
-	for i := 0; i < minSize; i++ {
-		al := a.Links[i]
-		bl := a.Links[i]
-
-		if al < bl {
-			return true
-		} else if al > bl {
-			return false
-		}
+	if a.Link < b.Link {
+		return true
+	} else if a.Link > b.Link {
+		return false
 	}
 
-	return len(a.Links) < len(b.Links)
+	return a.Signature < b.Signature
 }
 
 func MakeIndexStream(index Index) []IndexStreamEntry {
-	stream := make([]IndexStreamEntry, len(index.Index))
+	count := 0
+
+	for _, addrs := range index.Index {
+		count = count + countAddrEntries(addrs)
+	}
+
+	stream := make([]IndexStreamEntry, count)
 
 	i := 0
 	for t, addrs := range index.Index {
-		entry := MakeIndexStreamEntry(t, addrs)
-		stream[i] = entry
+		entries := MakeIndexStreamEntries(t, addrs)
+		stream = append(stream, entries...)
 		i++
 	}
 
@@ -116,14 +121,24 @@ func MakeIndexStream(index Index) []IndexStreamEntry {
 	return stream
 }
 
-func ReadIndexStream(stream []IndexStreamEntry) Index {
+type InvalidIndexEntry IndexStreamEntry
+
+func ReadIndexStream(stream []IndexStreamEntry) (Index, []InvalidIndexEntry) {
 	index := EmptyIndex()
 
+	invalid := make([]InvalidIndexEntry, 0, len(stream))
+
 	for _, entry := range stream {
-		index = index.joinStreamEntry(entry)
+		var err error
+		index, err = index.joinStreamEntry(entry)
+
+		if err != nil {
+			log.Error("Invalid stream entry")
+			invalid = append(invalid, InvalidIndexEntry(entry))
+		}
 	}
 
-	return index
+	return index, invalid
 }
 
 func MakeIndexStreamMessage(stream []IndexStreamEntry) *proto.IndexMessage {
@@ -144,4 +159,19 @@ func ReadIndexStreamMessage(message *proto.IndexMessage) []IndexStreamEntry {
 	}
 
 	return stream
+}
+
+func countAddrEntries(addrs []SignedLink) int {
+	count := 0
+
+	for _, link := range addrs {
+		sigCount := len(link.Signatures)
+		if sigCount > 0 {
+			count = count + sigCount
+		} else {
+			count++
+		}
+	}
+
+	return count
 }

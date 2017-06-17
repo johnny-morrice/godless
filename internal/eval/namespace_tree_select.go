@@ -240,9 +240,12 @@ func (eval *selectEvalTree) evalWhere(where *query.QueryWhere) *expr {
 func (eval *selectEvalTree) evalPred(where *query.QueryWhere) *expr {
 	pred := where.Predicate
 
+	var first string
 	prefix := []string{}
-
-	prefix = append(prefix, pred.Literals...)
+	if len(pred.Literals) > 0 {
+		first = pred.Literals[0]
+		prefix = append(prefix, pred.Literals[1:]...)
+	}
 
 	if pred.IncludeRowKey {
 		prefix = append(prefix, string(eval.rowKey))
@@ -266,9 +269,9 @@ func (eval *selectEvalTree) evalPred(where *query.QueryWhere) *expr {
 	var isMatch bool
 	switch pred.OpCode {
 	case query.STR_EQ:
-		isMatch = eval.str_eq(prefix, entries)
+		isMatch = StrEq(first, prefix, entries)
 	case query.STR_NEQ:
-		isMatch = eval.str_neq(prefix, entries)
+		isMatch = StrNeq(first, prefix, entries)
 	default:
 		panic(fmt.Sprintf("Unsupported query.QueryPredicate OpCode: %v", pred.OpCode))
 	}
@@ -278,90 +281,6 @@ func (eval *selectEvalTree) evalPred(where *query.QueryWhere) *expr {
 	}
 
 	return &expr{source: where, state: EXPR_FALSE}
-}
-
-func (eval *selectEvalTree) str_eq(prefix []string, entries []crdt.Entry) bool {
-	m, err := eval.matcher(prefix, entries)
-
-	if err != nil {
-		// Don't log this case.
-		// logdbg("find matcher error")
-		return false
-	}
-
-	for _, pfx := range prefix {
-		if pfx != m {
-			return false
-		}
-	}
-
-	for _, entry := range entries {
-		found := false
-		for _, val := range entry.GetValues() {
-			if string(val) == m {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false
-		}
-	}
-
-	return true
-}
-
-func (eval *selectEvalTree) str_neq(prefix []string, entries []crdt.Entry) bool {
-	m, err := eval.matcher(prefix, entries)
-
-	if err != nil {
-		return false
-	}
-
-	pfxmatch := 0
-	for _, pfx := range prefix {
-		if pfx == m {
-			pfxmatch++
-		}
-	}
-
-	entrymatch := 0
-	for _, entry := range entries {
-		for _, val := range entry.GetValues() {
-			if string(val) == m {
-				entrymatch++
-			}
-		}
-	}
-
-	return !((pfxmatch > 0 && entrymatch > 0) || pfxmatch > 1 || entrymatch > 1)
-}
-
-// TODO need user concepts + crypto to narrow row match down.
-func (eval *selectEvalTree) matcher(prefix []string, entries []crdt.Entry) (string, error) {
-	var first string
-	var found bool
-
-	if len(prefix) > 0 {
-		first = prefix[0]
-		found = true
-	} else {
-		for _, entry := range entries {
-			values := entry.GetValues()
-			if len(values) > 0 {
-				first = string(values[0])
-				found = true
-				break
-			}
-		}
-	}
-
-	// No values: no match.
-	if !found {
-		return "", errors.New("no match")
-	}
-
-	return first, nil
 }
 
 func (eval *selectEvalTree) VisitWhere(position int, where *query.QueryWhere) {

@@ -1,6 +1,10 @@
 package crdt
 
-import "sort"
+import (
+	"sort"
+
+	"github.com/johnny-morrice/godless/internal/crypto"
+)
 
 type IPFSPath string
 
@@ -10,42 +14,67 @@ func IsNilPath(path IPFSPath) bool {
 	return path == NIL_PATH
 }
 
-type byPath []IPFSPath
+type SignedLink struct {
+	Link       IPFSPath
+	Signatures []crypto.Signature
+}
 
-func (addrs byPath) Len() int {
+func UnsignedLink(path IPFSPath) SignedLink {
+	return SignedLink{Link: path}
+}
+
+func PreSignedLink(path IPFSPath, sig crypto.Signature) SignedLink {
+	return SignedLink{Link: path, Signatures: []crypto.Signature{sig}}
+}
+
+func MergeLinks(links []SignedLink) []SignedLink {
+	sort.Sort(byLinkPath(links))
+	return uniqLinkSorted(links)
+}
+
+type byLinkPath []SignedLink
+
+func (addrs byLinkPath) Len() int {
 	return len(addrs)
 }
 
-func (addrs byPath) Swap(i, j int) {
+func (addrs byLinkPath) Swap(i, j int) {
 	addrs[i], addrs[j] = addrs[j], addrs[i]
 }
 
-func (addrs byPath) Less(i, j int) bool {
-	return addrs[i] < addrs[j]
+func (addrs byLinkPath) Less(i, j int) bool {
+	a := addrs[i]
+	b := addrs[j]
+
+	if a.Link < b.Link {
+		return true
+	} else if a.Link > b.Link {
+		return false
+	}
+
+	return false
 }
 
-func normalStoreAddress(addrs []IPFSPath) []IPFSPath {
-	uniq := uniqStoreAddress(addrs)
-	sort.Sort(byPath(uniq))
-	return uniq
-}
+func uniqLinkSorted(links []SignedLink) []SignedLink {
+	if len(links) == 0 {
+		return links
+	}
 
-func uniqStoreAddress(addrs []IPFSPath) []IPFSPath {
-	dedupe := map[IPFSPath]IPFSPath{}
+	uniq := make([]SignedLink, 1, len(links))
 
-	for _, a := range addrs {
-		path := a
-		if _, present := dedupe[path]; !present {
-			dedupe[path] = a
+	uniq[0] = links[0]
+	for _, p := range links[1:] {
+		last := &uniq[len(uniq)-1]
+		if p.Link == last.Link {
+			last.Signatures = append(last.Signatures, p.Signatures...)
+		} else {
+			uniq = append(uniq, p)
 		}
 	}
 
-	uniq := make([]IPFSPath, len(dedupe))
-
-	i := 0
-	for _, a := range dedupe {
-		uniq[i] = a
-		i++
+	for i := 0; i < len(uniq); i++ {
+		link := &uniq[i]
+		link.Signatures = crypto.UniqSignatures(link.Signatures)
 	}
 
 	return uniq
