@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/pkg/errors"
 )
 
@@ -45,6 +46,10 @@ func (visitor *NoDebugVisitor) VisitParser(*QueryParser) {
 
 type ErrorCollectVisitor struct {
 	err error
+}
+
+func (visitor *ErrorCollectVisitor) BadPublicKey(key crypto.PublicKeyText) {
+	visitor.CollectError(fmt.Errorf("Bad PublicKeyText: %v", key))
 }
 
 func (visitor *ErrorCollectVisitor) BadOpcode(opCode QueryOpCode) {

@@ -5,6 +5,7 @@ import (
 
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/johnny-morrice/godless/log"
 	"github.com/johnny-morrice/godless/query"
 	"github.com/pkg/errors"
@@ -59,6 +60,10 @@ func (visitor *NamespaceTreeSelect) RunQuery() api.APIResponse {
 
 	response.QueryResponse.Entries = stream
 	return response
+}
+
+func (visitor *NamespaceTreeSelect) VisitPublicKey(keyText crypto.PublicKeyText) {
+
 }
 
 func (visitor *NamespaceTreeSelect) VisitTableKey(tableKey crdt.TableName) {

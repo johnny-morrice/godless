@@ -3,6 +3,7 @@ package eval
 import (
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/johnny-morrice/godless/query"
 	"github.com/pkg/errors"
 )
@@ -42,6 +43,10 @@ func (visitor *NamespaceTreeJoin) RunQuery() api.APIResponse {
 	}
 
 	return api.RESPONSE_QUERY
+}
+
+func (visitor *NamespaceTreeJoin) VisitPublicKey(keyText crypto.PublicKeyText) {
+
 }
 
 func (visitor *NamespaceTreeJoin) VisitOpCode(opCode query.QueryOpCode) {

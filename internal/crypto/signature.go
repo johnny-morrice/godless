@@ -9,6 +9,18 @@ import (
 	"math/big"
 )
 
+type PublicKeyText string
+
+type PrivateKeyText string
+
+func ParsePublicKey(text PublicKeyText) (PublicKey, error) {
+	return PublicKey{}, nil
+}
+
+func ParsePrivateKey(text PrivateKeyText) (PrivateKey, error) {
+	return PrivateKey{}, nil
+}
+
 type Signature struct {
 	r *big.Int
 	s *big.Int

@@ -11,6 +11,7 @@ import (
 	"sort"
 
 	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/johnny-morrice/godless/internal/util"
 	"github.com/johnny-morrice/godless/log"
 	"github.com/johnny-morrice/godless/proto"
@@ -26,12 +27,13 @@ const (
 )
 
 type Query struct {
-	AST      *QueryAST    `json:"-"`
-	Parser   *QueryParser `json:"-"`
-	OpCode   QueryOpCode  `json:",omitempty"`
-	TableKey crdt.TableName
-	Join     QueryJoin   `json:",omitempty"`
-	Select   QuerySelect `json:",omitempty"`
+	AST        *QueryAST    `json:"-"`
+	Parser     *QueryParser `json:"-"`
+	OpCode     QueryOpCode  `json:",omitempty"`
+	TableKey   crdt.TableName
+	Join       QueryJoin   `json:",omitempty"`
+	Select     QuerySelect `json:",omitempty"`
+	PublicKeys []crypto.PublicKeyText
 }
 
 type whereVisitor interface {
@@ -40,17 +42,38 @@ type whereVisitor interface {
 	VisitPredicate(*QueryPredicate)
 }
 
-type QueryVisitor interface {
-	whereVisitor
-	VisitOpCode(QueryOpCode)
-	VisitAST(*QueryAST)
-	VisitParser(*QueryParser)
-	VisitTableKey(crdt.TableName)
+type selectVisitor interface {
+	VisitSelect(*QuerySelect)
+	LeaveSelect(*QuerySelect)
+}
+
+type joinVisitor interface {
 	VisitJoin(*QueryJoin)
 	LeaveJoin(*QueryJoin)
 	VisitRowJoin(int, *QueryRowJoin)
-	VisitSelect(*QuerySelect)
-	LeaveSelect(*QuerySelect)
+}
+
+type cryptoVisitor interface {
+	VisitPublicKey(crypto.PublicKeyText)
+}
+
+type debugVisitor interface {
+	VisitAST(*QueryAST)
+	VisitParser(*QueryParser)
+}
+
+type baseVisitor interface {
+	VisitOpCode(QueryOpCode)
+	VisitTableKey(crdt.TableName)
+}
+
+type QueryVisitor interface {
+	whereVisitor
+	selectVisitor
+	cryptoVisitor
+	joinVisitor
+	debugVisitor
+	baseVisitor
 }
 
 type QueryJoin struct {
