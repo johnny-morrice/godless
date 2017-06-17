@@ -12,7 +12,7 @@ JoinRow <- { p.AddJoinRow() } '(' Spacing KeyJoin Spacing ( ',' Spacing ValueJoi
 KeyJoin <- '@key' Spacing '=' Spacing ('@' ["] < Literal > ["] / < Key > ) { p.SetJoinRowKey(buffer[begin:end]) }
 ValueJoin <- (< Key > / '@' ["] < Literal > ["] ) { p.SetJoinKey(buffer[begin:end]) } Spacing '=' Spacing ["] < Literal > ["] { p.SetJoinValue(buffer[begin:end]) }
 
-Select <- 'select' MustSpacing SelectKey MustSpacing (Where MustSpacing)? Limit
+Select <- 'select' MustSpacing SelectKey MustSpacing (Where MustSpacing)? Limit?
 SelectKey <- < Key > { p.SetTableName(buffer[begin:end]) }
 
 Limit <- 'limit' MustSpacing < PositiveInteger > { p.SetLimit(buffer[begin:end])}
