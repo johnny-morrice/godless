@@ -73,7 +73,7 @@ func (rn *remoteNamespace) AddIndices() {
 		add := tubeItem
 		index := crdt.EmptyIndex()
 
-		head, headErr := rn.getHeadTransaction()
+		head, headErr := rn.getHead()
 
 		if headErr != nil {
 			add.reply(crdt.NIL_PATH, headErr)
@@ -95,7 +95,7 @@ func (rn *remoteNamespace) AddIndices() {
 
 		if addErr == nil {
 			log.Info("Persisted index at: %v", path)
-			rn.setHeadTransaction(path)
+			rn.setHead(path)
 		}
 
 		add.reply(path, addErr)
@@ -194,7 +194,7 @@ func (rn *remoteNamespace) getReflectHead() api.APIResponse {
 	response := api.RESPONSE_REFLECT
 	response.ReflectResponse.Type = api.REFLECT_HEAD_PATH
 
-	myAddr, err := rn.getHeadTransaction()
+	myAddr, err := rn.getHead()
 
 	if err != nil {
 		response.Err = errors.Wrap(err, "remoteNamespace.getReflectHead failed")
@@ -382,7 +382,7 @@ func (rn *remoteNamespace) namespaceLoader(addrs []crdt.SignedLink) (<-chan crdt
 // Load chunks over IPFS
 // TODO opportunity to query IPFS in parallel?
 func (rn *remoteNamespace) loadCurrentIndex() (crdt.Index, error) {
-	myAddr, err := rn.getHeadTransaction()
+	myAddr, err := rn.getHead()
 
 	if err != nil {
 		return crdt.EmptyIndex(), errors.Wrap(err, "remoteNamespace.loadCurrentIndex failed")
@@ -429,42 +429,10 @@ func (rn *remoteNamespace) updateIndexCache(addr crdt.IPFSPath, index crdt.Index
 	}
 }
 
-func (rn *remoteNamespace) getHeadTransaction() (crdt.IPFSPath, error) {
-	var path crdt.IPFSPath
-	err := rn.HeadCache.BeginReadTransaction()
-
-	if err != nil {
-		return crdt.NIL_PATH, err
-	}
-
-	defer func() {
-		err := rn.HeadCache.Commit()
-		if err != nil {
-			log.Error("Error commiting cache: %v", err)
-		}
-	}()
-
-	path, err = rn.HeadCache.GetHead()
-
-	if err != nil {
-		return crdt.NIL_PATH, err
-	}
-
-	return path, nil
+func (rn *remoteNamespace) getHead() (crdt.IPFSPath, error) {
+	return rn.HeadCache.GetHead()
 }
 
-func (rn *remoteNamespace) setHeadTransaction(head crdt.IPFSPath) error {
-	err := rn.HeadCache.BeginWriteTransaction()
-
-	if err != nil {
-		return err
-	}
-
-	err = rn.HeadCache.SetHead(head)
-
-	if err != nil {
-		return err
-	}
-
-	return rn.HeadCache.Commit()
+func (rn *remoteNamespace) setHead(head crdt.IPFSPath) error {
+	return rn.HeadCache.SetHead(head)
 }

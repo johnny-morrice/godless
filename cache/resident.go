@@ -104,56 +104,19 @@ func makeTimestamp() int {
 
 type residentHeadCache struct {
 	sync.RWMutex
-	writing  bool
-	written  bool
-	current  crdt.IPFSPath
-	previous crdt.IPFSPath
-}
-
-func (cache *residentHeadCache) BeginReadTransaction() error {
-	cache.RLock()
-	return nil
-}
-
-func (cache *residentHeadCache) BeginWriteTransaction() error {
-	cache.Lock()
-	cache.writing = true
-	return nil
+	current crdt.IPFSPath
 }
 
 func (cache *residentHeadCache) SetHead(head crdt.IPFSPath) error {
-	cache.previous = cache.current
+	cache.Lock()
+	defer cache.Unlock()
 	cache.current = head
-	cache.written = true
 	return nil
-}
-
-func (cache *residentHeadCache) Commit() error {
-	if cache.writing {
-		cache.previous = ""
-		cache.writing = false
-		cache.written = false
-		cache.Unlock()
-	} else {
-		cache.RUnlock()
-	}
-
-	return nil
-}
-
-func (cache *residentHeadCache) Rollback() error {
-	if !cache.writing {
-		return errors.New("Cannot rollback without write")
-	}
-
-	if cache.written {
-		cache.current = cache.previous
-	}
-
-	return cache.Commit()
 }
 
 func (cache *residentHeadCache) GetHead() (crdt.IPFSPath, error) {
+	cache.RLock()
+	defer cache.RUnlock()
 	head := cache.current
 	return head, nil
 }
