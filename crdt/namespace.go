@@ -3,12 +3,10 @@ package crdt
 
 import (
 	"fmt"
-	"math/rand"
 	"sort"
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/johnny-morrice/godless/internal/crypto"
-	"github.com/johnny-morrice/godless/internal/testutil"
 	"github.com/pkg/errors"
 )
 
@@ -19,6 +17,12 @@ type EntryName string
 func JoinStreamEntries(stream []NamespaceStreamEntry) []NamespaceStreamEntry {
 	ns := ReadNamespaceStream(stream)
 	return MakeNamespaceStream(ns)
+}
+
+func FilterSignedEntries(stream []NamespaceStreamEntry, keys []crypto.PublicKey) []NamespaceStreamEntry {
+	unsigned := ReadNamespaceStream(stream)
+	signed := unsigned.FilterVerified(keys)
+	return MakeNamespaceStream(signed)
 }
 
 // Semi-lattice type that implements our storage
@@ -40,6 +44,22 @@ func MakeNamespace(tables map[TableName]Table) Namespace {
 	}
 
 	return out
+}
+
+func (ns Namespace) FilterVerified(keys []crypto.PublicKey) Namespace {
+	empty := EmptyNamespace()
+
+	ns.ForeachEntry(func(t TableName, r RowName, e EntryName, entry Entry) {
+		signed := entry.FilterVerified(keys)
+		table := EmptyTable()
+		row := EmptyRow()
+
+		row.addEntry(e, signed)
+		table.addRow(r, row)
+		empty.addTable(t, table)
+	})
+
+	return empty
 }
 
 // Strip removes empty tables and rows that would not be saved to the backing store.
@@ -155,6 +175,17 @@ func (ns Namespace) Equals(other Namespace) bool {
 	}
 
 	return true
+}
+
+// Iterate through all entries
+func (ns Namespace) ForeachEntry(f func(t TableName, r RowName, e EntryName, entry Entry)) {
+	for tableName, table := range ns.Tables {
+		for rowName, row := range table.Rows {
+			for entryName, entry := range row.Entries {
+				f(tableName, rowName, entryName, entry)
+			}
+		}
+	}
 }
 
 // TODO improved type validation
@@ -362,6 +393,20 @@ func MakeEntry(set []Point) Entry {
 	return Entry{Set: undupes}
 }
 
+func (e Entry) FilterVerified(keys []crypto.PublicKey) Entry {
+	verified := make([]Point, 0, len(e.Set))
+
+	for _, p := range e.Set {
+		if p.IsVerifiedByAny(keys) {
+			verified = append(verified, p)
+		}
+	}
+
+	verifiedEntry := Entry{Set: verified}
+
+	return verifiedEntry
+}
+
 func (e Entry) Copy() Entry {
 	return MakeEntry(e.Set)
 }
@@ -395,126 +440,4 @@ func (e Entry) GetValues() []Point {
 	}
 
 	return cpy
-}
-
-type byPointValue []Point
-
-func (p byPointValue) Len() int {
-	return len(p)
-}
-
-func (p byPointValue) Swap(i, j int) {
-	p[i], p[j] = p[j], p[i]
-}
-
-func (p byPointValue) Less(i, j int) bool {
-	return p[i].Text < p[j].Text
-}
-
-func uniqPointSorted(set []Point) []Point {
-	if len(set) == 0 {
-		return set
-	}
-
-	uniq := make([]Point, 1, len(set))
-
-	uniq[0] = set[0]
-	for _, p := range set[1:] {
-		last := &uniq[len(uniq)-1]
-		if p.Text == last.Text {
-			last.Signatures = append(last.Signatures, p.Signatures...)
-		} else {
-			uniq = append(uniq, p)
-		}
-	}
-
-	for i := 0; i < len(uniq); i++ {
-		point := &uniq[i]
-		point.Signatures = crypto.UniqSignatures(point.Signatures)
-	}
-
-	return uniq
-}
-
-func GenNamespace(rand *rand.Rand, size int) Namespace {
-	const maxStr = 100
-	const tableFudge = 0.125
-	const rowFudge = 0.25
-
-	gen := EmptyNamespace()
-
-	// FIXME This looks horrific.
-	tableCount := testutil.GenCount(rand, size, tableFudge)
-	for i := 0; i < tableCount; i++ {
-		tableName := TableName(testutil.RandLetters(rand, maxStr))
-		table := EmptyTable()
-		rowCount := testutil.GenCount(rand, size, rowFudge)
-		for j := 0; j < rowCount; j++ {
-			rowName := RowName(testutil.RandLetters(rand, maxStr))
-			row := genRow(rand, size)
-			table.addRow(rowName, row)
-		}
-		gen.addTable(tableName, table)
-	}
-
-	return gen
-}
-
-func genRow(rand *rand.Rand, size int) Row {
-	const maxStr = 100
-	const entryFudge = 0.65
-	const pointFudge = 0.85
-	row := EmptyRow()
-	entryCount := testutil.GenCountRange(rand, 1, size, entryFudge)
-	for k := 0; k < entryCount; k++ {
-		entryName := EntryName(testutil.RandLetters(rand, maxStr))
-		pointCount := testutil.GenCountRange(rand, 1, size, pointFudge)
-		points := make([]Point, pointCount)
-
-		for m := 0; m < pointCount; m++ {
-			points[m] = genPoint(rand, maxStr)
-		}
-
-		entry := MakeEntry(points)
-		row.addEntry(entryName, entry)
-	}
-	return row
-}
-
-func genPoint(rand *rand.Rand, size int) Point {
-	return Point{Text: PointText(testutil.RandLetters(rand, size))}
-}
-
-type PointText string
-
-type Point struct {
-	Text       PointText
-	Signatures []crypto.Signature
-}
-
-func (p Point) HasText(text string) bool {
-	return p.Text == PointText(text)
-}
-
-// FIXME implement
-func (p Point) Equals(other Point) bool {
-	return false
-}
-
-func (p Point) Verify(publicKey crypto.PublicKey) bool {
-	for _, sig := range p.Signatures {
-		ok := crypto.Verify(publicKey, []byte(p.Text), sig)
-
-		if ok {
-			return true
-		}
-	}
-
-	log.Debug("Signature verification failed for Point")
-
-	return false
-}
-
-func UnsignedPoint(text PointText) Point {
-	return Point{Text: text}
 }

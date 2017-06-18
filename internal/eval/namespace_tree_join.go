@@ -12,9 +12,10 @@ type NamespaceTreeJoin struct {
 	query.NoSelectVisitor
 	query.NoDebugVisitor
 	query.ErrorCollectVisitor
-	Namespace api.NamespaceTree
-	tableKey  crdt.TableName
-	table     crdt.Table
+	Namespace   api.NamespaceTree
+	tableKey    crdt.TableName
+	table       crdt.Table
+	privateKeys []crypto.PrivateKey
 }
 
 func MakeNamespaceTreeJoin(ns api.NamespaceTree) *NamespaceTreeJoin {
@@ -46,7 +47,15 @@ func (visitor *NamespaceTreeJoin) RunQuery() api.APIResponse {
 }
 
 func (visitor *NamespaceTreeJoin) VisitPublicKey(keyText crypto.PublicKeyText) {
+	_, err := crypto.ParsePublicKey(keyText)
 
+	if err != nil {
+		visitor.BadPublicKey(keyText)
+		return
+	}
+
+	// TODO find private key associated with public key.
+	panic("not implemented")
 }
 
 func (visitor *NamespaceTreeJoin) VisitOpCode(opCode query.QueryOpCode) {
@@ -77,9 +86,12 @@ func (visitor *NamespaceTreeJoin) VisitRowJoin(position int, rowJoin *query.Quer
 	row := crdt.Row{}
 
 	for k, entryValue := range rowJoin.Entries {
-		// TODO implement crypto signature here.
-		panic("not implemented")
-		point := crdt.UnsignedPoint(entryValue)
+		point, err := visitor.makePoint(entryValue)
+
+		if err != nil {
+			visitor.badPrivateKey()
+		}
+
 		entry := crdt.MakeEntry([]crdt.Point{point})
 		row = row.JoinEntry(k, entry)
 	}
@@ -87,4 +99,13 @@ func (visitor *NamespaceTreeJoin) VisitRowJoin(position int, rowJoin *query.Quer
 	joined := visitor.table.JoinRow(rowJoin.RowKey, row)
 
 	visitor.table = joined
+}
+
+func (visitor *NamespaceTreeJoin) makePoint(text crdt.PointText) (crdt.Point, error) {
+	return crdt.SignedPoint(text, visitor.privateKeys)
+}
+
+func (visitor *NamespaceTreeJoin) badPrivateKey() {
+	err := errors.New("Failed to sign Point with bad private key")
+	visitor.CollectError(err)
 }

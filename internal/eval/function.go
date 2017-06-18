@@ -4,31 +4,12 @@ import (
 	"errors"
 
 	"github.com/johnny-morrice/godless/crdt"
-	"github.com/johnny-morrice/godless/internal/crypto"
 )
 
 type MatchFunction func(first string, prefix []string, entries []crdt.Entry) bool
 
 var _ MatchFunction = MatchFunction(StrEq)
 var _ MatchFunction = MatchFunction(StrNeq)
-
-type SignatureCheck struct {
-	PublicKeys []crypto.PublicKey
-}
-
-func (check SignatureCheck) IsSigned(first string, prefix []string, entries []crdt.Entry) bool {
-	for _, entry := range entries {
-		for _, point := range entry.GetValues() {
-			for _, key := range check.PublicKeys {
-				if point.Verify(key) {
-					return true
-				}
-			}
-		}
-	}
-
-	return false
-}
 
 func StrEq(first string, prefix []string, entries []crdt.Entry) bool {
 	prefix = append(prefix, first)

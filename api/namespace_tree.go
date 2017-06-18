@@ -1,9 +1,8 @@
 package api
 
 import (
-	"crypto"
-
 	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/internal/crypto"
 )
 
 type NamespaceTree interface {
@@ -44,9 +43,25 @@ func (searcher SignedTableSearcher) ReadNamespace(ns crdt.Namespace) TraversalUp
 	return searcher.Reader.ReadNamespace(ns)
 }
 
-// TODO implement
 func (searcher SignedTableSearcher) Search(index crdt.Index) []crdt.SignedLink {
-	panic("not implemented")
+	verified := []crdt.SignedLink{}
+
+	needSignature := len(searcher.Keys) > 0
+
+	for _, t := range searcher.Tables {
+		index.ForTable(t, func(link crdt.SignedLink) {
+			if !needSignature {
+				verified = append(verified, link)
+				return
+			}
+
+			if link.IsVerifiedByAny(searcher.Keys) {
+				verified = append(verified, link)
+			}
+		})
+	}
+
+	return verified
 }
 
 // NamespaceTreeReader functions return true when they have finished reading

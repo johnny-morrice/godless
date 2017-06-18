@@ -90,6 +90,22 @@ func (index Index) IsEmpty() bool {
 	return len(index.Index) == 0
 }
 
+func (index Index) ForTable(tableName TableName, f func(link SignedLink)) error {
+	const failMsg = "index.ForTable failed"
+
+	links, err := index.GetTableAddrs(tableName)
+
+	if err != nil {
+		return errors.Wrap(err, failMsg)
+	}
+
+	for _, l := range links {
+		f(l)
+	}
+
+	return nil
+}
+
 func (index Index) JoinIndex(other Index) Index {
 	cpy := index.Copy()
 

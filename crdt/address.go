@@ -3,6 +3,7 @@ package crdt
 import (
 	"sort"
 
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/johnny-morrice/godless/internal/crypto"
 )
 
@@ -25,6 +26,28 @@ func UnsignedLink(path IPFSPath) SignedLink {
 
 func PreSignedLink(path IPFSPath, sig crypto.Signature) SignedLink {
 	return SignedLink{Link: path, Signatures: []crypto.Signature{sig}}
+}
+
+func (link SignedLink) IsVerifiedByAny(keys []crypto.PublicKey) bool {
+	for _, pub := range keys {
+		if link.IsVerifiedBy(pub) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (link SignedLink) IsVerifiedBy(pub crypto.PublicKey) bool {
+	for _, sig := range link.Signatures {
+		if crypto.Verify(pub, []byte(link.Link), sig) {
+			return true
+		}
+	}
+
+	log.Warn("Signature verification failed for SignedLink")
+
+	return false
 }
 
 func (link SignedLink) Equals(other SignedLink) bool {

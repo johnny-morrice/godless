@@ -133,7 +133,6 @@ func (godless *Godless) setupNamespace() error {
 
 	if godless.IndexHash != "" {
 		head := crdt.IPFSPath(godless.IndexHash)
-		headCache.BeginWriteTransaction()
 
 		err := headCache.SetHead(head)
 
@@ -141,11 +140,6 @@ func (godless *Godless) setupNamespace() error {
 			return err
 		}
 
-		err = headCache.Commit()
-
-		if err != nil {
-			return err
-		}
 	}
 
 	godless.remote = service.MakeRemoteNamespace(godless.store, headCache, indexCache)

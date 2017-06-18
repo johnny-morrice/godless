@@ -17,6 +17,7 @@ type NamespaceTreeSelect struct {
 	query.ErrorCollectVisitor
 	Namespace api.NamespaceTree
 	crit      *rowCriteria
+	keys      []crypto.PublicKey
 }
 
 func MakeNamespaceTreeSelect(namespace api.NamespaceTree) *NamespaceTreeSelect {
@@ -25,6 +26,7 @@ func MakeNamespaceTreeSelect(namespace api.NamespaceTree) *NamespaceTreeSelect {
 		crit: &rowCriteria{
 			result: []crdt.NamespaceStreamEntry{},
 		},
+		keys: []crypto.PublicKey{},
 	}
 }
 
@@ -45,8 +47,6 @@ func (visitor *NamespaceTreeSelect) RunQuery() api.APIResponse {
 	log.Info("Searching namespaces...")
 	lambda := api.NamespaceTreeLambda(visitor.crit.selectMatching)
 
-	// TODO implement key search here
-	panic("not implemented")
 	searcher := api.SignedTableSearcher{
 		Reader: lambda,
 		Tables: []crdt.TableName{visitor.crit.tableKey},
@@ -61,14 +61,37 @@ func (visitor *NamespaceTreeSelect) RunQuery() api.APIResponse {
 	log.Info("Search complete.")
 
 	response := api.RESPONSE_QUERY
-	stream := crdt.JoinStreamEntries(visitor.crit.result)
+
+	stream := visitor.resultStream()
 
 	response.QueryResponse.Entries = stream
 	return response
 }
 
-func (visitor *NamespaceTreeSelect) VisitPublicKey(keyText crypto.PublicKeyText) {
+func (visitor *NamespaceTreeSelect) resultStream() []crdt.NamespaceStreamEntry {
+	stream := visitor.crit.result
+	if visitor.needsSignature() {
+		stream = crdt.FilterSignedEntries(stream, visitor.keys)
+	} else {
+		stream = crdt.JoinStreamEntries(stream)
+	}
 
+	return stream
+}
+
+func (visitor *NamespaceTreeSelect) needsSignature() bool {
+	return len(visitor.keys) > 0
+}
+
+func (visitor *NamespaceTreeSelect) VisitPublicKey(keyText crypto.PublicKeyText) {
+	pub, err := crypto.ParsePublicKey(keyText)
+
+	if err != nil {
+		visitor.BadPublicKey(keyText)
+		return
+	}
+
+	visitor.keys = append(visitor.keys, pub)
 }
 
 func (visitor *NamespaceTreeSelect) VisitTableKey(tableKey crdt.TableName) {

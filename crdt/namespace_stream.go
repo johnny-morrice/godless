@@ -190,7 +190,7 @@ func MakeNamespaceStream(ns Namespace) []NamespaceStreamEntry {
 	index := 0
 	stream := make([]NamespaceStreamEntry, 0, count)
 
-	foreachEntry(ns, func(t TableName, r RowName, e EntryName, entry Entry) {
+	ns.ForeachEntry(func(t TableName, r RowName, e EntryName, entry Entry) {
 		proto := NamespaceStreamEntry{
 			Table: t,
 			Row:   r,
@@ -209,7 +209,7 @@ func MakeNamespaceStream(ns Namespace) []NamespaceStreamEntry {
 func streamLength(ns Namespace) int {
 	count := 0
 
-	foreachEntry(ns, func(t TableName, r RowName, e EntryName, entry Entry) {
+	ns.ForeachEntry(func(t TableName, r RowName, e EntryName, entry Entry) {
 		for _, point := range entry.GetValues() {
 			sigCount := len(point.Signatures)
 			if sigCount > 0 {
@@ -221,17 +221,6 @@ func streamLength(ns Namespace) int {
 	})
 
 	return count
-}
-
-// Iterate through all entries
-func foreachEntry(ns Namespace, f func(t TableName, r RowName, e EntryName, entry Entry)) {
-	for tableName, table := range ns.Tables {
-		for rowName, row := range table.Rows {
-			for entryName, entry := range row.Entries {
-				f(tableName, rowName, entryName, entry)
-			}
-		}
-	}
 }
 
 func ReadNamespaceStream(stream []NamespaceStreamEntry) Namespace {

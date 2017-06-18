@@ -48,8 +48,8 @@ type ErrorCollectVisitor struct {
 	err error
 }
 
-func (visitor *ErrorCollectVisitor) BadPublicKey(key crypto.PublicKeyText) {
-	visitor.CollectError(fmt.Errorf("Bad PublicKeyText: %v", key))
+func (visitor *ErrorCollectVisitor) BadPublicKey(keyText crypto.PublicKeyText) {
+	visitor.CollectError(fmt.Errorf("Bad PublicKeyText: %v", keyText))
 }
 
 func (visitor *ErrorCollectVisitor) BadOpcode(opCode QueryOpCode) {

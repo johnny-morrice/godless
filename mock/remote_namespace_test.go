@@ -408,11 +408,7 @@ func makeRemote(mock *MockRemoteStore) api.RemoteNamespaceTree {
 
 func loadRemote(mock *MockRemoteStore, addr crdt.IPFSPath) api.RemoteNamespaceTree {
 	headCache := cache.MakeResidentHeadCache()
-	err := headCache.BeginWriteTransaction()
-	panicOnBadInit(err)
-	err = headCache.SetHead(addr)
-	panicOnBadInit(err)
-	err = headCache.Commit()
+	err := headCache.SetHead(addr)
 	panicOnBadInit(err)
 
 	indexCache := fakeIndexCache{}
