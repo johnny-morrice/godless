@@ -12,14 +12,10 @@ import (
 
 func ReadNamespaceEntryMessage(message *proto.NamespaceEntryMessage) NamespaceStreamEntry {
 	entry := NamespaceStreamEntry{
-		Table:  TableName(message.Table),
-		Row:    RowName(message.Row),
-		Entry:  EntryName(message.Entry),
-		Points: make([]StreamPoint, len(message.Points)),
-	}
-
-	for i, p := range message.Points {
-		entry.Points[i] = ReadPointMessage(p)
+		Table: TableName(message.Table),
+		Row:   RowName(message.Row),
+		Entry: EntryName(message.Entry),
+		Point: ReadPointMessage(message.Point),
 	}
 
 	return entry
@@ -27,7 +23,7 @@ func ReadNamespaceEntryMessage(message *proto.NamespaceEntryMessage) NamespaceSt
 
 func ReadPointMessage(message *proto.PointMessage) StreamPoint {
 	return StreamPoint{
-		Text:      message.Text,
+		Text:      PointText(message.Text),
 		Signature: crypto.SignatureText(message.Signature),
 	}
 }
@@ -41,14 +37,10 @@ func MakePointMessage(point StreamPoint) *proto.PointMessage {
 
 func MakeNamespaceEntryMessage(entry NamespaceStreamEntry) *proto.NamespaceEntryMessage {
 	pb := &proto.NamespaceEntryMessage{
-		Table:  string(entry.Table),
-		Row:    string(entry.Row),
-		Entry:  string(entry.Entry),
-		Points: make([]*proto.PointMessage, len(entry.Points)),
-	}
-
-	for i, p := range entry.Points {
-		pb.Points[i] = MakePointMessage(p)
+		Table: string(entry.Table),
+		Row:   string(entry.Row),
+		Entry: string(entry.Entry),
+		Point: MakePointMessage(entry.Point),
 	}
 
 	return pb

@@ -15,10 +15,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-func TestRemoteNamespaceJoinTable(t *testing.T) {
-	// TODO...
-}
-
 func TestRemoteNamespaceReplicate(t *testing.T) {
 	// TODO integration test as design stands.
 }
@@ -36,17 +32,17 @@ func TestRemoteNamespaceRunKvReflection(t *testing.T) {
 	empty := crdt.EmptyNamespace()
 	tableA := crdt.MakeTable(map[crdt.RowName]crdt.Row{
 		"Row A": crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-			"Entry A": crdt.MakeEntry([]crdt.Point{"Point A"}),
+			"Entry A": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Point A")}),
 		}),
 	})
 	tableB := crdt.MakeTable(map[crdt.RowName]crdt.Row{
 		"Row B": crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-			"Entry B": crdt.MakeEntry([]crdt.Point{"Point B"}),
+			"Entry B": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Point B")}),
 		}),
 	})
 	tableC := crdt.MakeTable(map[crdt.RowName]crdt.Row{
 		"Row C": crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-			"Entry C": crdt.MakeEntry([]crdt.Point{"Point C"}),
+			"Entry C": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Point C")}),
 		}),
 	})
 
@@ -58,10 +54,10 @@ func TestRemoteNamespaceRunKvReflection(t *testing.T) {
 	namespaceB := empty.JoinTable(tableBName, tableB)
 	namespaceC := empty.JoinTable(tableCName, tableC)
 
-	index := crdt.MakeIndex(map[crdt.TableName]crdt.IPFSPath{
-		tableAName: addrA,
-		tableBName: addrB,
-		tableCName: addrC,
+	index := crdt.MakeIndex(map[crdt.TableName]crdt.SignedLink{
+		tableAName: crdt.UnsignedLink(addrA),
+		tableBName: crdt.UnsignedLink(addrB),
+		tableCName: crdt.UnsignedLink(addrC),
 	})
 
 	mockStore.EXPECT().CatIndex(addrIndex).Return(index, nil).MinTimes(1)
@@ -119,26 +115,30 @@ func TestLoadTraverseSuccess(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := NewMockRemoteStore(ctrl)
-	mockReader := NewMockNamespaceTreeTableReader(ctrl)
+	mockSearcher := NewMockNamespaceSearcher(ctrl)
 	addrA := crdt.IPFSPath("Addr A")
 	addrB := crdt.IPFSPath("Addr B")
 	addrC := crdt.IPFSPath("Addr C")
 	addrIndex := crdt.IPFSPath("Addr Index")
 
+	signedAddrA := crdt.UnsignedLink(addrA)
+	signedAddrB := crdt.UnsignedLink(addrB)
+	signedAddrC := crdt.UnsignedLink(addrC)
+
 	empty := crdt.EmptyNamespace()
 	tableA := crdt.MakeTable(map[crdt.RowName]crdt.Row{
 		"Row A": crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-			"Entry A": crdt.MakeEntry([]crdt.Point{"Point A"}),
+			"Entry A": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Point A")}),
 		}),
 	})
 	tableB := crdt.MakeTable(map[crdt.RowName]crdt.Row{
 		"Row B": crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-			"Entry B": crdt.MakeEntry([]crdt.Point{"Point B"}),
+			"Entry B": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Point B")}),
 		}),
 	})
 	tableC := crdt.MakeTable(map[crdt.RowName]crdt.Row{
 		"Row C": crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-			"Entry C": crdt.MakeEntry([]crdt.Point{"Point C"}),
+			"Entry C": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Point C")}),
 		}),
 	})
 
@@ -150,10 +150,10 @@ func TestLoadTraverseSuccess(t *testing.T) {
 	namespaceB := empty.JoinTable(tableBName, tableB)
 	namespaceC := empty.JoinTable(tableCName, tableC)
 
-	index := crdt.MakeIndex(map[crdt.TableName]crdt.IPFSPath{
-		tableAName: addrA,
-		tableBName: addrB,
-		tableCName: addrC,
+	index := crdt.MakeIndex(map[crdt.TableName]crdt.SignedLink{
+		tableAName: crdt.UnsignedLink(addrA),
+		tableBName: crdt.UnsignedLink(addrB),
+		tableCName: crdt.UnsignedLink(addrC),
 	})
 
 	keepReading := api.TraversalUpdate{More: true}
@@ -164,10 +164,10 @@ func TestLoadTraverseSuccess(t *testing.T) {
 	mockStore.EXPECT().CatNamespace(addrB).Return(namespaceB, nil)
 	mockStore.EXPECT().CatNamespace(addrC).Return(namespaceC, nil)
 
-	mockReader.EXPECT().ReadsTables().Return([]crdt.TableName{tableAName, tableBName, tableCName})
-	mockReader.EXPECT().ReadNamespace(matchNamespace(namespaceA)).Return(keepReading)
-	mockReader.EXPECT().ReadNamespace(matchNamespace(namespaceB)).Return(keepReading)
-	mockReader.EXPECT().ReadNamespace(matchNamespace(namespaceC)).Return(keepReading)
+	mockSearcher.EXPECT().Search(index).Return([]crdt.SignedLink{signedAddrA, signedAddrB, signedAddrC})
+	mockSearcher.EXPECT().ReadNamespace(matchNamespace(namespaceA)).Return(keepReading)
+	mockSearcher.EXPECT().ReadNamespace(matchNamespace(namespaceB)).Return(keepReading)
+	mockSearcher.EXPECT().ReadNamespace(matchNamespace(namespaceC)).Return(keepReading)
 
 	remote := loadRemote(mockStore, addrIndex)
 
@@ -175,7 +175,7 @@ func TestLoadTraverseSuccess(t *testing.T) {
 		t.Error("remote was nil")
 	}
 
-	lterr := remote.LoadTraverse(mockReader)
+	lterr := remote.LoadTraverse(mockSearcher)
 
 	if lterr != nil {
 		t.Error(lterr)
@@ -187,29 +187,30 @@ func TestLoadTraverseFailure(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := NewMockRemoteStore(ctrl)
-	mockReader := NewMockNamespaceTreeTableReader(ctrl)
-	indexAddr := crdt.IPFSPath("Addr Index")
-	namespaceAddr := crdt.IPFSPath("Addr A")
+	mockSearcher := NewMockNamespaceSearcher(ctrl)
+	const indexAddr = crdt.IPFSPath("Addr Index")
+	const namespaceAddr = crdt.IPFSPath("Addr A")
+	signedNamespaceAddr := crdt.UnsignedLink(namespaceAddr)
 
 	empty := crdt.EmptyNamespace()
 	tableA := crdt.MakeTable(map[crdt.RowName]crdt.Row{
 		"Row A": crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-			"Entry A": crdt.MakeEntry([]crdt.Point{"Point A"}),
+			"Entry A": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Point A")}),
 		}),
 	})
 
 	namespaceA := empty.JoinTable("Table A", tableA)
 
 	tableName := crdt.TableName("Table A")
-	index := crdt.MakeIndex(map[crdt.TableName]crdt.IPFSPath{
-		tableName: namespaceAddr,
+	index := crdt.MakeIndex(map[crdt.TableName]crdt.SignedLink{
+		tableName: signedNamespaceAddr,
 	})
 
 	badTraverse := api.TraversalUpdate{More: true, Error: errors.New("Expected error")}
 	mockStore.EXPECT().CatNamespace(namespaceAddr).Return(namespaceA, nil)
 	mockStore.EXPECT().CatIndex(indexAddr).Return(index, nil).MinTimes(1)
-	mockReader.EXPECT().ReadsTables().Return([]crdt.TableName{tableName})
-	mockReader.EXPECT().ReadNamespace(matchNamespace(namespaceA)).Return(badTraverse)
+	mockSearcher.EXPECT().Search(index).Return([]crdt.SignedLink{signedNamespaceAddr})
+	mockSearcher.EXPECT().ReadNamespace(matchNamespace(namespaceA)).Return(badTraverse)
 
 	remote := loadRemote(mockStore, indexAddr)
 
@@ -217,7 +218,7 @@ func TestLoadTraverseFailure(t *testing.T) {
 		t.Error("remote was nil")
 	}
 
-	lterr := remote.LoadTraverse(mockReader)
+	lterr := remote.LoadTraverse(mockSearcher)
 
 	if lterr == nil {
 		t.Error("lterr was nil")
@@ -229,29 +230,30 @@ func TestLoadTraverseAbort(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockStore := NewMockRemoteStore(ctrl)
-	mockReader := NewMockNamespaceTreeTableReader(ctrl)
+	mockSearcher := NewMockNamespaceSearcher(ctrl)
 	addrIndex := crdt.IPFSPath("Addr Index")
 	addrA := crdt.IPFSPath("Addr A")
+	signedAddrA := crdt.UnsignedLink(addrA)
 
 	empty := crdt.EmptyNamespace()
 	tableA := crdt.MakeTable(map[crdt.RowName]crdt.Row{
 		"Row A": crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-			"Entry A": crdt.MakeEntry([]crdt.Point{"Point A"}),
+			"Entry A": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Point A")}),
 		}),
 	})
 
 	namespaceA := empty.JoinTable("Table A", tableA)
 
 	tableName := crdt.TableName("Table A")
-	index := crdt.MakeIndex(map[crdt.TableName]crdt.IPFSPath{
-		tableName: addrA,
+	index := crdt.MakeIndex(map[crdt.TableName]crdt.SignedLink{
+		tableName: signedAddrA,
 	})
 
 	abort := api.TraversalUpdate{}
 	mockStore.EXPECT().CatNamespace(addrA).Return(namespaceA, nil)
 	mockStore.EXPECT().CatIndex(addrIndex).Return(index, nil).MinTimes(1)
-	mockReader.EXPECT().ReadsTables().Return([]crdt.TableName{tableName})
-	mockReader.EXPECT().ReadNamespace(matchNamespace(namespaceA)).Return(abort)
+	mockSearcher.EXPECT().Search(index).Return([]crdt.SignedLink{signedAddrA})
+	mockSearcher.EXPECT().ReadNamespace(matchNamespace(namespaceA)).Return(abort)
 
 	remote := loadRemote(mockStore, addrIndex)
 
@@ -259,14 +261,14 @@ func TestLoadTraverseAbort(t *testing.T) {
 		t.Error("remote was nil")
 	}
 
-	lterr := remote.LoadTraverse(mockReader)
+	lterr := remote.LoadTraverse(mockSearcher)
 
 	if lterr != nil {
 		t.Error(lterr)
 	}
 }
 
-func TestPersistSuccess(t *testing.T) {
+func TestJoinTableSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -278,16 +280,18 @@ func TestPersistSuccess(t *testing.T) {
 	addrIndexB := crdt.IPFSPath(crdt.IPFSPath("Addr Index B"))
 	tableB := crdt.MakeTable(map[crdt.RowName]crdt.Row{
 		"Row B": crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-			"Entry B": crdt.MakeEntry([]crdt.Point{"Point B"}),
+			"Entry B": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Point B")}),
 		}),
 	})
+
+	signedAddrB := crdt.UnsignedLink(addrB)
 
 	tableBName := crdt.TableName("Table B")
 	namespaceB := crdt.EmptyNamespace().JoinTable(tableBName, tableB)
 
 	indexA := crdt.EmptyIndex()
 
-	indexB := indexA.JoinNamespace(addrB, namespaceB)
+	indexB := indexA.JoinNamespace(signedAddrB, namespaceB)
 
 	mock.EXPECT().AddNamespace(matchNamespace(namespaceB)).Return(addrB, nil)
 	mock.EXPECT().CatIndex(addrIndexA).Return(indexA, nil).MinTimes(1)
@@ -306,7 +310,7 @@ func TestPersistSuccess(t *testing.T) {
 	}
 }
 
-func TestPersistFailure(t *testing.T) {
+func TestJoinTableFailure(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -315,12 +319,14 @@ func TestPersistFailure(t *testing.T) {
 	const namespaceAddr = crdt.IPFSPath("NS Addr 1")
 	table := crdt.MakeTable(map[crdt.RowName]crdt.Row{
 		"Row Key": crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-			"Entry Key": crdt.MakeEntry([]crdt.Point{"Entry Point"}),
+			"Entry Key": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Entry Point")}),
 		}),
 	})
 
+	signedAddr := crdt.UnsignedLink(namespaceAddr)
+
 	namespace := crdt.EmptyNamespace().JoinTable("Table Key", table)
-	index := crdt.EmptyIndex().JoinNamespace(namespaceAddr, namespace)
+	index := crdt.EmptyIndex().JoinNamespace(signedAddr, namespace)
 
 	mock.EXPECT().AddNamespace(matchNamespace(namespace)).Return(namespaceAddr, nil)
 	mock.EXPECT().AddIndex(matchIndex(index)).Return(crdt.NIL_PATH, errors.New("Expected error"))

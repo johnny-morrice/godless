@@ -3,22 +3,44 @@ package crdt
 import (
 	"sort"
 
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/johnny-morrice/godless/internal/crypto"
-	"github.com/johnny-morrice/godless/internal/util"
 	"github.com/pkg/errors"
 )
 
 type StreamPoint struct {
-	Text      string
+	Text      PointText
 	Signature crypto.SignatureText
+}
+
+func (point StreamPoint) Equals(other StreamPoint) bool {
+	return point.Text == other.Text && point.Signature == other.Signature
+}
+
+func (point StreamPoint) Less(other StreamPoint) bool {
+	if point.Text < other.Text {
+		return true
+	} else if point.Text > other.Text {
+		return false
+	}
+
+	return point.Signature < other.Signature
 }
 
 // FIXME not really a stream, whole is kept in memory.
 type NamespaceStreamEntry struct {
-	Table  TableName
-	Row    RowName
-	Entry  EntryName
-	Points []StreamPoint
+	Table TableName
+	Row   RowName
+	Entry EntryName
+	Point StreamPoint
+}
+
+func (entry NamespaceStreamEntry) SamePoint(other NamespaceStreamEntry) bool {
+	ok := entry.Table == other.Table
+	ok = ok && entry.Row == other.Row
+	ok = ok && entry.Entry == other.Entry
+	ok = ok && entry.Point.Text == other.Point.Text
+	return ok
 }
 
 func (entry NamespaceStreamEntry) Equals(other NamespaceStreamEntry) bool {
@@ -30,11 +52,8 @@ func (entry NamespaceStreamEntry) Equals(other NamespaceStreamEntry) bool {
 		return false
 	}
 
-	for i, myPoint := range entry.Points {
-		theirPoint := other.Points[i]
-		if myPoint != theirPoint {
-			return false
-		}
+	if !entry.Point.Equals(other.Point) {
+		return false
 	}
 
 	return true
@@ -86,105 +105,69 @@ func (stream byNamespaceStreamOrder) Less(i, j int) bool {
 		return false
 	}
 
-	return pointLess(a.Points, b.Points)
-}
-
-type byEntryOrder []Entry
-
-func (entries byEntryOrder) Len() int {
-	return len(entries)
-}
-
-func (entries byEntryOrder) Swap(i, j int) {
-	entries[i], entries[j] = entries[j], entries[i]
-}
-
-// FIXME actually do comparsion
-func (entries byEntryOrder) Less(i, j int) bool {
-	panic("not implemented")
-	return false
-}
-
-func pointLess(a, b []StreamPoint) bool {
-	minSize := util.Imin(len(a), len(b))
-
-	for i := 0; i < minSize; i++ {
-		ap := a[i]
-		bp := b[i]
-
-		if ap.Text < bp.Text {
-			return true
-		} else if ap.Text > bp.Text {
-			return false
-		}
-
-		if ap.Signature < bp.Signature {
-			return true
-		} else if ap.Signature > bp.Signature {
-			return false
-		}
-	}
-
-	return len(a) < len(b)
+	return a.Point.Less(b.Point)
 }
 
 // TODO does not support unsigned links.
-func MakeStreamPoints(point Point) []StreamPoint {
-	count := 1
-	sigCount := len(point.Signatures)
-	if sigCount > 0 {
-		count = sigCount
+func makeStreamPoints(proto NamespaceStreamEntry, point Point, index int, stream []NamespaceStreamEntry) int {
+	if len(point.Signatures) == 0 {
+		entry := proto
+		entry.Point = MakeStreamPoint(point.Text, crypto.Signature{})
+		stream[index] = entry
+		return index + 1
 	}
-	stream := make([]StreamPoint, count)
 
 	for _, sig := range point.Signatures {
-		stream = append(stream, MakeStreamPoint(point.Text, sig))
+		entry := proto
+		proto.Point = MakeStreamPoint(point.Text, sig)
+		stream[index] = entry
+		index++
 	}
 
-	return stream
+	return index
 }
 
-func MakeStreamPoint(text string, sig crypto.Signature) StreamPoint {
+func MakeStreamPoint(text PointText, sig crypto.Signature) StreamPoint {
 	return StreamPoint{Text: text, Signature: crypto.PrintSignature(sig)}
 }
 
-// TODO should take slice of StreamPoint
-func ReadStreamPoint(stream StreamPoint) (Point, error) {
-	const failMsg = "ReadStreamPoint failed"
+func readStreamPoint(stream []NamespaceStreamEntry) (Point, []InvalidStreamEntry, error) {
+	const failMsg = "readStreamPoint failed"
 
-	_, err := crypto.ParseSignature(stream.Signature)
-
-	if err != nil {
-		return Point{}, errors.Wrap(err, failMsg)
+	if len(stream) == 0 {
+		return Point{}, nil, nil
 	}
 
+	first := stream[0]
 	point := Point{
-		Text: stream.Text,
+		Text:       first.Point.Text,
+		Signatures: make([]crypto.Signature, 0, len(stream)),
 	}
 
-	panic("not implemented")
+	invalid := make([]InvalidStreamEntry, 0, len(stream))
 
-	return point, nil
-}
+	for _, entry := range stream {
+		if !entry.SamePoint(first) {
+			notSame := errors.New("Corrupt stream")
+			return Point{}, nil, errors.Wrap(notSame, failMsg)
+		}
 
-func MakeStreamEntry(tname TableName, rname RowName, ename EntryName, entry Entry) NamespaceStreamEntry {
-	panic("not implemented")
+		if entry.Point.Signature == "" {
+			continue
+		}
 
-	count := 0
+		sig, err := crypto.ParseSignature(entry.Point.Signature)
 
-	points := entry.GetValues()
-	streamPoints := make([]StreamPoint, count)
+		if err != nil {
+			log.Warn("Failed to parse signature")
+			invalid = append(invalid, InvalidStreamEntry(entry))
+			continue
+		}
 
-	for _, p := range points {
-		streamPoints = append(streamPoints, MakeStreamPoints(p)...)
+		point.Signatures = append(point.Signatures, sig)
 	}
 
-	return NamespaceStreamEntry{
-		Table:  tname,
-		Row:    rname,
-		Entry:  ename,
-		Points: streamPoints,
-	}
+	return point, invalid, nil
 }
 
 func MakeTableStream(tableKey TableName, table Table) []NamespaceStreamEntry {
@@ -202,27 +185,68 @@ func MakeRowStream(tableKey TableName, rowKey RowName, row Row) []NamespaceStrea
 }
 
 func MakeNamespaceStream(ns Namespace) []NamespaceStreamEntry {
-	stream := []NamespaceStreamEntry{}
-	for tableName, table := range ns.Tables {
-		for rowName, row := range table.Rows {
-			for entryName, entry := range row.Entries {
-				if len(entry.Set) > 0 {
-					streamEntry := MakeStreamEntry(tableName, rowName, entryName, entry)
-					stream = append(stream, streamEntry)
-				}
-			}
+	count := streamLength(ns)
+
+	index := 0
+	stream := make([]NamespaceStreamEntry, 0, count)
+
+	foreachEntry(ns, func(t TableName, r RowName, e EntryName, entry Entry) {
+		proto := NamespaceStreamEntry{
+			Table: t,
+			Row:   r,
+			Entry: e,
 		}
-	}
+
+		for _, point := range entry.GetValues() {
+			index = makeStreamPoints(proto, point, index, stream)
+		}
+	})
 
 	sort.Sort(byNamespaceStreamOrder(stream))
 	return stream
 }
 
+func streamLength(ns Namespace) int {
+	count := 0
+
+	foreachEntry(ns, func(t TableName, r RowName, e EntryName, entry Entry) {
+		for _, point := range entry.GetValues() {
+			sigCount := len(point.Signatures)
+			if sigCount > 0 {
+				count += sigCount
+			} else {
+				count++
+			}
+		}
+	})
+
+	return count
+}
+
+// Iterate through all entries
+func foreachEntry(ns Namespace, f func(t TableName, r RowName, e EntryName, entry Entry)) {
+	for tableName, table := range ns.Tables {
+		for rowName, row := range table.Rows {
+			for entryName, entry := range row.Entries {
+				f(tableName, rowName, entryName, entry)
+			}
+		}
+	}
+}
+
 func ReadNamespaceStream(stream []NamespaceStreamEntry) Namespace {
 	ns := EmptyNamespace()
 
-	for _, streamEntry := range stream {
-		ns.addStreamEntry(streamEntry)
+	batchStart := 0
+	for i, entry := range stream {
+		startEntry := stream[batchStart]
+
+		if !entry.SamePoint(startEntry) {
+			batchEnd := i + 1
+			ns.addPointBatch(stream[batchStart:batchEnd])
+			batchStart = batchEnd
+		}
+
 	}
 
 	return ns

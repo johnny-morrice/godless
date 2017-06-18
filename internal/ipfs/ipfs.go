@@ -63,10 +63,15 @@ func (index *IPFSIndex) encode(w io.Writer) error {
 }
 
 func (index *IPFSIndex) decode(r io.Reader) error {
-	dx, err := crdt.DecodeIndex(r)
+	dx, invalid, err := crdt.DecodeIndex(r)
 
 	if err != nil {
 		return err
+	}
+
+	// TODO should cache the invalid details.
+	if len(invalid) > 0 {
+		log.Warn("IPFSIndex Decoded invalid index entries")
 	}
 
 	index.Index = dx

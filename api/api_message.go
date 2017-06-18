@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/internal/util"
 	"github.com/johnny-morrice/godless/proto"
@@ -151,7 +152,14 @@ func readAPIReflectResponse(message *proto.APIReflectResponseMessage) APIReflect
 	case REFLECT_HEAD_PATH:
 		resp.Path = crdt.IPFSPath(message.Path)
 	case REFLECT_INDEX:
-		resp.Index = crdt.ReadIndexMessage(message.Index)
+		index, invalid := crdt.ReadIndexMessage(message.Index)
+
+		// TODO Should write those details to disk.
+		if len(invalid) > 0 {
+			log.Warn("Invalid index stream details")
+		}
+
+		resp.Index = index
 	case REFLECT_DUMP_NAMESPACE:
 		resp.Namespace = crdt.ReadNamespaceMessage(message.Namespace)
 	default:

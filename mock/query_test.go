@@ -18,13 +18,13 @@ func TestVisitJoin(t *testing.T) {
 	joinQuery.Join.Rows = []query.QueryRowJoin{
 		query.QueryRowJoin{
 			RowKey: "Hello Row",
-			Entries: map[crdt.EntryName]crdt.Point{
+			Entries: map[crdt.EntryName]crdt.PointText{
 				"Entry A": "Point A",
 			},
 		},
 		query.QueryRowJoin{
 			RowKey: "Goodbye Row",
-			Entries: map[crdt.EntryName]crdt.Point{
+			Entries: map[crdt.EntryName]crdt.PointText{
 				"Entry B": "Point B",
 			},
 		},

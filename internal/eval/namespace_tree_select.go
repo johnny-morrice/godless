@@ -44,9 +44,14 @@ func (visitor *NamespaceTreeSelect) RunQuery() api.APIResponse {
 
 	log.Info("Searching namespaces...")
 	lambda := api.NamespaceTreeLambda(visitor.crit.selectMatching)
-	tables := []crdt.TableName{visitor.crit.tableKey}
-	tableReader := api.AddTableHints(tables, lambda)
-	err = visitor.Namespace.LoadTraverse(tableReader)
+
+	// TODO implement key search here
+	panic("not implemented")
+	searcher := api.SignedTableSearcher{
+		Reader: lambda,
+		Tables: []crdt.TableName{visitor.crit.tableKey},
+	}
+	err = visitor.Namespace.LoadTraverse(searcher)
 
 	if err != nil {
 		fail.Err = errors.Wrap(err, "NamespaceTreeSelect failed")

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/johnny-morrice/godless/query"
 )
 
@@ -16,15 +17,18 @@ import (
 // The various where predicates are tested elsewhere.  This test focusses
 // on whether the correct rows will be discovered for any predicate.
 func TestRowCriteria_findRows(t *testing.T) {
-	pointA := []crdt.Point{"hello"}
-	pointB := []crdt.Point{"world"}
+	pointA := crdt.UnsignedPoint("hello")
+	pointB := crdt.UnsignedPoint("world")
 
 	rowA := crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-		"foo": crdt.MakeEntry(pointA),
+		"foo": crdt.MakeEntry([]crdt.Point{pointA}),
 	})
 	rowB := crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-		"bar": crdt.MakeEntry(pointB),
+		"bar": crdt.MakeEntry([]crdt.Point{pointB}),
 	})
+
+	streamPointA := crdt.MakeStreamPoint(pointA.Text, crypto.Signature{})
+	streamPointB := crdt.MakeStreamPoint(pointB.Text, crypto.Signature{})
 
 	namespace := crdt.MakeNamespace(map[crdt.TableName]crdt.Table{
 		TABLE_KEY: crdt.MakeTable(map[crdt.RowName]crdt.Row{
@@ -35,24 +39,24 @@ func TestRowCriteria_findRows(t *testing.T) {
 	})
 
 	streamEntryA := crdt.NamespaceStreamEntry{
-		Table:  TABLE_KEY,
-		Row:    "a",
-		Entry:  "foo",
-		Points: pointA,
+		Table: TABLE_KEY,
+		Row:   "a",
+		Entry: "foo",
+		Point: streamPointA,
 	}
 
 	streamEntryB := crdt.NamespaceStreamEntry{
-		Table:  TABLE_KEY,
-		Row:    "b",
-		Entry:  "bar",
-		Points: pointB,
+		Table: TABLE_KEY,
+		Row:   "b",
+		Entry: "bar",
+		Point: streamPointB,
 	}
 
 	streamEntryC := crdt.NamespaceStreamEntry{
-		Table:  TABLE_KEY,
-		Row:    "c",
-		Entry:  "bar",
-		Points: pointB,
+		Table: TABLE_KEY,
+		Row:   "c",
+		Entry: "bar",
+		Point: streamPointB,
 	}
 
 	expected := [][]crdt.NamespaceStreamEntry{

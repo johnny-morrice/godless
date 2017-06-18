@@ -1,10 +1,14 @@
 package api
 
-import "github.com/johnny-morrice/godless/crdt"
+import (
+	"crypto"
+
+	"github.com/johnny-morrice/godless/crdt"
+)
 
 type NamespaceTree interface {
 	JoinTable(crdt.TableName, crdt.Table) error
-	LoadTraverse(NamespaceTreeTableReader) error
+	LoadTraverse(searcher NamespaceSearcher) error
 }
 
 type RemoteNamespaceTree interface {
@@ -13,7 +17,7 @@ type RemoteNamespaceTree interface {
 }
 
 type NamespaceTreeReader interface {
-	ReadNamespace(crdt.Namespace) TraversalUpdate
+	ReadNamespace(ns crdt.Namespace) TraversalUpdate
 }
 
 type TraversalUpdate struct {
@@ -21,33 +25,28 @@ type TraversalUpdate struct {
 	Error error
 }
 
-type TableHinter interface {
-	ReadsTables() []crdt.TableName
+type IndexSearch interface {
+	Search(index crdt.Index) []crdt.SignedLink
 }
 
-type NamespaceTreeTableReader interface {
-	TableHinter
+type NamespaceSearcher interface {
+	IndexSearch
 	NamespaceTreeReader
 }
 
-func AddTableHints(tables []crdt.TableName, ntr NamespaceTreeReader) NamespaceTreeTableReader {
-	return tableHinterWrapper{
-		hints:  tables,
-		reader: ntr,
-	}
+type SignedTableSearcher struct {
+	Reader NamespaceTreeReader
+	Tables []crdt.TableName
+	Keys   []crypto.PublicKey
 }
 
-type tableHinterWrapper struct {
-	reader NamespaceTreeReader
-	hints  []crdt.TableName
+func (searcher SignedTableSearcher) ReadNamespace(ns crdt.Namespace) TraversalUpdate {
+	return searcher.Reader.ReadNamespace(ns)
 }
 
-func (thw tableHinterWrapper) ReadsTables() []crdt.TableName {
-	return thw.hints
-}
-
-func (thw tableHinterWrapper) ReadNamespace(ns crdt.Namespace) TraversalUpdate {
-	return thw.reader.ReadNamespace(ns)
+// TODO implement
+func (searcher SignedTableSearcher) Search(index crdt.Index) []crdt.SignedLink {
+	panic("not implemented")
 }
 
 // NamespaceTreeReader functions return true when they have finished reading

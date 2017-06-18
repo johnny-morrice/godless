@@ -77,7 +77,10 @@ func (visitor *NamespaceTreeJoin) VisitRowJoin(position int, rowJoin *query.Quer
 	row := crdt.Row{}
 
 	for k, entryValue := range rowJoin.Entries {
-		entry := crdt.MakeEntry([]crdt.Point{entryValue})
+		// TODO implement crypto signature here.
+		panic("not implemented")
+		point := crdt.UnsignedPoint(entryValue)
+		entry := crdt.MakeEntry([]crdt.Point{point})
 		row = row.JoinEntry(k, entry)
 	}
 

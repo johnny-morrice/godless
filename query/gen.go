@@ -100,7 +100,7 @@ func genQueryJoin(rand *rand.Rand, size int) QueryJoin {
 	gen := QueryJoin{Rows: make([]QueryRowJoin, rowCount)}
 
 	for i := 0; i < rowCount; i++ {
-		gen.Rows[i] = QueryRowJoin{Entries: map[crdt.EntryName]crdt.Point{}}
+		gen.Rows[i] = QueryRowJoin{Entries: map[crdt.EntryName]crdt.PointText{}}
 		row := &gen.Rows[i]
 		row.RowKey = crdt.RowName(testutil.RandKey(rand, MAX_STR_LEN))
 
@@ -108,7 +108,7 @@ func genQueryJoin(rand *rand.Rand, size int) QueryJoin {
 		for i := 0; i < entryCount; i++ {
 			entry := testutil.RandKey(rand, MAX_STR_LEN)
 			point := testutil.RandPoint(rand, MAX_STR_LEN)
-			row.Entries[crdt.EntryName(entry)] = crdt.Point(point)
+			row.Entries[crdt.EntryName(entry)] = crdt.PointText(point)
 		}
 	}
 

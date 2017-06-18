@@ -27,6 +27,29 @@ func PreSignedLink(path IPFSPath, sig crypto.Signature) SignedLink {
 	return SignedLink{Link: path, Signatures: []crypto.Signature{sig}}
 }
 
+func (link SignedLink) Equals(other SignedLink) bool {
+	ok := link.SameLink(other)
+	ok = ok && len(link.Signatures) == len(other.Signatures)
+
+	if !ok {
+		return false
+	}
+
+	for i, mySig := range link.Signatures {
+		theirSig := other.Signatures[i]
+
+		if !mySig.Equals(theirSig) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (link SignedLink) SameLink(other SignedLink) bool {
+	return link.Link == other.Link
+}
+
 func MergeLinks(links []SignedLink) []SignedLink {
 	sort.Sort(byLinkPath(links))
 	return uniqLinkSorted(links)

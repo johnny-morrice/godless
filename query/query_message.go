@@ -292,11 +292,11 @@ func (decoder *queryMessageDecoder) decodeWhere(frame whereBuilderFrame) {
 
 func (decoder *queryMessageDecoder) decodeRowJoin(row *QueryRowJoin, message *proto.QueryRowJoinMessage) {
 	row.RowKey = crdt.RowName(message.Row)
-	row.Entries = map[crdt.EntryName]crdt.Point{}
+	row.Entries = map[crdt.EntryName]crdt.PointText{}
 
 	for _, messageEntry := range message.Entries {
 		entry := crdt.EntryName(messageEntry.Entry)
-		point := crdt.Point(messageEntry.Point)
+		point := crdt.PointText(messageEntry.Point)
 		row.Entries[entry] = point
 	}
 }

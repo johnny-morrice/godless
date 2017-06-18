@@ -241,15 +241,18 @@ func (rn *remoteNamespace) dumpReflectNamespaces() api.APIResponse {
 		return response
 	}
 
-	tables := index.AllTables()
 	everything := crdt.EmptyNamespace()
 
 	lambda := api.NamespaceTreeLambda(func(ns crdt.Namespace) api.TraversalUpdate {
 		everything = everything.JoinNamespace(ns)
 		return api.TraversalUpdate{More: true}
 	})
-	traversal := api.AddTableHints(tables, lambda)
-	err = rn.LoadTraverse(traversal)
+	searcher := api.SignedTableSearcher{
+		Reader: lambda,
+		Tables: index.AllTables(),
+	}
+
+	err = rn.LoadTraverse(searcher)
 
 	if err != nil {
 		response = api.RESPONSE_FAIL
@@ -295,7 +298,10 @@ func (rn *remoteNamespace) JoinTable(tableKey crdt.TableName, table crdt.Table) 
 		return errors.Wrap(nsErr, failMsg)
 	}
 
-	index := crdt.EmptyIndex().JoinTable(tableKey, addr)
+	// TODO implement signing here
+	panic("not implemented")
+	signed := crdt.UnsignedLink(addr)
+	index := crdt.EmptyIndex().JoinTable(tableKey, signed)
 
 	_, indexErr := rn.insertIndex(index)
 
@@ -306,7 +312,7 @@ func (rn *remoteNamespace) JoinTable(tableKey crdt.TableName, table crdt.Table) 
 	return nil
 }
 
-func (rn *remoteNamespace) LoadTraverse(nttr api.NamespaceTreeTableReader) error {
+func (rn *remoteNamespace) LoadTraverse(searcher api.NamespaceSearcher) error {
 	const failMsg = "remoteNamespace.LoadTraverse failed"
 
 	index, indexerr := rn.loadCurrentIndex()
@@ -315,12 +321,12 @@ func (rn *remoteNamespace) LoadTraverse(nttr api.NamespaceTreeTableReader) error
 		return errors.Wrap(indexerr, failMsg)
 	}
 
-	tableAddrs := rn.findTableAddrs(index, nttr)
+	tableAddrs := searcher.Search(index)
 
-	return rn.traverseTableNamespaces(tableAddrs, nttr)
+	return rn.traverseTableNamespaces(tableAddrs, searcher)
 }
 
-func (rn *remoteNamespace) traverseTableNamespaces(tableAddrs []crdt.IPFSPath, f api.NamespaceTreeReader) error {
+func (rn *remoteNamespace) traverseTableNamespaces(tableAddrs []crdt.SignedLink, f api.NamespaceTreeReader) error {
 	nsch, cancelch := rn.namespaceLoader(tableAddrs)
 	defer close(cancelch)
 	for ns := range nsch {
@@ -343,14 +349,14 @@ func (rn *remoteNamespace) traverseTableNamespaces(tableAddrs []crdt.IPFSPath, f
 }
 
 // Preload namespaces while the previous is analysed.
-func (rn *remoteNamespace) namespaceLoader(addrs []crdt.IPFSPath) (<-chan crdt.Namespace, chan<- struct{}) {
+func (rn *remoteNamespace) namespaceLoader(addrs []crdt.SignedLink) (<-chan crdt.Namespace, chan<- struct{}) {
 	nsch := make(chan crdt.Namespace)
 	cancelch := make(chan struct{}, 1)
 
 	go func() {
 		defer close(nsch)
 		for _, a := range addrs {
-			namespace, err := rn.Store.CatNamespace(a)
+			namespace, err := rn.Store.CatNamespace(a.Link)
 
 			if err != nil {
 				log.Error("remoteNamespace.namespaceLoader failed: %v", err)
@@ -371,19 +377,6 @@ func (rn *remoteNamespace) namespaceLoader(addrs []crdt.IPFSPath) (<-chan crdt.N
 	}()
 
 	return nsch, cancelch
-}
-
-func (rn *remoteNamespace) findTableAddrs(index crdt.Index, tableHints api.TableHinter) []crdt.IPFSPath {
-	out := []crdt.IPFSPath{}
-	for _, t := range tableHints.ReadsTables() {
-		addrs, err := index.GetTableAddrs(t)
-
-		if err == nil {
-			out = append(out, addrs...)
-		}
-	}
-
-	return out
 }
 
 // Load chunks over IPFS

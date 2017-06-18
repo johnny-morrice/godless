@@ -377,11 +377,11 @@ func quote(token string) string {
 	return token[1 : len(token)-1]
 }
 
-func makeJoinEntries(mess map[string]string) map[crdt.EntryName]crdt.Point {
-	es := map[crdt.EntryName]crdt.Point{}
+func makeJoinEntries(mess map[string]string) map[crdt.EntryName]crdt.PointText {
+	es := map[crdt.EntryName]crdt.PointText{}
 
 	for k, v := range mess {
-		es[crdt.EntryName(k)] = crdt.Point(v)
+		es[crdt.EntryName(k)] = crdt.PointText(v)
 	}
 
 	return es

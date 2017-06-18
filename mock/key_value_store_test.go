@@ -57,8 +57,9 @@ func TestKeyValueStoreITCase(t *testing.T) {
 
 	index := crdt.EmptyIndex()
 
+	signedNamespaceAddr := crdt.UnsignedLink(namespaceAddr)
 	for _, t := range tables {
-		index = index.JoinTable(t, namespaceAddr)
+		index = index.JoinTable(t, signedNamespaceAddr)
 	}
 
 	mock.EXPECT().AddIndex(gomock.Any()).MinTimes(1).Return(addrIndex, nil)
@@ -176,7 +177,7 @@ func TestRunQueryWriteSuccess(t *testing.T) {
 			Rows: []query.QueryRowJoin{
 				query.QueryRowJoin{
 					RowKey: "Row thing",
-					Entries: map[crdt.EntryName]crdt.Point{
+					Entries: map[crdt.EntryName]crdt.PointText{
 						"Hello": "world",
 					},
 				},
@@ -219,7 +220,7 @@ func TestRunQueryWriteFailure(t *testing.T) {
 			Rows: []query.QueryRowJoin{
 				query.QueryRowJoin{
 					RowKey: "Row thing",
-					Entries: map[crdt.EntryName]crdt.Point{
+					Entries: map[crdt.EntryName]crdt.PointText{
 						"Hello": "world",
 					},
 				},

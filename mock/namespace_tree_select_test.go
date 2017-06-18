@@ -345,7 +345,7 @@ func rowsA() []crdt.Row {
 	return []crdt.Row{
 		crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
 			// TODO use user concepts to match only the Hi.
-			"Entry A": crdt.MakeEntry([]crdt.Point{"Hi", "Hello"}),
+			"Entry A": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Hi"), crdt.UnsignedPoint("Hello")}),
 		}),
 	}
 }
@@ -353,7 +353,7 @@ func rowsA() []crdt.Row {
 func rowsB() []crdt.Row {
 	return []crdt.Row{
 		crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-			"Entry B": crdt.MakeEntry([]crdt.Point{"Hi", "Hello World"}),
+			"Entry B": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Hi"), crdt.UnsignedPoint("Hello World")}),
 		}),
 	}
 }
@@ -361,7 +361,7 @@ func rowsB() []crdt.Row {
 func rowsC() []crdt.Row {
 	return []crdt.Row{
 		crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-			"Entry B": crdt.MakeEntry([]crdt.Point{"Hi", "Hello Dude"}),
+			"Entry B": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Hi"), crdt.UnsignedPoint("Hello Dude")}),
 		}),
 	}
 }
@@ -369,8 +369,8 @@ func rowsC() []crdt.Row {
 func rowsD() []crdt.Row {
 	return []crdt.Row{
 		crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-			"Entry C": crdt.MakeEntry([]crdt.Point{"Apple"}),
-			"Entry D": crdt.MakeEntry([]crdt.Point{"Orange"}),
+			"Entry C": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Apple")}),
+			"Entry D": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Orange")}),
 		}),
 	}
 }
@@ -378,10 +378,10 @@ func rowsD() []crdt.Row {
 func rowsE() []crdt.Row {
 	return []crdt.Row{
 		crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-			"Entry E": crdt.MakeEntry([]crdt.Point{"Bus"}),
+			"Entry E": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Bus")}),
 		}),
 		crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-			"Entry E": crdt.MakeEntry([]crdt.Point{"Train"}),
+			"Entry E": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Train")}),
 		}),
 	}
 }
@@ -389,7 +389,7 @@ func rowsE() []crdt.Row {
 func rowsF() []crdt.Row {
 	return []crdt.Row{
 		crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-			"Entry F": crdt.MakeEntry([]crdt.Point{"This row", "rocks"}),
+			"Entry F": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("This row"), crdt.UnsignedPoint("rocks")}),
 		}),
 	}
 }
@@ -397,13 +397,13 @@ func rowsF() []crdt.Row {
 func rowsG() []crdt.Row {
 	return []crdt.Row{
 		crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-			"Entry Q": crdt.MakeEntry([]crdt.Point{"Hi", "Folks"}),
+			"Entry Q": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Hi"), crdt.UnsignedPoint("Folks")}),
 		}),
 		crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-			"Entry R": crdt.MakeEntry([]crdt.Point{"Wowzer"}),
+			"Entry R": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Wowzer")}),
 		}),
 		crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-			"Entry S": crdt.MakeEntry([]crdt.Point{"Trumpet"}),
+			"Entry S": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Trumpet")}),
 		}),
 	}
 }
@@ -412,14 +412,14 @@ func rowsG() []crdt.Row {
 func rowsZ() []crdt.Row {
 	return []crdt.Row{
 		crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-			"Entry A": crdt.MakeEntry([]crdt.Point{"No", "Match"}),
+			"Entry A": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("No"), crdt.UnsignedPoint("Match")}),
 		}),
 		crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-			"Entry C": crdt.MakeEntry([]crdt.Point{"No", "Match", "Here"}),
-			"Entry D": crdt.MakeEntry([]crdt.Point{"Nada!"}),
+			"Entry C": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("No"), crdt.UnsignedPoint("Match"), crdt.UnsignedPoint("Here")}),
+			"Entry D": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Nada!")}),
 		}),
 		crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-			"Entry E": crdt.MakeEntry([]crdt.Point{"Horse"}),
+			"Entry E": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Horse")}),
 		}),
 	}
 }

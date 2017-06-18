@@ -24,20 +24,20 @@ func TestRunQueryJoinSuccess(t *testing.T) {
 			Rows: []query.QueryRowJoin{
 				query.QueryRowJoin{
 					RowKey: "Row A",
-					Entries: map[crdt.EntryName]crdt.Point{
+					Entries: map[crdt.EntryName]crdt.PointText{
 						"Entry A": "Point A",
 						"Entry B": "Point B",
 					},
 				},
 				query.QueryRowJoin{
 					RowKey: "Row B",
-					Entries: map[crdt.EntryName]crdt.Point{
+					Entries: map[crdt.EntryName]crdt.PointText{
 						"Entry C": "Point C",
 					},
 				},
 				query.QueryRowJoin{
 					RowKey: "Row A",
-					Entries: map[crdt.EntryName]crdt.Point{
+					Entries: map[crdt.EntryName]crdt.PointText{
 						"Entry A": "Point D",
 						"Entry D": "Point E",
 					},
@@ -48,12 +48,12 @@ func TestRunQueryJoinSuccess(t *testing.T) {
 
 	table := crdt.MakeTable(map[crdt.RowName]crdt.Row{
 		"Row A": crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-			"Entry A": crdt.MakeEntry([]crdt.Point{"Point A", "Point D"}),
-			"Entry B": crdt.MakeEntry([]crdt.Point{"Point B"}),
-			"Entry D": crdt.MakeEntry([]crdt.Point{"Point E"}),
+			"Entry A": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Point A"), crdt.UnsignedPoint("Point D")}),
+			"Entry B": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Point B")}),
+			"Entry D": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Point E")}),
 		}),
 		"Row B": crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-			"Entry C": crdt.MakeEntry([]crdt.Point{"Point C"}),
+			"Entry C": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Point C")}),
 		}),
 	})
 	mock.EXPECT().JoinTable(MAIN_TABLE_KEY, mtchtable(table)).Return(nil)
@@ -80,7 +80,7 @@ func TestRunQueryJoinFailure(t *testing.T) {
 			Rows: []query.QueryRowJoin{
 				query.QueryRowJoin{
 					RowKey: "Row A",
-					Entries: map[crdt.EntryName]crdt.Point{
+					Entries: map[crdt.EntryName]crdt.PointText{
 						"Entry A": "Point A",
 						"Entry B": "Point B",
 					},
@@ -91,8 +91,8 @@ func TestRunQueryJoinFailure(t *testing.T) {
 
 	table := crdt.MakeTable(map[crdt.RowName]crdt.Row{
 		"Row A": crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-			"Entry A": crdt.MakeEntry([]crdt.Point{"Point A"}),
-			"Entry B": crdt.MakeEntry([]crdt.Point{"Point B"}),
+			"Entry A": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Point A")}),
+			"Entry B": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Point B")}),
 		}),
 	})
 

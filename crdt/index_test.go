@@ -2,6 +2,7 @@ package crdt
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"math/rand"
 	"reflect"
@@ -68,8 +69,8 @@ func TestEmptyIndex(t *testing.T) {
 func TestMakeIndex(t *testing.T) {
 	const table = "Hi"
 	const value = "world"
-	index := MakeIndex(map[TableName]IPFSPath{
-		table: value,
+	index := MakeIndex(map[TableName]SignedLink{
+		table: UnsignedLink(value),
 	})
 
 	testutil.AssertEquals(t, "Expected index length 1", 1, len(index.Index))
@@ -141,11 +142,11 @@ func TestIndexEquals(t *testing.T) {
 		testIndexEqualsQuick(t)
 	}
 
-	indexA := MakeIndex(map[TableName]IPFSPath{
-		"hi": "world",
+	indexA := MakeIndex(map[TableName]SignedLink{
+		"hi": UnsignedLink("world"),
 	})
-	indexB := MakeIndex(map[TableName]IPFSPath{
-		"hello": "world",
+	indexB := MakeIndex(map[TableName]SignedLink{
+		"hello": UnsignedLink("world"),
 	})
 
 	testutil.Assert(t, "Expected indexA to be equal to itself", indexA.Equals(indexA))
@@ -197,7 +198,7 @@ func isIndexSubset(subset, superset Index) bool {
 	LOOP:
 		for _, exAddr := range expected {
 			for _, acAddr := range actual {
-				if exAddr == acAddr {
+				if exAddr.Equals(acAddr) {
 					continue LOOP
 				}
 			}
@@ -219,8 +220,8 @@ func TestIndexIsEmpty(t *testing.T) {
 
 	testutil.Assert(t, "Expected empty index", empty.IsEmpty())
 
-	full := MakeIndex(map[TableName]IPFSPath{
-		"Hi": "world",
+	full := MakeIndex(map[TableName]SignedLink{
+		"Hi": UnsignedLink("world"),
 	})
 
 	testutil.Assert(t, "Expected non empty index", !full.IsEmpty())
@@ -256,7 +257,7 @@ func TestIndexJoinNamespace(t *testing.T) {
 	}
 
 	const size = 50
-	const expected = "hello"
+	expected := UnsignedLink("hello")
 
 	for i := 0; i < testutil.ENCODE_REPEAT_COUNT; i++ {
 		index := GenIndex(testutil.Rand(), size)
@@ -270,7 +271,7 @@ func TestIndexJoinNamespace(t *testing.T) {
 			testutil.AssertNil(t, err)
 
 			for _, ac := range actual {
-				if ac == expected {
+				if expected.Equals(ac) {
 					continue LOOP
 				}
 			}
@@ -288,17 +289,21 @@ func indexEncodeOk(expected Index) bool {
 
 func indexSerializationPass(expected Index) Index {
 	buff := &bytes.Buffer{}
-	err := EncodeIndex(expected, buff)
+	encErr := EncodeIndex(expected, buff)
 
-	if err != nil {
-		panic(err)
+	if encErr != nil {
+		panic(encErr)
 	}
 
-	var actual Index
-	actual, err = DecodeIndex(buff)
+	actual, invalid, decErr := DecodeIndex(buff)
 
-	if err != nil {
-		panic(err)
+	if decErr != nil {
+		panic(decErr)
+	}
+
+	if len(invalid) > 0 {
+		invalidErr := errors.New("Invalid entries")
+		panic(invalidErr)
 	}
 
 	return actual

@@ -9,7 +9,7 @@ message NamespaceEntryMessage {
 	string table = 1;
 	string row = 2;
 	string entry = 3;
-	repeated PointMessage points = 4;
+	PointMessage point = 4;
 }
 
 message PointMessage {

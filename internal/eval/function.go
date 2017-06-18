@@ -1,10 +1,10 @@
 package eval
 
 import (
-	"crypto"
 	"errors"
 
 	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/internal/crypto"
 )
 
 type MatchFunction func(first string, prefix []string, entries []crdt.Entry) bool
@@ -47,7 +47,7 @@ func StrEq(first string, prefix []string, entries []crdt.Entry) bool {
 	for _, entry := range entries {
 		found := false
 		for _, val := range entry.GetValues() {
-			if string(val) == m {
+			if val.HasText(m) {
 				found = true
 				break
 			}
@@ -78,7 +78,7 @@ func StrNeq(first string, prefix []string, entries []crdt.Entry) bool {
 	entrymatch := 0
 	for _, entry := range entries {
 		for _, val := range entry.GetValues() {
-			if string(val) == m {
+			if val.HasText(m) {
 				entrymatch++
 			}
 		}
@@ -99,7 +99,8 @@ func match(prefix []string, entries []crdt.Entry) (string, error) {
 		for _, entry := range entries {
 			values := entry.GetValues()
 			if len(values) > 0 {
-				first = string(values[0])
+				point := values[0]
+				first = string(point.Text)
 				found = true
 				break
 			}

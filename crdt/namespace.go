@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/johnny-morrice/godless/internal/testutil"
+	"github.com/pkg/errors"
 )
 
 type TableName string
@@ -59,33 +60,38 @@ func (ns Namespace) GetTableNames() []TableName {
 	return tableNames
 }
 
-type InvalidStreamPoint StreamPoint
+type InvalidStreamEntry NamespaceStreamEntry
 
-// FIXME check error in usages
-func (ns Namespace) addStreamEntry(streamEntry NamespaceStreamEntry) []InvalidStreamPoint {
-	points := make([]Point, len(streamEntry.Points))
-	invalid := make([]InvalidStreamPoint, 0, len(streamEntry.Points))
+// The batch should correspond to a single point.
+// We should write the invalid entries to disk.
+func (ns Namespace) addPointBatch(stream []NamespaceStreamEntry) ([]InvalidStreamEntry, error) {
+	const failMsg = "Namespace.addPointBatch failed"
 
-	for i, p := range streamEntry.Points {
-		point, err := ReadStreamPoint(p)
-
-		if err != nil {
-			log.Error("Invalid stream entry")
-			invalid = append(invalid, InvalidStreamPoint(p))
-		}
-
-		points[i] = point
+	if len(stream) == 0 {
+		log.Warn("Namespace.addPointBatch of length 0")
+		return nil, nil
 	}
 
+	point, invalid, err := readStreamPoint(stream)
+
+	if err != nil {
+		return invalid, errors.Wrap(err, failMsg)
+	}
+
+	first := stream[0]
+	tableName := first.Table
+	rowName := first.Row
+	entryName := first.Entry
+
 	table := MakeTable(map[RowName]Row{
-		streamEntry.Row: MakeRow(map[EntryName]Entry{
-			streamEntry.Entry: MakeEntry(points),
+		rowName: MakeRow(map[EntryName]Entry{
+			entryName: MakeEntry([]Point{point}),
 		}),
 	})
 
-	ns.addTable(streamEntry.Table, table)
+	ns.addTable(tableName, table)
 
-	return invalid
+	return invalid, nil
 }
 
 func (ns Namespace) IsEmpty() bool {
@@ -106,13 +112,13 @@ func (ns Namespace) JoinNamespace(other Namespace) Namespace {
 	joined := ns.Copy()
 
 	for otherk, otherTable := range other.Tables {
-		joined = joined.addTable(otherk, otherTable)
+		joined.addTable(otherk, otherTable)
 	}
 
 	return joined
 }
 
-func (ns Namespace) addTable(key TableName, table Table) Namespace {
+func (ns Namespace) addTable(key TableName, table Table) {
 	current, present := ns.Tables[key]
 
 	if present {
@@ -120,13 +126,11 @@ func (ns Namespace) addTable(key TableName, table Table) Namespace {
 	} else {
 		ns.Tables[key] = table
 	}
-
-	return ns
 }
 
 func (ns Namespace) JoinTable(key TableName, table Table) Namespace {
 	joined := ns.Copy()
-	joined = joined.addTable(key, table)
+	joined.addTable(key, table)
 	return joined
 }
 
@@ -478,12 +482,18 @@ func genRow(rand *rand.Rand, size int) Row {
 }
 
 func genPoint(rand *rand.Rand, size int) Point {
-	return Point{Text: testutil.RandLetters(rand, size)}
+	return Point{Text: PointText(testutil.RandLetters(rand, size))}
 }
 
+type PointText string
+
 type Point struct {
-	Text       string
+	Text       PointText
 	Signatures []crypto.Signature
+}
+
+func (p Point) HasText(text string) bool {
+	return p.Text == PointText(text)
 }
 
 // FIXME implement
@@ -505,6 +515,6 @@ func (p Point) Verify(publicKey crypto.PublicKey) bool {
 	return false
 }
 
-func UnsignedPoint(text string) Point {
+func UnsignedPoint(text PointText) Point {
 	return Point{Text: text}
 }
