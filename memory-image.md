@@ -1,6 +1,8 @@
 # Memory image pattern
 
-To increase performance, Godless shall use memory image pattern (outlined here)
+To increase performance, Godless shall use memory image pattern.
+
+https://martinfowler.com/bliki/MemoryImage.html
 
 # Why?
 
