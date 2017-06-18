@@ -31,7 +31,7 @@ Step 4 is a bottleneck to all read processes.
 3. Godless queries namespaces for results.
 4. Godless returns API response to client.
 
-Step 2 will be blocked by the memory image lock
+Step 2 is blocked by write step 4
 
 # How we will do things in future
 
@@ -63,7 +63,7 @@ Step 3 will lock the memory image
 3. Godless queries namespaces for results.
 4. Godless returns API response to client.
 
-Step 2 will be blocked by write step 4 and pulse step 3
+Step 2 will be blocked by the memory image lock
 
 ## Pubsub
 
