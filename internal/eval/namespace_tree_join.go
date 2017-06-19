@@ -16,10 +16,10 @@ type NamespaceTreeJoin struct {
 	tableKey    crdt.TableName
 	table       crdt.Table
 	privateKeys []crypto.PrivateKey
-	keyStore    crypto.KeyStore
+	keyStore    api.KeyStore
 }
 
-func MakeNamespaceTreeJoin(ns api.NamespaceTree, keyStore crypto.KeyStore) *NamespaceTreeJoin {
+func MakeNamespaceTreeJoin(ns api.NamespaceTree, keyStore api.KeyStore) *NamespaceTreeJoin {
 	return &NamespaceTreeJoin{
 		Namespace: ns,
 		keyStore:  keyStore,

@@ -2,6 +2,7 @@ package crdt
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"math/rand"
 	"reflect"
@@ -38,7 +39,7 @@ func rowStreamOk(expected Row) bool {
 		return false
 	}
 
-	ns := ReadNamespaceStream(stream)
+	ns := readNamespaceStream(stream)
 	table := ns.Tables[tableKey]
 	actual := table.Rows[rowKey]
 	return expected.Equals(actual)
@@ -91,7 +92,7 @@ func TestEncodeNamespaceStable(t *testing.T) {
 	namespace := GenNamespace(testutil.Rand(), size)
 
 	buff := &bytes.Buffer{}
-	err := EncodeNamespace(namespace, buff)
+	err := encodeNamespace(namespace, buff)
 
 	if err != nil {
 		panic(err)
@@ -99,7 +100,7 @@ func TestEncodeNamespaceStable(t *testing.T) {
 
 	expected := buff.Bytes()
 	testutil.AssertEncodingStable(t, expected, func(w io.Writer) {
-		err := EncodeNamespace(namespace, w)
+		err := encodeNamespace(namespace, w)
 
 		if err != nil {
 			panic(err)
@@ -108,21 +109,26 @@ func TestEncodeNamespaceStable(t *testing.T) {
 }
 
 func namespaceEncodeOk(randomNs Namespace) bool {
-	expected := randomNs.Strip()
+	expected, invalid, err := randomNs.Strip()
+
+	if len(invalid) > 0 || err != nil {
+		panic("namespaceEncodeFailed")
+	}
+
 	actual := namespaceSerializationPass(randomNs)
 	return expected.Equals(actual)
 }
 
 func namespaceSerializationPass(expected Namespace) Namespace {
 	buff := &bytes.Buffer{}
-	err := EncodeNamespace(expected, buff)
+	err := encodeNamespace(expected, buff)
 
 	if err != nil {
 		panic(err)
 	}
 
 	var actual Namespace
-	actual, err = DecodeNamespace(buff)
+	actual, err = decodeNamespace(buff)
 
 	if err != nil {
 		panic(err)
@@ -643,4 +649,41 @@ func assertRowEquals(t *testing.T, expected, actual Row) {
 		testutil.DebugLine(t)
 		t.Error("Expected Row", expected, "but received", actual)
 	}
+}
+
+func readNamespaceStream(stream []NamespaceStreamEntry) Namespace {
+	ns, invalid, err := ReadNamespaceStream(stream)
+
+	invalidCount := len(invalid)
+	if invalidCount > 0 {
+		panic(fmt.Sprintf("%v invalid entries"))
+	}
+
+	if err != nil {
+		panic(err)
+	}
+
+	return ns
+}
+
+func encodeNamespace(ns Namespace, w io.Writer) error {
+	invalid, err := EncodeNamespace(ns, w)
+
+	invalidCount := len(invalid)
+	if invalidCount > 0 {
+		panic(fmt.Sprintf("%v invalid entries"))
+	}
+
+	return err
+}
+
+func decodeNamespace(r io.Reader) (Namespace, error) {
+	namespace, invalid, err := DecodeNamespace(r)
+
+	invalidCount := len(invalid)
+	if invalidCount > 0 {
+		panic(fmt.Sprintf("%v invalid entries"))
+	}
+
+	return namespace, err
 }

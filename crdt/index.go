@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/johnny-morrice/godless/internal/testutil"
 	"github.com/johnny-morrice/godless/proto"
@@ -35,24 +36,30 @@ func MakeIndex(indices map[TableName]SignedLink) Index {
 }
 
 // Just encode as Gob for now.
-func EncodeIndex(index Index, w io.Writer) error {
+func EncodeIndex(index Index, w io.Writer) ([]InvalidIndexEntry, error) {
 	const failMsg = "EncodeIndex failed"
 
-	message := MakeIndexMessage(index)
+	message, invalid := MakeIndexMessage(index)
+
+	invalidCount := len(invalid)
+	if invalidCount > 0 {
+		log.Error("EncodeIndex: %v invalid entries", invalidCount)
+	}
+
 	bs, err := pb.Marshal(message)
 
 	if err != nil {
-		return errors.Wrap(err, failMsg)
+		return invalid, errors.Wrap(err, failMsg)
 	}
 
 	var written int
 	written, err = w.Write(bs)
 
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("%v after %v bytes", failMsg, written))
+		return invalid, errors.Wrap(err, fmt.Sprintf("%v after %v bytes", failMsg, written))
 	}
 
-	return nil
+	return invalid, nil
 }
 
 func DecodeIndex(r io.Reader) (Index, []InvalidIndexEntry, error) {
@@ -81,9 +88,9 @@ func ReadIndexMessage(message *proto.IndexMessage) (Index, []InvalidIndexEntry) 
 	return ReadIndexStream(stream)
 }
 
-func MakeIndexMessage(index Index) *proto.IndexMessage {
-	stream := MakeIndexStream(index)
-	return MakeIndexStreamMessage(stream)
+func MakeIndexMessage(index Index) (*proto.IndexMessage, []InvalidIndexEntry) {
+	stream, invalid := MakeIndexStream(index)
+	return MakeIndexStreamMessage(stream), invalid
 }
 
 func (index Index) IsEmpty() bool {
@@ -132,9 +139,10 @@ func (index Index) joinStreamEntry(entry IndexStreamEntry) (Index, error) {
 	return cpy, nil
 }
 
+// Equals does not take into account any invalid signatures.
 func (index Index) Equals(other Index) bool {
-	stream := MakeIndexStream(index)
-	otherStream := MakeIndexStream(other)
+	stream, _ := MakeIndexStream(index)
+	otherStream, _ := MakeIndexStream(other)
 
 	if len(stream) != len(otherStream) {
 		return false

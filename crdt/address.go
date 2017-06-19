@@ -27,9 +27,15 @@ func ParseHash(hash string) (IPFSPath, error) {
 	return IPFSPath(hash), nil
 }
 
+// FIXME rename to Link
 type SignedLink struct {
 	Link       IPFSPath
 	Signatures []crypto.Signature
+}
+
+// FIXME implement
+func SignTheLink(path IPFSPath, keys []crypto.PrivateKey) SignedLink {
+	panic("not implemented")
 }
 
 func UnsignedLink(path IPFSPath) SignedLink {

@@ -27,6 +27,8 @@ func (point StreamPoint) Less(other StreamPoint) bool {
 	return point.Signature < other.Signature
 }
 
+type InvalidNamespaceEntry NamespaceStreamEntry
+
 // FIXME not really a stream, whole is kept in memory.
 type NamespaceStreamEntry struct {
 	Table TableName
@@ -109,7 +111,7 @@ func (stream byNamespaceStreamOrder) Less(i, j int) bool {
 }
 
 // TODO does not support unsigned links.
-func makeStreamPoints(proto NamespaceStreamEntry, point Point, index int, stream []NamespaceStreamEntry) (int, []InvalidStreamEntry) {
+func makeStreamPoints(proto NamespaceStreamEntry, point Point, index int, stream []NamespaceStreamEntry) (int, []InvalidNamespaceEntry) {
 	if len(point.Signatures) == 0 {
 		entry := proto
 		entry.Point = StreamPoint{Text: point.Text}
@@ -117,7 +119,7 @@ func makeStreamPoints(proto NamespaceStreamEntry, point Point, index int, stream
 		return index + 1, nil
 	}
 
-	invalid := []InvalidStreamEntry{}
+	invalid := []InvalidNamespaceEntry{}
 
 	for _, sig := range point.Signatures {
 		entry := proto
@@ -126,7 +128,7 @@ func makeStreamPoints(proto NamespaceStreamEntry, point Point, index int, stream
 		if err != nil {
 			log.Warn("Invalid stream point: %v", err)
 			entry.Point.Text = point.Text
-			invalid = append(invalid, InvalidStreamEntry(entry))
+			invalid = append(invalid, InvalidNamespaceEntry(entry))
 			continue
 		}
 
@@ -148,7 +150,7 @@ func MakeStreamPoint(text PointText, sig crypto.Signature) (StreamPoint, error) 
 	return StreamPoint{Text: text, Signature: sigText}, nil
 }
 
-func readStreamPoint(stream []NamespaceStreamEntry) (Point, []InvalidStreamEntry, error) {
+func readStreamPoint(stream []NamespaceStreamEntry) (Point, []InvalidNamespaceEntry, error) {
 	const failMsg = "readStreamPoint failed"
 
 	if len(stream) == 0 {
@@ -161,7 +163,7 @@ func readStreamPoint(stream []NamespaceStreamEntry) (Point, []InvalidStreamEntry
 		Signatures: make([]crypto.Signature, 0, len(stream)),
 	}
 
-	invalid := make([]InvalidStreamEntry, 0, len(stream))
+	invalid := make([]InvalidNamespaceEntry, 0, len(stream))
 
 	for _, entry := range stream {
 		if !entry.SamePoint(first) {
@@ -177,7 +179,7 @@ func readStreamPoint(stream []NamespaceStreamEntry) (Point, []InvalidStreamEntry
 
 		if err != nil {
 			log.Warn("Failed to parse signature")
-			invalid = append(invalid, InvalidStreamEntry(entry))
+			invalid = append(invalid, InvalidNamespaceEntry(entry))
 			continue
 		}
 
@@ -187,26 +189,26 @@ func readStreamPoint(stream []NamespaceStreamEntry) (Point, []InvalidStreamEntry
 	return point, invalid, nil
 }
 
-func MakeTableStream(tableKey TableName, table Table) ([]NamespaceStreamEntry, []InvalidStreamEntry) {
+func MakeTableStream(tableKey TableName, table Table) ([]NamespaceStreamEntry, []InvalidNamespaceEntry) {
 	subNamespace := MakeNamespace(map[TableName]Table{
 		tableKey: table,
 	})
 	return MakeNamespaceStream(subNamespace)
 }
 
-func MakeRowStream(tableKey TableName, rowKey RowName, row Row) ([]NamespaceStreamEntry, []InvalidStreamEntry) {
+func MakeRowStream(tableKey TableName, rowKey RowName, row Row) ([]NamespaceStreamEntry, []InvalidNamespaceEntry) {
 	table := MakeTable(map[RowName]Row{
 		rowKey: row,
 	})
 	return MakeTableStream(tableKey, table)
 }
 
-func MakeNamespaceStream(ns Namespace) ([]NamespaceStreamEntry, []InvalidStreamEntry) {
+func MakeNamespaceStream(ns Namespace) ([]NamespaceStreamEntry, []InvalidNamespaceEntry) {
 	count := streamLength(ns)
 
 	index := 0
 	stream := make([]NamespaceStreamEntry, 0, count)
-	invalid := []InvalidStreamEntry{}
+	invalid := []InvalidNamespaceEntry{}
 
 	ns.ForeachEntry(func(t TableName, r RowName, e EntryName, entry Entry) {
 		proto := NamespaceStreamEntry{
@@ -216,7 +218,7 @@ func MakeNamespaceStream(ns Namespace) ([]NamespaceStreamEntry, []InvalidStreamE
 		}
 
 		for _, point := range entry.GetValues() {
-			var moreInvalid []InvalidStreamEntry
+			var moreInvalid []InvalidNamespaceEntry
 			index, moreInvalid = makeStreamPoints(proto, point, index, stream)
 
 			if len(moreInvalid) > 0 {
@@ -246,8 +248,11 @@ func streamLength(ns Namespace) int {
 	return count
 }
 
-func ReadNamespaceStream(stream []NamespaceStreamEntry) Namespace {
+func ReadNamespaceStream(stream []NamespaceStreamEntry) (Namespace, []InvalidNamespaceEntry, error) {
+	const failMsg = "ReadNamespaceStream failed"
+
 	ns := EmptyNamespace()
+	invalidEntries := []InvalidNamespaceEntry{}
 
 	batchStart := 0
 	for i, entry := range stream {
@@ -255,11 +260,18 @@ func ReadNamespaceStream(stream []NamespaceStreamEntry) Namespace {
 
 		if !entry.SamePoint(startEntry) {
 			batchEnd := i + 1
-			ns.addPointBatch(stream[batchStart:batchEnd])
+			invalid, err := ns.addPointBatch(stream[batchStart:batchEnd])
+
+			invalidEntries = append(invalidEntries, invalid...)
+
+			if err != nil {
+				return EmptyNamespace(), invalidEntries, errors.Wrap(err, failMsg)
+			}
+
 			batchStart = batchEnd
 		}
 
 	}
 
-	return ns
+	return ns, invalidEntries, nil
 }

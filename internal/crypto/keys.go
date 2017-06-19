@@ -3,6 +3,7 @@ package crypto
 import (
 	"bytes"
 	"crypto/rand"
+	"errors"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -67,6 +68,12 @@ type PrivateKey struct {
 	p2pKey crypto.PrivKey
 }
 
+func (priv PrivateKey) SamePublicKey(other PrivateKey) bool {
+	myPub := PublicKey{priv.p2pKey.GetPublic()}
+	otherPub := PublicKey{other.p2pKey.GetPublic()}
+	return myPub.Equals(otherPub)
+}
+
 type PublicKey struct {
 	p2pKey crypto.PubKey
 }
@@ -100,11 +107,19 @@ type KeyStore struct {
 	privKeys []PrivateKey
 }
 
-func (keys KeyStore) PutPrivateKey(priv PrivateKey) {
+func (keys *KeyStore) PutPrivateKey(priv PrivateKey) error {
+	for _, other := range keys.privKeys {
+		// Regardless of the crypto, prevent this key store being tricked.
+		if priv.SamePublicKey(other) {
+			return errors.New("private key has duplicate public key")
+		}
+	}
+
 	keys.privKeys = append(keys.privKeys, priv)
+	return nil
 }
 
-func (keys KeyStore) GetPrivateKey(pub PublicKey) (PrivateKey, error) {
+func (keys *KeyStore) GetPrivateKey(pub PublicKey) (PrivateKey, error) {
 	for _, priv := range keys.privKeys {
 		p2pPrivPub := priv.p2pKey.GetPublic()
 		privPub := PublicKey{p2pKey: p2pPrivPub}
@@ -115,4 +130,14 @@ func (keys KeyStore) GetPrivateKey(pub PublicKey) (PrivateKey, error) {
 	}
 
 	return PrivateKey{}, fmt.Errorf("No private key found for: %v", pub)
+}
+
+func (keys *KeyStore) GetAllPrivateKeys() []PrivateKey {
+	cpy := make([]PrivateKey, len(keys.privKeys))
+
+	for i, priv := range keys.privKeys {
+		cpy[i] = priv
+	}
+
+	return cpy
 }

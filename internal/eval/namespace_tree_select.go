@@ -31,12 +31,14 @@ func MakeNamespaceTreeSelect(namespace api.NamespaceTree) *NamespaceTreeSelect {
 }
 
 func (visitor *NamespaceTreeSelect) RunQuery() api.APIResponse {
+	const failMsg = "NamespaceTreeSelect.RunQuery failed"
+
 	fail := api.RESPONSE_FAIL
 	fail.Type = api.API_QUERY
 
-	err := visitor.Error()
-	if err != nil {
-		fail.Err = err
+	visitErr := visitor.Error()
+	if visitErr != nil {
+		fail.Err = visitErr
 		return fail
 	}
 
@@ -51,30 +53,38 @@ func (visitor *NamespaceTreeSelect) RunQuery() api.APIResponse {
 		Reader: lambda,
 		Tables: []crdt.TableName{visitor.crit.tableKey},
 	}
-	err = visitor.Namespace.LoadTraverse(searcher)
+	searchErr := visitor.Namespace.LoadTraverse(searcher)
 
-	if err != nil {
-		fail.Err = errors.Wrap(err, "NamespaceTreeSelect failed")
+	if searchErr != nil {
+		fail.Err = errors.Wrap(searchErr, failMsg)
 		return fail
 	}
 
-	log.Info("Search complete.")
+	log.Info("Search complete")
 
 	response := api.RESPONSE_QUERY
 
-	stream := visitor.resultStream()
+	stream, streamErr := visitor.resultStream()
+
+	if streamErr != nil {
+		fail.Err = errors.Wrap(streamErr, failMsg)
+		return fail
+	}
 
 	response.QueryResponse.Entries = stream
 	return response
 }
 
-func (visitor *NamespaceTreeSelect) resultStream() []crdt.NamespaceStreamEntry {
+func (visitor *NamespaceTreeSelect) resultStream() ([]crdt.NamespaceStreamEntry, error) {
+	const failMsg = "NamespaceTreeSelect.resultStream failed"
+
 	stream := visitor.crit.result
-	var invalid []crdt.InvalidStreamEntry
+	var invalid []crdt.InvalidNamespaceEntry
+	var err error
 	if visitor.needsSignature() {
-		stream, invalid = crdt.FilterSignedEntries(stream, visitor.keys)
+		stream, invalid, err = crdt.FilterSignedEntries(stream, visitor.keys)
 	} else {
-		stream, invalid = crdt.JoinStreamEntries(stream)
+		stream, invalid, err = crdt.JoinStreamEntries(stream)
 	}
 
 	invalidCount := len(invalid)
@@ -82,7 +92,11 @@ func (visitor *NamespaceTreeSelect) resultStream() []crdt.NamespaceStreamEntry {
 		log.Error("NamespaceTreeSelect found %v invalidEntries", invalidCount)
 	}
 
-	return stream
+	if err != nil {
+		return nil, errors.Wrap(err, failMsg)
+	}
+
+	return stream, nil
 }
 
 func (visitor *NamespaceTreeSelect) needsSignature() bool {
@@ -181,10 +195,10 @@ func (crit *rowCriteria) selectMatching(namespace crdt.Namespace) api.TraversalU
 	return api.TraversalUpdate{More: true}
 }
 
-func (crit *rowCriteria) findRows(namespace crdt.Namespace) ([]crdt.NamespaceStreamEntry, []crdt.InvalidStreamEntry) {
+func (crit *rowCriteria) findRows(namespace crdt.Namespace) ([]crdt.NamespaceStreamEntry, []crdt.InvalidNamespaceEntry) {
 	resultCapacity := crit.limit
 	out := make([]crdt.NamespaceStreamEntry, 0, resultCapacity)
-	invalidOut := []crdt.InvalidStreamEntry{}
+	invalidOut := []crdt.InvalidNamespaceEntry{}
 
 	table, err := namespace.GetTable(crit.tableKey)
 

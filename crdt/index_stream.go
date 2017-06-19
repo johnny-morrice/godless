@@ -47,29 +47,29 @@ func MakeIndexEntryMessage(entry IndexStreamEntry) *proto.IndexEntryMessage {
 }
 
 // TODO does not support unsigned links.
-func MakeIndexStreamEntries(t TableName, addrs []SignedLink) []IndexStreamEntry {
+func MakeIndexStreamEntries(t TableName, addrs []SignedLink) ([]IndexStreamEntry, []InvalidIndexEntry) {
 	count := countAddrEntries(addrs)
 
 	entries := make([]IndexStreamEntry, 0, count)
+	invalidEntries := []InvalidIndexEntry{}
 
 	for _, link := range addrs {
 		path := link.Link
 		for _, sig := range link.Signatures {
-			panic("not implemented")
-			entry, _ := MakeIndexStreamEntry(t, path, sig)
-			entries = append(entries, entry)
+			entry, err := MakeIndexStreamEntry(t, path, sig)
+			if err == nil {
+				entries = append(entries, entry)
+			} else {
+				invalidEntries = append(invalidEntries, InvalidIndexEntry(entry))
+			}
 		}
 	}
 
-	return entries
+	return entries, invalidEntries
 }
 
 func MakeIndexStreamEntry(t TableName, path IPFSPath, sig crypto.Signature) (IndexStreamEntry, error) {
 	sigText, err := crypto.PrintSignature(sig)
-
-	if err != nil {
-		return IndexStreamEntry{}, err
-	}
 
 	entry := IndexStreamEntry{
 		TableName: t,
@@ -77,7 +77,7 @@ func MakeIndexStreamEntry(t TableName, path IPFSPath, sig crypto.Signature) (Ind
 		Signature: sigText,
 	}
 
-	return entry, nil
+	return entry, err
 }
 
 type byIndexStreamOrder []IndexStreamEntry
@@ -109,7 +109,7 @@ func (stream byIndexStreamOrder) Less(i, j int) bool {
 	return a.Signature < b.Signature
 }
 
-func MakeIndexStream(index Index) []IndexStreamEntry {
+func MakeIndexStream(index Index) ([]IndexStreamEntry, []InvalidIndexEntry) {
 	count := 0
 
 	for _, addrs := range index.Index {
@@ -117,17 +117,19 @@ func MakeIndexStream(index Index) []IndexStreamEntry {
 	}
 
 	stream := make([]IndexStreamEntry, count)
+	invalidEntries := []InvalidIndexEntry{}
 
 	i := 0
 	for t, addrs := range index.Index {
-		entries := MakeIndexStreamEntries(t, addrs)
+		entries, invalid := MakeIndexStreamEntries(t, addrs)
 		stream = append(stream, entries...)
+		invalidEntries = append(invalidEntries, invalid...)
 		i++
 	}
 
 	sort.Sort(byIndexStreamOrder(stream))
 
-	return stream
+	return stream, invalidEntries
 }
 
 type InvalidIndexEntry IndexStreamEntry

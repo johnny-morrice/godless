@@ -3,6 +3,7 @@ package crdt
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"math/rand"
 	"reflect"
@@ -46,7 +47,7 @@ func TestEncodeIndexStable(t *testing.T) {
 	buff := &bytes.Buffer{}
 
 	encoder := func(w io.Writer) {
-		err := EncodeIndex(index, w)
+		err := encodeIndex(index, w)
 
 		if err != nil {
 			panic(err)
@@ -289,7 +290,7 @@ func indexEncodeOk(expected Index) bool {
 
 func indexSerializationPass(expected Index) Index {
 	buff := &bytes.Buffer{}
-	encErr := EncodeIndex(expected, buff)
+	encErr := encodeIndex(expected, buff)
 
 	if encErr != nil {
 		panic(encErr)
@@ -307,4 +308,15 @@ func indexSerializationPass(expected Index) Index {
 	}
 
 	return actual
+}
+
+func encodeIndex(index Index, w io.Writer) error {
+	invalid, err := EncodeIndex(index, w)
+
+	invalidCount := len(invalid)
+	if invalidCount > 0 {
+		panic(fmt.Sprintf("%v invalid entries", invalidCount))
+	}
+
+	return err
 }

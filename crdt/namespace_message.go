@@ -1,9 +1,9 @@
 package crdt
 
 import (
-	"fmt"
 	"io"
 
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/johnny-morrice/godless/internal/debug"
 	"github.com/johnny-morrice/godless/internal/util"
@@ -71,44 +71,44 @@ func ReadNamespaceStreamMessage(message *proto.NamespaceMessage) []NamespaceStre
 	return stream
 }
 
-func ReadNamespaceMessage(message *proto.NamespaceMessage) Namespace {
+func ReadNamespaceMessage(message *proto.NamespaceMessage) (Namespace, []InvalidNamespaceEntry, error) {
 	stream := ReadNamespaceStreamMessage(message)
 	return ReadNamespaceStream(stream)
 }
 
-func MakeNamespaceMessage(ns Namespace) (*proto.NamespaceMessage, []InvalidStreamEntry) {
+func MakeNamespaceMessage(ns Namespace) (*proto.NamespaceMessage, []InvalidNamespaceEntry) {
 	stream, invalid := MakeNamespaceStream(ns)
 	return MakeNamespaceStreamMessage(stream), invalid
 }
 
-func EncodeNamespace(ns Namespace, w io.Writer) error {
+// TODO should return the invalid entries
+func EncodeNamespace(ns Namespace, w io.Writer) ([]InvalidNamespaceEntry, error) {
 	const failMsg = "EncodeNamespace failed"
 
 	message, invalid := MakeNamespaceMessage(ns)
 
 	invalidCount := len(invalid)
 	if invalidCount > 0 {
-		invalidErr := fmt.Errorf("%v invalid points", invalidCount)
-		return errors.Wrap(invalidErr, failMsg)
+		log.Error("EncodeNamespace: %v invalid points", invalidCount)
 	}
 
 	err := util.Encode(message, w)
 
 	if err != nil {
-		return errors.Wrap(err, failMsg)
+		return invalid, errors.Wrap(err, failMsg)
 	}
 
-	return nil
+	return invalid, nil
 }
 
-func DecodeNamespace(r io.Reader) (Namespace, error) {
+func DecodeNamespace(r io.Reader) (Namespace, []InvalidNamespaceEntry, error) {
 	const failMsg = "DecodeNamespace failed"
 	message := &proto.NamespaceMessage{}
 	err := util.Decode(message, r)
 
 	if err != nil {
-		return EmptyNamespace(), errors.Wrap(err, failMsg)
+		return EmptyNamespace(), nil, errors.Wrap(err, failMsg)
 	}
 
-	return ReadNamespaceMessage(message), nil
+	return ReadNamespaceMessage(message)
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/johnny-morrice/godless/internal/eval"
 	"github.com/johnny-morrice/godless/query"
 	"github.com/pkg/errors"
@@ -58,7 +59,7 @@ func TestRunQueryJoinSuccess(t *testing.T) {
 	})
 	mock.EXPECT().JoinTable(MAIN_TABLE_KEY, mtchtable(table)).Return(nil)
 
-	joiner := eval.MakeNamespaceTreeJoin(mock)
+	joiner := makeNamespaceTreeJoin(mock)
 	query.Visit(joiner)
 	resp := joiner.RunQuery()
 
@@ -98,7 +99,7 @@ func TestRunQueryJoinFailure(t *testing.T) {
 
 	mock.EXPECT().JoinTable(MAIN_TABLE_KEY, mtchtable(table)).Return(errors.New("Expected error"))
 
-	joiner := eval.MakeNamespaceTreeJoin(mock)
+	joiner := makeNamespaceTreeJoin(mock)
 	failQuery.Visit(joiner)
 	resp := joiner.RunQuery()
 
@@ -128,7 +129,7 @@ func TestRunQueryJoinInvalid(t *testing.T) {
 	}
 
 	for _, q := range invalidQueries {
-		joiner := eval.MakeNamespaceTreeJoin(mock)
+		joiner := makeNamespaceTreeJoin(mock)
 		q.Visit(joiner)
 		resp := joiner.RunQuery()
 
@@ -162,4 +163,10 @@ func (tm tablematcher) Matches(v interface{}) bool {
 	}
 
 	return tm.t.Equals(other)
+}
+
+func makeNamespaceTreeJoin(namespace api.NamespaceTree) *eval.NamespaceTreeJoin {
+	// TODO use fake key store
+	keyStore := &crypto.KeyStore{}
+	return eval.MakeNamespaceTreeJoin(namespace, keyStore)
 }

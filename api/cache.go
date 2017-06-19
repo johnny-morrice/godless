@@ -1,9 +1,8 @@
 package api
 
 import (
-	"crypto"
-
 	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/internal/crypto"
 )
 
 type HeadCache interface {
@@ -18,17 +17,13 @@ type RequestPriorityQueue interface {
 	Close() error
 }
 
-type PublicKeyId string
-type PrivateKeyId string
-
-type KeyCache interface {
-	StorePrivateKey(priv crypto.PrivateKey) (PrivateKeyId, error)
-	GetPrivateKey(privId PrivateKeyId) (crypto.PrivateKey, error)
-	StorePublicKey(pub crypto.PublicKey) (PublicKeyId, error)
-	GetPublicKey(pubId PublicKeyId) (crypto.PublicKey, error)
-}
-
 type IndexCache interface {
 	GetIndex(indexAddr crdt.IPFSPath) (crdt.Index, error)
 	SetIndex(indexAddr crdt.IPFSPath, index crdt.Index) error
+}
+
+type KeyStore interface {
+	PutPrivateKey(priv crypto.PrivateKey) error
+	GetPrivateKey(pub crypto.PublicKey) (crypto.PrivateKey, error)
+	GetAllPrivateKeys() []crypto.PrivateKey
 }

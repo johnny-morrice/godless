@@ -14,15 +14,37 @@ type TableName string
 type RowName string
 type EntryName string
 
-func JoinStreamEntries(stream []NamespaceStreamEntry) ([]NamespaceStreamEntry, []InvalidStreamEntry) {
-	ns := ReadNamespaceStream(stream)
-	return MakeNamespaceStream(ns)
+func JoinStreamEntries(stream []NamespaceStreamEntry) ([]NamespaceStreamEntry, []InvalidNamespaceEntry, error) {
+	const failMsg = "JoinStreamEntries failed"
+	ns, readInvalid, err := ReadNamespaceStream(stream)
+
+	if err != nil {
+		return nil, readInvalid, errors.Wrap(err, failMsg)
+	}
+
+	stream, makeInvalid := MakeNamespaceStream(ns)
+
+	invalidEntries := append(readInvalid, makeInvalid...)
+
+	return stream, invalidEntries, nil
 }
 
-func FilterSignedEntries(stream []NamespaceStreamEntry, keys []crypto.PublicKey) ([]NamespaceStreamEntry, []InvalidStreamEntry) {
-	unsigned := ReadNamespaceStream(stream)
+// FIXME implement test!!!
+func FilterSignedEntries(stream []NamespaceStreamEntry, keys []crypto.PublicKey) ([]NamespaceStreamEntry, []InvalidNamespaceEntry, error) {
+	const failMsg = "FilterSignedEntries failed"
+
+	unsigned, readInvalid, readErr := ReadNamespaceStream(stream)
+
+	if readErr != nil {
+		return nil, readInvalid, errors.Wrap(readErr, failMsg)
+	}
+
 	signed := unsigned.FilterVerified(keys)
-	return MakeNamespaceStream(signed)
+	signedStream, makeInvalid := MakeNamespaceStream(signed)
+
+	invalidEntries := append(readInvalid, makeInvalid...)
+
+	return signedStream, invalidEntries, nil
 }
 
 // Semi-lattice type that implements our storage
@@ -63,7 +85,9 @@ func (ns Namespace) FilterVerified(keys []crypto.PublicKey) Namespace {
 }
 
 // Strip removes empty tables and rows that would not be saved to the backing store.
-func (ns Namespace) Strip() Namespace {
+func (ns Namespace) Strip() (Namespace, []InvalidNamespaceEntry, error) {
+	const failMsg = "Namespace.Strip failed"
+
 	stream, invalid := MakeNamespaceStream(ns)
 
 	invalidCount := len(invalid)
@@ -71,7 +95,13 @@ func (ns Namespace) Strip() Namespace {
 		log.Warn("Stripped %v invalid points", invalidCount)
 	}
 
-	return ReadNamespaceStream(stream)
+	namespace, invalid, err := ReadNamespaceStream(stream)
+
+	if err != nil {
+		return EmptyNamespace(), invalid, errors.Wrap(err, failMsg)
+	}
+
+	return namespace, invalid, nil
 }
 
 func (ns Namespace) GetTableNames() []TableName {
@@ -86,11 +116,9 @@ func (ns Namespace) GetTableNames() []TableName {
 	return tableNames
 }
 
-type InvalidStreamEntry NamespaceStreamEntry
-
 // The batch should correspond to a single point.
 // We should write the invalid entries to disk.
-func (ns Namespace) addPointBatch(stream []NamespaceStreamEntry) ([]InvalidStreamEntry, error) {
+func (ns Namespace) addPointBatch(stream []NamespaceStreamEntry) ([]InvalidNamespaceEntry, error) {
 	const failMsg = "Namespace.addPointBatch failed"
 
 	if len(stream) == 0 {

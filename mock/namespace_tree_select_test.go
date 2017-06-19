@@ -457,31 +457,31 @@ func tableZ() crdt.Table {
 }
 
 func streamA() []crdt.NamespaceStreamEntry {
-	return crdt.MakeTableStream(MAIN_TABLE_KEY, tableA())
+	return makeTableStream(MAIN_TABLE_KEY, tableA())
 }
 
 func streamB() []crdt.NamespaceStreamEntry {
-	return crdt.MakeTableStream(MAIN_TABLE_KEY, tableB())
+	return makeTableStream(MAIN_TABLE_KEY, tableB())
 }
 
 func streamC() []crdt.NamespaceStreamEntry {
-	return crdt.MakeTableStream(MAIN_TABLE_KEY, tableC())
+	return makeTableStream(MAIN_TABLE_KEY, tableC())
 }
 
 func streamD() []crdt.NamespaceStreamEntry {
-	return crdt.MakeTableStream(MAIN_TABLE_KEY, tableD())
+	return makeTableStream(MAIN_TABLE_KEY, tableD())
 }
 
 func streamE() []crdt.NamespaceStreamEntry {
-	return crdt.MakeTableStream(MAIN_TABLE_KEY, tableE())
+	return makeTableStream(MAIN_TABLE_KEY, tableE())
 }
 
 func streamF() []crdt.NamespaceStreamEntry {
-	return crdt.MakeTableStream(MAIN_TABLE_KEY, tableF())
+	return makeTableStream(MAIN_TABLE_KEY, tableF())
 }
 
 func streamG() []crdt.NamespaceStreamEntry {
-	return crdt.MakeTableStream(ALT_TABLE_KEY, tableG())
+	return makeTableStream(ALT_TABLE_KEY, tableG())
 }
 
 func feedNamespace(ntr api.NamespaceTreeReader) {
@@ -530,3 +530,14 @@ func mktable(name string, rows []crdt.Row) crdt.Table {
 
 const MAIN_TABLE_KEY = crdt.TableName("The Table")
 const ALT_TABLE_KEY = crdt.TableName("Another table")
+
+func makeTableStream(name crdt.TableName, table crdt.Table) []crdt.NamespaceStreamEntry {
+	stream, invalid := crdt.MakeTableStream(name, table)
+
+	invalidCount := len(invalid)
+	if invalidCount > 0 {
+		panic(fmt.Sprintf("%v invalid entries", invalidCount))
+	}
+
+	return stream
+}

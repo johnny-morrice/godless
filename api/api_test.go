@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"math/rand"
 	"reflect"
 	"testing"
@@ -40,7 +41,7 @@ func (resp APIResponse) Generate(rand *rand.Rand, size int) reflect.Value {
 func genQueryResponse(rand *rand.Rand, size int) APIQueryResponse {
 	gen := APIQueryResponse{}
 	ns := crdt.GenNamespace(rand, size)
-	stream := crdt.MakeNamespaceStream(ns)
+	stream := makeNamespaceStream(ns)
 	gen.Entries = stream
 	return gen
 }
@@ -158,4 +159,15 @@ func apiResponseSerializationTextPass(resp APIResponse) APIResponse {
 	}
 
 	return decoded
+}
+
+func makeNamespaceStream(ns crdt.Namespace) []crdt.NamespaceStreamEntry {
+	stream, invalid := crdt.MakeNamespaceStream(ns)
+
+	invalidCount := len(invalid)
+	if invalidCount > 0 {
+		panic(fmt.Sprintf("%v invalid entries", invalidCount))
+	}
+
+	return stream
 }

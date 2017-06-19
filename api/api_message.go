@@ -129,14 +129,22 @@ func makeAPIReflectMessage(resp APIReflectResponse) *proto.APIReflectResponseMes
 	case REFLECT_HEAD_PATH:
 		message.Path = string(resp.Path)
 	case REFLECT_INDEX:
-		message.Index = crdt.MakeIndexMessage(resp.Index)
+		indexMessage, invalid := crdt.MakeIndexMessage(resp.Index)
+
+		invalidCount := len(invalid)
+
+		if invalidCount > 0 {
+			log.Error("makeAPIReflectMessage: %v invalid Index entries", invalidCount)
+		}
+
+		message.Index = indexMessage
 	case REFLECT_DUMP_NAMESPACE:
 		namespace, invalid := crdt.MakeNamespaceMessage(resp.Namespace)
 
 		invalidCount := len(invalid)
 
 		if invalidCount > 0 {
-			log.Error("makeAPIReflectMessage found %v invalid entries", invalidCount)
+			log.Error("makeAPIReflectMessage: %v invalid Namespace entries", invalidCount)
 		}
 
 		message.Namespace = namespace
@@ -169,7 +177,11 @@ func readAPIReflectResponse(message *proto.APIReflectResponseMessage) APIReflect
 
 		resp.Index = index
 	case REFLECT_DUMP_NAMESPACE:
-		resp.Namespace = crdt.ReadNamespaceMessage(message.Namespace)
+		// namespace, invalid, err
+		crdt.ReadNamespaceMessage(message.Namespace)
+
+		// FIXME implement error handling
+		panic("not implemented")
 	default:
 		panic(fmt.Sprintf("Unknown APIReflectResponse.Type: %v", message))
 	}
