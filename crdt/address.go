@@ -1,7 +1,10 @@
 package crdt
 
 import (
+	"errors"
+	"math/big"
 	"sort"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/johnny-morrice/godless/internal/crypto"
@@ -13,6 +16,16 @@ const NIL_PATH IPFSPath = ""
 
 func IsNilPath(path IPFSPath) bool {
 	return path == NIL_PATH
+}
+
+func ParseHash(hash string) (IPFSPath, error) {
+	bytes := decodeAlphabet(hash, __BTCAlphabet)
+
+	if len(bytes) == 0 {
+		return NIL_PATH, errors.New("Invalid base58 hash")
+	}
+
+	return IPFSPath(hash), nil
 }
 
 type SignedLink struct {
@@ -125,3 +138,41 @@ func uniqLinkSorted(links []SignedLink) []SignedLink {
 
 	return uniq
 }
+
+// Borrowed from jbenet/go-base58.
+// Note will return empty byte slice if any of the input is not in the alphabet.
+func decodeAlphabet(b, alphabet string) []byte {
+	answer := big.NewInt(0)
+	j := big.NewInt(1)
+
+	for i := len(b) - 1; i >= 0; i-- {
+		tmp := strings.IndexAny(alphabet, string(b[i]))
+		if tmp == -1 {
+			return []byte("")
+		}
+		idx := big.NewInt(int64(tmp))
+		tmp1 := big.NewInt(0)
+		tmp1.Mul(j, idx)
+
+		answer.Add(answer, tmp1)
+		j.Mul(j, bigRadix)
+	}
+
+	tmpval := answer.Bytes()
+
+	var numZeros int
+	for numZeros = 0; numZeros < len(b); numZeros++ {
+		if b[numZeros] != alphabet[0] {
+			break
+		}
+	}
+	flen := numZeros + len(tmpval)
+	val := make([]byte, flen, flen)
+	copy(val[numZeros:], tmpval)
+
+	return val
+}
+
+var bigRadix = big.NewInt(58)
+
+const __BTCAlphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"

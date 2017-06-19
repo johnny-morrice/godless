@@ -198,7 +198,12 @@ func (peer *IPFSPeer) SubscribeAddrStream(topic crdt.IPFSPath) (<-chan crdt.IPFS
 
 				pubsubPeer := record.From()
 				bs := record.Data()
-				addr := crdt.IPFSPath(string(bs))
+				addr, err := crdt.ParseHash(string(bs))
+
+				if err != nil {
+					log.Warn("Bad hash from peer: %v", pubsubPeer)
+					continue
+				}
 
 				stream <- addr
 				log.Info("Subscription update: '%v' from '%v'", addr, pubsubPeer)
