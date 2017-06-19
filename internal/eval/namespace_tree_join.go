@@ -16,10 +16,14 @@ type NamespaceTreeJoin struct {
 	tableKey    crdt.TableName
 	table       crdt.Table
 	privateKeys []crypto.PrivateKey
+	keyStore    crypto.KeyStore
 }
 
-func MakeNamespaceTreeJoin(ns api.NamespaceTree) *NamespaceTreeJoin {
-	return &NamespaceTreeJoin{Namespace: ns}
+func MakeNamespaceTreeJoin(ns api.NamespaceTree, keyStore crypto.KeyStore) *NamespaceTreeJoin {
+	return &NamespaceTreeJoin{
+		Namespace: ns,
+		keyStore:  keyStore,
+	}
 }
 
 func (visitor *NamespaceTreeJoin) RunQuery() api.APIResponse {
@@ -47,15 +51,21 @@ func (visitor *NamespaceTreeJoin) RunQuery() api.APIResponse {
 }
 
 func (visitor *NamespaceTreeJoin) VisitPublicKey(keyText crypto.PublicKeyText) {
-	_, err := crypto.ParsePublicKey(keyText)
+	pub, parseErr := crypto.ParsePublicKey(keyText)
 
-	if err != nil {
+	if parseErr != nil {
 		visitor.BadPublicKey(keyText)
 		return
 	}
 
-	// TODO find private key associated with public key.
-	panic("not implemented")
+	priv, matchErr := visitor.keyStore.GetPrivateKey(pub)
+
+	if matchErr != nil {
+		visitor.CollectError(matchErr)
+		return
+	}
+
+	visitor.privateKeys = append(visitor.privateKeys, priv)
 }
 
 func (visitor *NamespaceTreeJoin) VisitOpCode(opCode query.QueryOpCode) {

@@ -14,12 +14,12 @@ type TableName string
 type RowName string
 type EntryName string
 
-func JoinStreamEntries(stream []NamespaceStreamEntry) []NamespaceStreamEntry {
+func JoinStreamEntries(stream []NamespaceStreamEntry) ([]NamespaceStreamEntry, []InvalidStreamEntry) {
 	ns := ReadNamespaceStream(stream)
 	return MakeNamespaceStream(ns)
 }
 
-func FilterSignedEntries(stream []NamespaceStreamEntry, keys []crypto.PublicKey) []NamespaceStreamEntry {
+func FilterSignedEntries(stream []NamespaceStreamEntry, keys []crypto.PublicKey) ([]NamespaceStreamEntry, []InvalidStreamEntry) {
 	unsigned := ReadNamespaceStream(stream)
 	signed := unsigned.FilterVerified(keys)
 	return MakeNamespaceStream(signed)
@@ -64,7 +64,13 @@ func (ns Namespace) FilterVerified(keys []crypto.PublicKey) Namespace {
 
 // Strip removes empty tables and rows that would not be saved to the backing store.
 func (ns Namespace) Strip() Namespace {
-	stream := MakeNamespaceStream(ns)
+	stream, invalid := MakeNamespaceStream(ns)
+
+	invalidCount := len(invalid)
+	if invalidCount > 0 {
+		log.Warn("Stripped %v invalid points", invalidCount)
+	}
+
 	return ReadNamespaceStream(stream)
 }
 

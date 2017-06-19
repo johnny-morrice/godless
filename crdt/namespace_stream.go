@@ -109,26 +109,43 @@ func (stream byNamespaceStreamOrder) Less(i, j int) bool {
 }
 
 // TODO does not support unsigned links.
-func makeStreamPoints(proto NamespaceStreamEntry, point Point, index int, stream []NamespaceStreamEntry) int {
+func makeStreamPoints(proto NamespaceStreamEntry, point Point, index int, stream []NamespaceStreamEntry) (int, []InvalidStreamEntry) {
 	if len(point.Signatures) == 0 {
 		entry := proto
-		entry.Point = MakeStreamPoint(point.Text, crypto.Signature{})
+		entry.Point = StreamPoint{Text: point.Text}
 		stream[index] = entry
-		return index + 1
+		return index + 1, nil
 	}
+
+	invalid := []InvalidStreamEntry{}
 
 	for _, sig := range point.Signatures {
 		entry := proto
-		proto.Point = MakeStreamPoint(point.Text, sig)
+		streamPoint, err := MakeStreamPoint(point.Text, sig)
+
+		if err != nil {
+			log.Warn("Invalid stream point: %v", err)
+			entry.Point.Text = point.Text
+			invalid = append(invalid, InvalidStreamEntry(entry))
+			continue
+		}
+
+		entry.Point = streamPoint
 		stream[index] = entry
 		index++
 	}
 
-	return index
+	return index, invalid
 }
 
-func MakeStreamPoint(text PointText, sig crypto.Signature) StreamPoint {
-	return StreamPoint{Text: text, Signature: crypto.PrintSignature(sig)}
+func MakeStreamPoint(text PointText, sig crypto.Signature) (StreamPoint, error) {
+	sigText, err := crypto.PrintSignature(sig)
+
+	if err != nil {
+		return StreamPoint{}, err
+	}
+
+	return StreamPoint{Text: text, Signature: sigText}, nil
 }
 
 func readStreamPoint(stream []NamespaceStreamEntry) (Point, []InvalidStreamEntry, error) {
@@ -170,25 +187,26 @@ func readStreamPoint(stream []NamespaceStreamEntry) (Point, []InvalidStreamEntry
 	return point, invalid, nil
 }
 
-func MakeTableStream(tableKey TableName, table Table) []NamespaceStreamEntry {
+func MakeTableStream(tableKey TableName, table Table) ([]NamespaceStreamEntry, []InvalidStreamEntry) {
 	subNamespace := MakeNamespace(map[TableName]Table{
 		tableKey: table,
 	})
 	return MakeNamespaceStream(subNamespace)
 }
 
-func MakeRowStream(tableKey TableName, rowKey RowName, row Row) []NamespaceStreamEntry {
+func MakeRowStream(tableKey TableName, rowKey RowName, row Row) ([]NamespaceStreamEntry, []InvalidStreamEntry) {
 	table := MakeTable(map[RowName]Row{
 		rowKey: row,
 	})
 	return MakeTableStream(tableKey, table)
 }
 
-func MakeNamespaceStream(ns Namespace) []NamespaceStreamEntry {
+func MakeNamespaceStream(ns Namespace) ([]NamespaceStreamEntry, []InvalidStreamEntry) {
 	count := streamLength(ns)
 
 	index := 0
 	stream := make([]NamespaceStreamEntry, 0, count)
+	invalid := []InvalidStreamEntry{}
 
 	ns.ForeachEntry(func(t TableName, r RowName, e EntryName, entry Entry) {
 		proto := NamespaceStreamEntry{
@@ -198,12 +216,17 @@ func MakeNamespaceStream(ns Namespace) []NamespaceStreamEntry {
 		}
 
 		for _, point := range entry.GetValues() {
-			index = makeStreamPoints(proto, point, index, stream)
+			var moreInvalid []InvalidStreamEntry
+			index, moreInvalid = makeStreamPoints(proto, point, index, stream)
+
+			if len(moreInvalid) > 0 {
+				invalid = append(invalid, moreInvalid...)
+			}
 		}
 	})
 
 	sort.Sort(byNamespaceStreamOrder(stream))
-	return stream
+	return stream, invalid
 }
 
 func streamLength(ns Namespace) int {

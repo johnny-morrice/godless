@@ -70,10 +70,16 @@ func (visitor *NamespaceTreeSelect) RunQuery() api.APIResponse {
 
 func (visitor *NamespaceTreeSelect) resultStream() []crdt.NamespaceStreamEntry {
 	stream := visitor.crit.result
+	var invalid []crdt.InvalidStreamEntry
 	if visitor.needsSignature() {
-		stream = crdt.FilterSignedEntries(stream, visitor.keys)
+		stream, invalid = crdt.FilterSignedEntries(stream, visitor.keys)
 	} else {
-		stream = crdt.JoinStreamEntries(stream)
+		stream, invalid = crdt.JoinStreamEntries(stream)
+	}
+
+	invalidCount := len(invalid)
+	if invalidCount > 0 {
+		log.Error("NamespaceTreeSelect found %v invalidEntries", invalidCount)
 	}
 
 	return stream
@@ -153,7 +159,13 @@ func (crit *rowCriteria) selectMatching(namespace crdt.Namespace) api.TraversalU
 		return api.TraversalUpdate{}
 	}
 
-	rows := crit.findRows(namespace)
+	rows, invalid := crit.findRows(namespace)
+
+	invalidCount := len(invalid)
+
+	if invalidCount > 0 {
+		log.Error("rowCriteria found %v invalid entries", invalidCount)
+	}
 
 	var slurp int
 	if len(rows) <= remaining {
@@ -169,13 +181,15 @@ func (crit *rowCriteria) selectMatching(namespace crdt.Namespace) api.TraversalU
 	return api.TraversalUpdate{More: true}
 }
 
-func (crit *rowCriteria) findRows(namespace crdt.Namespace) []crdt.NamespaceStreamEntry {
-	out := []crdt.NamespaceStreamEntry{}
+func (crit *rowCriteria) findRows(namespace crdt.Namespace) ([]crdt.NamespaceStreamEntry, []crdt.InvalidStreamEntry) {
+	resultCapacity := crit.limit
+	out := make([]crdt.NamespaceStreamEntry, 0, resultCapacity)
+	invalidOut := []crdt.InvalidStreamEntry{}
 
 	table, err := namespace.GetTable(crit.tableKey)
 
 	if err != nil {
-		return out
+		return out, invalidOut
 	}
 
 	if crit.rootWhere.OpCode == query.WHERE_NOOP {
@@ -187,16 +201,17 @@ func (crit *rowCriteria) findRows(namespace crdt.Namespace) []crdt.NamespaceStre
 		where := query.MakeWhereStack(crit.rootWhere)
 
 		if eval.evaluate(where) {
-			stream := crdt.MakeRowStream(crit.tableKey, rowKey, r)
+			stream, invalid := crdt.MakeRowStream(crit.tableKey, rowKey, r)
 			out = append(out, stream...)
+			invalidOut = append(invalidOut, invalid...)
 		}
 	}))
 
-	return out
+	return out, invalidOut
 }
 
 func (crit *rowCriteria) isReady() bool {
-	return crit.rootWhere != nil && crit.limit > 0 && crit.tableKey != ""
+	return crit.rootWhere != nil && crit.tableKey != ""
 }
 
 type selectEvalTree struct {

@@ -131,7 +131,15 @@ func makeAPIReflectMessage(resp APIReflectResponse) *proto.APIReflectResponseMes
 	case REFLECT_INDEX:
 		message.Index = crdt.MakeIndexMessage(resp.Index)
 	case REFLECT_DUMP_NAMESPACE:
-		message.Namespace = crdt.MakeNamespaceMessage(resp.Namespace)
+		namespace, invalid := crdt.MakeNamespaceMessage(resp.Namespace)
+
+		invalidCount := len(invalid)
+
+		if invalidCount > 0 {
+			log.Error("makeAPIReflectMessage found %v invalid entries", invalidCount)
+		}
+
+		message.Namespace = namespace
 	default:
 		panic(fmt.Sprintf("Unknown APIReflectResponse.Type: %v", resp))
 	}

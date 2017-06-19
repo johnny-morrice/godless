@@ -55,7 +55,8 @@ func MakeIndexStreamEntries(t TableName, addrs []SignedLink) []IndexStreamEntry 
 	for _, link := range addrs {
 		path := link.Link
 		for _, sig := range link.Signatures {
-			entry := MakeIndexStreamEntry(t, path, sig)
+			panic("not implemented")
+			entry, _ := MakeIndexStreamEntry(t, path, sig)
 			entries = append(entries, entry)
 		}
 	}
@@ -63,12 +64,20 @@ func MakeIndexStreamEntries(t TableName, addrs []SignedLink) []IndexStreamEntry 
 	return entries
 }
 
-func MakeIndexStreamEntry(t TableName, path IPFSPath, sig crypto.Signature) IndexStreamEntry {
-	return IndexStreamEntry{
+func MakeIndexStreamEntry(t TableName, path IPFSPath, sig crypto.Signature) (IndexStreamEntry, error) {
+	sigText, err := crypto.PrintSignature(sig)
+
+	if err != nil {
+		return IndexStreamEntry{}, err
+	}
+
+	entry := IndexStreamEntry{
 		TableName: t,
 		Link:      path,
-		Signature: crypto.PrintSignature(sig),
+		Signature: sigText,
 	}
+
+	return entry, nil
 }
 
 type byIndexStreamOrder []IndexStreamEntry

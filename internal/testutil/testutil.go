@@ -173,6 +173,15 @@ func AssertVerboseErrorIsNil(t *testing.T, err error) {
 	}
 }
 
+func AssertLenEquals(t *testing.T, expected int, hasLen interface{}) {
+	value := reflect.ValueOf(hasLen)
+	actual := value.Len()
+
+	if expected != actual {
+		t.Errorf("Expected len %v but received %v", expected, actual)
+	}
+}
+
 func LogDiff(old, new string) {
 	oldParts := strings.Split(old, "")
 	newParts := strings.Split(new, "")

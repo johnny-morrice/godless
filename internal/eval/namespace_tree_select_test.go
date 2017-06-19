@@ -6,6 +6,7 @@ import (
 
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/internal/crypto"
+	"github.com/johnny-morrice/godless/internal/testutil"
 	"github.com/johnny-morrice/godless/query"
 )
 
@@ -27,8 +28,8 @@ func TestRowCriteria_findRows(t *testing.T) {
 		"bar": crdt.MakeEntry([]crdt.Point{pointB}),
 	})
 
-	streamPointA := crdt.MakeStreamPoint(pointA.Text, crypto.Signature{})
-	streamPointB := crdt.MakeStreamPoint(pointB.Text, crypto.Signature{})
+	streamPointA := makeStreamPoint(pointA.Text, crypto.Signature{})
+	streamPointB := makeStreamPoint(pointB.Text, crypto.Signature{})
 
 	namespace := crdt.MakeNamespace(map[crdt.TableName]crdt.Table{
 		TABLE_KEY: crdt.MakeTable(map[crdt.RowName]crdt.Row{
@@ -95,7 +96,9 @@ func TestRowCriteria_findRows(t *testing.T) {
 			rootWhere: &w,
 		}
 
-		actual := rc.findRows(namespace)
+		actual, invalid := rc.findRows(namespace)
+
+		testutil.AssertLenEquals(t, 0, invalid)
 
 		crdt.SortNamespaceStream(actual)
 
@@ -129,6 +132,18 @@ func TestRowCriteria_isReady(t *testing.T) {
 
 	if !okay.isReady() {
 		t.Error("Expected rowCriteria isReady()")
+	}
+}
+
+func makeStreamPoint(text crdt.PointText, sig crypto.Signature) crdt.StreamPoint {
+	streamPoint, err := crdt.MakeStreamPoint(text, sig)
+	setupPanic(err)
+	return streamPoint
+}
+
+func setupPanic(err error) {
+	if err != nil {
+		panic(err)
 	}
 }
 

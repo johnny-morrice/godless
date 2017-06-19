@@ -1,6 +1,7 @@
 package crdt
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/johnny-morrice/godless/internal/crypto"
@@ -75,15 +76,21 @@ func ReadNamespaceMessage(message *proto.NamespaceMessage) Namespace {
 	return ReadNamespaceStream(stream)
 }
 
-func MakeNamespaceMessage(ns Namespace) *proto.NamespaceMessage {
-	stream := MakeNamespaceStream(ns)
-	return MakeNamespaceStreamMessage(stream)
+func MakeNamespaceMessage(ns Namespace) (*proto.NamespaceMessage, []InvalidStreamEntry) {
+	stream, invalid := MakeNamespaceStream(ns)
+	return MakeNamespaceStreamMessage(stream), invalid
 }
 
 func EncodeNamespace(ns Namespace, w io.Writer) error {
 	const failMsg = "EncodeNamespace failed"
 
-	message := MakeNamespaceMessage(ns)
+	message, invalid := MakeNamespaceMessage(ns)
+
+	invalidCount := len(invalid)
+	if invalidCount > 0 {
+		invalidErr := fmt.Errorf("%v invalid points", invalidCount)
+		return errors.Wrap(invalidErr, failMsg)
+	}
 
 	err := util.Encode(message, w)
 

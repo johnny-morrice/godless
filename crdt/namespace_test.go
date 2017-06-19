@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/johnny-morrice/godless/internal/testutil"
+	"github.com/johnny-morrice/godless/log"
 )
 
 func TestMakeRowStream(t *testing.T) {
@@ -30,7 +31,13 @@ func TestMakeRowStream(t *testing.T) {
 func rowStreamOk(expected Row) bool {
 	const tableKey = "tableKey"
 	const rowKey = "rowKey"
-	stream := MakeRowStream(tableKey, rowKey, expected)
+	stream, invalid := MakeRowStream(tableKey, rowKey, expected)
+
+	if len(invalid) > 0 {
+		log.Error("Found invalid points")
+		return false
+	}
+
 	ns := ReadNamespaceStream(stream)
 	table := ns.Tables[tableKey]
 	actual := table.Rows[rowKey]

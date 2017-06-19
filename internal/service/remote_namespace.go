@@ -3,6 +3,7 @@ package service
 import (
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/johnny-morrice/godless/internal/eval"
 	"github.com/johnny-morrice/godless/log"
 	"github.com/johnny-morrice/godless/query"
@@ -270,7 +271,10 @@ func (rn *remoteNamespace) RunKvQuery(q *query.Query, kvq api.KvQuery) {
 
 	switch q.OpCode {
 	case query.JOIN:
-		visitor := eval.MakeNamespaceTreeJoin(rn)
+		keyStore := crypto.KeyStore{}
+		// TODO implement.
+		panic("not implemented")
+		visitor := eval.MakeNamespaceTreeJoin(rn, keyStore)
 		q.Visit(visitor)
 		runner = visitor
 	case query.SELECT:
