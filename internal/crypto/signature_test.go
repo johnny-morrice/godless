@@ -26,16 +26,18 @@ func init() {
 var plainText []byte = []byte("Hello world")
 
 func TestAlice(t *testing.T) {
-	sig, err := Sign(alicePriv, plainText)
-	testutil.AssertNil(t, err)
-	ok := Verify(alicePub, plainText, sig)
+	sig, signErr := Sign(alicePriv, plainText)
+	testutil.AssertNil(t, signErr)
+	ok, verifyErr := Verify(alicePub, plainText, sig)
+	testutil.AssertNil(t, verifyErr)
 	testutil.Assert(t, "Unexpected signature failure", ok)
 }
 
 func TestMallory(t *testing.T) {
-	sig, err := Sign(alicePriv, plainText)
-	testutil.AssertNil(t, err)
-	ok := Verify(malloryPub, plainText, sig)
+	sig, signErr := Sign(alicePriv, plainText)
+	testutil.AssertNil(t, signErr)
+	ok, verifyErr := Verify(malloryPub, plainText, sig)
+	testutil.AssertNil(t, verifyErr)
 	testutil.Assert(t, "Expected signature failure", !ok)
 
 }

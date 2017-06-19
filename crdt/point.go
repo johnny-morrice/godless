@@ -48,7 +48,12 @@ func (p Point) IsVerifiedByAny(keys []crypto.PublicKey) bool {
 
 func (p Point) IsVerifiedBy(publicKey crypto.PublicKey) bool {
 	for _, sig := range p.Signatures {
-		ok := crypto.Verify(publicKey, []byte(p.Text), sig)
+		ok, err := crypto.Verify(publicKey, []byte(p.Text), sig)
+
+		if err != nil {
+			log.Warn("Bad key while verifying Point signature")
+			continue
+		}
 
 		if ok {
 			return true
@@ -118,7 +123,7 @@ func uniqPointSorted(set []Point) []Point {
 
 	for i := 0; i < len(uniq); i++ {
 		point := &uniq[i]
-		point.Signatures = crypto.UniqSignatures(point.Signatures)
+		point.Signatures = crypto.OrderSignatures(point.Signatures)
 	}
 
 	return uniq

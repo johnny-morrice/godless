@@ -4,7 +4,6 @@ import (
 	"errors"
 	"math/big"
 	"sort"
-	"strings"
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/johnny-morrice/godless/internal/crypto"
@@ -19,10 +18,10 @@ func IsNilPath(path IPFSPath) bool {
 }
 
 func ParseHash(hash string) (IPFSPath, error) {
-	bytes := decodeAlphabet(hash, __BTCAlphabet)
+	ok := crypto.IsBase58(hash)
 
-	if len(bytes) == 0 {
-		return NIL_PATH, errors.New("Invalid base58 hash")
+	if !ok {
+		return NIL_PATH, errors.New("Hash was not base58 encoded")
 	}
 
 	return IPFSPath(hash), nil
@@ -53,7 +52,14 @@ func (link SignedLink) IsVerifiedByAny(keys []crypto.PublicKey) bool {
 
 func (link SignedLink) IsVerifiedBy(pub crypto.PublicKey) bool {
 	for _, sig := range link.Signatures {
-		if crypto.Verify(pub, []byte(link.Link), sig) {
+		ok, err := crypto.Verify(pub, []byte(link.Link), sig)
+
+		if err != nil {
+			log.Warn("Bad key while verifying SignedLink signature")
+			continue
+		}
+
+		if ok {
 			return true
 		}
 	}
@@ -133,46 +139,10 @@ func uniqLinkSorted(links []SignedLink) []SignedLink {
 
 	for i := 0; i < len(uniq); i++ {
 		link := &uniq[i]
-		link.Signatures = crypto.UniqSignatures(link.Signatures)
+		link.Signatures = crypto.OrderSignatures(link.Signatures)
 	}
 
 	return uniq
 }
 
-// Borrowed from jbenet/go-base58.
-// Note will return empty byte slice if any of the input is not in the alphabet.
-func decodeAlphabet(b, alphabet string) []byte {
-	answer := big.NewInt(0)
-	j := big.NewInt(1)
-
-	for i := len(b) - 1; i >= 0; i-- {
-		tmp := strings.IndexAny(alphabet, string(b[i]))
-		if tmp == -1 {
-			return []byte("")
-		}
-		idx := big.NewInt(int64(tmp))
-		tmp1 := big.NewInt(0)
-		tmp1.Mul(j, idx)
-
-		answer.Add(answer, tmp1)
-		j.Mul(j, bigRadix)
-	}
-
-	tmpval := answer.Bytes()
-
-	var numZeros int
-	for numZeros = 0; numZeros < len(b); numZeros++ {
-		if b[numZeros] != alphabet[0] {
-			break
-		}
-	}
-	flen := numZeros + len(tmpval)
-	val := make([]byte, flen, flen)
-	copy(val[numZeros:], tmpval)
-
-	return val
-}
-
 var bigRadix = big.NewInt(58)
-
-const __BTCAlphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
