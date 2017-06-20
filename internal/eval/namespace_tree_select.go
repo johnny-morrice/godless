@@ -198,8 +198,7 @@ func (crit *rowCriteria) selectMatching(namespace crdt.Namespace) api.TraversalU
 }
 
 func (crit *rowCriteria) findRows(namespace crdt.Namespace) ([]crdt.NamespaceStreamEntry, []crdt.InvalidNamespaceEntry) {
-	resultCapacity := crit.limit
-	out := make([]crdt.NamespaceStreamEntry, 0, resultCapacity)
+	out := []crdt.NamespaceStreamEntry{}
 	invalidOut := []crdt.InvalidNamespaceEntry{}
 
 	table, err := namespace.GetTable(crit.tableKey)
