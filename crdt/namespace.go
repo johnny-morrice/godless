@@ -117,7 +117,6 @@ func (ns Namespace) GetTableNames() []TableName {
 }
 
 // The batch should correspond to a single point.
-// We should write the invalid entries to disk.
 func (ns Namespace) addPointBatch(stream []NamespaceStreamEntry) ([]InvalidNamespaceEntry, error) {
 	const failMsg = "Namespace.addPointBatch failed"
 

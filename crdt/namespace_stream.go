@@ -3,8 +3,8 @@ package crdt
 import (
 	"sort"
 
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/johnny-morrice/godless/internal/crypto"
+	"github.com/johnny-morrice/godless/log"
 	"github.com/pkg/errors"
 )
 
@@ -110,34 +110,31 @@ func (stream byNamespaceStreamOrder) Less(i, j int) bool {
 	return a.Point.Less(b.Point)
 }
 
-// TODO does not support unsigned links.
-func makeStreamPoints(proto NamespaceStreamEntry, point Point, index int, stream []NamespaceStreamEntry) (int, []InvalidNamespaceEntry) {
+type streamBuilder struct {
+	stream  []NamespaceStreamEntry
+	invalid []InvalidNamespaceEntry
+}
+
+func (builder *streamBuilder) makeStreamPoints(proto NamespaceStreamEntry, point Point) {
 	if len(point.Signatures) == 0 {
 		entry := proto
 		entry.Point = StreamPoint{Text: point.Text}
-		stream[index] = entry
-		return index + 1, nil
+		builder.stream = append(builder.stream, entry)
 	}
-
-	invalid := []InvalidNamespaceEntry{}
 
 	for _, sig := range point.Signatures {
 		entry := proto
 		streamPoint, err := MakeStreamPoint(point.Text, sig)
 
 		if err != nil {
-			log.Warn("Invalid stream point: %v", err)
 			entry.Point.Text = point.Text
-			invalid = append(invalid, InvalidNamespaceEntry(entry))
+			builder.invalid = append(builder.invalid, InvalidNamespaceEntry(entry))
 			continue
 		}
 
 		entry.Point = streamPoint
-		stream[index] = entry
-		index++
+		builder.stream = append(builder.stream, entry)
 	}
-
-	return index, invalid
 }
 
 func MakeStreamPoint(text PointText, sig crypto.Signature) (StreamPoint, error) {
@@ -206,9 +203,9 @@ func MakeRowStream(tableKey TableName, rowKey RowName, row Row) ([]NamespaceStre
 func MakeNamespaceStream(ns Namespace) ([]NamespaceStreamEntry, []InvalidNamespaceEntry) {
 	count := streamLength(ns)
 
-	index := 0
-	stream := make([]NamespaceStreamEntry, 0, count)
-	invalid := []InvalidNamespaceEntry{}
+	log.Info("Making NamespaceStream of length: %v", count)
+
+	builder := &streamBuilder{stream: make([]NamespaceStreamEntry, 0, count)}
 
 	ns.ForeachEntry(func(t TableName, r RowName, e EntryName, entry Entry) {
 		proto := NamespaceStreamEntry{
@@ -218,17 +215,12 @@ func MakeNamespaceStream(ns Namespace) ([]NamespaceStreamEntry, []InvalidNamespa
 		}
 
 		for _, point := range entry.GetValues() {
-			var moreInvalid []InvalidNamespaceEntry
-			index, moreInvalid = makeStreamPoints(proto, point, index, stream)
-
-			if len(moreInvalid) > 0 {
-				invalid = append(invalid, moreInvalid...)
-			}
+			builder.makeStreamPoints(proto, point)
 		}
 	})
 
-	sort.Sort(byNamespaceStreamOrder(stream))
-	return stream, invalid
+	sort.Sort(byNamespaceStreamOrder(builder.stream))
+	return builder.stream, builder.invalid
 }
 
 func streamLength(ns Namespace) int {
@@ -252,15 +244,14 @@ func ReadNamespaceStream(stream []NamespaceStreamEntry) (Namespace, []InvalidNam
 	const failMsg = "ReadNamespaceStream failed"
 
 	ns := EmptyNamespace()
-	invalidEntries := []InvalidNamespaceEntry{}
+	var invalidEntries []InvalidNamespaceEntry
 
 	batchStart := 0
 	for i, entry := range stream {
 		startEntry := stream[batchStart]
 
 		if !entry.SamePoint(startEntry) {
-			batchEnd := i + 1
-			invalid, err := ns.addPointBatch(stream[batchStart:batchEnd])
+			invalid, err := ns.addPointBatch(stream[batchStart:i])
 
 			invalidEntries = append(invalidEntries, invalid...)
 
@@ -268,7 +259,7 @@ func ReadNamespaceStream(stream []NamespaceStreamEntry) (Namespace, []InvalidNam
 				return EmptyNamespace(), invalidEntries, errors.Wrap(err, failMsg)
 			}
 
-			batchStart = batchEnd
+			batchStart = i
 		}
 
 	}
