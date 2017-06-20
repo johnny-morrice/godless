@@ -26,11 +26,17 @@ func makeIpfsRecord(namespace crdt.Namespace) *IPFSRecord {
 }
 
 func (record *IPFSRecord) encode(w io.Writer) error {
-	return crdt.EncodeNamespace(record.Namespace, w)
+	invalid, err := crdt.EncodeNamespace(record.Namespace, w)
+
+	record.logInvalid(invalid)
+
+	return err
 }
 
 func (record *IPFSRecord) decode(r io.Reader) error {
-	ns, err := crdt.DecodeNamespace(r)
+	ns, invalid, err := crdt.DecodeNamespace(r)
+
+	record.logInvalid(invalid)
 
 	if err != nil {
 		return err
@@ -38,6 +44,14 @@ func (record *IPFSRecord) decode(r io.Reader) error {
 
 	record.Namespace = ns
 	return nil
+}
+
+func (record *IPFSRecord) logInvalid(invalid []crdt.InvalidNamespaceEntry) {
+	invalidCount := len(invalid)
+
+	if invalidCount > 0 {
+		log.Error("IPFSRecord: %v invalid entries", invalidCount)
+	}
 }
 
 type encoder interface {
@@ -59,11 +73,17 @@ func makeIpfsIndex(index crdt.Index) *IPFSIndex {
 }
 
 func (index *IPFSIndex) encode(w io.Writer) error {
-	return crdt.EncodeIndex(index.Index, w)
+	invalid, err := crdt.EncodeIndex(index.Index, w)
+
+	index.logInvalid(invalid)
+
+	return err
 }
 
 func (index *IPFSIndex) decode(r io.Reader) error {
 	dx, invalid, err := crdt.DecodeIndex(r)
+
+	index.logInvalid(invalid)
 
 	if err != nil {
 		return err
@@ -76,6 +96,14 @@ func (index *IPFSIndex) decode(r io.Reader) error {
 
 	index.Index = dx
 	return nil
+}
+
+func (index *IPFSIndex) logInvalid(invalid []crdt.InvalidIndexEntry) {
+	invalidCount := len(invalid)
+
+	if invalidCount > 0 {
+		log.Error("IPFSRecord: %v invalid entries", invalidCount)
+	}
 }
 
 // TODO Don't use Shell directly - invent an interface.  This would enable mocking.

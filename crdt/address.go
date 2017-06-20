@@ -1,12 +1,12 @@
 package crdt
 
 import (
-	"errors"
 	"math/big"
 	"sort"
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/johnny-morrice/godless/internal/crypto"
+	"github.com/pkg/errors"
 )
 
 type IPFSPath string
@@ -27,26 +27,41 @@ func ParseHash(hash string) (IPFSPath, error) {
 	return IPFSPath(hash), nil
 }
 
-// FIXME rename to Link
-type SignedLink struct {
-	Link       IPFSPath
+type Link struct {
+	Path       IPFSPath
 	Signatures []crypto.Signature
 }
 
-// FIXME implement
-func SignTheLink(path IPFSPath, keys []crypto.PrivateKey) SignedLink {
-	panic("not implemented")
+func SignedLink(path IPFSPath, keys []crypto.PrivateKey) (Link, error) {
+	const failMsg = "SignedLink failed"
+
+	signed := Link{
+		Path:       path,
+		Signatures: make([]crypto.Signature, len(keys)),
+	}
+
+	for i, priv := range keys {
+		sig, err := crypto.Sign(priv, []byte(signed.Path))
+
+		if err != nil {
+			return Link{}, errors.Wrap(err, failMsg)
+		}
+
+		signed.Signatures[i] = sig
+	}
+
+	return signed, nil
 }
 
-func UnsignedLink(path IPFSPath) SignedLink {
-	return SignedLink{Link: path}
+func UnsignedLink(path IPFSPath) Link {
+	return Link{Path: path}
 }
 
-func PreSignedLink(path IPFSPath, sig crypto.Signature) SignedLink {
-	return SignedLink{Link: path, Signatures: []crypto.Signature{sig}}
+func PreSignedLink(path IPFSPath, sig crypto.Signature) Link {
+	return Link{Path: path, Signatures: []crypto.Signature{sig}}
 }
 
-func (link SignedLink) IsVerifiedByAny(keys []crypto.PublicKey) bool {
+func (link Link) IsVerifiedByAny(keys []crypto.PublicKey) bool {
 	for _, pub := range keys {
 		if link.IsVerifiedBy(pub) {
 			return true
@@ -56,9 +71,9 @@ func (link SignedLink) IsVerifiedByAny(keys []crypto.PublicKey) bool {
 	return false
 }
 
-func (link SignedLink) IsVerifiedBy(pub crypto.PublicKey) bool {
+func (link Link) IsVerifiedBy(pub crypto.PublicKey) bool {
 	for _, sig := range link.Signatures {
-		ok, err := crypto.Verify(pub, []byte(link.Link), sig)
+		ok, err := crypto.Verify(pub, []byte(link.Path), sig)
 
 		if err != nil {
 			log.Warn("Bad key while verifying SignedLink signature")
@@ -75,7 +90,7 @@ func (link SignedLink) IsVerifiedBy(pub crypto.PublicKey) bool {
 	return false
 }
 
-func (link SignedLink) Equals(other SignedLink) bool {
+func (link Link) Equals(other Link) bool {
 	ok := link.SameLink(other)
 	ok = ok && len(link.Signatures) == len(other.Signatures)
 
@@ -94,16 +109,16 @@ func (link SignedLink) Equals(other SignedLink) bool {
 	return true
 }
 
-func (link SignedLink) SameLink(other SignedLink) bool {
-	return link.Link == other.Link
+func (link Link) SameLink(other Link) bool {
+	return link.Path == other.Path
 }
 
-func MergeLinks(links []SignedLink) []SignedLink {
+func MergeLinks(links []Link) []Link {
 	sort.Sort(byLinkPath(links))
 	return uniqLinkSorted(links)
 }
 
-type byLinkPath []SignedLink
+type byLinkPath []Link
 
 func (addrs byLinkPath) Len() int {
 	return len(addrs)
@@ -117,26 +132,26 @@ func (addrs byLinkPath) Less(i, j int) bool {
 	a := addrs[i]
 	b := addrs[j]
 
-	if a.Link < b.Link {
+	if a.Path < b.Path {
 		return true
-	} else if a.Link > b.Link {
+	} else if a.Path > b.Path {
 		return false
 	}
 
 	return false
 }
 
-func uniqLinkSorted(links []SignedLink) []SignedLink {
+func uniqLinkSorted(links []Link) []Link {
 	if len(links) == 0 {
 		return links
 	}
 
-	uniq := make([]SignedLink, 1, len(links))
+	uniq := make([]Link, 1, len(links))
 
 	uniq[0] = links[0]
 	for _, p := range links[1:] {
 		last := &uniq[len(uniq)-1]
-		if p.Link == last.Link {
+		if p.Path == last.Path {
 			last.Signatures = append(last.Signatures, p.Signatures...)
 		} else {
 			uniq = append(uniq, p)

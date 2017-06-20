@@ -16,20 +16,20 @@ import (
 )
 
 type Index struct {
-	Index map[TableName][]SignedLink
+	Index map[TableName][]Link
 }
 
 func EmptyIndex() Index {
-	return MakeIndex(map[TableName]SignedLink{})
+	return MakeIndex(map[TableName]Link{})
 }
 
-func MakeIndex(indices map[TableName]SignedLink) Index {
+func MakeIndex(indices map[TableName]Link) Index {
 	out := Index{
-		Index: map[TableName][]SignedLink{},
+		Index: map[TableName][]Link{},
 	}
 
 	for table, addr := range indices {
-		out.Index[table] = []SignedLink{addr}
+		out.Index[table] = []Link{addr}
 	}
 
 	return out
@@ -97,7 +97,7 @@ func (index Index) IsEmpty() bool {
 	return len(index.Index) == 0
 }
 
-func (index Index) ForTable(tableName TableName, f func(link SignedLink)) error {
+func (index Index) ForTable(tableName TableName, f func(link Link)) error {
 	const failMsg = "index.ForTable failed"
 
 	links, err := index.GetTableAddrs(tableName)
@@ -170,7 +170,7 @@ func (index Index) AllTables() []TableName {
 	return tables
 }
 
-func (index Index) GetTableAddrs(tableName TableName) ([]SignedLink, error) {
+func (index Index) GetTableAddrs(tableName TableName) ([]Link, error) {
 	indices, ok := index.Index[tableName]
 
 	if !ok {
@@ -180,7 +180,7 @@ func (index Index) GetTableAddrs(tableName TableName) ([]SignedLink, error) {
 	return indices, nil
 }
 
-func (index Index) JoinNamespace(addr SignedLink, namespace Namespace) Index {
+func (index Index) JoinNamespace(addr Link, namespace Namespace) Index {
 	tables := namespace.GetTableNames()
 
 	joined := index.Copy()
@@ -191,7 +191,7 @@ func (index Index) JoinNamespace(addr SignedLink, namespace Namespace) Index {
 	return joined
 }
 
-func (index Index) JoinTable(table TableName, addr ...SignedLink) Index {
+func (index Index) JoinTable(table TableName, addr ...Link) Index {
 	cpy := index.Copy()
 
 	cpy.addTable(table, addr...)
@@ -199,7 +199,7 @@ func (index Index) JoinTable(table TableName, addr ...SignedLink) Index {
 	return cpy
 }
 
-func (index Index) addTable(table TableName, addr ...SignedLink) {
+func (index Index) addTable(table TableName, addr ...Link) {
 	if addrs, ok := index.Index[table]; ok {
 		normal := MergeLinks(append(addrs, addr...))
 		index.Index[table] = normal
@@ -212,7 +212,7 @@ func (index Index) Copy() Index {
 	cpy := EmptyIndex()
 
 	for table, addrs := range index.Index {
-		addrCopy := make([]SignedLink, len(addrs))
+		addrCopy := make([]Link, len(addrs))
 		for i, a := range addrs {
 			addrCopy[i] = a
 		}
@@ -232,7 +232,7 @@ func GenIndex(rand *rand.Rand, size int) Index {
 		keyCount := testutil.GenCountRange(rand, 1, size, KEY_SCALE)
 		indexKey := TableName(testutil.RandPoint(rand, keyCount))
 		addrCount := testutil.GenCountRange(rand, 1, size, ADDR_SCALE)
-		addrs := make([]SignedLink, addrCount)
+		addrs := make([]Link, addrCount)
 		for j := 0; j < addrCount; j++ {
 			pathCount := testutil.GenCountRange(rand, 1, size, PATH_SCALE)
 			a := testutil.RandPoint(rand, pathCount)

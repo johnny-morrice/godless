@@ -241,9 +241,9 @@ func (_mr *_MockNamespaceSearcherRecorder) ReadNamespace(arg0 interface{}) *gomo
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ReadNamespace", arg0)
 }
 
-func (_m *MockNamespaceSearcher) Search(_param0 crdt.Index) []crdt.SignedLink {
+func (_m *MockNamespaceSearcher) Search(_param0 crdt.Index) []crdt.Link {
 	ret := _m.ctrl.Call(_m, "Search", _param0)
-	ret0, _ := ret[0].([]crdt.SignedLink)
+	ret0, _ := ret[0].([]crdt.Link)
 	return ret0
 }
 

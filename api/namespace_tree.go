@@ -25,7 +25,7 @@ type TraversalUpdate struct {
 }
 
 type IndexSearch interface {
-	Search(index crdt.Index) []crdt.SignedLink
+	Search(index crdt.Index) []crdt.Link
 }
 
 type NamespaceSearcher interface {
@@ -43,13 +43,13 @@ func (searcher SignedTableSearcher) ReadNamespace(ns crdt.Namespace) TraversalUp
 	return searcher.Reader.ReadNamespace(ns)
 }
 
-func (searcher SignedTableSearcher) Search(index crdt.Index) []crdt.SignedLink {
-	verified := []crdt.SignedLink{}
+func (searcher SignedTableSearcher) Search(index crdt.Index) []crdt.Link {
+	verified := []crdt.Link{}
 
 	needSignature := len(searcher.Keys) > 0
 
 	for _, t := range searcher.Tables {
-		index.ForTable(t, func(link crdt.SignedLink) {
+		index.ForTable(t, func(link crdt.Link) {
 			if !needSignature {
 				verified = append(verified, link)
 				return

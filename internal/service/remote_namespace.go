@@ -42,8 +42,8 @@ type remoteNamespace struct {
 	namespaceTube chan addNamespace
 	indexTube     chan addIndex
 	store         api.RemoteStore
-	headCache     api.headCache
-	indexCache    api.indexCache
+	headCache     api.HeadCache
+	indexCache    api.IndexCache
 	keyStore      api.KeyStore
 }
 
@@ -55,7 +55,8 @@ type RemoteNamespaceOptions struct {
 }
 
 func MakeRemoteNamespace(options RemoteNamespaceOptions) api.RemoteNamespaceTree {
-	remote := &remoteNamespace{store: store,
+	remote := &remoteNamespace{
+		store:         options.Store,
 		headCache:     options.HeadCache,
 		indexCache:    options.IndexCache,
 		keyStore:      options.KeyStore,
@@ -307,9 +308,12 @@ func (rn *remoteNamespace) JoinTable(tableKey crdt.TableName, table crdt.Table) 
 		return errors.Wrap(nsErr, failMsg)
 	}
 
-	// TODO implement signing here
-	panic("not implemented")
-	signed := crdt.SignTheLink(addr, rn.keyStore.GetAllPrivateKeys())
+	signed, signErr := crdt.SignedLink(addr, rn.keyStore.GetAllPrivateKeys())
+
+	if signErr != nil {
+		return errors.Wrap(signErr, failMsg)
+	}
+
 	index := crdt.EmptyIndex().JoinTable(tableKey, signed)
 
 	_, indexErr := rn.insertIndex(index)
@@ -335,7 +339,7 @@ func (rn *remoteNamespace) LoadTraverse(searcher api.NamespaceSearcher) error {
 	return rn.traverseTableNamespaces(tableAddrs, searcher)
 }
 
-func (rn *remoteNamespace) traverseTableNamespaces(tableAddrs []crdt.SignedLink, f api.NamespaceTreeReader) error {
+func (rn *remoteNamespace) traverseTableNamespaces(tableAddrs []crdt.Link, f api.NamespaceTreeReader) error {
 	nsch, cancelch := rn.namespaceLoader(tableAddrs)
 	defer close(cancelch)
 	for ns := range nsch {
@@ -358,14 +362,14 @@ func (rn *remoteNamespace) traverseTableNamespaces(tableAddrs []crdt.SignedLink,
 }
 
 // Preload namespaces while the previous is analysed.
-func (rn *remoteNamespace) namespaceLoader(addrs []crdt.SignedLink) (<-chan crdt.Namespace, chan<- struct{}) {
+func (rn *remoteNamespace) namespaceLoader(addrs []crdt.Link) (<-chan crdt.Namespace, chan<- struct{}) {
 	nsch := make(chan crdt.Namespace)
 	cancelch := make(chan struct{}, 1)
 
 	go func() {
 		defer close(nsch)
 		for _, a := range addrs {
-			namespace, err := rn.store.CatNamespace(a.Link)
+			namespace, err := rn.store.CatNamespace(a.Path)
 
 			if err != nil {
 				log.Error("remoteNamespace.namespaceLoader failed: %v", err)

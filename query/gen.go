@@ -26,7 +26,8 @@ func GenQuery(rand *rand.Rand, size int) *Query {
 
 func genQuerySelect(rand *rand.Rand, size int) QuerySelect {
 	gen := QuerySelect{}
-	gen.Limit = rand.Uint32()
+	limit := rand.Intn(__GEN_QUERY_LIMIT)
+	gen.Limit = uint32(limit)
 	gen.Where = genQueryWhere(rand, size, 1)
 
 	return gen
@@ -119,3 +120,4 @@ const __ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 const __DIGITS = "0123456789"
 
 const __KEY_SYMS = __ALPHABET + __DIGITS
+const __GEN_QUERY_LIMIT = 1000

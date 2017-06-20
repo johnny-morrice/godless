@@ -70,7 +70,7 @@ func TestEmptyIndex(t *testing.T) {
 func TestMakeIndex(t *testing.T) {
 	const table = "Hi"
 	const value = "world"
-	index := MakeIndex(map[TableName]SignedLink{
+	index := MakeIndex(map[TableName]Link{
 		table: UnsignedLink(value),
 	})
 
@@ -143,10 +143,10 @@ func TestIndexEquals(t *testing.T) {
 		testIndexEqualsQuick(t)
 	}
 
-	indexA := MakeIndex(map[TableName]SignedLink{
+	indexA := MakeIndex(map[TableName]Link{
 		"hi": UnsignedLink("world"),
 	})
-	indexB := MakeIndex(map[TableName]SignedLink{
+	indexB := MakeIndex(map[TableName]Link{
 		"hello": UnsignedLink("world"),
 	})
 
@@ -221,7 +221,7 @@ func TestIndexIsEmpty(t *testing.T) {
 
 	testutil.Assert(t, "Expected empty index", empty.IsEmpty())
 
-	full := MakeIndex(map[TableName]SignedLink{
+	full := MakeIndex(map[TableName]Link{
 		"Hi": UnsignedLink("world"),
 	})
 

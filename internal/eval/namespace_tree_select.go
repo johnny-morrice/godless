@@ -138,6 +138,8 @@ func (visitor *NamespaceTreeSelect) VisitSelect(qselect *query.QuerySelect) {
 		return
 	}
 
+	log.Info("Query limit: %v", qselect.Limit)
+
 	visitor.crit.limit = int(qselect.Limit)
 	visitor.crit.rootWhere = &qselect.Where
 }

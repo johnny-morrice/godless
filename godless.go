@@ -8,6 +8,7 @@
 package godless
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -21,12 +22,15 @@ import (
 	"github.com/johnny-morrice/godless/internal/service"
 	"github.com/johnny-morrice/godless/log"
 	"github.com/johnny-morrice/godless/query"
+	"github.com/pkg/errors"
 )
 
 // Godless options.
 type Options struct {
 	// IpfsServiceUrl is required.
 	IpfsServiceUrl string
+	// KeyStore is required. A private Key store.
+	KeyStore api.KeyStore
 	// WebServiceAddr is optional.  If not set, the webservice will be disabled.
 	WebServiceAddr string
 	// IndexHash is optional.  Set to load an existing index from IPFS.
@@ -67,6 +71,13 @@ type Godless struct {
 // New creates a godless instance, connecting to any services, and providing any services, specified in the options.
 func New(options Options) (*Godless, error) {
 	godless := &Godless{Options: options}
+
+	missing := godless.findMissingParameters()
+
+	if missing != nil {
+		return nil, missing
+	}
+
 	setupFuncs := []func() error{
 		godless.connectIpfs,
 		godless.setupNamespace,
@@ -82,6 +93,29 @@ func New(options Options) (*Godless, error) {
 	}
 
 	return godless, nil
+}
+
+func (godless *Godless) findMissingParameters() error {
+	var missing error
+	if godless.IpfsServiceUrl == "" {
+		msg := godless.missingParameterText("IpfsServiceUrl")
+		missing = errors.New(msg)
+	}
+
+	if godless.KeyStore == nil {
+		msg := godless.missingParameterText("KeyStore")
+		if missing == nil {
+			missing = errors.New(msg)
+		} else {
+			missing = errors.Wrap(missing, msg)
+		}
+	}
+
+	return missing
+}
+
+func (godless *Godless) missingParameterText(param string) string {
+	return fmt.Sprintf("Missing required parameter '%v'")
 }
 
 // Errors provides a stream of errors from godless.  Godless will attempt to handle any errors it can.  Any errors received here indicate that bad things have happened.
@@ -142,7 +176,14 @@ func (godless *Godless) setupNamespace() error {
 
 	}
 
-	godless.remote = service.MakeRemoteNamespace(godless.store, headCache, indexCache)
+	namespaceOptions := service.RemoteNamespaceOptions{
+		Store:      godless.store,
+		HeadCache:  godless.HeadCache,
+		IndexCache: godless.IndexCache,
+		KeyStore:   godless.KeyStore,
+	}
+
+	godless.remote = service.MakeRemoteNamespace(namespaceOptions)
 	return nil
 }
 

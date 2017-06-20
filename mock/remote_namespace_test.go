@@ -9,6 +9,7 @@ import (
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/cache"
 	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/johnny-morrice/godless/internal/service"
 	"github.com/johnny-morrice/godless/internal/testutil"
 	"github.com/johnny-morrice/godless/log"
@@ -54,7 +55,7 @@ func TestRemoteNamespaceRunKvReflection(t *testing.T) {
 	namespaceB := empty.JoinTable(tableBName, tableB)
 	namespaceC := empty.JoinTable(tableCName, tableC)
 
-	index := crdt.MakeIndex(map[crdt.TableName]crdt.SignedLink{
+	index := crdt.MakeIndex(map[crdt.TableName]crdt.Link{
 		tableAName: crdt.UnsignedLink(addrA),
 		tableBName: crdt.UnsignedLink(addrB),
 		tableCName: crdt.UnsignedLink(addrC),
@@ -150,7 +151,7 @@ func TestLoadTraverseSuccess(t *testing.T) {
 	namespaceB := empty.JoinTable(tableBName, tableB)
 	namespaceC := empty.JoinTable(tableCName, tableC)
 
-	index := crdt.MakeIndex(map[crdt.TableName]crdt.SignedLink{
+	index := crdt.MakeIndex(map[crdt.TableName]crdt.Link{
 		tableAName: crdt.UnsignedLink(addrA),
 		tableBName: crdt.UnsignedLink(addrB),
 		tableCName: crdt.UnsignedLink(addrC),
@@ -164,7 +165,7 @@ func TestLoadTraverseSuccess(t *testing.T) {
 	mockStore.EXPECT().CatNamespace(addrB).Return(namespaceB, nil)
 	mockStore.EXPECT().CatNamespace(addrC).Return(namespaceC, nil)
 
-	mockSearcher.EXPECT().Search(index).Return([]crdt.SignedLink{signedAddrA, signedAddrB, signedAddrC})
+	mockSearcher.EXPECT().Search(index).Return([]crdt.Link{signedAddrA, signedAddrB, signedAddrC})
 	mockSearcher.EXPECT().ReadNamespace(matchNamespace(namespaceA)).Return(keepReading)
 	mockSearcher.EXPECT().ReadNamespace(matchNamespace(namespaceB)).Return(keepReading)
 	mockSearcher.EXPECT().ReadNamespace(matchNamespace(namespaceC)).Return(keepReading)
@@ -202,14 +203,14 @@ func TestLoadTraverseFailure(t *testing.T) {
 	namespaceA := empty.JoinTable("Table A", tableA)
 
 	tableName := crdt.TableName("Table A")
-	index := crdt.MakeIndex(map[crdt.TableName]crdt.SignedLink{
+	index := crdt.MakeIndex(map[crdt.TableName]crdt.Link{
 		tableName: signedNamespaceAddr,
 	})
 
 	badTraverse := api.TraversalUpdate{More: true, Error: errors.New("Expected error")}
 	mockStore.EXPECT().CatNamespace(namespaceAddr).Return(namespaceA, nil)
 	mockStore.EXPECT().CatIndex(indexAddr).Return(index, nil).MinTimes(1)
-	mockSearcher.EXPECT().Search(index).Return([]crdt.SignedLink{signedNamespaceAddr})
+	mockSearcher.EXPECT().Search(index).Return([]crdt.Link{signedNamespaceAddr})
 	mockSearcher.EXPECT().ReadNamespace(matchNamespace(namespaceA)).Return(badTraverse)
 
 	remote := loadRemote(mockStore, indexAddr)
@@ -245,14 +246,14 @@ func TestLoadTraverseAbort(t *testing.T) {
 	namespaceA := empty.JoinTable("Table A", tableA)
 
 	tableName := crdt.TableName("Table A")
-	index := crdt.MakeIndex(map[crdt.TableName]crdt.SignedLink{
+	index := crdt.MakeIndex(map[crdt.TableName]crdt.Link{
 		tableName: signedAddrA,
 	})
 
 	abort := api.TraversalUpdate{}
 	mockStore.EXPECT().CatNamespace(addrA).Return(namespaceA, nil)
 	mockStore.EXPECT().CatIndex(addrIndex).Return(index, nil).MinTimes(1)
-	mockSearcher.EXPECT().Search(index).Return([]crdt.SignedLink{signedAddrA})
+	mockSearcher.EXPECT().Search(index).Return([]crdt.Link{signedAddrA})
 	mockSearcher.EXPECT().ReadNamespace(matchNamespace(namespaceA)).Return(abort)
 
 	remote := loadRemote(mockStore, addrIndex)
@@ -400,20 +401,30 @@ func readApiResponse(kvq api.KvQuery) api.APIResponse {
 	}
 }
 
-func makeRemote(mock *MockRemoteStore) api.RemoteNamespaceTree {
+func makeRemote(store api.RemoteStore) api.RemoteNamespaceTree {
 	headCache := cache.MakeResidentHeadCache()
-	indexCache := fakeIndexCache{}
-	return service.MakeRemoteNamespace(mock, headCache, indexCache)
+	options := remoteOptions(store, headCache)
+	return service.MakeRemoteNamespace(options)
 }
 
-func loadRemote(mock *MockRemoteStore, addr crdt.IPFSPath) api.RemoteNamespaceTree {
+func loadRemote(store api.RemoteStore, addr crdt.IPFSPath) api.RemoteNamespaceTree {
 	headCache := cache.MakeResidentHeadCache()
 	err := headCache.SetHead(addr)
 	panicOnBadInit(err)
 
-	indexCache := fakeIndexCache{}
+	options := remoteOptions(store, headCache)
+	return service.MakeRemoteNamespace(options)
+}
 
-	return service.MakeRemoteNamespace(mock, headCache, indexCache)
+func remoteOptions(store api.RemoteStore, headCache api.HeadCache) service.RemoteNamespaceOptions {
+	options := service.RemoteNamespaceOptions{
+		Store:      store,
+		HeadCache:  headCache,
+		IndexCache: fakeIndexCache{},
+		KeyStore:   &crypto.KeyStore{},
+	}
+
+	return options
 }
 
 type fakeIndexCache struct {

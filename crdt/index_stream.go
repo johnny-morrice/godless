@@ -47,14 +47,14 @@ func MakeIndexEntryMessage(entry IndexStreamEntry) *proto.IndexEntryMessage {
 }
 
 // TODO does not support unsigned links.
-func MakeIndexStreamEntries(t TableName, addrs []SignedLink) ([]IndexStreamEntry, []InvalidIndexEntry) {
+func MakeIndexStreamEntries(t TableName, addrs []Link) ([]IndexStreamEntry, []InvalidIndexEntry) {
 	count := countAddrEntries(addrs)
 
 	entries := make([]IndexStreamEntry, 0, count)
 	invalidEntries := []InvalidIndexEntry{}
 
 	for _, link := range addrs {
-		path := link.Link
+		path := link.Path
 		for _, sig := range link.Signatures {
 			entry, err := MakeIndexStreamEntry(t, path, sig)
 			if err == nil {
@@ -172,7 +172,7 @@ func ReadIndexStreamMessage(message *proto.IndexMessage) []IndexStreamEntry {
 	return stream
 }
 
-func countAddrEntries(addrs []SignedLink) int {
+func countAddrEntries(addrs []Link) int {
 	count := 0
 
 	for _, link := range addrs {
