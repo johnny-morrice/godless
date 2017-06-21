@@ -26,7 +26,8 @@ func GenQuery(rand *rand.Rand, size int) *Query {
 
 func genQuerySelect(rand *rand.Rand, size int) QuerySelect {
 	gen := QuerySelect{}
-	gen.Limit = rand.Uint32()
+	limit := rand.Intn(__GEN_QUERY_LIMIT)
+	gen.Limit = uint32(limit)
 	gen.Where = genQueryWhere(rand, size, 1)
 
 	return gen
@@ -100,7 +101,7 @@ func genQueryJoin(rand *rand.Rand, size int) QueryJoin {
 	gen := QueryJoin{Rows: make([]QueryRowJoin, rowCount)}
 
 	for i := 0; i < rowCount; i++ {
-		gen.Rows[i] = QueryRowJoin{Entries: map[crdt.EntryName]crdt.Point{}}
+		gen.Rows[i] = QueryRowJoin{Entries: map[crdt.EntryName]crdt.PointText{}}
 		row := &gen.Rows[i]
 		row.RowKey = crdt.RowName(testutil.RandKey(rand, MAX_STR_LEN))
 
@@ -108,7 +109,7 @@ func genQueryJoin(rand *rand.Rand, size int) QueryJoin {
 		for i := 0; i < entryCount; i++ {
 			entry := testutil.RandKey(rand, MAX_STR_LEN)
 			point := testutil.RandPoint(rand, MAX_STR_LEN)
-			row.Entries[crdt.EntryName(entry)] = crdt.Point(point)
+			row.Entries[crdt.EntryName(entry)] = crdt.PointText(point)
 		}
 	}
 
@@ -119,3 +120,4 @@ const __ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 const __DIGITS = "0123456789"
 
 const __KEY_SYMS = __ALPHABET + __DIGITS
+const __GEN_QUERY_LIMIT = 1000

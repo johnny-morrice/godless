@@ -9,6 +9,7 @@ import (
 	"time"
 
 	ipfs "github.com/ipfs/go-ipfs-api"
+	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/internal/http"
 	"github.com/johnny-morrice/godless/log"
@@ -26,11 +27,17 @@ func makeIpfsRecord(namespace crdt.Namespace) *IPFSRecord {
 }
 
 func (record *IPFSRecord) encode(w io.Writer) error {
-	return crdt.EncodeNamespace(record.Namespace, w)
+	invalid, err := crdt.EncodeNamespace(record.Namespace, w)
+
+	record.logInvalid(invalid)
+
+	return err
 }
 
 func (record *IPFSRecord) decode(r io.Reader) error {
-	ns, err := crdt.DecodeNamespace(r)
+	ns, invalid, err := crdt.DecodeNamespace(r)
+
+	record.logInvalid(invalid)
 
 	if err != nil {
 		return err
@@ -38,6 +45,14 @@ func (record *IPFSRecord) decode(r io.Reader) error {
 
 	record.Namespace = ns
 	return nil
+}
+
+func (record *IPFSRecord) logInvalid(invalid []crdt.InvalidNamespaceEntry) {
+	invalidCount := len(invalid)
+
+	if invalidCount > 0 {
+		log.Error("IPFSRecord: %v invalid entries", invalidCount)
+	}
 }
 
 type encoder interface {
@@ -59,18 +74,37 @@ func makeIpfsIndex(index crdt.Index) *IPFSIndex {
 }
 
 func (index *IPFSIndex) encode(w io.Writer) error {
-	return crdt.EncodeIndex(index.Index, w)
+	invalid, err := crdt.EncodeIndex(index.Index, w)
+
+	index.logInvalid(invalid)
+
+	return err
 }
 
 func (index *IPFSIndex) decode(r io.Reader) error {
-	dx, err := crdt.DecodeIndex(r)
+	dx, invalid, err := crdt.DecodeIndex(r)
+
+	index.logInvalid(invalid)
 
 	if err != nil {
 		return err
 	}
 
+	// TODO should cache the invalid details.
+	if len(invalid) > 0 {
+		log.Warn("IPFSIndex Decoded invalid index entries")
+	}
+
 	index.Index = dx
 	return nil
+}
+
+func (index *IPFSIndex) logInvalid(invalid []crdt.InvalidIndexEntry) {
+	invalidCount := len(invalid)
+
+	if invalidCount > 0 {
+		log.Error("IPFSRecord: %v invalid entries", invalidCount)
+	}
 }
 
 // TODO Don't use Shell directly - invent an interface.  This would enable mocking.
@@ -88,6 +122,7 @@ func (peer *IPFSPeer) Connect() error {
 	}
 
 	if peer.Client == nil {
+		log.Info("Using default HTTP client")
 		peer.Client = http.DefaultBackendClient()
 	}
 
@@ -126,29 +161,37 @@ func (peer *IPFSPeer) validateConnection() error {
 	return nil
 }
 
-func (peer *IPFSPeer) PublishAddr(addr crdt.IPFSPath, topics []crdt.IPFSPath) error {
+func (peer *IPFSPeer) PublishAddr(addr crdt.Link, topics []api.PubSubTopic) error {
 	const failMsg = "IPFSPeer.PublishAddr failed"
 
 	if verr := peer.validateShell(); verr != nil {
 		return verr
 	}
 
-	publishValue := string(addr)
+	publishValue, printErr := crdt.PrintLink(addr)
+
+	if printErr != nil {
+		return errors.Wrap(printErr, failMsg)
+	}
 
 	for _, t := range topics {
 		topicText := string(t)
-		err := peer.Shell.PubSubPublish(topicText, publishValue)
+		log.Info("Publishing to topic: %v", t)
+		pubsubErr := peer.Shell.PubSubPublish(topicText, string(publishValue))
 
-		if err != nil {
-			return errors.Wrap(err, failMsg)
+		if pubsubErr != nil {
+			log.Warn("Pubsub failed (topic %v): %v", t, pubsubErr.Error())
+			continue
 		}
+
+		log.Info("Published to topic: %v", t)
 	}
 
 	return nil
 }
 
-func (peer *IPFSPeer) SubscribeAddrStream(topic crdt.IPFSPath) (<-chan crdt.IPFSPath, <-chan error) {
-	stream := make(chan crdt.IPFSPath)
+func (peer *IPFSPeer) SubscribeAddrStream(topic api.PubSubTopic) (<-chan crdt.Link, <-chan error) {
+	stream := make(chan crdt.Link)
 	errch := make(chan error)
 
 	tidy := func() {
@@ -173,27 +216,33 @@ func (peer *IPFSPeer) SubscribeAddrStream(topic crdt.IPFSPath) (<-chan crdt.IPFS
 		var subscription *ipfs.PubSubSubscription
 
 	RESTART:
-		for subscription == nil {
+		for {
 			var launchErr error
-			log.Info("(Re)starting subscription")
+			log.Info("(Re)starting subscription on %v", topic)
 			subscription, launchErr = peer.Shell.PubSubSubscribe(topicText)
 
 			if launchErr != nil {
-				log.Error("Subcription launch failed, retrying: %v", launchErr)
+				log.Error("Subcription launch failed, retrying: %v", launchErr.Error())
+				continue
 			}
 
 			for {
-				log.Info("Fetching next subscription message...")
+				log.Info("Fetching next subscription message on %v...", topic)
 				record, recordErr := subscription.Next()
 
 				if recordErr != nil {
-					log.Error("Subscription read failed, continuing: %v", recordErr)
+					log.Error("Subscription read failed (topic %v), continuing: %v", topic, recordErr.Error())
 					continue RESTART
 				}
 
 				pubsubPeer := record.From()
 				bs := record.Data()
-				addr := crdt.IPFSPath(string(bs))
+				addr, err := crdt.ParseLink(crdt.LinkText(bs))
+
+				if err != nil {
+					log.Warn("Bad link from peer (topic %v): %v", topic, pubsubPeer)
+					continue
+				}
 
 				stream <- addr
 				log.Info("Subscription update: '%v' from '%v'", addr, pubsubPeer)

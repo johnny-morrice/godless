@@ -3,37 +3,45 @@ package crdt
 import (
 	"io"
 
+	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/johnny-morrice/godless/internal/debug"
-	"github.com/johnny-morrice/godless/proto"
 	"github.com/johnny-morrice/godless/internal/util"
+	"github.com/johnny-morrice/godless/log"
+	"github.com/johnny-morrice/godless/proto"
 	"github.com/pkg/errors"
 )
 
 func ReadNamespaceEntryMessage(message *proto.NamespaceEntryMessage) NamespaceStreamEntry {
 	entry := NamespaceStreamEntry{
-		Table:  TableName(message.Table),
-		Row:    RowName(message.Row),
-		Entry:  EntryName(message.Entry),
-		Points: make([]Point, len(message.Points)),
-	}
-
-	for i, p := range message.Points {
-		entry.Points[i] = Point(p)
+		Table: TableName(message.Table),
+		Row:   RowName(message.Row),
+		Entry: EntryName(message.Entry),
+		Point: ReadPointMessage(message.Point),
 	}
 
 	return entry
 }
 
+func ReadPointMessage(message *proto.PointMessage) StreamPoint {
+	return StreamPoint{
+		Text:      PointText(message.Text),
+		Signature: crypto.SignatureText(message.Signature),
+	}
+}
+
+func MakePointMessage(point StreamPoint) *proto.PointMessage {
+	return &proto.PointMessage{
+		Text:      string(point.Text),
+		Signature: string(point.Signature),
+	}
+}
+
 func MakeNamespaceEntryMessage(entry NamespaceStreamEntry) *proto.NamespaceEntryMessage {
 	pb := &proto.NamespaceEntryMessage{
-		Table:  string(entry.Table),
-		Row:    string(entry.Row),
-		Entry:  string(entry.Entry),
-		Points: make([]string, len(entry.Points)),
-	}
-
-	for i, p := range entry.Points {
-		pb.Points[i] = string(p)
+		Table: string(entry.Table),
+		Row:   string(entry.Row),
+		Entry: string(entry.Entry),
+		Point: MakePointMessage(entry.Point),
 	}
 
 	return pb
@@ -63,38 +71,53 @@ func ReadNamespaceStreamMessage(message *proto.NamespaceMessage) []NamespaceStre
 	return stream
 }
 
-func ReadNamespaceMessage(message *proto.NamespaceMessage) Namespace {
+func ReadNamespaceMessage(message *proto.NamespaceMessage) (Namespace, []InvalidNamespaceEntry, error) {
 	stream := ReadNamespaceStreamMessage(message)
 	return ReadNamespaceStream(stream)
 }
 
-func MakeNamespaceMessage(ns Namespace) *proto.NamespaceMessage {
-	stream := MakeNamespaceStream(ns)
-	return MakeNamespaceStreamMessage(stream)
+func MakeNamespaceMessage(ns Namespace) (*proto.NamespaceMessage, []InvalidNamespaceEntry) {
+	stream, invalid := MakeNamespaceStream(ns)
+	return MakeNamespaceStreamMessage(stream), invalid
 }
 
-func EncodeNamespace(ns Namespace, w io.Writer) error {
+// Bugs can manifest as empty stream entries.
+func reportEmptyTable(stream []NamespaceStreamEntry, from string) {
+	for _, entry := range stream {
+		if entry.Table == "" {
+			log.Warn("Empty table name in %v", from)
+		}
+	}
+}
+
+// TODO should return the invalid entries
+func EncodeNamespace(ns Namespace, w io.Writer) ([]InvalidNamespaceEntry, error) {
 	const failMsg = "EncodeNamespace failed"
 
-	message := MakeNamespaceMessage(ns)
+	message, invalid := MakeNamespaceMessage(ns)
+
+	invalidCount := len(invalid)
+	if invalidCount > 0 {
+		log.Error("EncodeNamespace: %v invalid points", invalidCount)
+	}
 
 	err := util.Encode(message, w)
 
 	if err != nil {
-		return errors.Wrap(err, failMsg)
+		return invalid, errors.Wrap(err, failMsg)
 	}
 
-	return nil
+	return invalid, nil
 }
 
-func DecodeNamespace(r io.Reader) (Namespace, error) {
+func DecodeNamespace(r io.Reader) (Namespace, []InvalidNamespaceEntry, error) {
 	const failMsg = "DecodeNamespace failed"
 	message := &proto.NamespaceMessage{}
 	err := util.Decode(message, r)
 
 	if err != nil {
-		return EmptyNamespace(), errors.Wrap(err, failMsg)
+		return EmptyNamespace(), nil, errors.Wrap(err, failMsg)
 	}
 
-	return ReadNamespaceMessage(message), nil
+	return ReadNamespaceMessage(message)
 }

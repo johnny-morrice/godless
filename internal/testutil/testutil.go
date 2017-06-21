@@ -83,6 +83,10 @@ func RandLetters(rand *rand.Rand, max int) string {
 	return RandStr(rand, constants.ALPHABET, 0, max)
 }
 
+func RandLettersRange(rand *rand.Rand, min, max int) string {
+	return RandStr(rand, constants.ALPHABET, min, max)
+}
+
 func RandStr(rand *rand.Rand, elements string, min, max int) string {
 	count := rand.Intn(max - min)
 	count += min
@@ -119,6 +123,25 @@ func DebugLine(t *testing.T) {
 	t.Log("Test failed at line", line)
 }
 
+func WaitGroupTimeout(t *testing.T, wg *sync.WaitGroup, timeout time.Duration) {
+	done := make(chan struct{}, 1)
+
+	go func() {
+		wg.Wait()
+		done <- struct{}{}
+	}()
+
+	timer := time.NewTimer(timeout)
+
+	select {
+	case <-timer.C:
+		t.Error("WaitGroup timeout out after", timeout)
+		return
+	case <-done:
+		return
+	}
+}
+
 func AssertNil(t *testing.T, x interface{}) {
 	Assert(t, fmt.Sprintf("Expected nil value but received: %v", x), x == nil)
 }
@@ -135,19 +158,21 @@ func AssertBytesEqual(t *testing.T, expected, actual []byte) {
 
 	for i, e := range expected {
 		a := actual[i]
-
-		AssertEquals(t, fmt.Sprintf("Expected %v but received %v at position %v", e, a, i), e, a)
+		if e != a {
+			t.Error("Byte difference at", i)
+		}
 	}
 }
 
 func AssertEncodingStable(t *testing.T, expected []byte, encoder func(io.Writer)) {
+	buff := &bytes.Buffer{}
 	for i := 0; i < ENCODE_REPEAT_COUNT; i++ {
-		buff := &bytes.Buffer{}
 		encoder(buff)
 
 		actual := buff.Bytes()
 
 		AssertBytesEqual(t, expected, actual)
+		buff.Reset()
 	}
 }
 
@@ -170,6 +195,15 @@ func AssertEquals(t *testing.T, message string, expected, actual interface{}) {
 func AssertVerboseErrorIsNil(t *testing.T, err error) {
 	if err != nil {
 		t.Error("Unexpected error:", Trim(err))
+	}
+}
+
+func AssertLenEquals(t *testing.T, expected int, hasLen interface{}) {
+	value := reflect.ValueOf(hasLen)
+	actual := value.Len()
+
+	if expected != actual {
+		t.Errorf("Expected len %v but received %v", expected, actual)
 	}
 }
 
@@ -216,7 +250,7 @@ func LogDiff(old, new string) {
 
 const __CALLER_DEPTH = 2
 const __TRIM_LENGTH = 500
-const ENCODE_REPEAT_COUNT = 50
+const ENCODE_REPEAT_COUNT = 20
 
 const KEY_SYMS = constants.ALPHABET + constants.DIGITS
 

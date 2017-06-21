@@ -10,13 +10,56 @@ import (
 	"github.com/pkg/errors"
 )
 
+type ReplicateOptions struct {
+	Topics      []api.PubSubTopic
+	Interval    time.Duration
+	KeyStore    api.KeyStore
+	RemoteStore api.RemoteStore
+	API         api.APIService
+}
+
 type replicator struct {
-	topics   []crdt.IPFSPath
+	topics   []api.PubSubTopic
 	interval time.Duration
 	api      api.APIService
 	store    api.RemoteStore
 	errch    chan<- error
 	stopch   <-chan struct{}
+	keyStore api.KeyStore
+}
+
+func Replicate(options ReplicateOptions) (chan<- struct{}, <-chan error) {
+	stopch := make(chan struct{}, 1)
+	errch := make(chan error, len(options.Topics))
+
+	interval := options.Interval
+	if interval == 0 {
+		interval = __DEFAULT_REPLICATE_INTERVAL
+	}
+
+	p2p := replicator{
+		topics:   options.Topics,
+		api:      options.API,
+		store:    options.RemoteStore,
+		keyStore: options.KeyStore,
+		interval: interval,
+		errch:    errch,
+		stopch:   stopch,
+	}
+
+	wg := &sync.WaitGroup{}
+	wg.Add(__REPLICATION_PROCESS_COUNT)
+	go func() {
+		p2p.subscribeAllTopics()
+		wg.Done()
+	}()
+
+	go func() {
+		go p2p.publishAllTopics()
+		wg.Done()
+	}()
+
+	return stopch, errch
 }
 
 func (p2p replicator) publishAllTopics() {
@@ -27,11 +70,11 @@ func (p2p replicator) publishAllTopics() {
 
 	ticker := time.NewTicker(p2p.interval)
 	defer ticker.Stop()
-LOOP:
+
 	for {
 		select {
 		case <-p2p.stopch:
-			break LOOP
+			break
 		case <-ticker.C:
 			p2p.publishIndex()
 		}
@@ -41,25 +84,37 @@ LOOP:
 func (p2p replicator) publishIndex() {
 	log.Info("Publishing index...")
 
-	addr, reflectErr := p2p.sendReflectRequest()
+	resp, reflectErr := p2p.sendReflectRequest()
 
 	if reflectErr != nil {
 		log.Error("Failed to reflect for index address: %v", reflectErr)
 		return
 	}
 
-	head := crdt.IPFSPath(addr.ReflectResponse.Path)
+	head := crdt.IPFSPath(resp.ReflectResponse.Path)
 
-	publishErr := p2p.store.PublishAddr(head, p2p.topics)
+	// API should do this for its HEAD.
+	privKeys := p2p.keyStore.GetAllPrivateKeys()
+
+	link, signErr := crdt.SignedLink(head, privKeys)
+
+	if signErr != nil {
+		log.Error("Failed to sign Index Link (%v): %v", head, signErr.Error())
+		return
+	}
+
+	publishErr := p2p.store.PublishAddr(link, p2p.topics)
 
 	if publishErr != nil {
-		log.Error("Failed to publish index: %v", publishErr)
+		log.Error("Failed to publish index to all topics: %v", publishErr.Error())
+		return
 	}
 
 	log.Info("Published index at %v", head)
 }
 
 func (p2p replicator) sendReflectRequest() (api.APIResponse, error) {
+	log.Info("Replicator getting HEAD from API...")
 	failResp := api.RESPONSE_FAIL
 	failResp.Type = api.API_REFLECT
 
@@ -75,6 +130,8 @@ func (p2p replicator) sendReflectRequest() (api.APIResponse, error) {
 	if resp.Err != nil {
 		return resp, resp.Err
 	}
+
+	log.Info("Replicator got HEAD at %v", resp.ReflectResponse.Path)
 
 	return resp, nil
 }
@@ -98,82 +155,71 @@ func (p2p replicator) subscribeAllTopics() {
 	wg.Wait()
 }
 
-func (p2p replicator) subscribeTopic(topic crdt.IPFSPath) {
+type subscriptionBatch struct {
+	batch  []crdt.Link
+	ticker *time.Ticker
+	p2p    replicator
+}
+
+func (batch *subscriptionBatch) update(link crdt.Link) {
+	batch.batch = append(batch.batch, link)
+
+	select {
+	case <-batch.ticker.C:
+		log.Debug("Dispatching subscription batch")
+		request := api.APIRequest{Type: api.API_REPLICATE, Replicate: batch.batch}
+		batch.reset()
+		go func() {
+			batch.p2p.api.Call(request)
+		}()
+		return
+	default:
+		break
+	}
+
+	log.Debug("Appended Link to subscriptionBatch")
+}
+
+func (batch *subscriptionBatch) stop() {
+	batch.ticker.Stop()
+}
+
+func (batch *subscriptionBatch) reset() {
+	batch.batch = []crdt.Link{}
+}
+
+func (p2p replicator) subscribeTopic(topic api.PubSubTopic) {
 	headch, errch := p2p.store.SubscribeAddrStream(topic)
 
-	ticker := time.NewTicker(p2p.interval)
+	batch := &subscriptionBatch{
+		ticker: time.NewTicker(p2p.interval),
+		p2p:    p2p,
+	}
+
+	log.Info("Dispatching subscription updates every: %v", p2p.interval)
+
 	go func() {
-		defer ticker.Stop()
-	LOOP:
 		for {
+			defer batch.stop()
 			select {
 			case head, present := <-headch:
 				if !present {
-					break LOOP
+					return
 				}
 
-				<-ticker.C
-				p2p.sendReplicateRequest(head)
+				batch.update(head)
 			case err, present := <-errch:
 				if !present {
-					break LOOP
+					break
 				}
 				log.Info("Subscription error: %v", err)
-				break LOOP
+				return
 			case <-p2p.stopch:
-				break LOOP
+				return
 			}
 		}
+
 	}()
-}
-
-func (p2p replicator) sendReplicateRequest(head crdt.IPFSPath) {
-	log.Info("Replicating from: %v", head)
-
-	respch, err := p2p.api.Call(api.APIRequest{Type: api.API_REPLICATE, Replicate: head})
-
-	if err != nil {
-		log.Error("Replication failed (Early API failure) for '%v': %v", head, err)
-		return
-	}
-
-	resp := <-respch
-	log.Info("Replication API Response message: %v", resp.Msg)
-	if resp.Err != nil {
-		log.Error("Replication failed for '%v': %v", head, resp.Err)
-	}
-}
-
-func Replicate(api api.APIService, store api.RemoteStore, interval time.Duration, topics []crdt.IPFSPath) (chan<- struct{}, <-chan error) {
-	stopch := make(chan struct{}, 1)
-	errch := make(chan error, len(topics))
-
-	if interval == 0 {
-		interval = __DEFAULT_REPLICATE_INTERVAL
-	}
-
-	p2p := replicator{
-		topics:   topics,
-		interval: interval,
-		api:      api,
-		errch:    errch,
-		stopch:   stopch,
-		store:    store,
-	}
-
-	wg := &sync.WaitGroup{}
-	wg.Add(__REPLICATION_PROCESS_COUNT)
-	go func() {
-		p2p.subscribeAllTopics()
-		wg.Done()
-	}()
-
-	go func() {
-		go p2p.publishAllTopics()
-		wg.Done()
-	}()
-
-	return stopch, errch
 }
 
 const __REPLICATION_PROCESS_COUNT = 2

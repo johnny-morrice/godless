@@ -21,56 +21,50 @@
 package cmd
 
 import (
-	"os"
-	"runtime/pprof"
-	"time"
-
 	"github.com/spf13/cobra"
+
+	"github.com/johnny-morrice/godless/internal/crypto"
 )
 
-// serveProfileCmd represents the serve_profile command
-var serveProfileCmd = &cobra.Command{
-	Use:    "profile",
-	Hidden: true,
-	Short:  "Profile a godless server",
-	Long:   `Run a CPU profile for the specified time and save to the specified file`,
+// keyCmd represents the key command
+var keyCmd = &cobra.Command{
+	Use:   "key",
+	Short: "Manage godless keys",
+	Long: `Godless signs your data using strong cryptography.
+
+	These signatures are used to maintain data consistency, rather than via
+	physically isolating the data within a host machine.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		cpuProf, err := cpuProfOutput()
+		err := cmd.Help()
 
 		if err != nil {
 			die(err)
 		}
-
-		runProfiler(cpuProf)
-		readKeysFromViper()
-		serve()
 	},
 }
 
-var profileTime time.Duration
-var cpuprof string
-
 func init() {
-	serveCmd.AddCommand(serveProfileCmd)
-
-	serveProfileCmd.Flags().DurationVar(&profileTime, "time", time.Minute, "Duration of profile run")
-	serveProfileCmd.Flags().StringVar(&cpuprof, "cpuprof", "cpu.prof", "CPU Profile output file")
+	RootCmd.AddCommand(keyCmd)
 }
 
-func runProfiler(cpuProf *os.File) {
-	pprof.StartCPUProfile(cpuProf)
+func generateKey() crypto.PublicKeyHash {
+	priv, pub, genErr := crypto.GenerateKey()
 
-	go func() {
-		defer func() {
-			pprof.StopCPUProfile()
-			cpuProf.Close()
-			os.Exit(0)
-		}()
-		timer := time.NewTimer(profileTime)
-		<-timer.C
-	}()
-}
+	if genErr != nil {
+		die(genErr)
+	}
 
-func cpuProfOutput() (*os.File, error) {
-	return os.Create(cpuprof)
+	hash, hashErr := pub.Hash()
+
+	if hashErr != nil {
+		die(hashErr)
+	}
+
+	cacheErr := keyStore.PutPrivateKey(priv)
+
+	if cacheErr != nil {
+		die(cacheErr)
+	}
+
+	return hash
 }

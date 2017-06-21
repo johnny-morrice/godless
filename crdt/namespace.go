@@ -1,22 +1,63 @@
-//go:generate mockgen -package mock_godless -destination ../mock/mock_crdt.go -imports lib=github.com/johnny-morrice/godless/crdt -self_package lib github.com/johnny-morrice/godless/crdt RowConsumer
 package crdt
 
 import (
 	"fmt"
-	"math/rand"
 	"sort"
 
-	"github.com/johnny-morrice/godless/internal/testutil"
+	"github.com/johnny-morrice/godless/internal/crypto"
+	"github.com/johnny-morrice/godless/log"
+	"github.com/pkg/errors"
 )
 
 type TableName string
 type RowName string
 type EntryName string
-type Point string
 
-func JoinStreamEntries(stream []NamespaceStreamEntry) []NamespaceStreamEntry {
-	ns := ReadNamespaceStream(stream)
-	return MakeNamespaceStream(ns)
+type byTableName []TableName
+
+func (by byTableName) Len() int {
+	return len(by)
+}
+
+func (by byTableName) Swap(i, j int) {
+	by[i], by[j] = by[j], by[i]
+}
+
+func (by byTableName) Less(i, j int) bool {
+	return by[i] < by[j]
+}
+
+func JoinStreamEntries(stream []NamespaceStreamEntry) ([]NamespaceStreamEntry, []InvalidNamespaceEntry, error) {
+	const failMsg = "JoinStreamEntries failed"
+	ns, readInvalid, err := ReadNamespaceStream(stream)
+
+	if err != nil {
+		return nil, readInvalid, errors.Wrap(err, failMsg)
+	}
+
+	stream, makeInvalid := MakeNamespaceStream(ns)
+
+	invalidEntries := append(readInvalid, makeInvalid...)
+
+	return stream, invalidEntries, nil
+}
+
+// FIXME implement test!!!
+func FilterSignedEntries(stream []NamespaceStreamEntry, keys []crypto.PublicKey) ([]NamespaceStreamEntry, []InvalidNamespaceEntry, error) {
+	const failMsg = "FilterSignedEntries failed"
+
+	unsigned, readInvalid, readErr := ReadNamespaceStream(stream)
+
+	if readErr != nil {
+		return nil, readInvalid, errors.Wrap(readErr, failMsg)
+	}
+
+	signed := unsigned.FilterVerified(keys)
+	signedStream, makeInvalid := MakeNamespaceStream(signed)
+
+	invalidEntries := append(readInvalid, makeInvalid...)
+
+	return signedStream, invalidEntries, nil
 }
 
 // Semi-lattice type that implements our storage
@@ -40,32 +81,108 @@ func MakeNamespace(tables map[TableName]Table) Namespace {
 	return out
 }
 
+func (ns Namespace) FilterVerified(keys []crypto.PublicKey) Namespace {
+	empty := EmptyNamespace()
+
+	ns.ForeachEntry(func(t TableName, r RowName, e EntryName, entry Entry) {
+		signed := entry.FilterVerified(keys)
+		table := EmptyTable()
+		row := EmptyRow()
+
+		row.addEntry(e, signed)
+		table.addRow(r, row)
+		empty.addTable(t, table)
+	})
+
+	return empty
+}
+
 // Strip removes empty tables and rows that would not be saved to the backing store.
-func (ns Namespace) Strip() Namespace {
-	stream := MakeNamespaceStream(ns)
-	return ReadNamespaceStream(stream)
+func (ns Namespace) Strip() (Namespace, []InvalidNamespaceEntry, error) {
+	const failMsg = "Namespace.Strip failed"
+
+	stream, invalid := MakeNamespaceStream(ns)
+
+	invalidCount := len(invalid)
+	if invalidCount > 0 {
+		log.Warn("Stripped %v invalid points", invalidCount)
+	}
+
+	namespace, invalid, err := ReadNamespaceStream(stream)
+
+	if err != nil {
+		return EmptyNamespace(), invalid, errors.Wrap(err, failMsg)
+	}
+
+	return namespace, invalid, nil
 }
 
 func (ns Namespace) GetTableNames() []TableName {
-	tableNames := make([]TableName, len(ns.Tables))
+	tableNames := make([]TableName, 0, len(ns.Tables))
 
-	i := 0
 	for name := range ns.Tables {
-		tableNames[i] = name
-		i++
+		tableNames = append(tableNames, name)
 	}
+
+	sort.Sort(byTableName(tableNames))
 
 	return tableNames
 }
 
-func (ns Namespace) addStreamEntry(streamEntry NamespaceStreamEntry) {
+// The batch should correspond to a single point.
+func (ns Namespace) addPointBatch(stream []NamespaceStreamEntry) ([]InvalidNamespaceEntry, error) {
+	const failMsg = "Namespace.addPointBatch failed"
+
+	if len(stream) == 0 {
+		log.Warn("Namespace.addPointBatch of length 0")
+		return nil, nil
+	}
+
+	point, invalid, err := readStreamPoint(stream)
+
+	if err != nil {
+		return invalid, errors.Wrap(err, failMsg)
+	}
+
+	first := stream[0]
+	tableName := first.Table
+	rowName := first.Row
+	entryName := first.Entry
+
+	ns.addPoint(tableName, rowName, entryName, point)
+
+	return invalid, nil
+}
+
+func (ns Namespace) addStreamEntry(entry NamespaceStreamEntry) error {
+	const failMsg = "Namespace.addStreamEntry failed"
+
+	point := Point{
+		Text: entry.Point.Text,
+	}
+
+	if !crypto.IsNilSignature(entry.Point.Signature) {
+		sig, err := crypto.ParseSignature(entry.Point.Signature)
+
+		if err != nil {
+			return errors.Wrap(err, failMsg)
+		}
+
+		point.Signatures = []crypto.Signature{sig}
+	}
+
+	ns.addPoint(entry.Table, entry.Row, entry.Entry, point)
+	return nil
+}
+
+func (ns Namespace) addPoint(tableName TableName, rowName RowName, entryName EntryName, point Point) {
 	table := MakeTable(map[RowName]Row{
-		streamEntry.Row: MakeRow(map[EntryName]Entry{
-			streamEntry.Entry: MakeEntry(streamEntry.Points),
+		rowName: MakeRow(map[EntryName]Entry{
+			entryName: MakeEntry([]Point{point}),
 		}),
 	})
 
-	ns.addTable(streamEntry.Table, table)
+	ns.addTable(tableName, table)
 }
 
 func (ns Namespace) IsEmpty() bool {
@@ -86,13 +203,13 @@ func (ns Namespace) JoinNamespace(other Namespace) Namespace {
 	joined := ns.Copy()
 
 	for otherk, otherTable := range other.Tables {
-		joined = joined.addTable(otherk, otherTable)
+		joined.addTable(otherk, otherTable)
 	}
 
 	return joined
 }
 
-func (ns Namespace) addTable(key TableName, table Table) Namespace {
+func (ns Namespace) addTable(key TableName, table Table) {
 	current, present := ns.Tables[key]
 
 	if present {
@@ -100,13 +217,11 @@ func (ns Namespace) addTable(key TableName, table Table) Namespace {
 	} else {
 		ns.Tables[key] = table
 	}
-
-	return ns
 }
 
 func (ns Namespace) JoinTable(key TableName, table Table) Namespace {
 	joined := ns.Copy()
-	joined = joined.addTable(key, table)
+	joined.addTable(key, table)
 	return joined
 }
 
@@ -133,6 +248,17 @@ func (ns Namespace) Equals(other Namespace) bool {
 	return true
 }
 
+// Iterate through all entries
+func (ns Namespace) ForeachEntry(f func(t TableName, r RowName, e EntryName, entry Entry)) {
+	for tableName, table := range ns.Tables {
+		for rowName, row := range table.Rows {
+			for entryName, entry := range row.Entries {
+				f(tableName, rowName, entryName, entry)
+			}
+		}
+	}
+}
+
 // TODO improved type validation
 type Table struct {
 	Rows map[RowName]Row
@@ -154,20 +280,17 @@ func MakeTable(rows map[RowName]Row) Table {
 	return out
 }
 
-type RowConsumer interface {
-	Accept(rowKey RowName, r Row)
-}
-
-type RowConsumerFunc func(rowKey RowName, r Row)
-
-func (rcf RowConsumerFunc) Accept(rowKey RowName, r Row) {
-	rcf(rowKey, r)
-}
-
-// TODO easy optimisation: hold slice in Table for fast iteration.
-func (t Table) Foreachrow(consumer RowConsumer) {
+func (t Table) ForeachRow(f func(rowName RowName, r Row)) {
 	for k, r := range t.Rows {
-		consumer.Accept(k, r)
+		f(k, r)
+	}
+}
+
+func (t Table) ForeachEntry(f func(rowName RowName, entryName EntryName, entry Entry)) {
+	for rowName, row := range t.Rows {
+		for entryName, entry := range row.Entries {
+			f(rowName, entryName, entry)
+		}
 	}
 }
 
@@ -261,6 +384,12 @@ func MakeRow(entries map[EntryName]Entry) Row {
 	return out
 }
 
+func (row Row) ForeachEntry(f func(entryName EntryName, entry Entry)) {
+	for name, entry := range row.Entries {
+		f(name, entry)
+	}
+}
+
 func (row Row) Copy() Row {
 	cpy := Row{Entries: map[EntryName]Entry{}}
 
@@ -316,6 +445,7 @@ func (row Row) Equals(other Row) bool {
 
 	for k, v := range row.Entries {
 		otherv, present := other.Entries[k]
+
 		if !present || !v.Equals(otherv) {
 			return false
 		}
@@ -334,8 +464,22 @@ func EmptyEntry() Entry {
 
 func MakeEntry(set []Point) Entry {
 	sort.Sort(byPointValue(set))
-	undupes := uniqSorted(set)
+	undupes := uniqPointSorted(set)
 	return Entry{Set: undupes}
+}
+
+func (e Entry) FilterVerified(keys []crypto.PublicKey) Entry {
+	verified := make([]Point, 0, len(e.Set))
+
+	for _, p := range e.Set {
+		if p.IsVerifiedByAny(keys) {
+			verified = append(verified, p)
+		}
+	}
+
+	verifiedEntry := Entry{Set: verified}
+
+	return verifiedEntry
 }
 
 func (e Entry) Copy() Entry {
@@ -352,8 +496,10 @@ func (e Entry) Equals(other Entry) bool {
 		return false
 	}
 
-	for i, v := range e.Set {
-		if other.Set[i] != v {
+	for i, myPoint := range e.Set {
+		theirPoint := other.Set[i]
+
+		if !myPoint.Equals(theirPoint) {
 			return false
 		}
 	}
@@ -369,81 +515,4 @@ func (e Entry) GetValues() []Point {
 	}
 
 	return cpy
-}
-
-type byPointValue []Point
-
-func (p byPointValue) Len() int {
-	return len(p)
-}
-
-func (p byPointValue) Swap(i, j int) {
-	p[i], p[j] = p[j], p[i]
-}
-
-func (p byPointValue) Less(i, j int) bool {
-	return p[i] < p[j]
-}
-
-func uniqSorted(set []Point) []Point {
-	if len(set) == 0 {
-		return set
-	}
-
-	uniq := make([]Point, 1, len(set))
-
-	uniq[0] = set[0]
-	for _, p := range set[1:] {
-		last := uniq[len(uniq)-1]
-		if p != last {
-			uniq = append(uniq, p)
-		}
-	}
-
-	return uniq
-}
-
-func GenNamespace(rand *rand.Rand, size int) Namespace {
-	const maxStr = 100
-	const tableFudge = 0.125
-	const rowFudge = 0.25
-
-	gen := EmptyNamespace()
-
-	// FIXME This looks horrific.
-	tableCount := testutil.GenCount(rand, size, tableFudge)
-	for i := 0; i < tableCount; i++ {
-		tableName := TableName(testutil.RandLetters(rand, maxStr))
-		table := EmptyTable()
-		rowCount := testutil.GenCount(rand, size, rowFudge)
-		for j := 0; j < rowCount; j++ {
-			rowName := RowName(testutil.RandLetters(rand, maxStr))
-			row := genRow(rand, size)
-			table.addRow(rowName, row)
-		}
-		gen.addTable(tableName, table)
-	}
-
-	return gen
-}
-
-func genRow(rand *rand.Rand, size int) Row {
-	const maxStr = 100
-	const entryFudge = 0.65
-	const pointFudge = 0.85
-	row := EmptyRow()
-	entryCount := testutil.GenCountRange(rand, 1, size, entryFudge)
-	for k := 0; k < entryCount; k++ {
-		entryName := EntryName(testutil.RandLetters(rand, maxStr))
-		pointCount := testutil.GenCountRange(rand, 1, size, pointFudge)
-		points := make([]Point, pointCount)
-
-		for m := 0; m < pointCount; m++ {
-			points[m] = Point(testutil.RandLetters(rand, maxStr))
-		}
-
-		entry := MakeEntry(points)
-		row.addEntry(entryName, entry)
-	}
-	return row
 }

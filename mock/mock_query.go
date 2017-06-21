@@ -6,6 +6,7 @@ package mock_godless
 import (
 	gomock "github.com/golang/mock/gomock"
 	crdt "github.com/johnny-morrice/godless/crdt"
+	crypto "github.com/johnny-morrice/godless/internal/crypto"
 	query "github.com/johnny-morrice/godless/query"
 )
 
@@ -92,6 +93,14 @@ func (_m *MockQueryVisitor) VisitPredicate(_param0 *query.QueryPredicate) {
 
 func (_mr *_MockQueryVisitorRecorder) VisitPredicate(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "VisitPredicate", arg0)
+}
+
+func (_m *MockQueryVisitor) VisitPublicKeyHash(_param0 crypto.PublicKeyHash) {
+	_m.ctrl.Call(_m, "VisitPublicKeyHash", _param0)
+}
+
+func (_mr *_MockQueryVisitorRecorder) VisitPublicKeyHash(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "VisitPublicKeyHash", arg0)
 }
 
 func (_m *MockQueryVisitor) VisitRowJoin(_param0 int, _param1 *query.QueryRowJoin) {

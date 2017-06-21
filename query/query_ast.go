@@ -5,18 +5,24 @@ import (
 	"strconv"
 
 	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/pkg/errors"
 )
 
 type QueryAST struct {
-	Command  string
-	TableKey string
-	Select   QuerySelectAST `json:",omitempty"`
-	Join     QueryJoinAST   `json:",omitempty"`
+	Command    string
+	TableKey   string
+	Select     QuerySelectAST `json:",omitempty"`
+	Join       QueryJoinAST   `json:",omitempty"`
+	PublicKeys []string
 
 	WhereStack     []*QueryWhereAST
 	lastRowJoinKey string
 	lastRowJoin    *QueryRowJoinAST
+}
+
+func (ast *QueryAST) AddCryptoKey(publicKey string) {
+	ast.PublicKeys = append(ast.PublicKeys, publicKey)
 }
 
 func (ast *QueryAST) AddJoin() {
@@ -143,6 +149,11 @@ func (ast *QueryAST) Compile() (*Query, error) {
 
 	query.AST = ast
 	query.TableKey = crdt.TableName(ast.TableKey)
+	query.PublicKeys = make([]crypto.PublicKeyHash, len(ast.PublicKeys))
+
+	for i, k := range ast.PublicKeys {
+		query.PublicKeys[i] = crypto.PublicKeyHash(k)
+	}
 
 	return query, nil
 }
@@ -366,11 +377,11 @@ func quote(token string) string {
 	return token[1 : len(token)-1]
 }
 
-func makeJoinEntries(mess map[string]string) map[crdt.EntryName]crdt.Point {
-	es := map[crdt.EntryName]crdt.Point{}
+func makeJoinEntries(mess map[string]string) map[crdt.EntryName]crdt.PointText {
+	es := map[crdt.EntryName]crdt.PointText{}
 
 	for k, v := range mess {
-		es[crdt.EntryName(k)] = crdt.Point(v)
+		es[crdt.EntryName(k)] = crdt.PointText(v)
 	}
 
 	return es

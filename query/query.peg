@@ -4,18 +4,20 @@ type QueryParser Peg {
 	QueryAST
 }
 
-Query <- Spacing (Select { p.AddSelect() } / Join { p.AddJoin() }) !.
+Query <- Spacing (Select { p.AddSelect() } / Join { p.AddJoin() }) Spacing !.
 
-Join <- 'join' MustSpacing JoinKey MustSpacing 'rows' MustSpacing JoinRow (Spacing ',' Spacing JoinRow)* Spacing
+Join <- 'join' MustSpacing JoinKey (MustSpacing CryptoKey)* MustSpacing 'rows' MustSpacing JoinRow (Spacing ',' Spacing JoinRow)* Spacing
 JoinKey <- < Key > { p.SetTableName(buffer[begin:end]) }
 JoinRow <- { p.AddJoinRow() } '(' Spacing KeyJoin Spacing ( ',' Spacing ValueJoin Spacing ) * ')'
 KeyJoin <- '@key' Spacing '=' Spacing ('@' ["] < Literal > ["] / < Key > ) { p.SetJoinRowKey(buffer[begin:end]) }
 ValueJoin <- (< Key > / '@' ["] < Literal > ["] ) { p.SetJoinKey(buffer[begin:end]) } Spacing '=' Spacing ["] < Literal > ["] { p.SetJoinValue(buffer[begin:end]) }
 
-Select <- 'select' MustSpacing SelectKey MustSpacing (Where MustSpacing)? Limit
+Select <- 'select' MustSpacing SelectKey (MustSpacing WherePart)*
+WherePart <- (Where / Limit / CryptoKey)
 SelectKey <- < Key > { p.SetTableName(buffer[begin:end]) }
-
 Limit <- 'limit' MustSpacing < PositiveInteger > { p.SetLimit(buffer[begin:end])}
+
+CryptoKey <- 'signed' MustSpacing '"' < Alphanumeric > '"' { p.AddCryptoKey(buffer[begin:end]) }
 
 Where <- 'where' MustSpacing WhereClause
 WhereClause <- { p.PushWhere() } ( AndClause / OrClause / PredicateClause ) { p.PopWhere() }
@@ -30,7 +32,8 @@ PredicateLiteralValue <- ["] < Literal > ["] { p.AddPredicateLiteral(buffer[begi
 
 Literal <- (Escape / [^"])*
 PositiveInteger <- [1-9] [0-9]*
-Key <- [a-zA-Z0-9]+
+Key <- Alphanumeric
+Alphanumeric <- [a-zA-Z0-9]+
 Escape <- '\\' ["\\abfnrtv]
 MustSpacing <- ( ' ' / '\t' / '\n' )+
 Spacing <- ( ' ' / '\t' / '\n' )*

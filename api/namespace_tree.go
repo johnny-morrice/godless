@@ -1,10 +1,13 @@
 package api
 
-import "github.com/johnny-morrice/godless/crdt"
+import (
+	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/internal/crypto"
+)
 
 type NamespaceTree interface {
 	JoinTable(crdt.TableName, crdt.Table) error
-	LoadTraverse(NamespaceTreeTableReader) error
+	LoadTraverse(searcher NamespaceSearcher) error
 }
 
 type RemoteNamespaceTree interface {
@@ -13,7 +16,7 @@ type RemoteNamespaceTree interface {
 }
 
 type NamespaceTreeReader interface {
-	ReadNamespace(crdt.Namespace) TraversalUpdate
+	ReadNamespace(ns crdt.Namespace) TraversalUpdate
 }
 
 type TraversalUpdate struct {
@@ -21,33 +24,44 @@ type TraversalUpdate struct {
 	Error error
 }
 
-type TableHinter interface {
-	ReadsTables() []crdt.TableName
+type IndexSearch interface {
+	Search(index crdt.Index) []crdt.Link
 }
 
-type NamespaceTreeTableReader interface {
-	TableHinter
+type NamespaceSearcher interface {
+	IndexSearch
 	NamespaceTreeReader
 }
 
-func AddTableHints(tables []crdt.TableName, ntr NamespaceTreeReader) NamespaceTreeTableReader {
-	return tableHinterWrapper{
-		hints:  tables,
-		reader: ntr,
+type SignedTableSearcher struct {
+	Reader NamespaceTreeReader
+	Tables []crdt.TableName
+	Keys   []crypto.PublicKey
+}
+
+func (searcher SignedTableSearcher) ReadNamespace(ns crdt.Namespace) TraversalUpdate {
+	return searcher.Reader.ReadNamespace(ns)
+}
+
+func (searcher SignedTableSearcher) Search(index crdt.Index) []crdt.Link {
+	verified := []crdt.Link{}
+
+	needSignature := len(searcher.Keys) > 0
+
+	for _, t := range searcher.Tables {
+		index.ForTable(t, func(link crdt.Link) {
+			if !needSignature {
+				verified = append(verified, link)
+				return
+			}
+
+			if link.IsVerifiedByAny(searcher.Keys) {
+				verified = append(verified, link)
+			}
+		})
 	}
-}
 
-type tableHinterWrapper struct {
-	reader NamespaceTreeReader
-	hints  []crdt.TableName
-}
-
-func (thw tableHinterWrapper) ReadsTables() []crdt.TableName {
-	return thw.hints
-}
-
-func (thw tableHinterWrapper) ReadNamespace(ns crdt.Namespace) TraversalUpdate {
-	return thw.reader.ReadNamespace(ns)
+	return verified
 }
 
 // NamespaceTreeReader functions return true when they have finished reading

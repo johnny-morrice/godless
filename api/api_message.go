@@ -6,6 +6,7 @@ import (
 
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/internal/util"
+	"github.com/johnny-morrice/godless/log"
 	"github.com/johnny-morrice/godless/proto"
 	"github.com/pkg/errors"
 )
@@ -23,9 +24,9 @@ func MakeAPIResponseMessage(resp APIResponse) *proto.APIResponseMessage {
 
 	switch resp.Type {
 	case API_QUERY:
-		message.QueryResponse = makeAPIQueryResponseMessage(resp.QueryResponse)
+		makeAPIQueryResponseMessage(resp.QueryResponse, message)
 	case API_REFLECT:
-		message.ReflectResponse = makeAPIReflectMessage(resp.ReflectResponse)
+		makeAPIReflectMessage(resp.ReflectResponse, message)
 	case API_REPLICATE:
 	default:
 		panic(fmt.Sprintf("Unknown APIResponse.Type: %v", resp))
@@ -47,9 +48,9 @@ func ReadAPIResponseMessage(message *proto.APIResponseMessage) APIResponse {
 
 	switch resp.Type {
 	case API_QUERY:
-		resp.QueryResponse = readAPIQueryResponse(message.QueryResponse)
+		readAPIQueryResponse(message.QueryResponse, &resp)
 	case API_REFLECT:
-		resp.ReflectResponse = readAPIReflectResponse(message.ReflectResponse)
+		readAPIReflectResponse(message.ReflectResponse, &resp)
 	case API_REPLICATE:
 	default:
 		// TODO dupe code
@@ -115,48 +116,84 @@ func DecodeAPIResponseText(r io.Reader) (APIResponse, error) {
 	return ReadAPIResponseMessage(message), nil
 }
 
-func makeAPIQueryResponseMessage(resp APIQueryResponse) *proto.APIQueryResponseMessage {
+func makeAPIQueryResponseMessage(resp APIQueryResponse, message *proto.APIResponseMessage) {
 	ns := crdt.MakeNamespaceStreamMessage(resp.Entries)
-	message := &proto.APIQueryResponseMessage{Namespace: ns}
-	return message
+	message.QueryResponse = &proto.APIQueryResponseMessage{Namespace: ns}
 }
 
-func makeAPIReflectMessage(resp APIReflectResponse) *proto.APIReflectResponseMessage {
-	message := &proto.APIReflectResponseMessage{Type: uint32(resp.Type)}
+func makeAPIReflectMessage(resp APIReflectResponse, message *proto.APIResponseMessage) {
+	reflectMessage := &proto.APIReflectResponseMessage{Type: uint32(resp.Type)}
 
 	switch resp.Type {
 	case REFLECT_HEAD_PATH:
-		message.Path = string(resp.Path)
+		reflectMessage.Path = string(resp.Path)
 	case REFLECT_INDEX:
-		message.Index = crdt.MakeIndexMessage(resp.Index)
+		indexMessage, invalid := crdt.MakeIndexMessage(resp.Index)
+
+		invalidCount := len(invalid)
+
+		if invalidCount > 0 {
+			log.Error("makeAPIReflectMessage: %v invalid Index entries", invalidCount)
+		}
+
+		reflectMessage.Index = indexMessage
 	case REFLECT_DUMP_NAMESPACE:
-		message.Namespace = crdt.MakeNamespaceMessage(resp.Namespace)
+		namespace, invalid := crdt.MakeNamespaceMessage(resp.Namespace)
+
+		invalidCount := len(invalid)
+
+		if invalidCount > 0 {
+			log.Error("makeAPIReflectMessage: %v invalid Namespace entries", invalidCount)
+		}
+
+		reflectMessage.Namespace = namespace
 	default:
 		panic(fmt.Sprintf("Unknown APIReflectResponse.Type: %v", resp))
 	}
 
-	return message
+	message.ReflectResponse = reflectMessage
 }
 
-func readAPIQueryResponse(message *proto.APIQueryResponseMessage) APIQueryResponse {
-	resp := APIQueryResponse{}
-	resp.Entries = crdt.ReadNamespaceStreamMessage(message.Namespace)
-	return resp
+func readAPIQueryResponse(message *proto.APIQueryResponseMessage, resp *APIResponse) {
+	ns := crdt.ReadNamespaceStreamMessage(message.Namespace)
+	resp.QueryResponse.Entries = ns
 }
 
-func readAPIReflectResponse(message *proto.APIReflectResponseMessage) APIReflectResponse {
-	resp := APIReflectResponse{Type: APIReflectionType(message.Type)}
+func readAPIReflectResponse(message *proto.APIReflectResponseMessage, resp *APIResponse) {
+	reflectResp := APIReflectResponse{Type: APIReflectionType(message.Type)}
 
-	switch resp.Type {
+	switch reflectResp.Type {
 	case REFLECT_HEAD_PATH:
-		resp.Path = crdt.IPFSPath(message.Path)
+		reflectResp.Path = crdt.IPFSPath(message.Path)
 	case REFLECT_INDEX:
-		resp.Index = crdt.ReadIndexMessage(message.Index)
+		index, invalid := crdt.ReadIndexMessage(message.Index)
+
+		invalidCount := len(invalid)
+
+		if invalidCount > 0 {
+			log.Error("readAPIReflectResponse: %v invalid Index entries", invalidCount)
+		}
+
+		reflectResp.Index = index
 	case REFLECT_DUMP_NAMESPACE:
-		resp.Namespace = crdt.ReadNamespaceMessage(message.Namespace)
+		// namespace, invalid, err
+		namespace, invalid, err := crdt.ReadNamespaceMessage(message.Namespace)
+
+		invalidCount := len(invalid)
+
+		if invalidCount > 0 {
+			log.Error("readAPIReflectResponse: %v invalid Index entries", invalidCount)
+		}
+
+		if err == nil {
+			reflectResp.Namespace = namespace
+		} else {
+			resp.Err = err
+			resp.Msg = RESPONSE_FAIL_MSG
+		}
 	default:
 		panic(fmt.Sprintf("Unknown APIReflectResponse.Type: %v", message))
 	}
 
-	return resp
+	resp.ReflectResponse = reflectResp
 }

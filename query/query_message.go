@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/johnny-morrice/godless/proto"
 )
 
@@ -17,6 +18,7 @@ type queryMessageVisitor interface {
 	whereMessageVisitor
 	VisitOpCode(uint32)
 	VisitTableKey(string)
+	VisitPublicKeyHash(string)
 	VisitJoin(*proto.QueryJoinMessage)
 	LeaveJoin(*proto.QueryJoinMessage)
 	VisitRowJoin(int, *proto.QueryRowJoinMessage)
@@ -100,11 +102,18 @@ func configureWhereMessage(queryWhere *QueryWhere, message *proto.QueryWhereMess
 }
 
 func MakeQueryMessage(query *Query) *proto.QueryMessage {
+	hashTexts := make([]string, len(query.PublicKeys))
+
+	for i, hash := range query.PublicKeys {
+		hashTexts[i] = string(hash)
+	}
+
 	return &proto.QueryMessage{
-		OpCode: uint32(query.OpCode),
-		Table:  string(query.TableKey),
-		Join:   MakeQueryJoinMessage(query.Join),
-		Select: MakeQuerySelectMessage(query.Select),
+		OpCode:    uint32(query.OpCode),
+		Table:     string(query.TableKey),
+		Join:      MakeQueryJoinMessage(query.Join),
+		Select:    MakeQuerySelectMessage(query.Select),
+		KeyHashes: hashTexts,
 	}
 }
 
@@ -176,17 +185,16 @@ func MakeQueryJoinMessage(join QueryJoin) *proto.QueryJoinMessage {
 func MakeQueryRowJoinMessage(row QueryRowJoin) *proto.QueryRowJoinMessage {
 	message := &proto.QueryRowJoinMessage{
 		Row:     string(row.RowKey),
-		Entries: make([]*proto.QueryRowJoinEntryMessage, len(row.Entries)),
+		Entries: make([]*proto.QueryRowJoinEntryMessage, 0, len(row.Entries)),
 	}
 
 	// We don't store these in IPFS so no need for stable order.
-	i := 0
 	for e, p := range row.Entries {
-		message.Entries[i] = &proto.QueryRowJoinEntryMessage{
+		rowJoin := &proto.QueryRowJoinEntryMessage{
 			Entry: string(e),
 			Point: string(p),
 		}
-		i++
+		message.Entries = append(message.Entries, rowJoin)
 	}
 
 	return message
@@ -215,6 +223,10 @@ func (decoder *queryMessageDecoder) VisitWhere(position int, message *proto.Quer
 
 	decoder.decodeWhere(frame)
 	decoder.stack.push(frame)
+}
+
+func (decoder *queryMessageDecoder) VisitPublicKeyHash(publicKeyHash string) {
+	decoder.Query.PublicKeys = append(decoder.Query.PublicKeys, crypto.PublicKeyHash(publicKeyHash))
 }
 
 func (decoder *queryMessageDecoder) createChildWhere(position int) *QueryWhere {
@@ -292,11 +304,11 @@ func (decoder *queryMessageDecoder) decodeWhere(frame whereBuilderFrame) {
 
 func (decoder *queryMessageDecoder) decodeRowJoin(row *QueryRowJoin, message *proto.QueryRowJoinMessage) {
 	row.RowKey = crdt.RowName(message.Row)
-	row.Entries = map[crdt.EntryName]crdt.Point{}
+	row.Entries = map[crdt.EntryName]crdt.PointText{}
 
 	for _, messageEntry := range message.Entries {
 		entry := crdt.EntryName(messageEntry.Entry)
-		point := crdt.Point(messageEntry.Point)
+		point := crdt.PointText(messageEntry.Point)
 		row.Entries[entry] = point
 	}
 }
@@ -339,6 +351,10 @@ func (decoder *queryMessageDecoder) badPredicateMessageOpCode(message *proto.Que
 func visitMessage(message *proto.QueryMessage, visitor queryMessageVisitor) error {
 	visitor.VisitOpCode(message.OpCode)
 	visitor.VisitTableKey(message.Table)
+
+	for _, pub := range message.KeyHashes {
+		visitor.VisitPublicKeyHash(pub)
+	}
 
 	switch message.OpCode {
 	case MESSAGE_JOIN:

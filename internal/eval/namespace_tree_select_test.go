@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/johnny-morrice/godless/query"
 )
 
@@ -16,15 +17,18 @@ import (
 // The various where predicates are tested elsewhere.  This test focusses
 // on whether the correct rows will be discovered for any predicate.
 func TestRowCriteria_findRows(t *testing.T) {
-	pointA := []crdt.Point{"hello"}
-	pointB := []crdt.Point{"world"}
+	pointA := crdt.UnsignedPoint("hello")
+	pointB := crdt.UnsignedPoint("world")
 
 	rowA := crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-		"foo": crdt.MakeEntry(pointA),
+		"foo": crdt.MakeEntry([]crdt.Point{pointA}),
 	})
 	rowB := crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
-		"bar": crdt.MakeEntry(pointB),
+		"bar": crdt.MakeEntry([]crdt.Point{pointB}),
 	})
+
+	streamPointA := makeStreamPoint(pointA.Text, crypto.Signature{})
+	streamPointB := makeStreamPoint(pointB.Text, crypto.Signature{})
 
 	namespace := crdt.MakeNamespace(map[crdt.TableName]crdt.Table{
 		TABLE_KEY: crdt.MakeTable(map[crdt.RowName]crdt.Row{
@@ -35,24 +39,24 @@ func TestRowCriteria_findRows(t *testing.T) {
 	})
 
 	streamEntryA := crdt.NamespaceStreamEntry{
-		Table:  TABLE_KEY,
-		Row:    "a",
-		Entry:  "foo",
-		Points: pointA,
+		Table: TABLE_KEY,
+		Row:   "a",
+		Entry: "foo",
+		Point: streamPointA,
 	}
 
 	streamEntryB := crdt.NamespaceStreamEntry{
-		Table:  TABLE_KEY,
-		Row:    "b",
-		Entry:  "bar",
-		Points: pointB,
+		Table: TABLE_KEY,
+		Row:   "b",
+		Entry: "bar",
+		Point: streamPointB,
 	}
 
 	streamEntryC := crdt.NamespaceStreamEntry{
-		Table:  TABLE_KEY,
-		Row:    "c",
-		Entry:  "bar",
-		Points: pointB,
+		Table: TABLE_KEY,
+		Row:   "c",
+		Entry: "bar",
+		Point: streamPointB,
 	}
 
 	expected := [][]crdt.NamespaceStreamEntry{
@@ -104,17 +108,13 @@ func TestRowCriteria_findRows(t *testing.T) {
 func TestRowCriteria_isReady(t *testing.T) {
 	bad := []*rowCriteria{
 		&rowCriteria{},
-		&rowCriteria{limit: 10},
 		&rowCriteria{rootWhere: &query.QueryWhere{}},
 		&rowCriteria{tableKey: TABLE_KEY},
-		&rowCriteria{limit: 10, rootWhere: &query.QueryWhere{}},
-		&rowCriteria{limit: 10, tableKey: TABLE_KEY},
-		&rowCriteria{rootWhere: &query.QueryWhere{}, tableKey: TABLE_KEY},
 	}
 
-	for _, b := range bad {
+	for i, b := range bad {
 		if b.isReady() {
-			t.Error("Unexpected rowCriteria isReady()")
+			t.Error("Unexpected rowCriteria isReady() at", i)
 		}
 	}
 
@@ -125,6 +125,18 @@ func TestRowCriteria_isReady(t *testing.T) {
 
 	if !okay.isReady() {
 		t.Error("Expected rowCriteria isReady()")
+	}
+}
+
+func makeStreamPoint(text crdt.PointText, sig crypto.Signature) crdt.StreamPoint {
+	streamPoint, err := crdt.MakeStreamPoint(text, sig)
+	setupPanic(err)
+	return streamPoint
+}
+
+func setupPanic(err error) {
+	if err != nil {
+		panic(err)
 	}
 }
 

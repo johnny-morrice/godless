@@ -1,6 +1,6 @@
 package api
 
-//go:generate mockgen -package mock_godless -destination ../mock/mock_api.go -imports lib=github.com/johnny-morrice/api -self_package lib github.com/johnny-morrice/godless/api RemoteNamespace,RemoteStore,NamespaceTree,NamespaceTreeTableReader
+//go:generate mockgen -package mock_godless -destination ../mock/mock_api.go -imports lib=github.com/johnny-morrice/api -self_package lib github.com/johnny-morrice/godless/api RemoteNamespace,RemoteStore,NamespaceTree,NamespaceSearcher
 
 import (
 	"bytes"
@@ -28,7 +28,7 @@ type APIRequest struct {
 	Type       APIMessageType
 	Reflection APIReflectionType
 	Query      *query.Query
-	Replicate  crdt.IPFSPath
+	Replicate  []crdt.Link
 }
 
 type APIResponder interface {
@@ -73,7 +73,7 @@ const (
 type RemoteNamespace interface {
 	RunKvQuery(*query.Query, KvQuery)
 	RunKvReflection(APIReflectionType, KvQuery)
-	Replicate(crdt.IPFSPath, KvQuery)
+	Replicate([]crdt.Link, KvQuery)
 	Close()
 }
 
@@ -82,11 +82,11 @@ type kvRunner interface {
 }
 
 type kvReplicator struct {
-	peerAddr crdt.IPFSPath
+	links []crdt.Link
 }
 
 func (replicator kvReplicator) Run(kvn RemoteNamespace, kvq KvQuery) {
-	kvn.Replicate(replicator.peerAddr, kvq)
+	kvn.Replicate(replicator.links, kvq)
 }
 
 type kvQueryRunner struct {
@@ -128,7 +128,7 @@ func MakeKvReflect(request APIRequest) KvQuery {
 }
 
 func MakeKvReplicate(request APIRequest) KvQuery {
-	return makeApiQuery(request, kvReplicator{peerAddr: request.Replicate})
+	return makeApiQuery(request, kvReplicator{links: request.Replicate})
 }
 
 // TODO these should make more general sense and be public.

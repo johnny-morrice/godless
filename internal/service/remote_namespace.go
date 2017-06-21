@@ -41,15 +41,27 @@ func (add addIndex) reply(path crdt.IPFSPath, err error) {
 type remoteNamespace struct {
 	namespaceTube chan addNamespace
 	indexTube     chan addIndex
+	store         api.RemoteStore
+	headCache     api.HeadCache
+	indexCache    api.IndexCache
+	keyStore      api.KeyStore
+	isPublicIndex bool
+}
+
+type RemoteNamespaceOptions struct {
 	Store         api.RemoteStore
 	HeadCache     api.HeadCache
 	IndexCache    api.IndexCache
+	KeyStore      api.KeyStore
+	IsPublicIndex bool
 }
 
-func MakeRemoteNamespace(store api.RemoteStore, headCache api.HeadCache, indexCache api.IndexCache) api.RemoteNamespaceTree {
-	remote := &remoteNamespace{Store: store,
-		HeadCache:     headCache,
-		IndexCache:    indexCache,
+func MakeRemoteNamespace(options RemoteNamespaceOptions) api.RemoteNamespaceTree {
+	remote := &remoteNamespace{
+		store:         options.Store,
+		headCache:     options.HeadCache,
+		indexCache:    options.IndexCache,
+		keyStore:      options.KeyStore,
 		namespaceTube: make(chan addNamespace),
 		indexTube:     make(chan addIndex),
 	}
@@ -62,7 +74,7 @@ func (rn *remoteNamespace) AddNamespaces() {
 	for tubeItem := range rn.namespaceTube {
 		add := tubeItem
 		go func() {
-			path, err := rn.Store.AddNamespace(add.namespace)
+			path, err := rn.store.AddNamespace(add.namespace)
 			add.reply(path, err)
 		}()
 	}
@@ -73,7 +85,7 @@ func (rn *remoteNamespace) AddIndices() {
 		add := tubeItem
 		index := crdt.EmptyIndex()
 
-		head, headErr := rn.getHeadTransaction()
+		head, headErr := rn.getHead()
 
 		if headErr != nil {
 			add.reply(crdt.NIL_PATH, headErr)
@@ -95,7 +107,7 @@ func (rn *remoteNamespace) AddIndices() {
 
 		if addErr == nil {
 			log.Info("Persisted index at: %v", path)
-			rn.setHeadTransaction(path)
+			rn.setHead(path)
 		}
 
 		add.reply(path, addErr)
@@ -104,13 +116,13 @@ func (rn *remoteNamespace) AddIndices() {
 
 func (rn *remoteNamespace) addIndex(index crdt.Index) (crdt.IPFSPath, error) {
 	const failMsg = "remoteNamespace.addIndex failed"
-	indexAddr, addErr := rn.Store.AddIndex(index)
+	indexAddr, addErr := rn.store.AddIndex(index)
 
 	if addErr != nil {
 		return crdt.NIL_PATH, errors.Wrap(addErr, failMsg)
 	}
 
-	cacheErr := rn.IndexCache.SetIndex(indexAddr, index)
+	cacheErr := rn.indexCache.SetIndex(indexAddr, index)
 	if cacheErr != nil {
 		log.Error("Failed to write index cache for: %v (%v)", indexAddr, cacheErr)
 	}
@@ -123,36 +135,70 @@ func (rn *remoteNamespace) Close() {
 	close(rn.indexTube)
 }
 
-func (rn *remoteNamespace) Replicate(peerAddr crdt.IPFSPath, kvq api.KvQuery) {
-	runner := api.APIResponderFunc(func() api.APIResponse { return rn.joinPeerIndex(peerAddr) })
+func (rn *remoteNamespace) Replicate(links []crdt.Link, kvq api.KvQuery) {
+	runner := api.APIResponderFunc(func() api.APIResponse { return rn.joinPeerIndex(links) })
 	response := runner.RunQuery()
 	kvq.WriteResponse(response)
 }
 
-func (rn *remoteNamespace) joinPeerIndex(peerAddr crdt.IPFSPath) api.APIResponse {
+func (rn *remoteNamespace) joinPeerIndex(links []crdt.Link) api.APIResponse {
 	const failMsg = "remoteNamespace.joinPeerIndex failed"
 	failResponse := api.RESPONSE_FAIL
 
-	theirIndex, theirErr := rn.loadIndex(peerAddr)
+	log.Info("Replicating peer indices...")
 
-	if theirErr != nil {
-		failResponse.Err = errors.Wrap(theirErr, failMsg)
-		return failResponse
+	keys := rn.keyStore.GetAllPublicKeys()
+
+	joined := crdt.EmptyIndex()
+
+	someFailed := false
+	for _, link := range links {
+		if rn.isPublicIndex {
+			log.Info("Verifying link...")
+			isVerified := link.IsVerifiedByAny(keys)
+			if !isVerified {
+				log.Warn("Skipping unverified Index Link")
+				someFailed = true
+				continue
+			}
+			log.Info("Verified link: %v", link.Path)
+		}
+
+		peerAddr := link.Path
+
+		theirIndex, theirErr := rn.loadIndex(peerAddr)
+
+		if theirErr != nil {
+			log.Error("Failed to replicate Index at: %v", peerAddr)
+			someFailed = true
+			continue
+		}
+
+		joined = joined.JoinIndex(theirIndex)
 	}
 
-	_, perr := rn.insertIndex(theirIndex)
+	indexAddr, perr := rn.insertIndex(joined)
 
 	if perr != nil {
+		log.Error("Index replication failed")
 		failResponse.Err = errors.Wrap(perr, failMsg)
 		return failResponse
 	}
 
-	return api.RESPONSE_REPLICATE
+	resp := api.RESPONSE_REPLICATE
+
+	if someFailed {
+		resp.Msg = "Update ok with load failures"
+	}
+
+	log.Info("Index replicated to: %v", indexAddr)
+
+	return resp
 }
 
 func (rn *remoteNamespace) loadIndex(indexAddr crdt.IPFSPath) (crdt.Index, error) {
 	const failMsg = "remoteNamespace.loadIndex failed"
-	cached, cacheErr := rn.IndexCache.GetIndex(indexAddr)
+	cached, cacheErr := rn.indexCache.GetIndex(indexAddr)
 
 	if cacheErr == nil {
 		return cached, nil
@@ -160,7 +206,7 @@ func (rn *remoteNamespace) loadIndex(indexAddr crdt.IPFSPath) (crdt.Index, error
 		log.Warn("Index cache miss for: %v", indexAddr)
 	}
 
-	index, err := rn.Store.CatIndex(indexAddr)
+	index, err := rn.store.CatIndex(indexAddr)
 
 	if err != nil {
 		return crdt.EmptyIndex(), errors.Wrap(err, failMsg)
@@ -194,7 +240,7 @@ func (rn *remoteNamespace) getReflectHead() api.APIResponse {
 	response := api.RESPONSE_REFLECT
 	response.ReflectResponse.Type = api.REFLECT_HEAD_PATH
 
-	myAddr, err := rn.getHeadTransaction()
+	myAddr, err := rn.getHead()
 
 	if err != nil {
 		response.Err = errors.Wrap(err, "remoteNamespace.getReflectHead failed")
@@ -241,15 +287,18 @@ func (rn *remoteNamespace) dumpReflectNamespaces() api.APIResponse {
 		return response
 	}
 
-	tables := index.AllTables()
 	everything := crdt.EmptyNamespace()
 
 	lambda := api.NamespaceTreeLambda(func(ns crdt.Namespace) api.TraversalUpdate {
 		everything = everything.JoinNamespace(ns)
 		return api.TraversalUpdate{More: true}
 	})
-	traversal := api.AddTableHints(tables, lambda)
-	err = rn.LoadTraverse(traversal)
+	searcher := api.SignedTableSearcher{
+		Reader: lambda,
+		Tables: index.AllTables(),
+	}
+
+	err = rn.LoadTraverse(searcher)
 
 	if err != nil {
 		response = api.RESPONSE_FAIL
@@ -267,12 +316,13 @@ func (rn *remoteNamespace) RunKvQuery(q *query.Query, kvq api.KvQuery) {
 
 	switch q.OpCode {
 	case query.JOIN:
-		visitor := eval.MakeNamespaceTreeJoin(rn)
+		log.Info("Running join...")
+		visitor := eval.MakeNamespaceTreeJoin(rn, rn.keyStore)
 		q.Visit(visitor)
 		runner = visitor
 	case query.SELECT:
 		log.Info("Running select...")
-		visitor := eval.MakeNamespaceTreeSelect(rn)
+		visitor := eval.MakeNamespaceTreeSelect(rn, rn.keyStore)
 		q.Visit(visitor)
 		runner = visitor
 	default:
@@ -295,7 +345,13 @@ func (rn *remoteNamespace) JoinTable(tableKey crdt.TableName, table crdt.Table) 
 		return errors.Wrap(nsErr, failMsg)
 	}
 
-	index := crdt.EmptyIndex().JoinTable(tableKey, addr)
+	signed, signErr := crdt.SignedLink(addr, rn.keyStore.GetAllPrivateKeys())
+
+	if signErr != nil {
+		return errors.Wrap(signErr, failMsg)
+	}
+
+	index := crdt.EmptyIndex().JoinTable(tableKey, signed)
 
 	_, indexErr := rn.insertIndex(index)
 
@@ -306,7 +362,7 @@ func (rn *remoteNamespace) JoinTable(tableKey crdt.TableName, table crdt.Table) 
 	return nil
 }
 
-func (rn *remoteNamespace) LoadTraverse(nttr api.NamespaceTreeTableReader) error {
+func (rn *remoteNamespace) LoadTraverse(searcher api.NamespaceSearcher) error {
 	const failMsg = "remoteNamespace.LoadTraverse failed"
 
 	index, indexerr := rn.loadCurrentIndex()
@@ -315,12 +371,12 @@ func (rn *remoteNamespace) LoadTraverse(nttr api.NamespaceTreeTableReader) error
 		return errors.Wrap(indexerr, failMsg)
 	}
 
-	tableAddrs := rn.findTableAddrs(index, nttr)
+	tableAddrs := searcher.Search(index)
 
-	return rn.traverseTableNamespaces(tableAddrs, nttr)
+	return rn.traverseTableNamespaces(tableAddrs, searcher)
 }
 
-func (rn *remoteNamespace) traverseTableNamespaces(tableAddrs []crdt.IPFSPath, f api.NamespaceTreeReader) error {
+func (rn *remoteNamespace) traverseTableNamespaces(tableAddrs []crdt.Link, f api.NamespaceTreeReader) error {
 	nsch, cancelch := rn.namespaceLoader(tableAddrs)
 	defer close(cancelch)
 	for ns := range nsch {
@@ -343,14 +399,14 @@ func (rn *remoteNamespace) traverseTableNamespaces(tableAddrs []crdt.IPFSPath, f
 }
 
 // Preload namespaces while the previous is analysed.
-func (rn *remoteNamespace) namespaceLoader(addrs []crdt.IPFSPath) (<-chan crdt.Namespace, chan<- struct{}) {
+func (rn *remoteNamespace) namespaceLoader(addrs []crdt.Link) (<-chan crdt.Namespace, chan<- struct{}) {
 	nsch := make(chan crdt.Namespace)
 	cancelch := make(chan struct{}, 1)
 
 	go func() {
 		defer close(nsch)
 		for _, a := range addrs {
-			namespace, err := rn.Store.CatNamespace(a)
+			namespace, err := rn.store.CatNamespace(a.Path)
 
 			if err != nil {
 				log.Error("remoteNamespace.namespaceLoader failed: %v", err)
@@ -358,14 +414,11 @@ func (rn *remoteNamespace) namespaceLoader(addrs []crdt.IPFSPath) (<-chan crdt.N
 			}
 
 			log.Info("Catted namespace from: %v", a)
-		LOOP:
-			for {
-				select {
-				case <-cancelch:
-					return
-				case nsch <- namespace:
-					break LOOP
-				}
+			select {
+			case <-cancelch:
+				return
+			case nsch <- namespace:
+				break
 			}
 		}
 	}()
@@ -373,23 +426,10 @@ func (rn *remoteNamespace) namespaceLoader(addrs []crdt.IPFSPath) (<-chan crdt.N
 	return nsch, cancelch
 }
 
-func (rn *remoteNamespace) findTableAddrs(index crdt.Index, tableHints api.TableHinter) []crdt.IPFSPath {
-	out := []crdt.IPFSPath{}
-	for _, t := range tableHints.ReadsTables() {
-		addrs, err := index.GetTableAddrs(t)
-
-		if err == nil {
-			out = append(out, addrs...)
-		}
-	}
-
-	return out
-}
-
 // Load chunks over IPFS
 // TODO opportunity to query IPFS in parallel?
 func (rn *remoteNamespace) loadCurrentIndex() (crdt.Index, error) {
-	myAddr, err := rn.getHeadTransaction()
+	myAddr, err := rn.getHead()
 
 	if err != nil {
 		return crdt.EmptyIndex(), errors.Wrap(err, "remoteNamespace.loadCurrentIndex failed")
@@ -430,48 +470,16 @@ func (rn *remoteNamespace) insertIndex(index crdt.Index) (crdt.IPFSPath, error) 
 }
 
 func (rn *remoteNamespace) updateIndexCache(addr crdt.IPFSPath, index crdt.Index) {
-	err := rn.IndexCache.SetIndex(addr, index)
+	err := rn.indexCache.SetIndex(addr, index)
 	if err != nil {
-		log.Error("Failed to update index cache: %v", err)
+		log.Error("Failed to update index cache: %v", err.Error())
 	}
 }
 
-func (rn *remoteNamespace) getHeadTransaction() (crdt.IPFSPath, error) {
-	var path crdt.IPFSPath
-	err := rn.HeadCache.BeginReadTransaction()
-
-	if err != nil {
-		return crdt.NIL_PATH, err
-	}
-
-	defer func() {
-		err := rn.HeadCache.Commit()
-		if err != nil {
-			log.Error("Error commiting cache: %v", err)
-		}
-	}()
-
-	path, err = rn.HeadCache.GetHead()
-
-	if err != nil {
-		return crdt.NIL_PATH, err
-	}
-
-	return path, nil
+func (rn *remoteNamespace) getHead() (crdt.IPFSPath, error) {
+	return rn.headCache.GetHead()
 }
 
-func (rn *remoteNamespace) setHeadTransaction(head crdt.IPFSPath) error {
-	err := rn.HeadCache.BeginWriteTransaction()
-
-	if err != nil {
-		return err
-	}
-
-	err = rn.HeadCache.SetHead(head)
-
-	if err != nil {
-		return err
-	}
-
-	return rn.HeadCache.Commit()
+func (rn *remoteNamespace) setHead(head crdt.IPFSPath) error {
+	return rn.headCache.SetHead(head)
 }

@@ -21,56 +21,25 @@
 package cmd
 
 import (
-	"os"
-	"runtime/pprof"
-	"time"
+	"fmt"
 
 	"github.com/spf13/cobra"
 )
 
-// serveProfileCmd represents the serve_profile command
-var serveProfileCmd = &cobra.Command{
-	Use:    "profile",
-	Hidden: true,
-	Short:  "Profile a godless server",
-	Long:   `Run a CPU profile for the specified time and save to the specified file`,
+// genCmd represents the gen command
+var genCmd = &cobra.Command{
+	Use:   "gen",
+	Short: "Generate public/private keypair",
 	Run: func(cmd *cobra.Command, args []string) {
-		cpuProf, err := cpuProfOutput()
+		hash := generateKey()
 
-		if err != nil {
-			die(err)
-		}
+		fmt.Println(string(hash))
 
-		runProfiler(cpuProf)
-		readKeysFromViper()
-		serve()
+		flushKeysToViper()
+		writeViperConfig()
 	},
 }
 
-var profileTime time.Duration
-var cpuprof string
-
 func init() {
-	serveCmd.AddCommand(serveProfileCmd)
-
-	serveProfileCmd.Flags().DurationVar(&profileTime, "time", time.Minute, "Duration of profile run")
-	serveProfileCmd.Flags().StringVar(&cpuprof, "cpuprof", "cpu.prof", "CPU Profile output file")
-}
-
-func runProfiler(cpuProf *os.File) {
-	pprof.StartCPUProfile(cpuProf)
-
-	go func() {
-		defer func() {
-			pprof.StopCPUProfile()
-			cpuProf.Close()
-			os.Exit(0)
-		}()
-		timer := time.NewTimer(profileTime)
-		<-timer.C
-	}()
-}
-
-func cpuProfOutput() (*os.File, error) {
-	return os.Create(cpuprof)
+	keyCmd.AddCommand(genCmd)
 }

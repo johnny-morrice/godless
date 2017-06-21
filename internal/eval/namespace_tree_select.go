@@ -5,6 +5,7 @@ import (
 
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/johnny-morrice/godless/log"
 	"github.com/johnny-morrice/godless/query"
 	"github.com/pkg/errors"
@@ -16,24 +17,30 @@ type NamespaceTreeSelect struct {
 	query.ErrorCollectVisitor
 	Namespace api.NamespaceTree
 	crit      *rowCriteria
+	keys      []crypto.PublicKey
+	keyStore  api.KeyStore
 }
 
-func MakeNamespaceTreeSelect(namespace api.NamespaceTree) *NamespaceTreeSelect {
+func MakeNamespaceTreeSelect(namespace api.NamespaceTree, keyStore api.KeyStore) *NamespaceTreeSelect {
 	return &NamespaceTreeSelect{
 		Namespace: namespace,
 		crit: &rowCriteria{
 			result: []crdt.NamespaceStreamEntry{},
 		},
+		keys:     []crypto.PublicKey{},
+		keyStore: keyStore,
 	}
 }
 
 func (visitor *NamespaceTreeSelect) RunQuery() api.APIResponse {
+	const failMsg = "NamespaceTreeSelect.RunQuery failed"
+
 	fail := api.RESPONSE_FAIL
 	fail.Type = api.API_QUERY
 
-	err := visitor.Error()
-	if err != nil {
-		fail.Err = err
+	visitErr := visitor.Error()
+	if visitErr != nil {
+		fail.Err = visitErr
 		return fail
 	}
 
@@ -43,22 +50,75 @@ func (visitor *NamespaceTreeSelect) RunQuery() api.APIResponse {
 
 	log.Info("Searching namespaces...")
 	lambda := api.NamespaceTreeLambda(visitor.crit.selectMatching)
-	tables := []crdt.TableName{visitor.crit.tableKey}
-	tableReader := api.AddTableHints(tables, lambda)
-	err = visitor.Namespace.LoadTraverse(tableReader)
 
-	if err != nil {
-		fail.Err = errors.Wrap(err, "NamespaceTreeSelect failed")
+	searcher := api.SignedTableSearcher{
+		Reader: lambda,
+		Tables: []crdt.TableName{visitor.crit.tableKey},
+	}
+	searchErr := visitor.Namespace.LoadTraverse(searcher)
+
+	if searchErr != nil {
+		fail.Err = errors.Wrap(searchErr, failMsg)
 		return fail
 	}
 
-	log.Info("Search complete.")
+	log.Info("Search complete")
 
 	response := api.RESPONSE_QUERY
-	stream := crdt.JoinStreamEntries(visitor.crit.result)
+
+	stream, streamErr := visitor.resultStream()
+
+	if streamErr != nil {
+		fail.Err = errors.Wrap(streamErr, failMsg)
+		return fail
+	}
 
 	response.QueryResponse.Entries = stream
 	return response
+}
+
+func (visitor *NamespaceTreeSelect) resultStream() ([]crdt.NamespaceStreamEntry, error) {
+	const failMsg = "NamespaceTreeSelect.resultStream failed"
+
+	stream := visitor.crit.result
+	var invalid []crdt.InvalidNamespaceEntry
+	var err error
+	if visitor.needsSignature() {
+		log.Info("Filtering results by public key...")
+		stream, invalid, err = crdt.FilterSignedEntries(stream, visitor.keys)
+		log.Info("Filtering complete")
+	} else {
+		log.Info("Joining results...")
+		stream, invalid, err = crdt.JoinStreamEntries(stream)
+		log.Info("Join complete")
+	}
+
+	invalidCount := len(invalid)
+	if invalidCount > 0 {
+		log.Error("NamespaceTreeSelect found %v invalidEntries", invalidCount)
+	}
+
+	if err != nil {
+		return nil, errors.Wrap(err, failMsg)
+	}
+
+	return stream, nil
+}
+
+func (visitor *NamespaceTreeSelect) needsSignature() bool {
+	return len(visitor.keys) > 0
+}
+
+func (visitor *NamespaceTreeSelect) VisitPublicKeyHash(hash crypto.PublicKeyHash) {
+	pub, err := visitor.keyStore.GetPublicKey(hash)
+
+	if err != nil {
+		log.Warn("Public key lookup failed with: %v", err)
+		visitor.BadPublicKey(hash)
+		return
+	}
+
+	visitor.keys = append(visitor.keys, pub)
 }
 
 func (visitor *NamespaceTreeSelect) VisitTableKey(tableKey crdt.TableName) {
@@ -80,12 +140,13 @@ func (visitor *NamespaceTreeSelect) VisitSelect(qselect *query.QuerySelect) {
 		return
 	}
 
-	if qselect.Limit <= 0 {
+	if qselect.Limit < 0 {
 		visitor.CollectError(errors.New("Invalid limit"))
 		return
 	}
 
 	visitor.crit.limit = int(qselect.Limit)
+
 	visitor.crit.rootWhere = &qselect.Where
 }
 
@@ -110,6 +171,16 @@ type rowCriteria struct {
 }
 
 func (crit *rowCriteria) selectMatching(namespace crdt.Namespace) api.TraversalUpdate {
+	if crit.limit > 0 {
+		return crit.selectToLimit(namespace)
+	}
+
+	rows := crit.findRows(namespace)
+	crit.appendResult(rows)
+	return api.TraversalUpdate{More: true}
+}
+
+func (crit *rowCriteria) selectToLimit(namespace crdt.Namespace) api.TraversalUpdate {
 	remaining := crit.limit - crit.count
 
 	if remaining < 0 {
@@ -129,15 +200,20 @@ func (crit *rowCriteria) selectMatching(namespace crdt.Namespace) api.TraversalU
 		slurp = remaining
 	}
 
-	crit.result = append(crit.result, rows[:slurp]...)
-	crit.count = crit.count + slurp
+	crit.appendResult(rows[:slurp])
 
 	// logdbg("Found %v more results. Total: %v.  Limit: %v.", slurp, crit.count, crit.limit)
 	return api.TraversalUpdate{More: true}
 }
 
+func (crit *rowCriteria) appendResult(stream []crdt.NamespaceStreamEntry) {
+	crit.result = append(crit.result, stream...)
+	crit.count = crit.count + len(stream)
+}
+
 func (crit *rowCriteria) findRows(namespace crdt.Namespace) []crdt.NamespaceStreamEntry {
 	out := []crdt.NamespaceStreamEntry{}
+	invalidEntries := []crdt.InvalidNamespaceEntry{}
 
 	table, err := namespace.GetTable(crit.tableKey)
 
@@ -146,24 +222,37 @@ func (crit *rowCriteria) findRows(namespace crdt.Namespace) []crdt.NamespaceStre
 	}
 
 	if crit.rootWhere.OpCode == query.WHERE_NOOP {
-		return crdt.MakeTableStream(crit.tableKey, table)
+		stream, invalid := crdt.MakeTableStream(crit.tableKey, table)
+		crit.logInvalid(invalid)
+		return stream
 	}
 
-	table.Foreachrow(crdt.RowConsumerFunc(func(rowKey crdt.RowName, r crdt.Row) {
+	table.ForeachRow(func(rowKey crdt.RowName, r crdt.Row) {
 		eval := makeSelectEvalTree(rowKey, r)
 		where := query.MakeWhereStack(crit.rootWhere)
 
 		if eval.evaluate(where) {
-			stream := crdt.MakeRowStream(crit.tableKey, rowKey, r)
+			stream, invalid := crdt.MakeRowStream(crit.tableKey, rowKey, r)
 			out = append(out, stream...)
+			invalidEntries = append(invalidEntries, invalid...)
 		}
-	}))
+	})
+
+	crit.logInvalid(invalidEntries)
 
 	return out
 }
 
+func (crit *rowCriteria) logInvalid(invalid []crdt.InvalidNamespaceEntry) {
+	invalidCount := len(invalid)
+
+	if invalidCount > 0 {
+		log.Error("rowCriteria found %v invalid entries", invalidCount)
+	}
+}
+
 func (crit *rowCriteria) isReady() bool {
-	return crit.rootWhere != nil && crit.limit > 0 && crit.tableKey != ""
+	return crit.rootWhere != nil && crit.tableKey != ""
 }
 
 type selectEvalTree struct {
@@ -235,9 +324,12 @@ func (eval *selectEvalTree) evalWhere(where *query.QueryWhere) *expr {
 func (eval *selectEvalTree) evalPred(where *query.QueryWhere) *expr {
 	pred := where.Predicate
 
+	var first string
 	prefix := []string{}
-
-	prefix = append(prefix, pred.Literals...)
+	if len(pred.Literals) > 0 {
+		first = pred.Literals[0]
+		prefix = append(prefix, pred.Literals[1:]...)
+	}
 
 	if pred.IncludeRowKey {
 		prefix = append(prefix, string(eval.rowKey))
@@ -261,9 +353,9 @@ func (eval *selectEvalTree) evalPred(where *query.QueryWhere) *expr {
 	var isMatch bool
 	switch pred.OpCode {
 	case query.STR_EQ:
-		isMatch = eval.str_eq(prefix, entries)
+		isMatch = StrEq(first, prefix, entries)
 	case query.STR_NEQ:
-		isMatch = eval.str_neq(prefix, entries)
+		isMatch = StrNeq(first, prefix, entries)
 	default:
 		panic(fmt.Sprintf("Unsupported query.QueryPredicate OpCode: %v", pred.OpCode))
 	}
@@ -273,90 +365,6 @@ func (eval *selectEvalTree) evalPred(where *query.QueryWhere) *expr {
 	}
 
 	return &expr{source: where, state: EXPR_FALSE}
-}
-
-func (eval *selectEvalTree) str_eq(prefix []string, entries []crdt.Entry) bool {
-	m, err := eval.matcher(prefix, entries)
-
-	if err != nil {
-		// Don't log this case.
-		// logdbg("find matcher error")
-		return false
-	}
-
-	for _, pfx := range prefix {
-		if pfx != m {
-			return false
-		}
-	}
-
-	for _, entry := range entries {
-		found := false
-		for _, val := range entry.GetValues() {
-			if string(val) == m {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false
-		}
-	}
-
-	return true
-}
-
-func (eval *selectEvalTree) str_neq(prefix []string, entries []crdt.Entry) bool {
-	m, err := eval.matcher(prefix, entries)
-
-	if err != nil {
-		return false
-	}
-
-	pfxmatch := 0
-	for _, pfx := range prefix {
-		if pfx == m {
-			pfxmatch++
-		}
-	}
-
-	entrymatch := 0
-	for _, entry := range entries {
-		for _, val := range entry.GetValues() {
-			if string(val) == m {
-				entrymatch++
-			}
-		}
-	}
-
-	return !((pfxmatch > 0 && entrymatch > 0) || pfxmatch > 1 || entrymatch > 1)
-}
-
-// TODO need user concepts + crypto to narrow row match down.
-func (eval *selectEvalTree) matcher(prefix []string, entries []crdt.Entry) (string, error) {
-	var first string
-	var found bool
-
-	if len(prefix) > 0 {
-		first = prefix[0]
-		found = true
-	} else {
-		for _, entry := range entries {
-			values := entry.GetValues()
-			if len(values) > 0 {
-				first = string(values[0])
-				found = true
-				break
-			}
-		}
-	}
-
-	// No values: no match.
-	if !found {
-		return "", errors.New("no match")
-	}
-
-	return first, nil
 }
 
 func (eval *selectEvalTree) VisitWhere(position int, where *query.QueryWhere) {

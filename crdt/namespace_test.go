@@ -2,6 +2,7 @@ package crdt
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"math/rand"
 	"reflect"
@@ -9,7 +10,9 @@ import (
 	"testing/quick"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/johnny-morrice/godless/internal/testutil"
+	"github.com/johnny-morrice/godless/log"
 )
 
 func TestMakeRowStream(t *testing.T) {
@@ -30,11 +33,32 @@ func TestMakeRowStream(t *testing.T) {
 func rowStreamOk(expected Row) bool {
 	const tableKey = "tableKey"
 	const rowKey = "rowKey"
-	stream := MakeRowStream(tableKey, rowKey, expected)
-	ns := ReadNamespaceStream(stream)
-	table := ns.Tables[tableKey]
-	actual := table.Rows[rowKey]
-	return expected.Equals(actual)
+	stream, invalid := MakeRowStream(tableKey, rowKey, expected)
+
+	if len(invalid) > 0 {
+		log.Error("Found invalid points")
+		return false
+	}
+
+	actualNs := readNamespaceStream(stream)
+	actualTable := actualNs.Tables[tableKey]
+	actual := actualTable.Rows[rowKey]
+	same := expected.Equals(actual)
+
+	if !same {
+		expectedTable := MakeTable(map[RowName]Row{
+			rowKey: expected,
+		})
+		expectedNs := MakeNamespace(map[TableName]Table{
+			tableKey: expectedTable,
+		})
+		expectedText := namespaceText(expectedNs)
+		actualText := namespaceText(actualNs)
+
+		testutil.LogDiff(expectedText, actualText)
+	}
+
+	return same
 }
 
 func (row Row) Generate(rand *rand.Rand, size int) reflect.Value {
@@ -84,7 +108,7 @@ func TestEncodeNamespaceStable(t *testing.T) {
 	namespace := GenNamespace(testutil.Rand(), size)
 
 	buff := &bytes.Buffer{}
-	err := EncodeNamespace(namespace, buff)
+	err := encodeNamespace(namespace, buff)
 
 	if err != nil {
 		panic(err)
@@ -92,7 +116,7 @@ func TestEncodeNamespaceStable(t *testing.T) {
 
 	expected := buff.Bytes()
 	testutil.AssertEncodingStable(t, expected, func(w io.Writer) {
-		err := EncodeNamespace(namespace, w)
+		err := encodeNamespace(namespace, w)
 
 		if err != nil {
 			panic(err)
@@ -101,21 +125,26 @@ func TestEncodeNamespaceStable(t *testing.T) {
 }
 
 func namespaceEncodeOk(randomNs Namespace) bool {
-	expected := randomNs.Strip()
+	expected, invalid, err := randomNs.Strip()
+
+	if len(invalid) > 0 || err != nil {
+		panic("namespaceEncodeFailed")
+	}
+
 	actual := namespaceSerializationPass(randomNs)
 	return expected.Equals(actual)
 }
 
 func namespaceSerializationPass(expected Namespace) Namespace {
 	buff := &bytes.Buffer{}
-	err := EncodeNamespace(expected, buff)
+	err := encodeNamespace(expected, buff)
 
 	if err != nil {
 		panic(err)
 	}
 
 	var actual Namespace
-	actual, err = DecodeNamespace(buff)
+	actual, err = decodeNamespace(buff)
 
 	if err != nil {
 		panic(err)
@@ -338,7 +367,7 @@ func TestTableJoinTable(t *testing.T) {
 func TestTableJoinRow(t *testing.T) {
 	emptyTable := EmptyTable()
 	row := MakeRow(map[EntryName]Entry{
-		"bar": MakeEntry([]Point{"hello"}),
+		"bar": MakeEntry([]Point{UnsignedPoint("hello")}),
 	})
 
 	expected := MakeTable(map[RowName]Row{
@@ -437,7 +466,7 @@ func TestRowCopy(t *testing.T) {
 
 func TestRowJoinRow(t *testing.T) {
 	emptyEntry := EmptyEntry()
-	fullEntry := MakeEntry([]Point{"hi"})
+	fullEntry := MakeEntry([]Point{UnsignedPoint("hi")})
 
 	expected := MakeRow(map[EntryName]Entry{
 		"foo": emptyEntry,
@@ -458,7 +487,7 @@ func TestRowJoinRow(t *testing.T) {
 }
 
 func TestRowGetEntry(t *testing.T) {
-	expected := MakeEntry([]Point{"hi"})
+	expected := MakeEntry([]Point{UnsignedPoint("hi")})
 
 	row := MakeRow(map[EntryName]Entry{
 		"foo": expected,
@@ -475,7 +504,7 @@ func TestRowGetEntry(t *testing.T) {
 
 func TestRowJoinEntry(t *testing.T) {
 	emptyEntry := EmptyEntry()
-	fullEntry := MakeEntry([]Point{"hi"})
+	fullEntry := MakeEntry([]Point{UnsignedPoint("hi")})
 
 	expected := MakeRow(map[EntryName]Entry{
 		"foo": emptyEntry,
@@ -493,7 +522,7 @@ func TestRowJoinEntry(t *testing.T) {
 
 func TestRowEquals(t *testing.T) {
 	emptyEntry := EmptyEntry()
-	fullEntry := MakeEntry([]Point{"hi"})
+	fullEntry := MakeEntry([]Point{UnsignedPoint("hi")})
 
 	rows := []Row{
 		EmptyRow(),
@@ -539,14 +568,12 @@ func TestEmptyEntry(t *testing.T) {
 }
 
 func TestMakeEntry(t *testing.T) {
-	expected := Entry{
-		Set: []Point{"hello", "world"},
-	}
+	expected := MakeEntry([]Point{UnsignedPoint("hello"), UnsignedPoint("world")})
 
 	actuals := []Entry{
-		MakeEntry([]Point{"hello", "world"}),
-		MakeEntry([]Point{"world", "hello"}),
-		MakeEntry([]Point{"hello", "hello", "world", "world"}),
+		MakeEntry([]Point{UnsignedPoint("hello"), UnsignedPoint("world")}),
+		MakeEntry([]Point{UnsignedPoint("world"), UnsignedPoint("hello")}),
+		MakeEntry([]Point{UnsignedPoint("hello"), UnsignedPoint("hello"), UnsignedPoint("world"), UnsignedPoint("world")}),
 	}
 
 	for _, a := range actuals {
@@ -555,12 +582,10 @@ func TestMakeEntry(t *testing.T) {
 }
 
 func TestEntryJoinEntry(t *testing.T) {
-	expected := Entry{
-		Set: []Point{"hello", "world"},
-	}
+	expected := MakeEntry([]Point{UnsignedPoint("hello"), UnsignedPoint("world")})
 
-	hello := MakeEntry([]Point{"hello"})
-	world := MakeEntry([]Point{"world"})
+	hello := MakeEntry([]Point{UnsignedPoint("hello")})
+	world := MakeEntry([]Point{UnsignedPoint("world")})
 
 	actualFront := hello.JoinEntry(world)
 	actualBack := world.JoinEntry(hello)
@@ -574,8 +599,8 @@ func TestEntryJoinEntry(t *testing.T) {
 func TestEntryEquals(t *testing.T) {
 	entries := []Entry{
 		EmptyEntry(),
-		MakeEntry([]Point{"hi"}),
-		MakeEntry([]Point{"hello", "world"}),
+		MakeEntry([]Point{UnsignedPoint("hi")}),
+		MakeEntry([]Point{UnsignedPoint("hello"), UnsignedPoint("world")}),
 	}
 
 	for i := 0; i < len(entries); i++ {
@@ -599,8 +624,8 @@ func TestEntryEquals(t *testing.T) {
 }
 
 func TestEntryGetValues(t *testing.T) {
-	expected := []Point{"hello"}
-	entry := MakeEntry([]Point{"hello"})
+	expected := []Point{UnsignedPoint("hello")}
+	entry := MakeEntry([]Point{UnsignedPoint("hello")})
 	actual := entry.GetValues()
 	if !reflect.DeepEqual(expected, actual) {
 		t.Error("Expected", expected, "but was", actual)
@@ -639,5 +664,56 @@ func assertRowEquals(t *testing.T, expected, actual Row) {
 	if !reflect.DeepEqual(expected, actual) {
 		testutil.DebugLine(t)
 		t.Error("Expected Row", expected, "but received", actual)
+	}
+}
+
+func readNamespaceStream(stream []NamespaceStreamEntry) Namespace {
+	ns, invalid, err := ReadNamespaceStream(stream)
+
+	panicInvalidNamespace(invalid)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return ns
+}
+
+func encodeNamespace(ns Namespace, w io.Writer) error {
+	invalid, err := EncodeNamespace(ns, w)
+
+	panicInvalidNamespace(invalid)
+
+	return err
+}
+
+func decodeNamespace(r io.Reader) (Namespace, error) {
+	namespace, invalid, err := DecodeNamespace(r)
+
+	panicInvalidNamespace(invalid)
+
+	return namespace, err
+}
+
+func namespaceText(namespace Namespace) string {
+	message, invalid := MakeNamespaceMessage(namespace)
+
+	panicInvalidNamespace(invalid)
+
+	buff := &bytes.Buffer{}
+
+	err := proto.MarshalText(buff, message)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return buff.String()
+}
+
+func panicInvalidNamespace(invalid []InvalidNamespaceEntry) {
+	invalidCount := len(invalid)
+	if invalidCount > 0 {
+		panic(fmt.Sprintf("%v invalid entries", invalidCount))
 	}
 }

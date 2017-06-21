@@ -9,7 +9,12 @@ message NamespaceEntryMessage {
 	string table = 1;
 	string row = 2;
 	string entry = 3;
-	repeated string points = 4;
+	PointMessage point = 4;
+}
+
+message PointMessage {
+	string text = 1;
+	string signature = 2;
 }
 
 message IndexMessage {
@@ -18,7 +23,13 @@ message IndexMessage {
 
 message IndexEntryMessage {
 	string table = 1;
-	repeated string links = 2;
+	string link = 2;
+	string signature = 3;
+}
+
+message LinkMessage {
+	string link = 1;
+	repeated string signatures = 2;
 }
 
 message APIResponseMessage {
@@ -45,6 +56,7 @@ message QueryMessage {
 	string table = 2;
 	QueryJoinMessage join = 3;
 	QuerySelectMessage select = 4;
+	repeated string keyHashes = 5;
 }
 
 message QueryJoinMessage {

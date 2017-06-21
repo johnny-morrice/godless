@@ -11,6 +11,7 @@ import (
 	"sort"
 
 	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/johnny-morrice/godless/internal/util"
 	"github.com/johnny-morrice/godless/log"
 	"github.com/johnny-morrice/godless/proto"
@@ -26,12 +27,13 @@ const (
 )
 
 type Query struct {
-	AST      *QueryAST    `json:"-"`
-	Parser   *QueryParser `json:"-"`
-	OpCode   QueryOpCode  `json:",omitempty"`
-	TableKey crdt.TableName
-	Join     QueryJoin   `json:",omitempty"`
-	Select   QuerySelect `json:",omitempty"`
+	AST        *QueryAST    `json:"-"`
+	Parser     *QueryParser `json:"-"`
+	OpCode     QueryOpCode  `json:",omitempty"`
+	TableKey   crdt.TableName
+	Join       QueryJoin   `json:",omitempty"`
+	Select     QuerySelect `json:",omitempty"`
+	PublicKeys []crypto.PublicKeyHash
 }
 
 type whereVisitor interface {
@@ -40,17 +42,38 @@ type whereVisitor interface {
 	VisitPredicate(*QueryPredicate)
 }
 
-type QueryVisitor interface {
-	whereVisitor
-	VisitOpCode(QueryOpCode)
-	VisitAST(*QueryAST)
-	VisitParser(*QueryParser)
-	VisitTableKey(crdt.TableName)
+type selectVisitor interface {
+	VisitSelect(*QuerySelect)
+	LeaveSelect(*QuerySelect)
+}
+
+type joinVisitor interface {
 	VisitJoin(*QueryJoin)
 	LeaveJoin(*QueryJoin)
 	VisitRowJoin(int, *QueryRowJoin)
-	VisitSelect(*QuerySelect)
-	LeaveSelect(*QuerySelect)
+}
+
+type cryptoVisitor interface {
+	VisitPublicKeyHash(crypto.PublicKeyHash)
+}
+
+type debugVisitor interface {
+	VisitAST(*QueryAST)
+	VisitParser(*QueryParser)
+}
+
+type baseVisitor interface {
+	VisitOpCode(QueryOpCode)
+	VisitTableKey(crdt.TableName)
+}
+
+type QueryVisitor interface {
+	whereVisitor
+	selectVisitor
+	cryptoVisitor
+	joinVisitor
+	debugVisitor
+	baseVisitor
 }
 
 type QueryJoin struct {
@@ -79,7 +102,7 @@ func (join QueryJoin) equals(other QueryJoin) bool {
 type QueryRowJoin struct {
 	RowKey crdt.RowName
 	// TODO would this be clearer/more performant as a slice of pair structures?
-	Entries map[crdt.EntryName]crdt.Point `json:",omitempty"`
+	Entries map[crdt.EntryName]crdt.PointText `json:",omitempty"`
 }
 
 func (join QueryRowJoin) equals(other QueryRowJoin) bool {
@@ -90,11 +113,10 @@ func (join QueryRowJoin) equals(other QueryRowJoin) bool {
 		return false
 	}
 
-	keys := make([]string, len(join.Entries))
-	i := 0
+	keys := make([]string, 0, len(join.Entries))
+
 	for k, _ := range join.Entries {
-		keys[i] = string(k)
-		i++
+		keys = append(keys, string(k))
 	}
 
 	sort.Strings(keys)
@@ -314,6 +336,10 @@ func (query *Query) Visit(visitor QueryVisitor) {
 	visitor.VisitParser(query.Parser)
 	visitor.VisitOpCode(query.OpCode)
 	visitor.VisitTableKey(query.TableKey)
+
+	for _, hash := range query.PublicKeys {
+		visitor.VisitPublicKeyHash(hash)
+	}
 
 	switch query.OpCode {
 	case JOIN:

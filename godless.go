@@ -8,6 +8,7 @@
 package godless
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -16,17 +17,21 @@ import (
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/cache"
 	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/johnny-morrice/godless/internal/http"
 	"github.com/johnny-morrice/godless/internal/ipfs"
 	"github.com/johnny-morrice/godless/internal/service"
 	"github.com/johnny-morrice/godless/log"
 	"github.com/johnny-morrice/godless/query"
+	"github.com/pkg/errors"
 )
 
 // Godless options.
 type Options struct {
 	// IpfsServiceUrl is required.
 	IpfsServiceUrl string
+	// KeyStore is required. A private Key store.
+	KeyStore api.KeyStore
 	// WebServiceAddr is optional.  If not set, the webservice will be disabled.
 	WebServiceAddr string
 	// IndexHash is optional.  Set to load an existing index from IPFS.
@@ -49,6 +54,8 @@ type Options struct {
 	PriorityQueue api.RequestPriorityQueue
 	// APIQueryLimit is optional.  Tune performance by setting the number of simultaneous queries.
 	APIQueryLimit int
+	// PublicServer is optional.  If false, the index will only be updated from peers who are in your public key list.
+	PublicServer bool
 }
 
 // Godless is a peer-to-peer database.  It shares structured data between peers, using IPFS as a backing store.
@@ -67,6 +74,13 @@ type Godless struct {
 // New creates a godless instance, connecting to any services, and providing any services, specified in the options.
 func New(options Options) (*Godless, error) {
 	godless := &Godless{Options: options}
+
+	missing := godless.findMissingParameters()
+
+	if missing != nil {
+		return nil, missing
+	}
+
 	setupFuncs := []func() error{
 		godless.connectIpfs,
 		godless.setupNamespace,
@@ -81,7 +95,45 @@ func New(options Options) (*Godless, error) {
 		return nil, err
 	}
 
+	godless.report()
+
 	return godless, nil
+}
+
+func (godless *Godless) report() {
+	if godless.PublicServer {
+		log.Info("Running public Godless API")
+	} else {
+		log.Info("Running private Godless API")
+	}
+
+	privCount := len(godless.KeyStore.GetAllPrivateKeys())
+	pubCount := len(godless.KeyStore.GetAllPublicKeys())
+
+	log.Info("Godless API using %v private and %v public keys", privCount, pubCount)
+}
+
+func (godless *Godless) findMissingParameters() error {
+	var missing error
+	if godless.IpfsServiceUrl == "" {
+		msg := godless.missingParameterText("IpfsServiceUrl")
+		missing = errors.New(msg)
+	}
+
+	if godless.KeyStore == nil {
+		msg := godless.missingParameterText("KeyStore")
+		if missing == nil {
+			missing = errors.New(msg)
+		} else {
+			missing = errors.Wrap(missing, msg)
+		}
+	}
+
+	return missing
+}
+
+func (godless *Godless) missingParameterText(param string) string {
+	return fmt.Sprintf("Missing required parameter '%v'", param)
 }
 
 // Errors provides a stream of errors from godless.  Godless will attempt to handle any errors it can.  Any errors received here indicate that bad things have happened.
@@ -133,7 +185,6 @@ func (godless *Godless) setupNamespace() error {
 
 	if godless.IndexHash != "" {
 		head := crdt.IPFSPath(godless.IndexHash)
-		headCache.BeginWriteTransaction()
 
 		err := headCache.SetHead(head)
 
@@ -141,14 +192,17 @@ func (godless *Godless) setupNamespace() error {
 			return err
 		}
 
-		err = headCache.Commit()
-
-		if err != nil {
-			return err
-		}
 	}
 
-	godless.remote = service.MakeRemoteNamespace(godless.store, headCache, indexCache)
+	namespaceOptions := service.RemoteNamespaceOptions{
+		Store:         godless.store,
+		HeadCache:     headCache,
+		IndexCache:    indexCache,
+		KeyStore:      godless.KeyStore,
+		IsPublicIndex: godless.PublicServer,
+	}
+
+	godless.remote = service.MakeRemoteNamespace(namespaceOptions)
 	return nil
 }
 
@@ -201,13 +255,20 @@ func (godless *Godless) replicate() error {
 		return nil
 	}
 
-	ipfsTopics := make([]crdt.IPFSPath, len(topics))
+	pubsubTopics := make([]api.PubSubTopic, len(topics))
 
 	for i, t := range topics {
-		ipfsTopics[i] = crdt.IPFSPath(t)
+		pubsubTopics[i] = api.PubSubTopic(t)
 	}
 
-	stopch, errch := service.Replicate(godless.api, godless.store, interval, ipfsTopics)
+	options := service.ReplicateOptions{
+		API:         godless.api,
+		RemoteStore: godless.store,
+		Interval:    interval,
+		Topics:      pubsubTopics,
+		KeyStore:    godless.KeyStore,
+	}
+	stopch, errch := service.Replicate(options)
 	godless.addStopper(stopch)
 	godless.addErrors(errch)
 	return nil
@@ -265,6 +326,10 @@ func MakeClient(serviceAddr string) Client {
 
 func MakeClientWithHttp(serviceAddr string, webClient *gohttp.Client) Client {
 	return service.MakeClientWithHttp(serviceAddr, webClient)
+}
+
+func MakeKeyStore() api.KeyStore {
+	return &crypto.KeyStore{}
 }
 
 func breakOnError(pipeline []func() error) error {

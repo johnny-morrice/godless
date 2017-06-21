@@ -1,66 +1,100 @@
 package crypto
 
 import (
-	"crypto"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
-	"hash"
-	"math/big"
+	"bytes"
+	"errors"
+	"sort"
 )
 
+type SignatureText string
+
+func IsNilSignature(sigText SignatureText) bool {
+	return sigText == ""
+}
+
+func ParseSignature(text SignatureText) (Signature, error) {
+	sigStr := string(text)
+	if !IsBase58(sigStr) {
+		return Signature{}, errors.New("Signature was not base58 encoded")
+	}
+
+	bs := decodeBase58(sigStr)
+
+	return Signature{sig: bs}, nil
+}
+
+func PrintSignature(sig Signature) (SignatureText, error) {
+	text := encodeBase58(sig.sig)
+	return SignatureText(text), nil
+}
+
+func OrderSignatures(sigs []Signature) []Signature {
+	sortSignatures(sigs)
+	return uniqSigSorted(sigs)
+}
+
+func uniqSigSorted(signatures []Signature) []Signature {
+	if len(signatures) < 2 {
+		return signatures
+	}
+
+	uniqIndex := 0
+	for i := 1; i < len(signatures); i++ {
+		sig := signatures[i]
+		last := signatures[uniqIndex]
+		if !sig.Equals(last) {
+			uniqIndex++
+			signatures[uniqIndex] = sig
+		}
+	}
+
+	return signatures[:uniqIndex+1]
+}
+
+func sortSignatures(sigs []Signature) {
+	sort.Sort(bySignatureText(sigs))
+}
+
+type bySignatureText []Signature
+
+func (sigs bySignatureText) Len() int {
+	return len(sigs)
+}
+
+func (sigs bySignatureText) Swap(i, j int) {
+	sigs[i], sigs[j] = sigs[j], sigs[i]
+}
+
+func (sigs bySignatureText) Less(i, j int) bool {
+	return sigs[i].TextLess(sigs[j])
+}
+
 type Signature struct {
-	r *big.Int
-	s *big.Int
+	sig []byte
 }
 
-type PrivateKey struct {
-	curveKey *ecdsa.PrivateKey
+func (sig Signature) Equals(other Signature) bool {
+	return sig.Cmp(other) == 0
 }
 
-type PublicKey struct {
-	curveKey *ecdsa.PublicKey
+func (sig Signature) TextLess(other Signature) bool {
+	return sig.Cmp(other) < 0
+}
+
+func (sig Signature) Cmp(other Signature) int {
+	return bytes.Compare(sig.sig, other.sig)
 }
 
 func Sign(priv PrivateKey, message []byte) (Signature, error) {
-	hash := sum(message)
-	r, s, err := ecdsa.Sign(rand.Reader, priv.curveKey, hash)
+	bs, err := priv.p2pKey.Sign(message)
 
 	if err != nil {
 		return Signature{}, err
 	}
 
-	sig := Signature{r: r, s: s}
-	return sig, nil
+	return Signature{sig: bs}, err
 }
 
-func Verify(pub PublicKey, message []byte, sig Signature) bool {
-	hash := sum(message)
-	return ecdsa.Verify(pub.curveKey, hash, sig.r, sig.s)
-}
-
-func GenerateKey() (PrivateKey, PublicKey, error) {
-	curvePriv, err := ecdsa.GenerateKey(curve(), rand.Reader)
-
-	if err != nil {
-		return PrivateKey{}, PublicKey{}, err
-	}
-
-	priv := PrivateKey{curveKey: curvePriv}
-	pub := PublicKey{curveKey: &curvePriv.PublicKey}
-	return priv, pub, nil
-}
-
-func curve() elliptic.Curve {
-	return elliptic.P384()
-}
-
-var hasher hash.Hash
-
-func init() {
-	hasher = crypto.SHA512.New()
-}
-
-func sum(message []byte) []byte {
-	return hasher.Sum(message)
+func Verify(pub PublicKey, message []byte, sig Signature) (bool, error) {
+	return pub.p2pKey.Verify(message, sig.sig)
 }

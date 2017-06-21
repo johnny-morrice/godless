@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/internal/crypto"
 )
 
 // Visitor outline to help with editor macros.
@@ -27,6 +28,12 @@ type queryPrinter struct {
 	ErrorCollectVisitor
 	output    io.Writer
 	tabIndent int
+}
+
+func (printer *queryPrinter) VisitPublicKeyHash(hash crypto.PublicKeyHash) {
+	printer.write(" signed \"")
+	printer.write(string(hash))
+	printer.write("\"")
 }
 
 func (printer *queryPrinter) VisitOpCode(opCode QueryOpCode) {
@@ -80,11 +87,9 @@ func (printer *queryPrinter) VisitRowJoin(position int, row *QueryRowJoin) {
 	printer.writeText(string(row.RowKey))
 	printer.write("\"")
 
-	keys := make([]string, len(row.Entries))
-	i := 0
+	keys := make([]string, 0, len(row.Entries))
 	for entry, _ := range row.Entries {
-		keys[i] = string(entry)
-		i++
+		keys = append(keys, string(entry))
 	}
 	sort.Strings(keys)
 
@@ -268,10 +273,15 @@ type queryFlattener struct {
 	ErrorCollectVisitor
 
 	tableName  crdt.TableName
+	publicKeys []crypto.PublicKeyHash
 	opCode     QueryOpCode
 	join       QueryJoin
 	slct       QuerySelect
 	allClauses []QueryWhere
+}
+
+func (visitor *queryFlattener) VisitPublicKeyHash(hash crypto.PublicKeyHash) {
+	visitor.publicKeys = append(visitor.publicKeys, hash)
 }
 
 func (visitor *queryFlattener) VisitOpCode(opCode QueryOpCode) {
@@ -338,6 +348,10 @@ type queryValidator struct {
 	NoDebugVisitor
 	ErrorCollectVisitor
 	NoJoinVisitor
+}
+
+func (visitor *queryValidator) VisitPublicKeyHash(hash crypto.PublicKeyHash) {
+
 }
 
 func (visitor *queryValidator) VisitOpCode(opCode QueryOpCode) {

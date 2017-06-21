@@ -24,8 +24,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/ethereum/go-ethereum/log"
 	lib "github.com/johnny-morrice/godless"
+	"github.com/johnny-morrice/godless/internal/http"
+	"github.com/johnny-morrice/godless/log"
 	"github.com/spf13/cobra"
 )
 
@@ -35,11 +36,15 @@ var serveCmd = &cobra.Command{
 	Short: "Run a Godless server",
 	Long:  `A godless server listens to queries over HTTP.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		readKeysFromViper()
 		serve()
 	},
 }
 
 func serve() {
+	client := http.DefaultBackendClient()
+	client.Timeout = serverTimeout
+
 	options := lib.Options{
 		IpfsServiceUrl:    ipfsService,
 		WebServiceAddr:    addr,
@@ -48,6 +53,9 @@ func serve() {
 		ReplicateInterval: interval,
 		Topics:            topics,
 		APIQueryLimit:     apiQueryLimit,
+		KeyStore:          keyStore,
+		PublicServer:      publicServer,
+		IpfsClient:        client,
 	}
 
 	godless, err := lib.New(options)
@@ -67,6 +75,8 @@ var addr string
 var interval time.Duration
 var earlyConnect bool
 var apiQueryLimit int
+var publicServer bool
+var serverTimeout time.Duration
 
 func shutdown(godless *lib.Godless) {
 	godless.Shutdown()
@@ -80,4 +90,6 @@ func init() {
 	serveCmd.PersistentFlags().DurationVar(&interval, "interval", time.Minute*1, "Interval between replications")
 	serveCmd.PersistentFlags().BoolVar(&earlyConnect, "early", false, "Early check on IPFS API access")
 	serveCmd.PersistentFlags().IntVar(&apiQueryLimit, "limit", 1, "Number of simulataneous queries run by the API. limit < 0 for no restrictions.")
+	serveCmd.PersistentFlags().BoolVar(&publicServer, "public", false, "Don't limit pubsub updates to the public key list")
+	serveCmd.PersistentFlags().DurationVar(&serverTimeout, "timeout", time.Minute, "Timeout for serverside HTTP queries")
 }
