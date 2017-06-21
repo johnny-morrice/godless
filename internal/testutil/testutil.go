@@ -140,7 +140,7 @@ func AssertBytesEqual(t *testing.T, expected, actual []byte) {
 	for i, e := range expected {
 		a := actual[i]
 		if e != a {
-			t.Error("Byte difference at %v", i)
+			t.Error("Byte difference at", i)
 		}
 	}
 }

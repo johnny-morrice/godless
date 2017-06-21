@@ -115,7 +115,7 @@ func (godless *Godless) findMissingParameters() error {
 }
 
 func (godless *Godless) missingParameterText(param string) string {
-	return fmt.Sprintf("Missing required parameter '%v'")
+	return fmt.Sprintf("Missing required parameter '%v'", param)
 }
 
 // Errors provides a stream of errors from godless.  Godless will attempt to handle any errors it can.  Any errors received here indicate that bad things have happened.
