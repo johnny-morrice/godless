@@ -7,6 +7,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/johnny-morrice/godless/internal/eval"
 	"github.com/johnny-morrice/godless/query"
 	"github.com/pkg/errors"
@@ -217,7 +218,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 	mock.EXPECT().LoadTraverse(gomock.Any()).Return(nil).Do(feedNamespace).Times(len(queries))
 
 	for i, q := range queries {
-		selector := eval.MakeNamespaceTreeSelect(mock)
+		selector := makeNamespaceTreeSelect(mock)
 		q.Visit(selector)
 		actual := selector.RunQuery()
 		expected := expect[i]
@@ -259,7 +260,7 @@ func TestRunQuerySelectFailure(t *testing.T) {
 		},
 	}
 
-	selector := eval.MakeNamespaceTreeSelect(mock)
+	selector := makeNamespaceTreeSelect(mock)
 	failQuery.Visit(selector)
 	resp := selector.RunQuery()
 
@@ -324,7 +325,7 @@ func TestRunQuerySelectInvalid(t *testing.T) {
 	}
 
 	for _, q := range invalidQueries {
-		selector := eval.MakeNamespaceTreeSelect(mock)
+		selector := makeNamespaceTreeSelect(mock)
 		q.Visit(selector)
 		resp := selector.RunQuery()
 
@@ -537,4 +538,9 @@ func makeTableStream(name crdt.TableName, table crdt.Table) []crdt.NamespaceStre
 	}
 
 	return stream
+}
+
+func makeNamespaceTreeSelect(namespace api.NamespaceTree) *eval.NamespaceTreeSelect {
+	keyStore := &crypto.KeyStore{}
+	return eval.MakeNamespaceTreeSelect(namespace, keyStore)
 }
