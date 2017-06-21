@@ -253,7 +253,7 @@ func (keys *KeyStore) PutPrivateKey(priv PrivateKey) error {
 	isPublicKeyPresent := false
 
 	pub := priv.GetPublicKey()
-	for _, otherPub := range keys.GetAllPublicKeys() {
+	for _, otherPub := range keys.pubKeys {
 		if pub.Equals(otherPub) {
 			isPublicKeyPresent = true
 			break
