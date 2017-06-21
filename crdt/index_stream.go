@@ -155,18 +155,17 @@ func (builder *indexStreamBuilder) uniqSorted() {
 		return
 	}
 
-	uniq := make([]IndexStreamEntry, 1, len(builder.stream))
-
-	uniq[0] = builder.stream[0]
-
-	for _, entry := range builder.stream[1:] {
-		last := uniq[len(uniq)-1]
+	uniqIndex := 0
+	for i := 1; i < len(builder.stream); i++ {
+		entry := builder.stream[i]
+		last := builder.stream[uniqIndex]
 		if entry != last {
-			uniq = append(uniq, entry)
+			uniqIndex++
+			builder.stream[uniqIndex] = entry
 		}
 	}
 
-	builder.stream = uniq
+	builder.stream = builder.stream[:uniqIndex+1]
 }
 
 type InvalidIndexEntry IndexStreamEntry

@@ -81,6 +81,15 @@ func MakeNamespaceMessage(ns Namespace) (*proto.NamespaceMessage, []InvalidNames
 	return MakeNamespaceStreamMessage(stream), invalid
 }
 
+// Bugs can manifest as empty stream entries.
+func reportEmptyTable(stream []NamespaceStreamEntry, from string) {
+	for _, entry := range stream {
+		if entry.Table == "" {
+			log.Warn("Empty table name in %v", from)
+		}
+	}
+}
+
 // TODO should return the invalid entries
 func EncodeNamespace(ns Namespace, w io.Writer) ([]InvalidNamespaceEntry, error) {
 	const failMsg = "EncodeNamespace failed"

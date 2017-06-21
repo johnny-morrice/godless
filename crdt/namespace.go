@@ -236,18 +236,12 @@ func (ns Namespace) GetTable(key TableName) (Table, error) {
 
 func (ns Namespace) Equals(other Namespace) bool {
 	if len(ns.Tables) != len(other.Tables) {
-		myTables := ns.GetTableNames()
-		otherTables := other.GetTableNames()
-		log.Warn("My tables length: %v Other tables length: %v", len(myTables), len(otherTables))
-		log.Warn("My tables: %v", myTables)
-		log.Warn("Other tables: %v", otherTables)
 		return false
 	}
 
 	for k, v := range ns.Tables {
 		otherv, present := other.Tables[k]
 		if !present || !v.Equals(otherv) {
-			log.Warn("Tables not equal")
 			return false
 		}
 	}

@@ -124,17 +124,18 @@ func (builder *streamBuilder) uniqSorted() {
 		return
 	}
 
-	uniq := make([]NamespaceStreamEntry, 1, len(builder.stream))
-
-	for _, entry := range builder.stream {
-		last := uniq[len(uniq)-1]
+	uniqIndex := 0
+	for i := 1; i < len(builder.stream); i++ {
+		entry := builder.stream[i]
+		last := builder.stream[uniqIndex]
 
 		if entry != last {
-			uniq = append(uniq, entry)
+			uniqIndex++
+			builder.stream[uniqIndex] = entry
 		}
 	}
 
-	builder.stream = uniq
+	builder.stream = builder.stream[:uniqIndex+1]
 }
 
 func (builder *streamBuilder) makeStreamPoints(proto NamespaceStreamEntry, point Point) {
