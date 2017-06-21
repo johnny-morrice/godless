@@ -203,8 +203,6 @@ func MakeRowStream(tableKey TableName, rowKey RowName, row Row) ([]NamespaceStre
 func MakeNamespaceStream(ns Namespace) ([]NamespaceStreamEntry, []InvalidNamespaceEntry) {
 	count := streamLength(ns)
 
-	log.Info("Making NamespaceStream of length: %v", count)
-
 	builder := &streamBuilder{stream: make([]NamespaceStreamEntry, 0, count)}
 
 	ns.ForeachEntry(func(t TableName, r RowName, e EntryName, entry Entry) {

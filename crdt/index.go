@@ -141,17 +141,34 @@ func (index Index) joinStreamEntry(entry IndexStreamEntry) (Index, error) {
 
 // Equals does not take into account any invalid signatures.
 func (index Index) Equals(other Index) bool {
-	stream, _ := MakeIndexStream(index)
-	otherStream, _ := MakeIndexStream(other)
-
-	if len(stream) != len(otherStream) {
+	if len(index.Index) != len(other.Index) {
 		return false
 	}
 
-	for i, entry := range stream {
-		otherEntry := otherStream[i]
-		if !entry.Equals(otherEntry) {
+	indexTables := make([]TableName, 0, len(index.Index))
+
+	for k, _ := range index.Index {
+		indexTables = append(indexTables, k)
+	}
+
+	for _, tableName := range indexTables {
+		myLinks := index.Index[tableName]
+		theirLinks, present := other.Index[tableName]
+
+		if !present {
 			return false
+		}
+
+		if len(myLinks) != len(theirLinks) {
+			return false
+		}
+
+		for i, mine := range myLinks {
+			theirs := theirLinks[i]
+
+			if !mine.Equals(theirs) {
+				return false
+			}
 		}
 	}
 

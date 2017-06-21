@@ -10,6 +10,7 @@ import (
 	"testing"
 	"testing/quick"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/johnny-morrice/godless/internal/testutil"
 	"github.com/johnny-morrice/godless/log"
 )
@@ -76,7 +77,7 @@ func TestMakeIndex(t *testing.T) {
 
 	testutil.AssertEquals(t, "Expected index length 1", 1, len(index.Index))
 
-	expected := []IPFSPath{value}
+	expected := []Link{UnsignedLink(IPFSPath(value))}
 	actual, err := index.GetTableAddrs(table)
 	if err != nil {
 		panic(err)
@@ -285,7 +286,16 @@ func TestIndexJoinNamespace(t *testing.T) {
 
 func indexEncodeOk(expected Index) bool {
 	actual := indexSerializationPass(expected)
-	return expected.Equals(actual)
+	same := expected.Equals(actual)
+
+	if !same {
+		expectedText := indexText(expected)
+		actualText := indexText(actual)
+		testutil.LogDiff(expectedText, actualText)
+		log.Error("Expected: %v", expectedText)
+	}
+
+	return same
 }
 
 func indexSerializationPass(expected Index) Index {
@@ -313,10 +323,30 @@ func indexSerializationPass(expected Index) Index {
 func encodeIndex(index Index, w io.Writer) error {
 	invalid, err := EncodeIndex(index, w)
 
+	panicInvalidIndex(invalid)
+
+	return err
+}
+
+func indexText(index Index) string {
+	message, invalid := MakeIndexMessage(index)
+
+	panicInvalidIndex(invalid)
+
+	buff := &bytes.Buffer{}
+
+	err := proto.MarshalText(buff, message)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return buff.String()
+}
+
+func panicInvalidIndex(invalid []InvalidIndexEntry) {
 	invalidCount := len(invalid)
 	if invalidCount > 0 {
 		panic(fmt.Sprintf("%v invalid entries", invalidCount))
 	}
-
-	return err
 }
