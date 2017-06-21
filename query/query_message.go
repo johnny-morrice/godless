@@ -352,6 +352,10 @@ func visitMessage(message *proto.QueryMessage, visitor queryMessageVisitor) erro
 	visitor.VisitOpCode(message.OpCode)
 	visitor.VisitTableKey(message.Table)
 
+	for _, pub := range message.KeyHashes {
+		visitor.VisitPublicKeyHash(pub)
+	}
+
 	switch message.OpCode {
 	case MESSAGE_JOIN:
 		visitor.VisitJoin(message.Join)
