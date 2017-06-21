@@ -53,6 +53,8 @@ type Options struct {
 	PriorityQueue api.RequestPriorityQueue
 	// APIQueryLimit is optional.  Tune performance by setting the number of simultaneous queries.
 	APIQueryLimit int
+	// PublicServer is optional.  If false, the index will only be updated from peers who are in your public key list.
+	PublicServer bool
 }
 
 // Godless is a peer-to-peer database.  It shares structured data between peers, using IPFS as a backing store.
@@ -177,10 +179,11 @@ func (godless *Godless) setupNamespace() error {
 	}
 
 	namespaceOptions := service.RemoteNamespaceOptions{
-		Store:      godless.store,
-		HeadCache:  godless.HeadCache,
-		IndexCache: godless.IndexCache,
-		KeyStore:   godless.KeyStore,
+		Store:         godless.store,
+		HeadCache:     godless.HeadCache,
+		IndexCache:    godless.IndexCache,
+		KeyStore:      godless.KeyStore,
+		IsPublicIndex: godless.PublicServer,
 	}
 
 	godless.remote = service.MakeRemoteNamespace(namespaceOptions)

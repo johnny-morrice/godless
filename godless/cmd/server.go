@@ -67,6 +67,7 @@ var addr string
 var interval time.Duration
 var earlyConnect bool
 var apiQueryLimit int
+var publicServer bool
 
 func shutdown(godless *lib.Godless) {
 	godless.Shutdown()
@@ -80,4 +81,5 @@ func init() {
 	serveCmd.PersistentFlags().DurationVar(&interval, "interval", time.Minute*1, "Interval between replications")
 	serveCmd.PersistentFlags().BoolVar(&earlyConnect, "early", false, "Early check on IPFS API access")
 	serveCmd.PersistentFlags().IntVar(&apiQueryLimit, "limit", 1, "Number of simulataneous queries run by the API. limit < 0 for no restrictions.")
+	serveCmd.PersistentFlags().BoolVar(&publicServer, "public", false, "Don't limit pubsub updates to the public key list")
 }
