@@ -36,12 +36,12 @@ var serveCmd = &cobra.Command{
 	Short: "Run a Godless server",
 	Long:  `A godless server listens to queries over HTTP.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		readKeysFromViper()
 		serve()
 	},
 }
 
 func serve() {
-
 	client := http.DefaultBackendClient()
 	client.Timeout = serverTimeout
 
@@ -53,7 +53,7 @@ func serve() {
 		ReplicateInterval: interval,
 		Topics:            topics,
 		APIQueryLimit:     apiQueryLimit,
-		KeyStore:          lib.MakeKeyStore(),
+		KeyStore:          keyStore,
 		PublicServer:      publicServer,
 		IpfsClient:        client,
 	}

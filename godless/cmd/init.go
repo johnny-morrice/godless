@@ -21,16 +21,21 @@
 package cmd
 
 import (
+	"bufio"
+	"encoding/json"
+	"fmt"
 	"os"
 	"path"
-	"strings"
+
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
+	"github.com/pkg/errors"
 
 	lib "github.com/johnny-morrice/godless"
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/johnny-morrice/godless/log"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // initCmd represents the init command
@@ -41,7 +46,13 @@ var initCmd = &cobra.Command{
 
 	See 'godless key' for more control`,
 	Run: func(cmd *cobra.Command, args []string) {
+		hash := generateKey()
 
+		fmt.Print("Use the following hash in query signature clause:\n\n\t")
+		fmt.Println(string(hash))
+
+		flushKeysToViper()
+		writeViperConfig()
 	},
 }
 
@@ -52,54 +63,78 @@ func init() {
 var keyStore api.KeyStore = lib.MakeKeyStore()
 
 func flushKeysToViper() {
-	privKeys := keyStore.GetAllPrivateKeys()
-	pubKeys := keyStore.GetAllPublicKeys()
+	privTexts := crypto.PrivateKeysAsText(keyStore.GetAllPrivateKeys())
+	pubTexts := crypto.PublicKeysAsText(keyStore.GetAllPublicKeys())
 
-	privTexts := make([]string, 0, len(privKeys))
-	pubTexts := make([]string, 0, len(pubKeys))
-
-	for _, priv := range privKeys {
-		text, err := crypto.SerializePrivateKey(priv)
-		if err != nil {
-			log.Error("Failed to serialize PrivateKey: %v", err.Error())
-		}
-
-		privTexts = append(privTexts, string(text))
-	}
-
-	for _, pub := range pubKeys {
-		text, err := crypto.SerializePublicKey(pub)
-
-		if err != nil {
-			log.Error("Failed to serialize PublicKey: %v", err.Error())
-		}
-
-		pubTexts = append(pubTexts, string(text))
-	}
-
-	publicKeyConfigValue := strings.Join(pubTexts, ":")
-	privateKeyConfigValue := strings.Join(privTexts, ":")
-
-	viper.Set(__PRIVATE_KEY_CONFIG_KEY, privateKeyConfigValue)
-	viper.Set(__PUBLIC_KEY_CONFIG_KEY, publicKeyConfigValue)
+	viper.Set(__PRIVATE_KEY_CONFIG_KEY, privTexts)
+	viper.Set(__PUBLIC_KEY_CONFIG_KEY, pubTexts)
 }
 
-func writeKeys() {
-	flushKeysToViper()
+func readKeysFromViper() {
+	maybePrivTexts := viper.Get(__PRIVATE_KEY_CONFIG_KEY)
+	maybePubTexts := viper.Get(__PUBLIC_KEY_CONFIG_KEY)
 
-	configFileName := viper.ConfigFileUsed()
-
-	if configFileName != "" {
-		configFileName = homeConfigFilePath()
+	if maybePrivTexts == nil || maybePubTexts == nil {
+		return
 	}
 
-	file, err := os.Create(configFileName)
+	privTexts, privOk := maybePrivTexts.(string)
+	pubTexts, pubOk := maybePubTexts.(string)
+
+	if !privOk && pubOk {
+		err := errors.New("Corrupt viper config for public/private keys")
+		die(err)
+	}
+
+	privKeys := crypto.PrivateKeysFromText(privTexts)
+	pubKeys := crypto.PublicKeysFromText(pubTexts)
+
+	for _, pub := range pubKeys {
+		keyStore.PutPublicKey(pub)
+	}
+
+	for _, priv := range privKeys {
+		keyStore.PutPrivateKey(priv)
+	}
+}
+
+func writeViperConfig() {
+	configFilePath := viper.ConfigFileUsed()
+
+	if configFilePath != "" {
+		configFilePath = homeConfigFilePath()
+	}
+
+	file, err := os.Create(configFilePath)
 
 	if err != nil {
-
+		die(err)
 	}
 
-	defer file.Close()
+	defer func() {
+		file.Close()
+		err := os.Chmod(configFilePath, 0400)
+		if err != nil {
+			log.Error("Failed to chmod 400 key file")
+		}
+	}()
+
+	writeJson(file, viper.AllSettings())
+}
+
+func writeJson(file *os.File, contents interface{}) {
+	bs, err := json.MarshalIndent(contents, "", "  ")
+
+	if err != nil {
+		log.Error("Encoding JSON config failed: %v", err.Error())
+	}
+
+	w := bufio.NewWriter(file)
+	_, err = w.Write(bs)
+
+	if err != nil {
+		log.Error("Error writing JSON config: %v", err.Error())
+	}
 }
 
 func homeConfigFilePath() string {

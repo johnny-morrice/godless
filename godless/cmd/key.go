@@ -21,38 +21,50 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
+
+	"github.com/johnny-morrice/godless/internal/crypto"
 )
 
 // keyCmd represents the key command
 var keyCmd = &cobra.Command{
 	Use:   "key",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Manage godless keys",
+	Long: `Godless signs your data using strong cryptography.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	These signatures are used to maintain data consistency, rather than via
+	physically isolating the data within a host machine.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// TODO: Work your own magic here
-		fmt.Println("key called")
+		err := cmd.Help()
+
+		if err != nil {
+			die(err)
+		}
 	},
 }
 
 func init() {
 	RootCmd.AddCommand(keyCmd)
+}
 
-	// Here you will define your flags and configuration settings.
+func generateKey() crypto.PublicKeyHash {
+	priv, pub, genErr := crypto.GenerateKey()
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// keyCmd.PersistentFlags().String("foo", "", "A help for foo")
+	if genErr != nil {
+		die(genErr)
+	}
 
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// keyCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	hash, hashErr := pub.Hash()
 
+	if hashErr != nil {
+		die(hashErr)
+	}
+
+	cacheErr := keyStore.PutPrivateKey(priv)
+
+	if cacheErr != nil {
+		die(cacheErr)
+	}
+
+	return hash
 }

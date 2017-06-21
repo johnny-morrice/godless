@@ -42,7 +42,7 @@ var serveProfileCmd = &cobra.Command{
 		}
 
 		runProfiler(cpuProf)
-
+		readKeysFromViper()
 		serve()
 	},
 }
