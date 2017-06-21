@@ -223,7 +223,7 @@ func (crit *rowCriteria) findRows(namespace crdt.Namespace) []crdt.NamespaceStre
 		return stream
 	}
 
-	table.Foreachrow(crdt.RowConsumerFunc(func(rowKey crdt.RowName, r crdt.Row) {
+	table.ForeachRow(func(rowKey crdt.RowName, r crdt.Row) {
 		eval := makeSelectEvalTree(rowKey, r)
 		where := query.MakeWhereStack(crit.rootWhere)
 
@@ -232,7 +232,7 @@ func (crit *rowCriteria) findRows(namespace crdt.Namespace) []crdt.NamespaceStre
 			out = append(out, stream...)
 			invalidEntries = append(invalidEntries, invalid...)
 		}
-	}))
+	})
 
 	crit.logInvalid(invalidEntries)
 

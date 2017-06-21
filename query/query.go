@@ -33,7 +33,7 @@ type Query struct {
 	TableKey   crdt.TableName
 	Join       QueryJoin   `json:",omitempty"`
 	Select     QuerySelect `json:",omitempty"`
-	PublicKeys []crypto.PublicKeyText
+	PublicKeys []crypto.PublicKeyHash
 }
 
 type whereVisitor interface {
@@ -336,6 +336,10 @@ func (query *Query) Visit(visitor QueryVisitor) {
 	visitor.VisitParser(query.Parser)
 	visitor.VisitOpCode(query.OpCode)
 	visitor.VisitTableKey(query.TableKey)
+
+	for _, hash := range query.PublicKeys {
+		visitor.VisitPublicKeyHash(hash)
+	}
 
 	switch query.OpCode {
 	case JOIN:

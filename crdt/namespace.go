@@ -1,4 +1,3 @@
-//go:generate mockgen -package mock_godless -destination ../mock/mock_crdt.go -imports lib=github.com/johnny-morrice/godless/crdt -self_package lib github.com/johnny-morrice/godless/crdt RowConsumer
 package crdt
 
 import (
@@ -281,20 +280,17 @@ func MakeTable(rows map[RowName]Row) Table {
 	return out
 }
 
-type RowConsumer interface {
-	Accept(rowKey RowName, r Row)
-}
-
-type RowConsumerFunc func(rowKey RowName, r Row)
-
-func (rcf RowConsumerFunc) Accept(rowKey RowName, r Row) {
-	rcf(rowKey, r)
-}
-
-// TODO easy optimisation: hold slice in Table for fast iteration.
-func (t Table) Foreachrow(consumer RowConsumer) {
+func (t Table) ForeachRow(f func(rowName RowName, r Row)) {
 	for k, r := range t.Rows {
-		consumer.Accept(k, r)
+		f(k, r)
+	}
+}
+
+func (t Table) ForeachEntry(f func(rowName RowName, entryName EntryName, entry Entry)) {
+	for rowName, row := range t.Rows {
+		for entryName, entry := range row.Entries {
+			f(rowName, entryName, entry)
+		}
 	}
 }
 

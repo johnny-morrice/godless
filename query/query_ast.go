@@ -149,10 +149,10 @@ func (ast *QueryAST) Compile() (*Query, error) {
 
 	query.AST = ast
 	query.TableKey = crdt.TableName(ast.TableKey)
-	query.PublicKeys = make([]crypto.PublicKeyText, len(ast.PublicKeys))
+	query.PublicKeys = make([]crypto.PublicKeyHash, len(ast.PublicKeys))
 
 	for i, k := range ast.PublicKeys {
-		query.PublicKeys[i] = crypto.PublicKeyText(k)
+		query.PublicKeys[i] = crypto.PublicKeyHash(k)
 	}
 
 	return query, nil

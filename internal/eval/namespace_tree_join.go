@@ -60,6 +60,7 @@ func (visitor *NamespaceTreeJoin) VisitPublicKeyHash(hash crypto.PublicKeyHash) 
 		return
 	}
 
+	log.Info("Joining with private key for %v", hash)
 	visitor.privateKeys = append(visitor.privateKeys, priv)
 }
 
