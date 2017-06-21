@@ -250,10 +250,22 @@ func (keys *KeyStore) PutPrivateKey(priv PrivateKey) error {
 		}
 	}
 
-	err := keys.insertPublicKey(priv.GetPublicKey())
+	isPublicKeyPresent := false
 
-	if err != nil {
-		return errors.Wrap(err, failMsg)
+	pub := priv.GetPublicKey()
+	for _, otherPub := range keys.GetAllPublicKeys() {
+		if pub.Equals(otherPub) {
+			isPublicKeyPresent = true
+			break
+		}
+	}
+
+	if !isPublicKeyPresent {
+		pubKeyErr := keys.insertPublicKey(priv.GetPublicKey())
+
+		if pubKeyErr != nil {
+			return errors.Wrap(pubKeyErr, failMsg)
+		}
 	}
 
 	keys.privKeys = append(keys.privKeys, priv)
