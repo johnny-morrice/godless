@@ -9,6 +9,7 @@ import (
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/johnny-morrice/godless/internal/eval"
+	"github.com/johnny-morrice/godless/internal/testutil"
 	"github.com/johnny-morrice/godless/query"
 	"github.com/pkg/errors"
 )
@@ -18,6 +19,15 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 	defer ctrl.Finish()
 
 	mock := NewMockNamespaceTree(ctrl)
+
+	hash, cryptoErr := __SELECT_PUBLIC_KEY.Hash()
+
+	testutil.AssertNil(t, cryptoErr)
+
+	keyStore := &crypto.KeyStore{}
+	cryptoErr = keyStore.PutPrivateKey(__SELECT_PRIVATE_KEY)
+
+	testutil.AssertNil(t, cryptoErr)
 
 	whereA := query.QueryWhere{
 		OpCode: query.PREDICATE,
@@ -175,13 +185,19 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 			OpCode:   query.SELECT,
 			TableKey: ALT_TABLE_KEY,
 		},
+		// Signed,
+		&query.Query{
+			OpCode:     query.SELECT,
+			TableKey:   ALT_TABLE_KEY,
+			PublicKeys: []crypto.PublicKeyHash{hash},
+		},
 	}
 
 	responseA := api.RESPONSE_QUERY
 	responseA.QueryResponse.Entries = streamA()
 
 	responseB := api.RESPONSE_QUERY
-	responseB.QueryResponse.Entries = append(streamB(), streamC()...)
+	responseB.QueryResponse.Entries = joinNamespaceStream(append(streamB(), streamC()...))
 
 	responseC := api.RESPONSE_QUERY
 	responseC.QueryResponse.Entries = streamC()
@@ -198,7 +214,10 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 	responseG.QueryResponse.Entries = streamF()
 
 	responseH := api.RESPONSE_QUERY
-	responseH.QueryResponse.Entries = streamG()
+	responseH.QueryResponse.Entries = joinNamespaceStream(append(streamG(), streamH()...))
+
+	responseI := api.RESPONSE_QUERY
+	responseI.QueryResponse.Entries = streamH()
 
 	expect := []api.APIResponse{
 		responseA,
@@ -209,6 +228,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		responseF,
 		responseG,
 		responseH,
+		responseI,
 	}
 
 	if len(queries) != len(expect) {
@@ -218,7 +238,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 	mock.EXPECT().LoadTraverse(gomock.Any()).Return(nil).Do(feedNamespace).Times(len(queries))
 
 	for i, q := range queries {
-		selector := makeNamespaceTreeSelect(mock)
+		selector := eval.MakeNamespaceTreeSelect(mock, keyStore)
 		q.Visit(selector)
 		actual := selector.RunQuery()
 		expected := expect[i]
@@ -406,6 +426,48 @@ func rowsG() []crdt.Row {
 	}
 }
 
+func rowsH() []crdt.Row {
+	unsignedRows := []crdt.Row{
+		crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
+			"Entry WF": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Super duper"), crdt.UnsignedPoint("yes!")}),
+		}),
+		crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
+			"Entry WP": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Lolprets")}),
+		}),
+		crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
+			"Entry WG": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Wunderbarrier")}),
+		}),
+	}
+
+	hRows := make([]crdt.Row, len(unsignedRows))
+
+	keys := []crypto.PrivateKey{__SELECT_PRIVATE_KEY}
+	for i, row := range unsignedRows {
+		signedRow := crdt.EmptyRow()
+		row.ForeachEntry(func(entryName crdt.EntryName, entry crdt.Entry) {
+			unsignedPoints := entry.GetValues()
+
+			signedPoints := make([]crdt.Point, len(unsignedPoints))
+
+			for i, p := range unsignedPoints {
+				signed, err := crdt.SignedPoint(p.Text, keys)
+
+				if err != nil {
+					panic(err)
+				}
+
+				signedPoints[i] = signed
+			}
+
+			signedEntry := crdt.MakeEntry(signedPoints)
+			signedRow = signedRow.JoinEntry(entryName, signedEntry)
+		})
+		hRows[i] = signedRow
+	}
+
+	return hRows
+}
+
 // Non matching rows.
 func rowsZ() []crdt.Row {
 	return []crdt.Row{
@@ -450,6 +512,10 @@ func tableG() crdt.Table {
 	return mktable("G", rowsG())
 }
 
+func tableH() crdt.Table {
+	return mktable("G", rowsH())
+}
+
 func tableZ() crdt.Table {
 	return mktable("Z", rowsZ())
 }
@@ -482,6 +548,10 @@ func streamG() []crdt.NamespaceStreamEntry {
 	return makeTableStream(ALT_TABLE_KEY, tableG())
 }
 
+func streamH() []crdt.NamespaceStreamEntry {
+	return makeTableStream(ALT_TABLE_KEY, tableH())
+}
+
 func feedNamespace(ntr api.NamespaceTreeReader) {
 	ntr.ReadNamespace(mkselectns())
 }
@@ -499,6 +569,7 @@ func mkselectns() crdt.Namespace {
 	}
 	altTables := []crdt.Table{
 		tableG(),
+		tableH(),
 	}
 
 	tables := map[crdt.TableName][]crdt.Table{
@@ -532,10 +603,7 @@ const ALT_TABLE_KEY = crdt.TableName("Another table")
 func makeTableStream(name crdt.TableName, table crdt.Table) []crdt.NamespaceStreamEntry {
 	stream, invalid := crdt.MakeTableStream(name, table)
 
-	invalidCount := len(invalid)
-	if invalidCount > 0 {
-		panic(fmt.Sprintf("%v invalid entries", invalidCount))
-	}
+	panicOnInvalidNamespace(invalid)
 
 	return stream
 }
@@ -544,3 +612,34 @@ func makeNamespaceTreeSelect(namespace api.NamespaceTree) *eval.NamespaceTreeSel
 	keyStore := &crypto.KeyStore{}
 	return eval.MakeNamespaceTreeSelect(namespace, keyStore)
 }
+
+func init() {
+	var err error
+	__SELECT_PRIVATE_KEY, __SELECT_PUBLIC_KEY, err = crypto.GenerateKey()
+
+	if err != nil {
+		panic(err)
+	}
+}
+
+func joinNamespaceStream(stream []crdt.NamespaceStreamEntry) []crdt.NamespaceStreamEntry {
+	joined, invalid, err := crdt.JoinStreamEntries(stream)
+
+	if err != nil {
+		panic(err)
+	}
+
+	panicOnInvalidNamespace(invalid)
+
+	return joined
+}
+
+func panicOnInvalidNamespace(invalid []crdt.InvalidNamespaceEntry) {
+	invalidCount := len(invalid)
+	if invalidCount > 0 {
+		panic(fmt.Sprintf("%v invalid entries", invalidCount))
+	}
+}
+
+var __SELECT_PRIVATE_KEY crypto.PrivateKey
+var __SELECT_PUBLIC_KEY crypto.PublicKey

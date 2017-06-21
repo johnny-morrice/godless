@@ -84,9 +84,13 @@ func (visitor *NamespaceTreeSelect) resultStream() ([]crdt.NamespaceStreamEntry,
 	var invalid []crdt.InvalidNamespaceEntry
 	var err error
 	if visitor.needsSignature() {
+		log.Info("Filtering results by public key...")
 		stream, invalid, err = crdt.FilterSignedEntries(stream, visitor.keys)
+		log.Info("Filtering complete")
 	} else {
+		log.Info("Joining results...")
 		stream, invalid, err = crdt.JoinStreamEntries(stream)
+		log.Info("Join complete")
 	}
 
 	invalidCount := len(invalid)
@@ -281,8 +285,6 @@ func makeSelectEvalTree(rowKey crdt.RowName, row crdt.Row) *selectEvalTree {
 }
 
 func (eval *selectEvalTree) evaluate(stk *query.WhereStack) bool {
-	log.Debug("Evaluating with where stack: %v", stk)
-
 	stk.Visit(eval)
 
 	if len(eval.stk) != 0 {

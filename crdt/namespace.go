@@ -384,6 +384,12 @@ func MakeRow(entries map[EntryName]Entry) Row {
 	return out
 }
 
+func (row Row) ForeachEntry(f func(entryName EntryName, entry Entry)) {
+	for name, entry := range row.Entries {
+		f(name, entry)
+	}
+}
+
 func (row Row) Copy() Row {
 	cpy := Row{Entries: map[EntryName]Entry{}}
 

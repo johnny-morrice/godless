@@ -60,8 +60,6 @@ func (p Point) IsVerifiedBy(publicKey crypto.PublicKey) bool {
 		}
 	}
 
-	log.Warn("Signature verification failed for Point")
-
 	return false
 }
 
