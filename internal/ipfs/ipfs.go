@@ -217,7 +217,7 @@ func (peer *IPFSPeer) SubscribeAddrStream(topic api.PubSubTopic) (<-chan crdt.Li
 			subscription, launchErr = peer.Shell.PubSubSubscribe(topicText)
 
 			if launchErr != nil {
-				log.Error("Subcription launch failed, retrying: %v", launchErr)
+				log.Error("Subcription launch failed, retrying: %v", launchErr.Error())
 			}
 
 			for {
@@ -225,7 +225,7 @@ func (peer *IPFSPeer) SubscribeAddrStream(topic api.PubSubTopic) (<-chan crdt.Li
 				record, recordErr := subscription.Next()
 
 				if recordErr != nil {
-					log.Error("Subscription read failed, continuing: %v", recordErr)
+					log.Error("Subscription read failed, continuing: %v", recordErr.Error())
 					continue RESTART
 				}
 
