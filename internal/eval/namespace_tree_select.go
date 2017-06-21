@@ -133,14 +133,13 @@ func (visitor *NamespaceTreeSelect) VisitSelect(qselect *query.QuerySelect) {
 		return
 	}
 
-	if qselect.Limit <= 0 {
+	if qselect.Limit < 0 {
 		visitor.CollectError(errors.New("Invalid limit"))
 		return
 	}
 
-	log.Info("Query limit: %v", qselect.Limit)
-
 	visitor.crit.limit = int(qselect.Limit)
+
 	visitor.crit.rootWhere = &qselect.Where
 }
 
@@ -165,6 +164,16 @@ type rowCriteria struct {
 }
 
 func (crit *rowCriteria) selectMatching(namespace crdt.Namespace) api.TraversalUpdate {
+	if crit.limit > 0 {
+		return crit.selectToLimit(namespace)
+	}
+
+	rows := crit.findRows(namespace)
+	crit.appendResult(rows)
+	return api.TraversalUpdate{More: true}
+}
+
+func (crit *rowCriteria) selectToLimit(namespace crdt.Namespace) api.TraversalUpdate {
 	remaining := crit.limit - crit.count
 
 	if remaining < 0 {
@@ -175,13 +184,7 @@ func (crit *rowCriteria) selectMatching(namespace crdt.Namespace) api.TraversalU
 		return api.TraversalUpdate{}
 	}
 
-	rows, invalid := crit.findRows(namespace)
-
-	invalidCount := len(invalid)
-
-	if invalidCount > 0 {
-		log.Error("rowCriteria found %v invalid entries", invalidCount)
-	}
+	rows := crit.findRows(namespace)
 
 	var slurp int
 	if len(rows) <= remaining {
@@ -190,25 +193,31 @@ func (crit *rowCriteria) selectMatching(namespace crdt.Namespace) api.TraversalU
 		slurp = remaining
 	}
 
-	crit.result = append(crit.result, rows[:slurp]...)
-	crit.count = crit.count + slurp
+	crit.appendResult(rows[:slurp])
 
 	// logdbg("Found %v more results. Total: %v.  Limit: %v.", slurp, crit.count, crit.limit)
 	return api.TraversalUpdate{More: true}
 }
 
-func (crit *rowCriteria) findRows(namespace crdt.Namespace) ([]crdt.NamespaceStreamEntry, []crdt.InvalidNamespaceEntry) {
+func (crit *rowCriteria) appendResult(stream []crdt.NamespaceStreamEntry) {
+	crit.result = append(crit.result, stream...)
+	crit.count = crit.count + len(stream)
+}
+
+func (crit *rowCriteria) findRows(namespace crdt.Namespace) []crdt.NamespaceStreamEntry {
 	out := []crdt.NamespaceStreamEntry{}
-	invalidOut := []crdt.InvalidNamespaceEntry{}
+	invalidEntries := []crdt.InvalidNamespaceEntry{}
 
 	table, err := namespace.GetTable(crit.tableKey)
 
 	if err != nil {
-		return out, invalidOut
+		return out
 	}
 
 	if crit.rootWhere.OpCode == query.WHERE_NOOP {
-		return crdt.MakeTableStream(crit.tableKey, table)
+		stream, invalid := crdt.MakeTableStream(crit.tableKey, table)
+		crit.logInvalid(invalid)
+		return stream
 	}
 
 	table.Foreachrow(crdt.RowConsumerFunc(func(rowKey crdt.RowName, r crdt.Row) {
@@ -218,11 +227,21 @@ func (crit *rowCriteria) findRows(namespace crdt.Namespace) ([]crdt.NamespaceStr
 		if eval.evaluate(where) {
 			stream, invalid := crdt.MakeRowStream(crit.tableKey, rowKey, r)
 			out = append(out, stream...)
-			invalidOut = append(invalidOut, invalid...)
+			invalidEntries = append(invalidEntries, invalid...)
 		}
 	}))
 
-	return out, invalidOut
+	crit.logInvalid(invalidEntries)
+
+	return out
+}
+
+func (crit *rowCriteria) logInvalid(invalid []crdt.InvalidNamespaceEntry) {
+	invalidCount := len(invalid)
+
+	if invalidCount > 0 {
+		log.Error("rowCriteria found %v invalid entries", invalidCount)
+	}
 }
 
 func (crit *rowCriteria) isReady() bool {
@@ -259,6 +278,8 @@ func makeSelectEvalTree(rowKey crdt.RowName, row crdt.Row) *selectEvalTree {
 }
 
 func (eval *selectEvalTree) evaluate(stk *query.WhereStack) bool {
+	log.Debug("Evaluating with where stack: %v", stk)
+
 	stk.Visit(eval)
 
 	if len(eval.stk) != 0 {

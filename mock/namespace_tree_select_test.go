@@ -114,7 +114,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 			OpCode:   query.SELECT,
 			TableKey: MAIN_TABLE_KEY,
 			Select: query.QuerySelect{
-				Limit: 2,
+				Limit: 5,
 				Where: whereB,
 			},
 		},
@@ -169,13 +169,10 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 				Where: whereI,
 			},
 		},
-		// No where clause
+		// No where or limits.
 		&query.Query{
 			OpCode:   query.SELECT,
 			TableKey: ALT_TABLE_KEY,
-			Select: query.QuerySelect{
-				Limit: 3,
-			},
 		},
 	}
 

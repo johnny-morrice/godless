@@ -6,7 +6,6 @@ import (
 
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/internal/crypto"
-	"github.com/johnny-morrice/godless/internal/testutil"
 	"github.com/johnny-morrice/godless/query"
 )
 
@@ -96,9 +95,7 @@ func TestRowCriteria_findRows(t *testing.T) {
 			rootWhere: &w,
 		}
 
-		actual, invalid := rc.findRows(namespace)
-
-		testutil.AssertLenEquals(t, 0, invalid)
+		actual := rc.findRows(namespace)
 
 		crdt.SortNamespaceStream(actual)
 

@@ -438,7 +438,7 @@ func (rn *remoteNamespace) insertIndex(index crdt.Index) (crdt.IPFSPath, error) 
 func (rn *remoteNamespace) updateIndexCache(addr crdt.IPFSPath, index crdt.Index) {
 	err := rn.indexCache.SetIndex(addr, index)
 	if err != nil {
-		log.Error("Failed to update index cache: %v", err)
+		log.Error("Failed to update index cache: %v", err.Error())
 	}
 }
 
