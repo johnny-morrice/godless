@@ -111,17 +111,13 @@ func TestRowCriteria_findRows(t *testing.T) {
 func TestRowCriteria_isReady(t *testing.T) {
 	bad := []*rowCriteria{
 		&rowCriteria{},
-		&rowCriteria{limit: 10},
 		&rowCriteria{rootWhere: &query.QueryWhere{}},
 		&rowCriteria{tableKey: TABLE_KEY},
-		&rowCriteria{limit: 10, rootWhere: &query.QueryWhere{}},
-		&rowCriteria{limit: 10, tableKey: TABLE_KEY},
-		&rowCriteria{rootWhere: &query.QueryWhere{}, tableKey: TABLE_KEY},
 	}
 
-	for _, b := range bad {
+	for i, b := range bad {
 		if b.isReady() {
-			t.Error("Unexpected rowCriteria isReady()")
+			t.Error("Unexpected rowCriteria isReady() at", i)
 		}
 	}
 
