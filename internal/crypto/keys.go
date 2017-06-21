@@ -3,17 +3,24 @@ package crypto
 import (
 	"bytes"
 	"crypto/rand"
-	"errors"
 	"fmt"
 	"sync"
 
 	"github.com/johnny-morrice/godless/log"
 	crypto "github.com/libp2p/go-libp2p-crypto"
+	"github.com/pkg/errors"
 )
 
 type PublicKeyText []byte
 
 type PrivateKeyText []byte
+
+type PublicKeyHash []byte
+
+func (hash PublicKeyHash) Equals(other PublicKeyHash) bool {
+	cmp := bytes.Compare(hash, other)
+	return cmp == 0
+}
 
 func ParsePublicKey(text PublicKeyText) (PublicKey, error) {
 	p2pKey, err := crypto.UnmarshalPublicKey(text)
@@ -132,16 +139,32 @@ func (pub PublicKey) Equals(other PublicKey) bool {
 	return cmp == 0
 }
 
+func (pub PublicKey) Hash() (PublicKeyHash, error) {
+	const failMsg = "PublicKey.Hash failed"
+
+	bs, err := pub.p2pKey.Hash()
+
+	if err != nil {
+		return nil, errors.Wrap(err, failMsg)
+	}
+
+	return PublicKeyHash(bs), nil
+}
+
 var NIL_PUBLIC_KEY_TEXT = PublicKeyText([]byte(""))
 var NIL_PRIVATE_KEY_TEXT = PrivateKeyText([]byte(""))
 
 // KeyStore is an in-memory association between private and public keys.
 type KeyStore struct {
-	sync.RWMutex
-	privKeys []PrivateKey
+	sync.Mutex
+	privKeys     []PrivateKey
+	pubKeys      []PublicKey
+	pubKeyHashes []PublicKeyHash
 }
 
 func (keys *KeyStore) PutPrivateKey(priv PrivateKey) error {
+	const failMsg = "PutPrivateKey failed"
+
 	keys.Lock()
 	defer keys.Unlock()
 
@@ -154,15 +177,29 @@ func (keys *KeyStore) PutPrivateKey(priv PrivateKey) error {
 		}
 	}
 
+	err := keys.insertPublicKey(priv.GetPublicKey())
+
+	if err != nil {
+		return errors.Wrap(err, failMsg)
+	}
+
 	keys.privKeys = append(keys.privKeys, priv)
 	return nil
 }
 
-func (keys *KeyStore) GetPrivateKey(pub PublicKey) (PrivateKey, error) {
-	keys.RLock()
-	defer keys.RUnlock()
+func (keys *KeyStore) GetPrivateKey(hash PublicKeyHash) (PrivateKey, error) {
+	const failMsg = "KeyStore.GetPrivateKey faild"
+
+	keys.Lock()
+	defer keys.Unlock()
 
 	keys.init()
+
+	pub, err := keys.lookupPublicKey(hash)
+
+	if err != nil {
+		return PrivateKey{}, errors.Wrap(err, failMsg)
+	}
 
 	for _, priv := range keys.privKeys {
 		p2pPrivPub := priv.p2pKey.GetPublic()
@@ -177,8 +214,8 @@ func (keys *KeyStore) GetPrivateKey(pub PublicKey) (PrivateKey, error) {
 }
 
 func (keys *KeyStore) GetAllPrivateKeys() []PrivateKey {
-	keys.RLock()
-	defer keys.RUnlock()
+	keys.Lock()
+	defer keys.Unlock()
 
 	keys.init()
 
@@ -191,8 +228,80 @@ func (keys *KeyStore) GetAllPrivateKeys() []PrivateKey {
 	return cpy
 }
 
+func (keys *KeyStore) PutPublicKey(pub PublicKey) error {
+	const failMsg = "KeyStore.PutPublicKey failed"
+
+	keys.Lock()
+	defer keys.Unlock()
+
+	keys.init()
+
+	err := keys.insertPublicKey(pub)
+
+	if err != nil {
+		return errors.Wrap(err, failMsg)
+	}
+
+	return nil
+}
+
+func (keys *KeyStore) insertPublicKey(pub PublicKey) error {
+	hash, err := pub.Hash()
+
+	if err != nil {
+		return err
+	}
+
+	for _, other := range keys.pubKeyHashes {
+		if hash.Equals(other) {
+			err := errors.New("duplicate hash")
+			return err
+		}
+	}
+
+	for _, other := range keys.pubKeys {
+		if pub.Equals(other) {
+			err := errors.New("duplicate key")
+			return err
+		}
+	}
+
+	keys.pubKeys = append(keys.pubKeys, pub)
+	keys.pubKeyHashes = append(keys.pubKeyHashes, hash)
+
+	return nil
+}
+
+func (keys *KeyStore) lookupPublicKey(hash PublicKeyHash) (PublicKey, error) {
+	for i, otherHash := range keys.pubKeyHashes {
+		if hash.Equals(otherHash) {
+			pub := keys.pubKeys[i]
+			return pub, nil
+		}
+	}
+
+	return PublicKey{}, fmt.Errorf("No Public Key found for %v", hash)
+}
+
+func (keys *KeyStore) GetPublicKey(hash PublicKeyHash) (PublicKey, error) {
+	keys.Lock()
+	defer keys.Unlock()
+
+	keys.init()
+
+	return keys.lookupPublicKey(hash)
+}
+
 func (keys *KeyStore) init() {
 	if keys.privKeys == nil {
 		keys.privKeys = []PrivateKey{}
+	}
+
+	if keys.pubKeys == nil {
+		keys.pubKeys = []PublicKey{}
+	}
+
+	if keys.pubKeyHashes == nil {
+		keys.pubKeyHashes = []PublicKeyHash{}
 	}
 }

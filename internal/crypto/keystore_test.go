@@ -8,7 +8,7 @@ import (
 	"github.com/johnny-morrice/godless/internal/testutil"
 )
 
-func TestKeyStoreConcurrency(t *testing.T) {
+func TestKeyStorePrivateKeyConcurrency(t *testing.T) {
 	keyStore := &KeyStore{}
 
 	keyCount := __CONCURRENCY_LEVEL / 2
@@ -20,6 +20,9 @@ func TestKeyStoreConcurrency(t *testing.T) {
 	for _, priv := range keys {
 		privateKey := priv
 		publicKey := priv.GetPublicKey()
+		hash, err := publicKey.Hash()
+
+		testutil.AssertNil(t, err)
 
 		go func() {
 			defer wg.Done()
@@ -30,7 +33,7 @@ func TestKeyStoreConcurrency(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for {
-				found, err := keyStore.GetPrivateKey(publicKey)
+				found, err := keyStore.GetPrivateKey(hash)
 
 				if err != nil {
 					continue
@@ -46,7 +49,47 @@ func TestKeyStoreConcurrency(t *testing.T) {
 
 }
 
-func TestKeyStoreDuplicate(t *testing.T) {
+func TestKeyStoreGetSetPublicKey(t *testing.T) {
+	keyStore := &KeyStore{}
+
+	_, pub, err := GenerateKey()
+
+	testutil.AssertNil(t, err)
+
+	err = keyStore.PutPublicKey(pub)
+
+	testutil.AssertNil(t, err)
+
+	goodHash, goodHashErr := pub.Hash()
+
+	testutil.AssertNil(t, goodHashErr)
+
+	found, foundErr := keyStore.GetPublicKey(goodHash)
+
+	testutil.AssertNil(t, foundErr)
+
+	if !pub.Equals(found) {
+		t.Error("Unexpected public key")
+	}
+
+	_, badPub, badPubErr := GenerateKey()
+
+	testutil.AssertNil(t, badPubErr)
+
+	badHash, badHashErr := badPub.Hash()
+
+	testutil.AssertNil(t, badHashErr)
+
+	notFound, notFoundErr := keyStore.GetPublicKey(badHash)
+
+	testutil.AssertNonNil(t, notFoundErr)
+
+	if !notFound.Equals(PublicKey{}) {
+		t.Error("Expected empty PublicKey")
+	}
+}
+
+func TestKeyStoreGetSetPrivateKey(t *testing.T) {
 	keyStore := &KeyStore{}
 
 	priv, _, err := GenerateKey()
@@ -57,22 +100,48 @@ func TestKeyStoreDuplicate(t *testing.T) {
 	testutil.AssertNil(t, putErr)
 	putErr = keyStore.PutPrivateKey(priv)
 	testutil.AssertNonNil(t, putErr)
-}
 
-func TestKeyStoreNotPresent(t *testing.T) {
-	keyStore := &KeyStore{}
+	goodHash, goodHashErr := priv.GetPublicKey().Hash()
+
+	testutil.AssertNil(t, goodHashErr)
+
+	found, noGetErr := keyStore.GetPrivateKey(goodHash)
+
+	testutil.AssertNil(t, noGetErr)
+
+	if priv != found {
+		t.Error("Unexpected private key")
+	}
 
 	_, pub, err := GenerateKey()
 
 	testutil.AssertNil(t, err)
 
-	priv, getErr := keyStore.GetPrivateKey(pub)
+	badHash, badHashErr := pub.Hash()
+
+	testutil.AssertNil(t, badHashErr)
+
+	notFound, getErr := keyStore.GetPrivateKey(badHash)
 
 	testutil.AssertNonNil(t, getErr)
 
-	if !priv.Equals(PrivateKey{}) {
+	if !notFound.Equals(PrivateKey{}) {
 		t.Error("Expected empty Private Key")
 	}
+}
+
+func genTestPublicKeys(count int) []PublicKey {
+	pubKeys := make([]PublicKey, count)
+
+	for i := 0; i < count; i++ {
+		_, pub, err := GenerateKey()
+
+		setupPanic(err)
+
+		pubKeys[i] = pub
+	}
+
+	return pubKeys
 }
 
 func genTestPrivateKeys(count int) []PrivateKey {
