@@ -26,6 +26,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/johnny-morrice/godless/log"
 )
 
 var cfgFile string
@@ -66,12 +68,14 @@ func initConfig() {
 		viper.SetConfigFile(cfgFile)
 	}
 
-	viper.SetConfigName(".godless") // name of config file (without extension)
-	viper.AddConfigPath("$HOME")    // adding home directory as first search path
-	viper.AutomaticEnv()            // read in environment variables that match
+	viper.SetConfigName(__CONFIG_FILE_NAME) // name of config file (without extension)
+	viper.AddConfigPath("$HOME")            // adding home directory as first search path
+	viper.AutomaticEnv()                    // read in environment variables that match
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
+		log.Debug("Using config file:", viper.ConfigFileUsed())
 	}
 }
+
+const __CONFIG_FILE_NAME = ".godless"

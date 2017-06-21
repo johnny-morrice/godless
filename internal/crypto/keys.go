@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/johnny-morrice/godless/log"
@@ -18,13 +19,83 @@ type PrivateKeyText []byte
 
 type PublicKeyHash []byte
 
+func PublicKeysAsText(publicKeys []PublicKey) string {
+	pubTexts := make([]string, 0, len(publicKeys))
+
+	for _, pub := range publicKeys {
+		text, err := SerializePublicKey(pub)
+
+		if err != nil {
+			log.Error("Failed to serialize PublicKey: %v", err.Error())
+		}
+
+		pubTexts = append(pubTexts, string(text))
+	}
+
+	return strings.Join(pubTexts, __KEY_SEPERATOR)
+}
+
+// TODO maybe return the errors.
+// These are high level functions extracted from client code.
+func PrivateKeysAsText(privateKeys []PrivateKey) string {
+	privTexts := make([]string, 0, len(privateKeys))
+
+	for _, priv := range privateKeys {
+		text, err := SerializePrivateKey(priv)
+		if err != nil {
+			log.Error("Failed to serialize PrivateKey: %v", err.Error())
+		}
+
+		privTexts = append(privTexts, string(text))
+	}
+
+	return strings.Join(privTexts, __KEY_SEPERATOR)
+}
+
+func PrivateKeysFromText(privateKeyText string) []PrivateKey {
+	parts := strings.Split(privateKeyText, __KEY_SEPERATOR)
+
+	keys := make([]PrivateKey, 0, len(parts))
+
+	for _, text := range parts {
+		priv, err := ParsePrivateKey(PrivateKeyText(text))
+
+		if err != nil {
+			log.Error("Failed to parse PrivateKey: %v", err.Error())
+		}
+
+		keys = append(keys, priv)
+	}
+
+	return keys
+}
+
+func PublicKeysFromText(publicKeyText string) []PublicKey {
+	parts := strings.Split(publicKeyText, __KEY_SEPERATOR)
+
+	keys := make([]PublicKey, 0, len(parts))
+
+	for _, text := range parts {
+		pub, err := ParsePublicKey(PublicKeyText(text))
+
+		if err != nil {
+			log.Error("Failed to parse PublicKey: %v", err.Error())
+		}
+
+		keys = append(keys, pub)
+	}
+
+	return keys
+}
+
 func (hash PublicKeyHash) Equals(other PublicKeyHash) bool {
 	cmp := bytes.Compare(hash, other)
 	return cmp == 0
 }
 
 func ParsePublicKey(text PublicKeyText) (PublicKey, error) {
-	p2pKey, err := crypto.UnmarshalPublicKey(text)
+	unBased := decodeBase58(string(text))
+	p2pKey, err := crypto.UnmarshalPublicKey(unBased)
 	if err != nil {
 		return PublicKey{}, nil
 	}
@@ -33,7 +104,8 @@ func ParsePublicKey(text PublicKeyText) (PublicKey, error) {
 }
 
 func ParsePrivateKey(text PrivateKeyText) (PrivateKey, error) {
-	p2pKey, err := crypto.UnmarshalPrivateKey(text)
+	unBased := decodeBase58(string(text))
+	p2pKey, err := crypto.UnmarshalPrivateKey(unBased)
 	if err != nil {
 		return PrivateKey{}, nil
 	}
@@ -41,24 +113,24 @@ func ParsePrivateKey(text PrivateKeyText) (PrivateKey, error) {
 	return PrivateKey{p2pKey: p2pKey}, nil
 }
 
-func PrintPublicKey(pub PublicKey) (PublicKeyText, error) {
+func SerializePublicKey(pub PublicKey) (PublicKeyText, error) {
 	key, err := crypto.MarshalPublicKey(pub.p2pKey)
 
 	if err != nil {
 		return NIL_PUBLIC_KEY_TEXT, err
 	}
 
-	return PublicKeyText(key), nil
+	return PublicKeyText(encodeBase58(key)), nil
 }
 
-func PrintPrivateKey(priv PrivateKey) (PrivateKeyText, error) {
-	key, err := priv.p2pKey.Bytes()
+func SerializePrivateKey(priv PrivateKey) (PrivateKeyText, error) {
+	key, err := crypto.MarshalPrivateKey(priv.p2pKey)
 
 	if err != nil {
 		return NIL_PRIVATE_KEY_TEXT, err
 	}
 
-	return PrivateKeyText(key), nil
+	return PrivateKeyText(encodeBase58(key)), nil
 }
 
 func GenerateKey() (PrivateKey, PublicKey, error) {
@@ -94,14 +166,14 @@ func (priv PrivateKey) Equals(other PrivateKey) bool {
 		return true
 	}
 
-	myBytes, myErr := PrintPrivateKey(priv)
+	myBytes, myErr := SerializePrivateKey(priv)
 
 	if myErr != nil {
 		log.Error(failMsg)
 		return false
 	}
 
-	otherBytes, otherErr := PrintPrivateKey(priv)
+	otherBytes, otherErr := SerializePrivateKey(priv)
 
 	if otherErr != nil {
 		log.Error(failMsg)
@@ -122,14 +194,14 @@ func (pub PublicKey) Equals(other PublicKey) bool {
 		return true
 	}
 
-	myBytes, myErr := PrintPublicKey(pub)
+	myBytes, myErr := SerializePublicKey(pub)
 
 	if myErr != nil {
 		log.Error(errFmt, myErr)
 		return false
 	}
 
-	theirBytes, theirErr := PrintPublicKey(other)
+	theirBytes, theirErr := SerializePublicKey(other)
 
 	if theirErr != nil {
 		log.Error(errFmt, theirErr)
@@ -327,3 +399,5 @@ func keyHash(k crypto.Key) ([]byte, error) {
 	h, _ := mh.Sum(kb, mh.SHA2_256, -1)
 	return []byte(h), nil
 }
+
+const __KEY_SEPERATOR = ":"
