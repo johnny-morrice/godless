@@ -54,7 +54,7 @@ type joinVisitor interface {
 }
 
 type cryptoVisitor interface {
-	VisitPublicKey(crypto.PublicKeyText)
+	VisitPublicKeyHash(crypto.PublicKeyHash)
 }
 
 type debugVisitor interface {

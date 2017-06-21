@@ -30,9 +30,10 @@ type queryPrinter struct {
 	tabIndent int
 }
 
-func (printer *queryPrinter) VisitPublicKey(key crypto.PublicKeyText) {
-	printer.write(" signed ")
-	printer.write(key)
+func (printer *queryPrinter) VisitPublicKeyHash(hash crypto.PublicKeyHash) {
+	printer.write(" signed \"")
+	printer.write(hash)
+	printer.write("\"")
 }
 
 func (printer *queryPrinter) VisitOpCode(opCode QueryOpCode) {
@@ -272,15 +273,15 @@ type queryFlattener struct {
 	ErrorCollectVisitor
 
 	tableName  crdt.TableName
-	publicKeys []crypto.PublicKeyText
+	publicKeys []crypto.PublicKeyHash
 	opCode     QueryOpCode
 	join       QueryJoin
 	slct       QuerySelect
 	allClauses []QueryWhere
 }
 
-func (visitor *queryFlattener) VisitPublicKey(key crypto.PublicKeyText) {
-	visitor.publicKeys = append(visitor.publicKeys, key)
+func (visitor *queryFlattener) VisitPublicKeyHash(hash crypto.PublicKeyHash) {
+	visitor.publicKeys = append(visitor.publicKeys, hash)
 }
 
 func (visitor *queryFlattener) VisitOpCode(opCode QueryOpCode) {
@@ -349,12 +350,8 @@ type queryValidator struct {
 	NoJoinVisitor
 }
 
-func (visitor *queryValidator) VisitPublicKey(key crypto.PublicKeyText) {
-	_, err := crypto.ParsePublicKey(key)
+func (visitor *queryValidator) VisitPublicKeyHash(hash crypto.PublicKeyHash) {
 
-	if err != nil {
-		visitor.BadPublicKey(key)
-	}
 }
 
 func (visitor *queryValidator) VisitOpCode(opCode QueryOpCode) {

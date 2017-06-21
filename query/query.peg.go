@@ -924,7 +924,7 @@ func (p *QueryParser) Init() {
 		nil,
 		/* 9 Limit <- <('l' 'i' 'm' 'i' 't' MustSpacing <PositiveInteger> Action8)> */
 		nil,
-		/* 10 CryptoKey <- <('s' 'i' 'g' 'n' 'e' 'd' MustSpacing <Alphanumeric> Action9)> */
+		/* 10 CryptoKey <- <('s' 'i' 'g' 'n' 'e' 'd' MustSpacing '"' <Alphanumeric> '"' Action9)> */
 		func() bool {
 			position57, tokenIndex57 := position, tokenIndex
 			{
@@ -956,6 +956,10 @@ func (p *QueryParser) Init() {
 				if !_rules[ruleMustSpacing]() {
 					goto l57
 				}
+				if buffer[position] != rune('"') {
+					goto l57
+				}
+				position++
 				{
 					position59 := position
 					if !_rules[ruleAlphanumeric]() {
@@ -963,6 +967,10 @@ func (p *QueryParser) Init() {
 					}
 					add(rulePegText, position59)
 				}
+				if buffer[position] != rune('"') {
+					goto l57
+				}
+				position++
 				{
 					add(ruleAction9, position)
 				}
