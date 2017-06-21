@@ -231,7 +231,7 @@ func LogDiff(old, new string) {
 
 const __CALLER_DEPTH = 2
 const __TRIM_LENGTH = 500
-const ENCODE_REPEAT_COUNT = 50
+const ENCODE_REPEAT_COUNT = 20
 
 const KEY_SYMS = constants.ALPHABET + constants.DIGITS
 
