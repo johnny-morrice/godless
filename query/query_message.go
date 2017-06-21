@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/johnny-morrice/godless/proto"
 )
 
@@ -17,6 +18,7 @@ type queryMessageVisitor interface {
 	whereMessageVisitor
 	VisitOpCode(uint32)
 	VisitTableKey(string)
+	VisitPublicKeyHash(string)
 	VisitJoin(*proto.QueryJoinMessage)
 	LeaveJoin(*proto.QueryJoinMessage)
 	VisitRowJoin(int, *proto.QueryRowJoinMessage)
@@ -100,11 +102,18 @@ func configureWhereMessage(queryWhere *QueryWhere, message *proto.QueryWhereMess
 }
 
 func MakeQueryMessage(query *Query) *proto.QueryMessage {
+	hashTexts := make([]string, len(query.PublicKeys))
+
+	for i, hash := range query.PublicKeys {
+		hashTexts[i] = string(hash)
+	}
+
 	return &proto.QueryMessage{
-		OpCode: uint32(query.OpCode),
-		Table:  string(query.TableKey),
-		Join:   MakeQueryJoinMessage(query.Join),
-		Select: MakeQuerySelectMessage(query.Select),
+		OpCode:    uint32(query.OpCode),
+		Table:     string(query.TableKey),
+		Join:      MakeQueryJoinMessage(query.Join),
+		Select:    MakeQuerySelectMessage(query.Select),
+		KeyHashes: hashTexts,
 	}
 }
 
@@ -214,6 +223,10 @@ func (decoder *queryMessageDecoder) VisitWhere(position int, message *proto.Quer
 
 	decoder.decodeWhere(frame)
 	decoder.stack.push(frame)
+}
+
+func (decoder *queryMessageDecoder) VisitPublicKeyHash(publicKeyHash string) {
+	decoder.Query.PublicKeys = append(decoder.Query.PublicKeys, crypto.PublicKeyHash(publicKeyHash))
 }
 
 func (decoder *queryMessageDecoder) createChildWhere(position int) *QueryWhere {
