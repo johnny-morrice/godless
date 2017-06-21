@@ -280,6 +280,7 @@ func (rn *remoteNamespace) RunKvQuery(q *query.Query, kvq api.KvQuery) {
 
 	switch q.OpCode {
 	case query.JOIN:
+		log.Info("Running join...")
 		visitor := eval.MakeNamespaceTreeJoin(rn, rn.keyStore)
 		q.Visit(visitor)
 		runner = visitor
