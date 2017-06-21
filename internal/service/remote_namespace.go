@@ -285,7 +285,7 @@ func (rn *remoteNamespace) RunKvQuery(q *query.Query, kvq api.KvQuery) {
 		runner = visitor
 	case query.SELECT:
 		log.Info("Running select...")
-		visitor := eval.MakeNamespaceTreeSelect(rn)
+		visitor := eval.MakeNamespaceTreeSelect(rn, rn.keyStore)
 		q.Visit(visitor)
 		runner = visitor
 	default:

@@ -4,6 +4,7 @@ import (
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/internal/crypto"
+	"github.com/johnny-morrice/godless/log"
 	"github.com/johnny-morrice/godless/query"
 	"github.com/pkg/errors"
 )
@@ -50,18 +51,12 @@ func (visitor *NamespaceTreeJoin) RunQuery() api.APIResponse {
 	return api.RESPONSE_QUERY
 }
 
-func (visitor *NamespaceTreeJoin) VisitPublicKey(keyText crypto.PublicKeyText) {
-	pub, parseErr := crypto.ParsePublicKey(keyText)
-
-	if parseErr != nil {
-		visitor.BadPublicKey(keyText)
-		return
-	}
-
-	priv, matchErr := visitor.keyStore.GetPrivateKey(pub)
+func (visitor *NamespaceTreeJoin) VisitPublicKeyHash(hash crypto.PublicKeyHash) {
+	priv, matchErr := visitor.keyStore.GetPrivateKey(hash)
 
 	if matchErr != nil {
-		visitor.CollectError(matchErr)
+		log.Warn("Private key lookup failed with: %v", matchErr)
+		visitor.BadPublicKey(hash)
 		return
 	}
 

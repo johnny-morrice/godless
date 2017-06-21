@@ -18,15 +18,17 @@ type NamespaceTreeSelect struct {
 	Namespace api.NamespaceTree
 	crit      *rowCriteria
 	keys      []crypto.PublicKey
+	keyStore  api.KeyStore
 }
 
-func MakeNamespaceTreeSelect(namespace api.NamespaceTree) *NamespaceTreeSelect {
+func MakeNamespaceTreeSelect(namespace api.NamespaceTree, keyStore api.KeyStore) *NamespaceTreeSelect {
 	return &NamespaceTreeSelect{
 		Namespace: namespace,
 		crit: &rowCriteria{
 			result: []crdt.NamespaceStreamEntry{},
 		},
-		keys: []crypto.PublicKey{},
+		keys:     []crypto.PublicKey{},
+		keyStore: keyStore,
 	}
 }
 
@@ -103,11 +105,12 @@ func (visitor *NamespaceTreeSelect) needsSignature() bool {
 	return len(visitor.keys) > 0
 }
 
-func (visitor *NamespaceTreeSelect) VisitPublicKey(keyText crypto.PublicKeyText) {
-	pub, err := crypto.ParsePublicKey(keyText)
+func (visitor *NamespaceTreeSelect) VisitPublicKeyHash(hash crypto.PublicKeyHash) {
+	pub, err := visitor.keyStore.GetPublicKey(hash)
 
 	if err != nil {
-		visitor.BadPublicKey(keyText)
+		log.Warn("Public key lookup failed with: %v", err)
+		visitor.BadPublicKey(hash)
 		return
 	}
 
