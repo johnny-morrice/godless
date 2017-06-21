@@ -139,19 +139,21 @@ func AssertBytesEqual(t *testing.T, expected, actual []byte) {
 
 	for i, e := range expected {
 		a := actual[i]
-
-		AssertEquals(t, fmt.Sprintf("Expected %v but received %v at position %v", e, a, i), e, a)
+		if e != a {
+			t.Error("Byte difference at %v", i)
+		}
 	}
 }
 
 func AssertEncodingStable(t *testing.T, expected []byte, encoder func(io.Writer)) {
+	buff := &bytes.Buffer{}
 	for i := 0; i < ENCODE_REPEAT_COUNT; i++ {
-		buff := &bytes.Buffer{}
 		encoder(buff)
 
 		actual := buff.Bytes()
 
 		AssertBytesEqual(t, expected, actual)
+		buff.Reset()
 	}
 }
 

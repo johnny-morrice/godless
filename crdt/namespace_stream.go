@@ -182,7 +182,7 @@ func readStreamPoint(stream []NamespaceStreamEntry) (Point, []InvalidNamespaceEn
 		Signatures: make([]crypto.Signature, 0, len(stream)),
 	}
 
-	invalid := make([]InvalidNamespaceEntry, 0, len(stream))
+	var invalid []InvalidNamespaceEntry
 
 	for _, entry := range stream {
 		if !entry.SamePoint(first) {
@@ -280,7 +280,7 @@ func ReadNamespaceStream(stream []NamespaceStreamEntry) (Namespace, []InvalidNam
 		}
 
 		if writePoint {
-			if batchStart-batchEnd == 1 {
+			if batchEnd-batchStart == 1 {
 				err := ns.addStreamEntry(startEntry)
 
 				if err != nil {
