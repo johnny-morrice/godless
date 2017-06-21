@@ -221,7 +221,7 @@ func (pub PublicKey) Hash() (PublicKeyHash, error) {
 		return nil, errors.Wrap(err, failMsg)
 	}
 
-	return PublicKeyHash(bs), nil
+	return PublicKeyHash(encodeBase58(bs)), nil
 }
 
 var NIL_PUBLIC_KEY_TEXT = PublicKeyText([]byte(""))
@@ -378,6 +378,11 @@ func (keys *KeyStore) GetPublicKey(hash PublicKeyHash) (PublicKey, error) {
 }
 
 func (keys *KeyStore) GetAllPublicKeys() []PublicKey {
+	keys.Lock()
+	defer keys.Unlock()
+
+	keys.init()
+
 	pubKeys := make([]PublicKey, len(keys.pubKeys))
 
 	for i, pub := range keys.pubKeys {
