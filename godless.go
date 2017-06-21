@@ -95,6 +95,12 @@ func New(options Options) (*Godless, error) {
 		return nil, err
 	}
 
+	if godless.PublicServer {
+		log.Info("Running public Godless API")
+	} else {
+		log.Info("Running private Godless API")
+	}
+
 	return godless, nil
 }
 
