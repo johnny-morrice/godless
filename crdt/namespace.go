@@ -105,12 +105,10 @@ func (ns Namespace) Strip() (Namespace, []InvalidNamespaceEntry, error) {
 }
 
 func (ns Namespace) GetTableNames() []TableName {
-	tableNames := make([]TableName, len(ns.Tables))
+	tableNames := make([]TableName, 0, len(ns.Tables))
 
-	i := 0
 	for name := range ns.Tables {
-		tableNames[i] = name
-		i++
+		tableNames = append(tableNames, name)
 	}
 
 	return tableNames

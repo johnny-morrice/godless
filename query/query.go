@@ -113,11 +113,10 @@ func (join QueryRowJoin) equals(other QueryRowJoin) bool {
 		return false
 	}
 
-	keys := make([]string, len(join.Entries))
-	i := 0
+	keys := make([]string, 0, len(join.Entries))
+
 	for k, _ := range join.Entries {
-		keys[i] = string(k)
-		i++
+		keys = append(keys, string(k))
 	}
 
 	sort.Strings(keys)

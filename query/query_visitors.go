@@ -86,11 +86,9 @@ func (printer *queryPrinter) VisitRowJoin(position int, row *QueryRowJoin) {
 	printer.writeText(string(row.RowKey))
 	printer.write("\"")
 
-	keys := make([]string, len(row.Entries))
-	i := 0
+	keys := make([]string, 0, len(row.Entries))
 	for entry, _ := range row.Entries {
-		keys[i] = string(entry)
-		i++
+		keys = append(keys, string(entry))
 	}
 	sort.Strings(keys)
 

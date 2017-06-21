@@ -6,9 +6,9 @@ import (
 	"io/ioutil"
 	"math/rand"
 
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/johnny-morrice/godless/internal/testutil"
+	"github.com/johnny-morrice/godless/log"
 	"github.com/johnny-morrice/godless/proto"
 	"github.com/pkg/errors"
 
@@ -176,12 +176,10 @@ func (index Index) Equals(other Index) bool {
 }
 
 func (index Index) AllTables() []TableName {
-	tables := make([]TableName, len(index.Index))
+	tables := make([]TableName, 0, len(index.Index))
 
-	i := 0
 	for name := range index.Index {
-		tables[i] = name
-		i++
+		tables = append(tables, name)
 	}
 
 	return tables

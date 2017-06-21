@@ -119,12 +119,10 @@ func MakeIndexStream(index Index) ([]IndexStreamEntry, []InvalidIndexEntry) {
 	stream := make([]IndexStreamEntry, count)
 	invalidEntries := []InvalidIndexEntry{}
 
-	i := 0
 	for t, addrs := range index.Index {
 		entries, invalid := MakeIndexStreamEntries(t, addrs)
 		stream = append(stream, entries...)
 		invalidEntries = append(invalidEntries, invalid...)
-		i++
 	}
 
 	sort.Sort(byIndexStreamOrder(stream))

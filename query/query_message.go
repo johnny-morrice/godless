@@ -176,17 +176,16 @@ func MakeQueryJoinMessage(join QueryJoin) *proto.QueryJoinMessage {
 func MakeQueryRowJoinMessage(row QueryRowJoin) *proto.QueryRowJoinMessage {
 	message := &proto.QueryRowJoinMessage{
 		Row:     string(row.RowKey),
-		Entries: make([]*proto.QueryRowJoinEntryMessage, len(row.Entries)),
+		Entries: make([]*proto.QueryRowJoinEntryMessage, 0, len(row.Entries)),
 	}
 
 	// We don't store these in IPFS so no need for stable order.
-	i := 0
 	for e, p := range row.Entries {
-		message.Entries[i] = &proto.QueryRowJoinEntryMessage{
+		rowJoin := &proto.QueryRowJoinEntryMessage{
 			Entry: string(e),
 			Point: string(p),
 		}
-		i++
+		message.Entries = append(message.Entries, rowJoin)
 	}
 
 	return message
