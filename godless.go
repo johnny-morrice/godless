@@ -236,13 +236,20 @@ func (godless *Godless) replicate() error {
 		return nil
 	}
 
-	ipfsTopics := make([]crdt.IPFSPath, len(topics))
+	pubsubTopics := make([]api.PubSubTopic, len(topics))
 
 	for i, t := range topics {
-		ipfsTopics[i] = crdt.IPFSPath(t)
+		pubsubTopics[i] = api.PubSubTopic(t)
 	}
 
-	stopch, errch := service.Replicate(godless.api, godless.store, interval, ipfsTopics)
+	options := service.ReplicateOptions{
+		API:         godless.api,
+		RemoteStore: godless.store,
+		Interval:    interval,
+		Topics:      pubsubTopics,
+		KeyStore:    godless.KeyStore,
+	}
+	stopch, errch := service.Replicate(options)
 	godless.addStopper(stopch)
 	godless.addErrors(errch)
 	return nil
