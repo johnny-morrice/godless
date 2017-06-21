@@ -32,7 +32,7 @@ type queryPrinter struct {
 
 func (printer *queryPrinter) VisitPublicKeyHash(hash crypto.PublicKeyHash) {
 	printer.write(" signed \"")
-	printer.write(hash)
+	printer.write(string(hash))
 	printer.write("\"")
 }
 

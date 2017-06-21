@@ -101,13 +101,23 @@ func readKeysFromViper() {
 func writeViperConfig() {
 	configFilePath := viper.ConfigFileUsed()
 
-	if configFilePath != "" {
+	if configFilePath == "" {
 		configFilePath = homeConfigFilePath()
+	}
+
+	if _, err := os.Stat(configFilePath); err == nil {
+		chmodErr := os.Chmod(configFilePath, 0600)
+
+		if chmodErr != nil {
+			die(chmodErr)
+		}
 	}
 
 	file, err := os.Create(configFilePath)
 
 	if err != nil {
+		msg := fmt.Sprintf("Failed to create file at '%v'", configFilePath)
+		err = errors.Wrap(err, msg)
 		die(err)
 	}
 
@@ -133,7 +143,13 @@ func writeJson(file *os.File, contents interface{}) {
 	_, err = w.Write(bs)
 
 	if err != nil {
-		log.Error("Error writing JSON config: %v", err.Error())
+		log.Error("Error buffering JSON config: %v", err.Error())
+	}
+
+	err = w.Flush()
+
+	if err != nil {
+		log.Error("Error writing config file: %v", err.Error())
 	}
 }
 

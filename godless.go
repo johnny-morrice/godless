@@ -95,13 +95,22 @@ func New(options Options) (*Godless, error) {
 		return nil, err
 	}
 
+	godless.report()
+
+	return godless, nil
+}
+
+func (godless *Godless) report() {
 	if godless.PublicServer {
 		log.Info("Running public Godless API")
 	} else {
 		log.Info("Running private Godless API")
 	}
 
-	return godless, nil
+	privCount := len(godless.KeyStore.GetAllPrivateKeys())
+	pubCount := len(godless.KeyStore.GetAllPublicKeys())
+
+	log.Info("Godless API using %v private and %v public keys", privCount, pubCount)
 }
 
 func (godless *Godless) findMissingParameters() error {

@@ -271,6 +271,8 @@ func CompileQuery(source string) (*Query, error) {
 
 	query.Parser = parser
 
+	log.Info("Compiled query for %v signing keys", len(query.PublicKeys))
+
 	return query, nil
 }
 
