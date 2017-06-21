@@ -8,6 +8,10 @@ import (
 
 type SignatureText string
 
+func IsNilSignature(sigText SignatureText) bool {
+	return sigText == ""
+}
+
 func ParseSignature(text SignatureText) (Signature, error) {
 	sigStr := string(text)
 	if !IsBase58(sigStr) {
@@ -30,7 +34,7 @@ func OrderSignatures(sigs []Signature) []Signature {
 }
 
 func uniqSigSorted(signatures []Signature) []Signature {
-	if len(signatures) == 0 {
+	if len(signatures) < 2 {
 		return signatures
 	}
 

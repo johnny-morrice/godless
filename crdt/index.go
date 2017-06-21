@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math/rand"
 
 	"github.com/johnny-morrice/godless/internal/crypto"
-	"github.com/johnny-morrice/godless/internal/testutil"
 	"github.com/johnny-morrice/godless/log"
 	"github.com/johnny-morrice/godless/proto"
 	"github.com/pkg/errors"
@@ -123,20 +121,23 @@ func (index Index) JoinIndex(other Index) Index {
 	return cpy
 }
 
-func (index Index) joinStreamEntry(entry IndexStreamEntry) (Index, error) {
+func (index Index) addStreamEntry(entry IndexStreamEntry) error {
 	const failMsg = "joinStreamEntry failed"
 
-	cpy := index.Copy()
+	if crypto.IsNilSignature(entry.Signature) {
+		index.addTable(entry.TableName, UnsignedLink(entry.Link))
+		return nil
+	}
 
 	sig, err := crypto.ParseSignature(entry.Signature)
 
 	if err != nil {
-		return __EMPTY_INDEX, errors.Wrap(err, failMsg)
+		return errors.Wrap(err, failMsg)
 	}
 
-	cpy.addTable(entry.TableName, PreSignedLink(entry.Link, sig))
+	index.addTable(entry.TableName, PreSignedLink(entry.Link, sig))
 
-	return cpy, nil
+	return nil
 }
 
 // Equals does not take into account any invalid signatures.
@@ -145,11 +146,7 @@ func (index Index) Equals(other Index) bool {
 		return false
 	}
 
-	indexTables := make([]TableName, 0, len(index.Index))
-
-	for k, _ := range index.Index {
-		indexTables = append(indexTables, k)
-	}
+	indexTables := index.AllTables()
 
 	for _, tableName := range indexTables {
 		myLinks := index.Index[tableName]
@@ -219,7 +216,7 @@ func (index Index) addTable(table TableName, addr ...Link) {
 		normal := MergeLinks(append(addrs, addr...))
 		index.Index[table] = normal
 	} else {
-		index.Index[table] = addr
+		index.Index[table] = MergeLinks(addr)
 	}
 }
 
@@ -235,29 +232,6 @@ func (index Index) Copy() Index {
 	}
 
 	return cpy
-}
-
-func GenIndex(rand *rand.Rand, size int) Index {
-	index := EmptyIndex()
-	const ADDR_SCALE = 1
-	const KEY_SCALE = 0.5
-	const PATH_SCALE = 0.5
-
-	for i := 0; i < size; i++ {
-		keyCount := testutil.GenCountRange(rand, 1, size, KEY_SCALE)
-		indexKey := TableName(testutil.RandPoint(rand, keyCount))
-		addrCount := testutil.GenCountRange(rand, 1, size, ADDR_SCALE)
-		addrs := make([]Link, addrCount)
-		for j := 0; j < addrCount; j++ {
-			pathCount := testutil.GenCountRange(rand, 1, size, PATH_SCALE)
-			a := testutil.RandPoint(rand, pathCount)
-			addrs[j] = UnsignedLink(IPFSPath(a))
-		}
-
-		index.Index[indexKey] = addrs
-	}
-
-	return index
 }
 
 var __EMPTY_INDEX Index

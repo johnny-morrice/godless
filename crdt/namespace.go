@@ -5,14 +5,28 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/johnny-morrice/godless/internal/crypto"
+	"github.com/johnny-morrice/godless/log"
 	"github.com/pkg/errors"
 )
 
 type TableName string
 type RowName string
 type EntryName string
+
+type byTableName []TableName
+
+func (by byTableName) Len() int {
+	return len(by)
+}
+
+func (by byTableName) Swap(i, j int) {
+	by[i], by[j] = by[j], by[i]
+}
+
+func (by byTableName) Less(i, j int) bool {
+	return by[i] < by[j]
+}
 
 func JoinStreamEntries(stream []NamespaceStreamEntry) ([]NamespaceStreamEntry, []InvalidNamespaceEntry, error) {
 	const failMsg = "JoinStreamEntries failed"
@@ -134,6 +148,33 @@ func (ns Namespace) addPointBatch(stream []NamespaceStreamEntry) ([]InvalidNames
 	rowName := first.Row
 	entryName := first.Entry
 
+	ns.addPoint(tableName, rowName, entryName, point)
+
+	return invalid, nil
+}
+
+func (ns Namespace) addStreamEntry(entry NamespaceStreamEntry) error {
+	const failMsg = "Namespace.addStreamEntry failed"
+
+	point := Point{
+		Text: entry.Point.Text,
+	}
+
+	if !crypto.IsNilSignature(entry.Point.Signature) {
+		sig, err := crypto.ParseSignature(entry.Point.Signature)
+
+		if err != nil {
+			return errors.Wrap(err, failMsg)
+		}
+
+		point.Signatures = []crypto.Signature{sig}
+	}
+
+	ns.addPoint(entry.Table, entry.Row, entry.Entry, point)
+	return nil
+}
+
+func (ns Namespace) addPoint(tableName TableName, rowName RowName, entryName EntryName, point Point) {
 	table := MakeTable(map[RowName]Row{
 		rowName: MakeRow(map[EntryName]Entry{
 			entryName: MakeEntry([]Point{point}),
@@ -141,8 +182,6 @@ func (ns Namespace) addPointBatch(stream []NamespaceStreamEntry) ([]InvalidNames
 	})
 
 	ns.addTable(tableName, table)
-
-	return invalid, nil
 }
 
 func (ns Namespace) IsEmpty() bool {
@@ -402,6 +441,7 @@ func (row Row) Equals(other Row) bool {
 
 	for k, v := range row.Entries {
 		otherv, present := other.Entries[k]
+
 		if !present || !v.Equals(otherv) {
 			return false
 		}

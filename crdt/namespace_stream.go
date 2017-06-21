@@ -4,7 +4,6 @@ import (
 	"sort"
 
 	"github.com/johnny-morrice/godless/internal/crypto"
-	"github.com/johnny-morrice/godless/log"
 	"github.com/pkg/errors"
 )
 
@@ -115,6 +114,29 @@ type streamBuilder struct {
 	invalid []InvalidNamespaceEntry
 }
 
+func (builder *streamBuilder) uniqueOrder() {
+	sort.Sort(byNamespaceStreamOrder(builder.stream))
+	builder.uniqSorted()
+}
+
+func (builder *streamBuilder) uniqSorted() {
+	if len(builder.stream) < 2 {
+		return
+	}
+
+	uniq := make([]NamespaceStreamEntry, 1, len(builder.stream))
+
+	for _, entry := range builder.stream {
+		last := uniq[len(uniq)-1]
+
+		if entry != last {
+			uniq = append(uniq, entry)
+		}
+	}
+
+	builder.stream = uniq
+}
+
 func (builder *streamBuilder) makeStreamPoints(proto NamespaceStreamEntry, point Point) {
 	if len(point.Signatures) == 0 {
 		entry := proto
@@ -168,14 +190,13 @@ func readStreamPoint(stream []NamespaceStreamEntry) (Point, []InvalidNamespaceEn
 			return Point{}, nil, errors.Wrap(notSame, failMsg)
 		}
 
-		if entry.Point.Signature == "" {
+		if crypto.IsNilSignature(entry.Point.Signature) {
 			continue
 		}
 
 		sig, err := crypto.ParseSignature(entry.Point.Signature)
 
 		if err != nil {
-			log.Warn("Failed to parse signature")
 			invalid = append(invalid, InvalidNamespaceEntry(entry))
 			continue
 		}
@@ -217,7 +238,8 @@ func MakeNamespaceStream(ns Namespace) ([]NamespaceStreamEntry, []InvalidNamespa
 		}
 	})
 
-	sort.Sort(byNamespaceStreamOrder(builder.stream))
+	builder.uniqueOrder()
+
 	return builder.stream, builder.invalid
 }
 
@@ -245,11 +267,38 @@ func ReadNamespaceStream(stream []NamespaceStreamEntry) (Namespace, []InvalidNam
 	var invalidEntries []InvalidNamespaceEntry
 
 	batchStart := 0
-	for i, entry := range stream {
+	for batchEnd := 1; batchEnd <= len(stream); batchEnd++ {
 		startEntry := stream[batchStart]
 
-		if !entry.SamePoint(startEntry) {
-			invalid, err := ns.addPointBatch(stream[batchStart:i])
+		writePoint := false
+
+		if batchEnd < len(stream) {
+			entry := stream[batchEnd]
+			writePoint = !entry.SamePoint(startEntry)
+		} else {
+			writePoint = true
+		}
+
+		if writePoint {
+			if batchStart-batchEnd == 1 {
+				err := ns.addStreamEntry(startEntry)
+
+				if err != nil {
+					invalid := InvalidNamespaceEntry(startEntry)
+					invalidEntries = append(invalidEntries, invalid)
+				}
+
+				if err != nil {
+					return EmptyNamespace(), invalidEntries, errors.Wrap(err, failMsg)
+				}
+
+				batchStart = batchEnd
+				continue
+			}
+
+			batch := stream[batchStart:batchEnd]
+
+			invalid, err := ns.addPointBatch(batch)
 
 			invalidEntries = append(invalidEntries, invalid...)
 
@@ -257,7 +306,7 @@ func ReadNamespaceStream(stream []NamespaceStreamEntry) (Namespace, []InvalidNam
 				return EmptyNamespace(), invalidEntries, errors.Wrap(err, failMsg)
 			}
 
-			batchStart = i
+			batchStart = batchEnd
 		}
 
 	}

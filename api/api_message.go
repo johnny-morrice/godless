@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/internal/util"
+	"github.com/johnny-morrice/godless/log"
 	"github.com/johnny-morrice/godless/proto"
 	"github.com/pkg/errors"
 )

@@ -4,8 +4,8 @@ import (
 	"math/big"
 	"sort"
 
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/johnny-morrice/godless/internal/crypto"
+	"github.com/johnny-morrice/godless/log"
 	"github.com/pkg/errors"
 )
 
@@ -142,7 +142,7 @@ func (addrs byLinkPath) Less(i, j int) bool {
 }
 
 func uniqLinkSorted(links []Link) []Link {
-	if len(links) == 0 {
+	if len(links) < 2 {
 		return links
 	}
 

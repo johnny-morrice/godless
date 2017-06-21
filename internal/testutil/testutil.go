@@ -83,6 +83,10 @@ func RandLetters(rand *rand.Rand, max int) string {
 	return RandStr(rand, constants.ALPHABET, 0, max)
 }
 
+func RandLettersRange(rand *rand.Rand, min, max int) string {
+	return RandStr(rand, constants.ALPHABET, min, max)
+}
+
 func RandStr(rand *rand.Rand, elements string, min, max int) string {
 	count := rand.Intn(max - min)
 	count += min

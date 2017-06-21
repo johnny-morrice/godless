@@ -3,7 +3,6 @@ package crdt
 import (
 	"sort"
 
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/johnny-morrice/godless/proto"
 )
@@ -44,28 +43,6 @@ func MakeIndexEntryMessage(entry IndexStreamEntry) *proto.IndexEntryMessage {
 	}
 
 	return message
-}
-
-// TODO does not support unsigned links.
-func MakeIndexStreamEntries(t TableName, addrs []Link) ([]IndexStreamEntry, []InvalidIndexEntry) {
-	count := countAddrEntries(addrs)
-
-	entries := make([]IndexStreamEntry, 0, count)
-	invalidEntries := []InvalidIndexEntry{}
-
-	for _, link := range addrs {
-		path := link.Path
-		for _, sig := range link.Signatures {
-			entry, err := MakeIndexStreamEntry(t, path, sig)
-			if err == nil {
-				entries = append(entries, entry)
-			} else {
-				invalidEntries = append(invalidEntries, InvalidIndexEntry(entry))
-			}
-		}
-	}
-
-	return entries, invalidEntries
 }
 
 func MakeIndexStreamEntry(t TableName, path IPFSPath, sig crypto.Signature) (IndexStreamEntry, error) {
@@ -116,18 +93,80 @@ func MakeIndexStream(index Index) ([]IndexStreamEntry, []InvalidIndexEntry) {
 		count = count + countAddrEntries(addrs)
 	}
 
-	stream := make([]IndexStreamEntry, count)
-	invalidEntries := []InvalidIndexEntry{}
-
-	for t, addrs := range index.Index {
-		entries, invalid := MakeIndexStreamEntries(t, addrs)
-		stream = append(stream, entries...)
-		invalidEntries = append(invalidEntries, invalid...)
+	builder := &indexStreamBuilder{
+		stream: make([]IndexStreamEntry, 0, count),
 	}
 
-	sort.Sort(byIndexStreamOrder(stream))
+	for t, addrs := range index.Index {
+		builder.makeIndexStreamEntries(t, addrs)
+	}
 
-	return stream, invalidEntries
+	builder.uniqueOrder()
+
+	return builder.stream, builder.invalid
+}
+
+type indexStreamBuilder struct {
+	stream  []IndexStreamEntry
+	invalid []InvalidIndexEntry
+}
+
+func (builder *indexStreamBuilder) makeIndexStreamEntries(t TableName, addrs []Link) {
+	for _, link := range addrs {
+		path := link.Path
+
+		if len(link.Signatures) == 0 {
+			entry := IndexStreamEntry{
+				TableName: t,
+				Link:      path,
+			}
+
+			builder.appendEntry(entry)
+			continue
+		}
+
+		for _, sig := range link.Signatures {
+			entry, err := MakeIndexStreamEntry(t, path, sig)
+			if err == nil {
+				builder.appendEntry(entry)
+			} else {
+				builder.appendInvalid(entry)
+			}
+		}
+	}
+}
+
+func (builder *indexStreamBuilder) appendEntry(entry IndexStreamEntry) {
+	builder.stream = append(builder.stream, entry)
+}
+
+func (builder *indexStreamBuilder) appendInvalid(entry IndexStreamEntry) {
+	invalid := InvalidIndexEntry(entry)
+	builder.invalid = append(builder.invalid, invalid)
+}
+
+func (builder *indexStreamBuilder) uniqueOrder() {
+	sort.Sort(byIndexStreamOrder(builder.stream))
+	builder.uniqSorted()
+}
+
+func (builder *indexStreamBuilder) uniqSorted() {
+	if len(builder.stream) < 2 {
+		return
+	}
+
+	uniq := make([]IndexStreamEntry, 1, len(builder.stream))
+
+	uniq[0] = builder.stream[0]
+
+	for _, entry := range builder.stream[1:] {
+		last := uniq[len(uniq)-1]
+		if entry != last {
+			uniq = append(uniq, entry)
+		}
+	}
+
+	builder.stream = uniq
 }
 
 type InvalidIndexEntry IndexStreamEntry
@@ -138,11 +177,9 @@ func ReadIndexStream(stream []IndexStreamEntry) (Index, []InvalidIndexEntry) {
 	invalid := make([]InvalidIndexEntry, 0, len(stream))
 
 	for _, entry := range stream {
-		var err error
-		index, err = index.joinStreamEntry(entry)
+		err := index.addStreamEntry(entry)
 
 		if err != nil {
-			log.Error("Invalid stream entry")
 			invalid = append(invalid, InvalidIndexEntry(entry))
 		}
 	}

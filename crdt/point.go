@@ -1,8 +1,8 @@
 package crdt
 
 import (
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/johnny-morrice/godless/internal/crypto"
+	"github.com/johnny-morrice/godless/log"
 	"github.com/pkg/errors"
 )
 
@@ -105,7 +105,7 @@ func (p byPointValue) Less(i, j int) bool {
 }
 
 func uniqPointSorted(set []Point) []Point {
-	if len(set) == 0 {
+	if len(set) < 2 {
 		return set
 	}
 

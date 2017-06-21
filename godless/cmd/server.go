@@ -24,8 +24,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/ethereum/go-ethereum/log"
 	lib "github.com/johnny-morrice/godless"
+	"github.com/johnny-morrice/godless/log"
 	"github.com/spf13/cobra"
 )
 

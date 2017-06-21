@@ -16,7 +16,7 @@ func GenNamespace(rand *rand.Rand, size int) Namespace {
 	// FIXME This looks horrific.
 	tableCount := testutil.GenCount(rand, size, tableFudge)
 	for i := 0; i < tableCount; i++ {
-		tableName := TableName(testutil.RandLetters(rand, maxStr))
+		tableName := TableName(testutil.RandLettersRange(rand, 1, maxStr))
 		table := EmptyTable()
 		rowCount := testutil.GenCount(rand, size, rowFudge)
 		for j := 0; j < rowCount; j++ {
@@ -53,4 +53,27 @@ func genRow(rand *rand.Rand, size int) Row {
 
 func genPoint(rand *rand.Rand, size int) Point {
 	return Point{Text: PointText(testutil.RandLetters(rand, size))}
+}
+
+func GenIndex(rand *rand.Rand, size int) Index {
+	index := EmptyIndex()
+	const ADDR_SCALE = 1
+	const KEY_SCALE = 0.5
+	const PATH_SCALE = 0.5
+
+	for i := 0; i < size; i++ {
+		keyCount := testutil.GenCountRange(rand, 2, size, KEY_SCALE)
+		indexKey := TableName(testutil.RandLettersRange(rand, 1, keyCount))
+		addrCount := testutil.GenCountRange(rand, 1, size, ADDR_SCALE)
+		addrs := make([]Link, addrCount)
+		for j := 0; j < addrCount; j++ {
+			pathCount := testutil.GenCountRange(rand, 2, size, PATH_SCALE)
+			a := testutil.RandLettersRange(rand, 1, pathCount)
+			addrs[j] = UnsignedLink(IPFSPath(a))
+		}
+
+		index.addTable(indexKey, addrs...)
+	}
+
+	return index
 }

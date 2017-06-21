@@ -10,6 +10,7 @@ import (
 	"testing/quick"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/johnny-morrice/godless/internal/testutil"
 	"github.com/johnny-morrice/godless/log"
 )
@@ -39,10 +40,25 @@ func rowStreamOk(expected Row) bool {
 		return false
 	}
 
-	ns := readNamespaceStream(stream)
-	table := ns.Tables[tableKey]
-	actual := table.Rows[rowKey]
-	return expected.Equals(actual)
+	actualNs := readNamespaceStream(stream)
+	actualTable := actualNs.Tables[tableKey]
+	actual := actualTable.Rows[rowKey]
+	same := expected.Equals(actual)
+
+	if !same {
+		expectedTable := MakeTable(map[RowName]Row{
+			rowKey: expected,
+		})
+		expectedNs := MakeNamespace(map[TableName]Table{
+			tableKey: expectedTable,
+		})
+		expectedText := namespaceText(expectedNs)
+		actualText := namespaceText(actualNs)
+
+		testutil.LogDiff(expectedText, actualText)
+	}
+
+	return same
 }
 
 func (row Row) Generate(rand *rand.Rand, size int) reflect.Value {
@@ -654,10 +670,7 @@ func assertRowEquals(t *testing.T, expected, actual Row) {
 func readNamespaceStream(stream []NamespaceStreamEntry) Namespace {
 	ns, invalid, err := ReadNamespaceStream(stream)
 
-	invalidCount := len(invalid)
-	if invalidCount > 0 {
-		panic(fmt.Sprintf("%v invalid entries"))
-	}
+	panicInvalidNamespace(invalid)
 
 	if err != nil {
 		panic(err)
@@ -669,10 +682,7 @@ func readNamespaceStream(stream []NamespaceStreamEntry) Namespace {
 func encodeNamespace(ns Namespace, w io.Writer) error {
 	invalid, err := EncodeNamespace(ns, w)
 
-	invalidCount := len(invalid)
-	if invalidCount > 0 {
-		panic(fmt.Sprintf("%v invalid entries"))
-	}
+	panicInvalidNamespace(invalid)
 
 	return err
 }
@@ -680,10 +690,30 @@ func encodeNamespace(ns Namespace, w io.Writer) error {
 func decodeNamespace(r io.Reader) (Namespace, error) {
 	namespace, invalid, err := DecodeNamespace(r)
 
+	panicInvalidNamespace(invalid)
+
+	return namespace, err
+}
+
+func namespaceText(namespace Namespace) string {
+	message, invalid := MakeNamespaceMessage(namespace)
+
+	panicInvalidNamespace(invalid)
+
+	buff := &bytes.Buffer{}
+
+	err := proto.MarshalText(buff, message)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return buff.String()
+}
+
+func panicInvalidNamespace(invalid []InvalidNamespaceEntry) {
 	invalidCount := len(invalid)
 	if invalidCount > 0 {
 		panic(fmt.Sprintf("%v invalid entries"))
 	}
-
-	return namespace, err
 }

@@ -292,7 +292,6 @@ func indexEncodeOk(expected Index) bool {
 		expectedText := indexText(expected)
 		actualText := indexText(actual)
 		testutil.LogDiff(expectedText, actualText)
-		log.Error("Expected: %v", expectedText)
 	}
 
 	return same
