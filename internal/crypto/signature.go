@@ -38,17 +38,17 @@ func uniqSigSorted(signatures []Signature) []Signature {
 		return signatures
 	}
 
-	uniq := make([]Signature, 1, len(signatures))
-
-	uniq[0] = signatures[0]
-	for _, sig := range signatures[1:] {
-		last := uniq[len(uniq)-1]
+	uniqIndex := 0
+	for i := 1; i < len(signatures); i++ {
+		sig := signatures[i]
+		last := signatures[uniqIndex]
 		if !sig.Equals(last) {
-			uniq = append(uniq, sig)
+			uniqIndex++
+			signatures[uniqIndex] = sig
 		}
 	}
 
-	return uniq
+	return signatures[:uniqIndex+1]
 }
 
 func sortSignatures(sigs []Signature) {

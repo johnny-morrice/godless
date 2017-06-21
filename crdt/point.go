@@ -109,22 +109,24 @@ func uniqPointSorted(set []Point) []Point {
 		return set
 	}
 
-	uniq := make([]Point, 1, len(set))
-
-	uniq[0] = set[0]
-	for _, p := range set[1:] {
-		last := &uniq[len(uniq)-1]
+	uniqIndex := 0
+	for i := 1; i < len(set); i++ {
+		p := set[i]
+		last := &set[uniqIndex]
 		if p.Text == last.Text {
 			last.Signatures = append(last.Signatures, p.Signatures...)
 		} else {
-			uniq = append(uniq, p)
+			uniqIndex++
+			set[uniqIndex] = p
 		}
 	}
 
-	for i := 0; i < len(uniq); i++ {
-		point := &uniq[i]
+	set = set[:uniqIndex+1]
+
+	for i := 0; i < len(set); i++ {
+		point := &set[i]
 		point.Signatures = crypto.OrderSignatures(point.Signatures)
 	}
 
-	return uniq
+	return set
 }

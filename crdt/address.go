@@ -146,24 +146,26 @@ func uniqLinkSorted(links []Link) []Link {
 		return links
 	}
 
-	uniq := make([]Link, 1, len(links))
-
-	uniq[0] = links[0]
-	for _, p := range links[1:] {
-		last := &uniq[len(uniq)-1]
+	uniqIndex := 0
+	for i := 1; i < len(links); i++ {
+		p := links[i]
+		last := &links[uniqIndex]
 		if p.Path == last.Path {
 			last.Signatures = append(last.Signatures, p.Signatures...)
 		} else {
-			uniq = append(uniq, p)
+			uniqIndex++
+			links[uniqIndex] = p
 		}
 	}
 
-	for i := 0; i < len(uniq); i++ {
-		link := &uniq[i]
+	links = links[:uniqIndex+1]
+
+	for i := 0; i < len(links); i++ {
+		link := &links[i]
 		link.Signatures = crypto.OrderSignatures(link.Signatures)
 	}
 
-	return uniq
+	return links
 }
 
 var bigRadix = big.NewInt(58)
