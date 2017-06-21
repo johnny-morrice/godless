@@ -49,6 +49,7 @@ func serve() {
 		Topics:            topics,
 		APIQueryLimit:     apiQueryLimit,
 		KeyStore:          lib.MakeKeyStore(),
+		PublicServer:      publicServer,
 	}
 
 	godless, err := lib.New(options)
