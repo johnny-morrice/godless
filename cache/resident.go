@@ -25,16 +25,28 @@ func MakeResidentIndexCache(buffSize int) api.IndexCache {
 		buffSize = __DEFAULT_BUFFER_SIZE
 	}
 
-	return &residentIndexCache{
+	cache := &residentIndexCache{
 		buff:  make([]indexCacheItem, buffSize),
 		assoc: map[crdt.IPFSPath]*indexCacheItem{},
 	}
+
+	cache.initBuff()
+
+	return cache
 }
 
 type indexCacheItem struct {
-	key       crdt.IPFSPath
-	index     crdt.Index
-	timestamp int
+	key           crdt.IPFSPath
+	index         crdt.Index
+	timestamp     int64
+	nanoTimestamp int
+}
+
+func (cache *residentIndexCache) initBuff() {
+	for i := 0; i < len(cache.buff); i++ {
+		item := &cache.buff[i]
+		item.timestamp, item.nanoTimestamp = makeTimestamp()
+	}
 }
 
 func (cache *residentIndexCache) GetIndex(indexAddr crdt.IPFSPath) (crdt.Index, error) {
@@ -57,7 +69,7 @@ func (cache *residentIndexCache) SetIndex(indexAddr crdt.IPFSPath, index crdt.In
 	item, present := cache.assoc[indexAddr]
 
 	if present {
-		item.timestamp = makeTimestamp()
+		item.timestamp, item.nanoTimestamp = makeTimestamp()
 		return nil
 	}
 
@@ -66,28 +78,37 @@ func (cache *residentIndexCache) SetIndex(indexAddr crdt.IPFSPath, index crdt.In
 
 func (cache *residentIndexCache) addNewItem(indexAddr crdt.IPFSPath, index crdt.Index) error {
 	newItem := indexCacheItem{
-		timestamp: makeTimestamp(),
-		key:       indexAddr,
-		index:     index,
+		key:   indexAddr,
+		index: index,
 	}
 
-	bufferedItem := cache.findOldest()
+	newItem.timestamp, newItem.nanoTimestamp = makeTimestamp()
+
+	bufferedItem := cache.popOldest()
 	*bufferedItem = newItem
+
 	cache.assoc[indexAddr] = bufferedItem
 	return nil
 }
 
-func (cache *residentIndexCache) findOldest() *indexCacheItem {
+func (cache *residentIndexCache) popOldest() *indexCacheItem {
 	var oldest *indexCacheItem
 
-	for _, item := range cache.buff {
+	for i := 0; i < len(cache.buff); i++ {
+		item := &cache.buff[i]
+
 		if oldest == nil {
-			oldest = &item
+			oldest = item
 			continue
 		}
 
-		if item.timestamp < oldest.timestamp {
-			oldest = &item
+		older := item.timestamp < oldest.timestamp
+		if !older && item.timestamp == oldest.timestamp {
+			older = item.nanoTimestamp < oldest.nanoTimestamp
+		}
+
+		if older {
+			oldest = item
 		}
 	}
 
@@ -95,11 +116,14 @@ func (cache *residentIndexCache) findOldest() *indexCacheItem {
 		panic("Corrupt buffer")
 	}
 
+	delete(cache.assoc, oldest.key)
+
 	return oldest
 }
 
-func makeTimestamp() int {
-	return time.Now().Nanosecond()
+func makeTimestamp() (int64, int) {
+	t := time.Now()
+	return t.Unix(), t.Nanosecond()
 }
 
 type residentHeadCache struct {
@@ -130,6 +154,7 @@ type residentPriorityQueue struct {
 	semaphore chan struct{}
 	buff      []residentQueueItem
 	datach    chan interface{}
+	stopper   chan struct{}
 }
 
 func MakeResidentBufferQueue(buffSize int) api.RequestPriorityQueue {
@@ -141,6 +166,7 @@ func MakeResidentBufferQueue(buffSize int) api.RequestPriorityQueue {
 		semaphore: make(chan struct{}, buffSize),
 		buff:      make([]residentQueueItem, buffSize),
 		datach:    make(chan interface{}),
+		stopper:   make(chan struct{}),
 	}
 
 	return queue
@@ -166,9 +192,9 @@ func (queue *residentPriorityQueue) Enqueue(request api.APIRequest, data interfa
 		return errors.Wrap(err, "residentPriorityQueue.Enqueue failed")
 	}
 
+	queue.lockResource()
 	queue.Lock()
 	defer queue.Unlock()
-	queue.lockResource()
 
 	for i := 0; i < len(queue.buff); i++ {
 		spot := &queue.buff[i]
@@ -184,16 +210,27 @@ func (queue *residentPriorityQueue) Enqueue(request api.APIRequest, data interfa
 
 func (queue *residentPriorityQueue) Drain() <-chan interface{} {
 	go func() {
+	LOOP:
 		for {
-			data, err := queue.popFront()
+			popch := queue.waitForPop()
 
-			if err != nil {
-				log.Error("Error draining residentPriorityQueue: %v", err)
-				close(queue.datach)
-				return
+			for {
+				select {
+				case queuePop := <-popch:
+					if queuePop.err != nil {
+						log.Error("Error draining residentPriorityQueue: %v", queuePop.err)
+						close(queue.datach)
+						return
+					}
+
+					queue.datach <- queuePop.data
+					continue LOOP
+				case <-queue.stopper:
+					close(queue.datach)
+					return
+				}
 			}
 
-			queue.datach <- data
 		}
 	}()
 
@@ -201,8 +238,24 @@ func (queue *residentPriorityQueue) Drain() <-chan interface{} {
 }
 
 func (queue *residentPriorityQueue) Close() error {
-	close(queue.datach)
+	close(queue.stopper)
 	return nil
+}
+
+type queuePop struct {
+	data interface{}
+	err  error
+}
+
+func (queue *residentPriorityQueue) waitForPop() <-chan queuePop {
+	popch := make(chan queuePop)
+
+	go func() {
+		data, err := queue.popFront()
+		popch <- queuePop{data: data, err: err}
+	}()
+
+	return popch
 }
 
 func (queue *residentPriorityQueue) popFront() (interface{}, error) {
@@ -234,6 +287,7 @@ func (queue *residentPriorityQueue) popFront() (interface{}, error) {
 
 	best.populated = false
 
+	log.Debug("Popped first")
 	return best.data, nil
 }
 
