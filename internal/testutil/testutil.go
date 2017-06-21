@@ -123,6 +123,27 @@ func DebugLine(t *testing.T) {
 	t.Log("Test failed at line", line)
 }
 
+func WaitGroupTimeout(t *testing.T, wg *sync.WaitGroup, timeout time.Duration) {
+	done := make(chan struct{}, 1)
+
+	go func() {
+		wg.Wait()
+		done <- struct{}{}
+	}()
+
+	timer := time.NewTimer(timeout)
+
+LOOP:
+	for {
+		select {
+		case <-timer.C:
+			t.Error("WaitGroup timeout out after %v", timeout)
+		case <-done:
+			break LOOP
+		}
+	}
+}
+
 func AssertNil(t *testing.T, x interface{}) {
 	Assert(t, fmt.Sprintf("Expected nil value but received: %v", x), x == nil)
 }

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/johnny-morrice/godless/log"
 	crypto "github.com/libp2p/go-libp2p-crypto"
@@ -24,7 +25,7 @@ func ParsePublicKey(text PublicKeyText) (PublicKey, error) {
 }
 
 func ParsePrivateKey(text PrivateKeyText) (PrivateKey, error) {
-	p2pKey, err := crypto.UnmarshalPrivateKey(text)
+	p2pKey, err := crypto.UnmarshalEd25519PrivateKey(text)
 	if err != nil {
 		return PrivateKey{}, nil
 	}
@@ -43,7 +44,7 @@ func PrintPublicKey(pub PublicKey) (PublicKeyText, error) {
 }
 
 func PrintPrivateKey(priv PrivateKey) (PrivateKeyText, error) {
-	key, err := crypto.MarshalPrivateKey(priv.p2pKey)
+	key, err := priv.p2pKey.Bytes()
 
 	if err != nil {
 		return NIL_PRIVATE_KEY_TEXT, err
@@ -69,9 +70,37 @@ type PrivateKey struct {
 }
 
 func (priv PrivateKey) SamePublicKey(other PrivateKey) bool {
-	myPub := PublicKey{priv.p2pKey.GetPublic()}
-	otherPub := PublicKey{other.p2pKey.GetPublic()}
+	myPub := priv.GetPublicKey()
+	otherPub := other.GetPublicKey()
 	return myPub.Equals(otherPub)
+}
+
+func (priv PrivateKey) GetPublicKey() PublicKey {
+	return PublicKey{p2pKey: priv.p2pKey.GetPublic()}
+}
+
+func (priv PrivateKey) Equals(other PrivateKey) bool {
+	const failMsg = "Could not serialize PrivateKey for Equals"
+
+	if priv.p2pKey == nil && other.p2pKey == nil {
+		return true
+	}
+
+	myBytes, myErr := PrintPrivateKey(priv)
+
+	if myErr != nil {
+		log.Error(failMsg)
+		return false
+	}
+
+	otherBytes, otherErr := PrintPrivateKey(priv)
+
+	if otherErr != nil {
+		log.Error(failMsg)
+		return false
+	}
+
+	return bytes.Compare(myBytes, otherBytes) == 0
 }
 
 type PublicKey struct {
@@ -80,6 +109,10 @@ type PublicKey struct {
 
 func (pub PublicKey) Equals(other PublicKey) bool {
 	const errFmt = "Could not serialize PublicKey for Equals: %v"
+
+	if pub.p2pKey == nil && other.p2pKey == nil {
+		return true
+	}
 
 	myBytes, myErr := PrintPublicKey(pub)
 
@@ -104,10 +137,16 @@ var NIL_PRIVATE_KEY_TEXT = PrivateKeyText([]byte(""))
 
 // KeyStore is an in-memory association between private and public keys.
 type KeyStore struct {
+	sync.RWMutex
 	privKeys []PrivateKey
 }
 
 func (keys *KeyStore) PutPrivateKey(priv PrivateKey) error {
+	keys.Lock()
+	defer keys.Unlock()
+
+	keys.init()
+
 	for _, other := range keys.privKeys {
 		// Regardless of the crypto, prevent this key store being tricked.
 		if priv.SamePublicKey(other) {
@@ -120,6 +159,11 @@ func (keys *KeyStore) PutPrivateKey(priv PrivateKey) error {
 }
 
 func (keys *KeyStore) GetPrivateKey(pub PublicKey) (PrivateKey, error) {
+	keys.RLock()
+	defer keys.RUnlock()
+
+	keys.init()
+
 	for _, priv := range keys.privKeys {
 		p2pPrivPub := priv.p2pKey.GetPublic()
 		privPub := PublicKey{p2pKey: p2pPrivPub}
@@ -133,6 +177,11 @@ func (keys *KeyStore) GetPrivateKey(pub PublicKey) (PrivateKey, error) {
 }
 
 func (keys *KeyStore) GetAllPrivateKeys() []PrivateKey {
+	keys.RLock()
+	defer keys.RUnlock()
+
+	keys.init()
+
 	cpy := make([]PrivateKey, len(keys.privKeys))
 
 	for i, priv := range keys.privKeys {
@@ -140,4 +189,10 @@ func (keys *KeyStore) GetAllPrivateKeys() []PrivateKey {
 	}
 
 	return cpy
+}
+
+func (keys *KeyStore) init() {
+	if keys.privKeys == nil {
+		keys.privKeys = []PrivateKey{}
+	}
 }
