@@ -39,7 +39,7 @@ func (_mr *_MockRemoteNamespaceRecorder) Close() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Close")
 }
 
-func (_m *MockRemoteNamespace) Replicate(_param0 crdt.IPFSPath, _param1 api.KvQuery) {
+func (_m *MockRemoteNamespace) Replicate(_param0 []crdt.Link, _param1 api.KvQuery) {
 	_m.ctrl.Call(_m, "Replicate", _param0, _param1)
 }
 
@@ -148,7 +148,7 @@ func (_mr *_MockRemoteStoreRecorder) Disconnect() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Disconnect")
 }
 
-func (_m *MockRemoteStore) PublishAddr(_param0 crdt.IPFSPath, _param1 []crdt.IPFSPath) error {
+func (_m *MockRemoteStore) PublishAddr(_param0 crdt.Link, _param1 []api.PubSubTopic) error {
 	ret := _m.ctrl.Call(_m, "PublishAddr", _param0, _param1)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -158,9 +158,9 @@ func (_mr *_MockRemoteStoreRecorder) PublishAddr(arg0, arg1 interface{}) *gomock
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "PublishAddr", arg0, arg1)
 }
 
-func (_m *MockRemoteStore) SubscribeAddrStream(_param0 crdt.IPFSPath) (<-chan crdt.IPFSPath, <-chan error) {
+func (_m *MockRemoteStore) SubscribeAddrStream(_param0 api.PubSubTopic) (<-chan crdt.Link, <-chan error) {
 	ret := _m.ctrl.Call(_m, "SubscribeAddrStream", _param0)
-	ret0, _ := ret[0].(<-chan crdt.IPFSPath)
+	ret0, _ := ret[0].(<-chan crdt.Link)
 	ret1, _ := ret[1].(<-chan error)
 	return ret0, ret1
 }
