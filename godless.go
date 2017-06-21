@@ -17,6 +17,7 @@ import (
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/cache"
 	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/johnny-morrice/godless/internal/http"
 	"github.com/johnny-morrice/godless/internal/ipfs"
 	"github.com/johnny-morrice/godless/internal/service"
@@ -310,6 +311,10 @@ func MakeClient(serviceAddr string) Client {
 
 func MakeClientWithHttp(serviceAddr string, webClient *gohttp.Client) Client {
 	return service.MakeClientWithHttp(serviceAddr, webClient)
+}
+
+func MakeKeyStore() api.KeyStore {
+	return &crypto.KeyStore{}
 }
 
 func breakOnError(pipeline []func() error) error {

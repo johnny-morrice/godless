@@ -48,6 +48,7 @@ func serve() {
 		ReplicateInterval: interval,
 		Topics:            topics,
 		APIQueryLimit:     apiQueryLimit,
+		KeyStore:          lib.MakeKeyStore(),
 	}
 
 	godless, err := lib.New(options)
