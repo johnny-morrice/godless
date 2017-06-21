@@ -155,7 +155,7 @@ func writeJson(file *os.File, contents interface{}) {
 
 func homeConfigFilePath() string {
 	dir := os.Getenv("HOME")
-	name := __CONFIG_FILE_NAME
+	name := __CONFIG_FILE_NAME + ".json"
 	return path.Join(dir, name)
 }
 

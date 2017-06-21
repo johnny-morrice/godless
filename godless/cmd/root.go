@@ -59,7 +59,7 @@ func die(err error) {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.godless.yaml)")
+	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.godless.json)")
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -74,7 +74,7 @@ func initConfig() {
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
-		log.Debug("Using config file:", viper.ConfigFileUsed())
+		log.Debug("Using config file: %v", viper.ConfigFileUsed())
 	}
 }
 
