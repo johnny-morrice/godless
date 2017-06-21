@@ -292,6 +292,16 @@ func (keys *KeyStore) GetPublicKey(hash PublicKeyHash) (PublicKey, error) {
 	return keys.lookupPublicKey(hash)
 }
 
+func (keys *KeyStore) GetAllPublicKeys() []PublicKey {
+	pubKeys := make([]PublicKey, len(keys.pubKeys))
+
+	for i, pub := range keys.pubKeys {
+		pubKeys[i] = pub
+	}
+
+	return pubKeys
+}
+
 func (keys *KeyStore) init() {
 	if keys.privKeys == nil {
 		keys.privKeys = []PrivateKey{}
