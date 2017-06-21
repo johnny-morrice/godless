@@ -1,11 +1,14 @@
 package crdt
 
 import (
+	"bytes"
 	"math/big"
 	"sort"
 
+	pb "github.com/gogo/protobuf/proto"
 	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/johnny-morrice/godless/log"
+	"github.com/johnny-morrice/godless/proto"
 	"github.com/pkg/errors"
 )
 
@@ -17,15 +20,15 @@ func IsNilPath(path IPFSPath) bool {
 	return path == NIL_PATH
 }
 
-func ParseHash(hash string) (IPFSPath, error) {
-	ok := crypto.IsBase58(hash)
-
-	if !ok {
-		return NIL_PATH, errors.New("Hash was not base58 encoded")
-	}
-
-	return IPFSPath(hash), nil
-}
+// func ParseHash(hash string) (IPFSPath, error) {
+// 	ok := crypto.IsBase58(hash)
+//
+// 	if !ok {
+// 		return NIL_PATH, errors.New("Hash was not base58 encoded")
+// 	}
+//
+// 	return IPFSPath(hash), nil
+// }
 
 type Link struct {
 	Path       IPFSPath
@@ -111,6 +114,98 @@ func (link Link) Equals(other Link) bool {
 
 func (link Link) SameLink(other Link) bool {
 	return link.Path == other.Path
+}
+
+type LinkText string
+
+func PrintLink(link Link) (LinkText, error) {
+	const failMsg = "PrintLink failed"
+
+	message, makeErr := MakeLinkMessage(link)
+
+	if makeErr != nil {
+		return "", errors.Wrap(makeErr, failMsg)
+	}
+
+	buff := bytes.Buffer{}
+
+	pbErr := pb.MarshalText(&buff, message)
+
+	if pbErr != nil {
+		return "", errors.Wrap(pbErr, failMsg)
+	}
+
+	text := LinkText(buff.String())
+
+	return text, nil
+}
+
+func ParseLink(text LinkText) (Link, error) {
+	const failMsg = "ParseLink failed"
+
+	message := proto.LinkMessage{}
+	pbErr := pb.UnmarshalText(string(text), &message)
+
+	if pbErr != nil {
+		return Link{}, errors.Wrap(pbErr, failMsg)
+	}
+
+	link, readErr := ReadLinkMessage(&message)
+
+	if readErr != nil {
+		return Link{}, errors.Wrap(readErr, failMsg)
+	}
+
+	return link, nil
+}
+
+func MakeLinkMessage(link Link) (*proto.LinkMessage, error) {
+	const failMsg = "MakeLinkMessage failed"
+
+	messageSigs := make([]string, len(link.Signatures))
+
+	for i, sig := range link.Signatures {
+		text, err := crypto.PrintSignature(sig)
+
+		if err != nil {
+			return nil, errors.Wrap(err, failMsg)
+		}
+
+		messageSigs[i] = string(text)
+	}
+
+	message := &proto.LinkMessage{
+		Link:       string(link.Path),
+		Signatures: messageSigs,
+	}
+
+	log.Debug("Created link message: %v", message)
+
+	return message, nil
+}
+
+func ReadLinkMessage(message *proto.LinkMessage) (Link, error) {
+	const failMsg = "ReadLinkMessage failed"
+
+	sigs := make([]crypto.Signature, len(message.Signatures))
+
+	for i, messageSig := range message.Signatures {
+		sigText := crypto.SignatureText(messageSig)
+		sig, err := crypto.ParseSignature(sigText)
+
+		if err != nil {
+			return Link{}, errors.Wrap(err, failMsg)
+		}
+
+		sigs[i] = sig
+	}
+
+	link := Link{
+		Path:       IPFSPath(message.Link),
+		Signatures: sigs,
+	}
+
+	return link, nil
 }
 
 func MergeLinks(links []Link) []Link {

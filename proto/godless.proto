@@ -27,6 +27,11 @@ message IndexEntryMessage {
 	string signature = 3;
 }
 
+message LinkMessage {
+	string link = 1;
+	repeated string signatures = 2;
+}
+
 message APIResponseMessage {
 	string message = 1;
 	string error = 2;

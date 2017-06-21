@@ -149,11 +149,13 @@ func (rn *remoteNamespace) joinPeerIndex(links []crdt.Link) api.APIResponse {
 
 	joined := crdt.EmptyIndex()
 
+	someFailed := false
 	for _, link := range links {
 		if rn.isPublicIndex {
 			isVerified := link.IsVerifiedByAny(keys)
 			if !isVerified {
 				log.Warn("Skipping unverified Index Link")
+				someFailed = true
 				continue
 			}
 		}
@@ -164,6 +166,7 @@ func (rn *remoteNamespace) joinPeerIndex(links []crdt.Link) api.APIResponse {
 
 		if theirErr != nil {
 			log.Error("Failed to replicate Index at: %v", peerAddr)
+			someFailed = true
 			continue
 		}
 
@@ -177,7 +180,13 @@ func (rn *remoteNamespace) joinPeerIndex(links []crdt.Link) api.APIResponse {
 		return failResponse
 	}
 
-	return api.RESPONSE_REPLICATE
+	resp := api.RESPONSE_REPLICATE
+
+	if someFailed {
+		resp.Msg = "Update ok with load failures"
+	}
+
+	return resp
 }
 
 func (rn *remoteNamespace) loadIndex(indexAddr crdt.IPFSPath) (crdt.Index, error) {

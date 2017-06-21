@@ -9,6 +9,7 @@ import (
 	"time"
 
 	ipfs "github.com/ipfs/go-ipfs-api"
+	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/internal/http"
 	"github.com/johnny-morrice/godless/log"
@@ -159,18 +160,22 @@ func (peer *IPFSPeer) validateConnection() error {
 	return nil
 }
 
-func (peer *IPFSPeer) PublishAddr(addr crdt.IPFSPath, topics []crdt.IPFSPath) error {
+func (peer *IPFSPeer) PublishAddr(addr crdt.Link, topics []api.PubSubTopic) error {
 	const failMsg = "IPFSPeer.PublishAddr failed"
 
 	if verr := peer.validateShell(); verr != nil {
 		return verr
 	}
 
-	publishValue := string(addr)
+	publishValue, printErr := crdt.PrintLink(addr)
+
+	if printErr != nil {
+		return errors.Wrap(printErr, failMsg)
+	}
 
 	for _, t := range topics {
 		topicText := string(t)
-		err := peer.Shell.PubSubPublish(topicText, publishValue)
+		err := peer.Shell.PubSubPublish(topicText, string(publishValue))
 
 		if err != nil {
 			return errors.Wrap(err, failMsg)
@@ -180,8 +185,8 @@ func (peer *IPFSPeer) PublishAddr(addr crdt.IPFSPath, topics []crdt.IPFSPath) er
 	return nil
 }
 
-func (peer *IPFSPeer) SubscribeAddrStream(topic crdt.IPFSPath) (<-chan crdt.IPFSPath, <-chan error) {
-	stream := make(chan crdt.IPFSPath)
+func (peer *IPFSPeer) SubscribeAddrStream(topic api.PubSubTopic) (<-chan crdt.Link, <-chan error) {
+	stream := make(chan crdt.Link)
 	errch := make(chan error)
 
 	tidy := func() {
@@ -226,10 +231,10 @@ func (peer *IPFSPeer) SubscribeAddrStream(topic crdt.IPFSPath) (<-chan crdt.IPFS
 
 				pubsubPeer := record.From()
 				bs := record.Data()
-				addr, err := crdt.ParseHash(string(bs))
+				addr, err := crdt.ParseLink(crdt.LinkText(bs))
 
 				if err != nil {
-					log.Warn("Bad hash from peer: %v", pubsubPeer)
+					log.Warn("Bad link from peer: %v", pubsubPeer)
 					continue
 				}
 
