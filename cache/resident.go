@@ -281,13 +281,12 @@ func (queue *residentPriorityQueue) popFront() (interface{}, error) {
 	}
 
 	if best == nil {
-		log.Error("Buffer is corrupt")
+		log.Error("resitentPriorityQueue buffer is corrupt")
 		return nil, corruptBuffer
 	}
 
 	best.populated = false
 
-	log.Debug("Popped first")
 	return best.data, nil
 }
 
