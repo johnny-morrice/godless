@@ -45,13 +45,15 @@ type remoteNamespace struct {
 	headCache     api.HeadCache
 	indexCache    api.IndexCache
 	keyStore      api.KeyStore
+	isPublicIndex bool
 }
 
 type RemoteNamespaceOptions struct {
-	Store      api.RemoteStore
-	HeadCache  api.HeadCache
-	IndexCache api.IndexCache
-	KeyStore   api.KeyStore
+	Store         api.RemoteStore
+	HeadCache     api.HeadCache
+	IndexCache    api.IndexCache
+	KeyStore      api.KeyStore
+	IsPublicIndex bool
 }
 
 func MakeRemoteNamespace(options RemoteNamespaceOptions) api.RemoteNamespaceTree {
@@ -133,24 +135,42 @@ func (rn *remoteNamespace) Close() {
 	close(rn.indexTube)
 }
 
-func (rn *remoteNamespace) Replicate(peerAddr crdt.IPFSPath, kvq api.KvQuery) {
-	runner := api.APIResponderFunc(func() api.APIResponse { return rn.joinPeerIndex(peerAddr) })
+func (rn *remoteNamespace) Replicate(links []crdt.Link, kvq api.KvQuery) {
+	runner := api.APIResponderFunc(func() api.APIResponse { return rn.joinPeerIndex(links) })
 	response := runner.RunQuery()
 	kvq.WriteResponse(response)
 }
 
-func (rn *remoteNamespace) joinPeerIndex(peerAddr crdt.IPFSPath) api.APIResponse {
+func (rn *remoteNamespace) joinPeerIndex(links []crdt.Link) api.APIResponse {
 	const failMsg = "remoteNamespace.joinPeerIndex failed"
 	failResponse := api.RESPONSE_FAIL
 
-	theirIndex, theirErr := rn.loadIndex(peerAddr)
+	keys := rn.keyStore.GetAllPublicKeys()
 
-	if theirErr != nil {
-		failResponse.Err = errors.Wrap(theirErr, failMsg)
-		return failResponse
+	joined := crdt.EmptyIndex()
+
+	for _, link := range links {
+		if rn.isPublicIndex {
+			isVerified := link.IsVerifiedByAny(keys)
+			if !isVerified {
+				log.Warn("Skipping unverified Index Link")
+				continue
+			}
+		}
+
+		peerAddr := link.Path
+
+		theirIndex, theirErr := rn.loadIndex(peerAddr)
+
+		if theirErr != nil {
+			log.Error("Failed to replicate Index at: %v", peerAddr)
+			continue
+		}
+
+		joined = joined.JoinIndex(theirIndex)
 	}
 
-	_, perr := rn.insertIndex(theirIndex)
+	_, perr := rn.insertIndex(joined)
 
 	if perr != nil {
 		failResponse.Err = errors.Wrap(perr, failMsg)
