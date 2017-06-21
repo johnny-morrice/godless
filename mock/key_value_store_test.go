@@ -148,16 +148,14 @@ func TestRunQueryReadSuccess(t *testing.T) {
 func validateResponseCh(t *testing.T, respch <-chan api.APIResponse) api.APIResponse {
 	timeout := time.NewTimer(__TEST_TIMEOUT)
 
-	for {
-		select {
-		case <-timeout.C:
-			t.Error("Timeout reading response")
-			t.FailNow()
-			return api.APIResponse{}
-		case r := <-respch:
-			timeout.Stop()
-			return r
-		}
+	select {
+	case <-timeout.C:
+		t.Error("Timeout reading response")
+		t.FailNow()
+		return api.APIResponse{}
+	case r := <-respch:
+		timeout.Stop()
+		return r
 	}
 }
 

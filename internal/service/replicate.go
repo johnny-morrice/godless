@@ -70,11 +70,11 @@ func (p2p replicator) publishAllTopics() {
 
 	ticker := time.NewTicker(p2p.interval)
 	defer ticker.Stop()
-LOOP:
+
 	for {
 		select {
 		case <-p2p.stopch:
-			break LOOP
+			break
 		case <-ticker.C:
 			p2p.publishIndex()
 		}
@@ -84,27 +84,29 @@ LOOP:
 func (p2p replicator) publishIndex() {
 	log.Info("Publishing index...")
 
-	addr, reflectErr := p2p.sendReflectRequest()
+	resp, reflectErr := p2p.sendReflectRequest()
 
 	if reflectErr != nil {
 		log.Error("Failed to reflect for index address: %v", reflectErr)
 		return
 	}
 
-	head := crdt.IPFSPath(addr.ReflectResponse.Path)
+	head := crdt.IPFSPath(resp.ReflectResponse.Path)
 
+	// API should do this for its HEAD.
 	privKeys := p2p.keyStore.GetAllPrivateKeys()
 
 	link, signErr := crdt.SignedLink(head, privKeys)
 
 	if signErr != nil {
 		log.Error("Failed to sign Index Link (%v): %v", head, signErr.Error())
+		return
 	}
 
 	publishErr := p2p.store.PublishAddr(link, p2p.topics)
 
 	if publishErr != nil {
-		log.Error("Failed to publish index: %v", publishErr.Error())
+		log.Error("Failed to publish index to all topics: %v", publishErr.Error())
 		return
 	}
 
@@ -112,6 +114,7 @@ func (p2p replicator) publishIndex() {
 }
 
 func (p2p replicator) sendReflectRequest() (api.APIResponse, error) {
+	log.Info("Replicator getting HEAD from API...")
 	failResp := api.RESPONSE_FAIL
 	failResp.Type = api.API_REFLECT
 
@@ -127,6 +130,8 @@ func (p2p replicator) sendReflectRequest() (api.APIResponse, error) {
 	if resp.Err != nil {
 		return resp, resp.Err
 	}
+
+	log.Info("Replicator got HEAD at %v", resp.ReflectResponse.Path)
 
 	return resp, nil
 }
@@ -161,12 +166,18 @@ func (batch *subscriptionBatch) update(link crdt.Link) {
 
 	select {
 	case <-batch.ticker.C:
+		log.Debug("Dispatching subscription batch")
 		request := api.APIRequest{Type: api.API_REPLICATE, Replicate: batch.batch}
 		batch.reset()
 		go func() {
 			batch.p2p.api.Call(request)
 		}()
+		return
+	default:
+		break
 	}
+
+	log.Debug("Appended Link to subscriptionBatch")
 }
 
 func (batch *subscriptionBatch) stop() {
@@ -185,27 +196,29 @@ func (p2p replicator) subscribeTopic(topic api.PubSubTopic) {
 		p2p:    p2p,
 	}
 
+	log.Info("Dispatching subscription updates every: %v", p2p.interval)
+
 	go func() {
-		defer batch.stop()
-	LOOP:
 		for {
+			defer batch.stop()
 			select {
 			case head, present := <-headch:
 				if !present {
-					break LOOP
+					return
 				}
 
 				batch.update(head)
 			case err, present := <-errch:
 				if !present {
-					break LOOP
+					break
 				}
 				log.Info("Subscription error: %v", err)
-				break LOOP
+				return
 			case <-p2p.stopch:
-				break LOOP
+				return
 			}
 		}
+
 	}()
 }
 

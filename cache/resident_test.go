@@ -11,6 +11,7 @@ import (
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/internal/testutil"
 	"github.com/johnny-morrice/godless/log"
+	"github.com/pkg/errors"
 )
 
 func TestResidentHeadCacheConcurrency(t *testing.T) {
@@ -137,7 +138,11 @@ func TestResidentPriorityQueueDrain(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			queue.Enqueue(__REFLECT_REQUEST, head)
+			fullErr := errors.New("try again")
+			for fullErr != nil {
+				fullErr = queue.Enqueue(__REFLECT_REQUEST, head)
+			}
+
 		}()
 	}
 

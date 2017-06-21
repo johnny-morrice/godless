@@ -122,6 +122,7 @@ func (peer *IPFSPeer) Connect() error {
 	}
 
 	if peer.Client == nil {
+		log.Info("Using default HTTP client")
 		peer.Client = http.DefaultBackendClient()
 	}
 
@@ -175,11 +176,15 @@ func (peer *IPFSPeer) PublishAddr(addr crdt.Link, topics []api.PubSubTopic) erro
 
 	for _, t := range topics {
 		topicText := string(t)
-		err := peer.Shell.PubSubPublish(topicText, string(publishValue))
+		log.Info("Publishing to topic: %v", t)
+		pubsubErr := peer.Shell.PubSubPublish(topicText, string(publishValue))
 
-		if err != nil {
-			return errors.Wrap(err, failMsg)
+		if pubsubErr != nil {
+			log.Warn("Pubsub failed (topic %v): %v", t, pubsubErr.Error())
+			continue
 		}
+
+		log.Info("Published to topic: %v", t)
 	}
 
 	return nil
@@ -211,21 +216,22 @@ func (peer *IPFSPeer) SubscribeAddrStream(topic api.PubSubTopic) (<-chan crdt.Li
 		var subscription *ipfs.PubSubSubscription
 
 	RESTART:
-		for subscription == nil {
+		for {
 			var launchErr error
-			log.Info("(Re)starting subscription")
+			log.Info("(Re)starting subscription on %v", topic)
 			subscription, launchErr = peer.Shell.PubSubSubscribe(topicText)
 
 			if launchErr != nil {
 				log.Error("Subcription launch failed, retrying: %v", launchErr.Error())
+				continue
 			}
 
 			for {
-				log.Info("Fetching next subscription message...")
+				log.Info("Fetching next subscription message on %v...", topic)
 				record, recordErr := subscription.Next()
 
 				if recordErr != nil {
-					log.Error("Subscription read failed, continuing: %v", recordErr.Error())
+					log.Error("Subscription read failed (topic %v), continuing: %v", topic, recordErr.Error())
 					continue RESTART
 				}
 
@@ -234,7 +240,7 @@ func (peer *IPFSPeer) SubscribeAddrStream(topic api.PubSubTopic) (<-chan crdt.Li
 				addr, err := crdt.ParseLink(crdt.LinkText(bs))
 
 				if err != nil {
-					log.Warn("Bad link from peer: %v", pubsubPeer)
+					log.Warn("Bad link from peer (topic %v): %v", topic, pubsubPeer)
 					continue
 				}
 

@@ -145,6 +145,8 @@ func (rn *remoteNamespace) joinPeerIndex(links []crdt.Link) api.APIResponse {
 	const failMsg = "remoteNamespace.joinPeerIndex failed"
 	failResponse := api.RESPONSE_FAIL
 
+	log.Info("Replicating peer indices...")
+
 	keys := rn.keyStore.GetAllPublicKeys()
 
 	joined := crdt.EmptyIndex()
@@ -152,12 +154,14 @@ func (rn *remoteNamespace) joinPeerIndex(links []crdt.Link) api.APIResponse {
 	someFailed := false
 	for _, link := range links {
 		if rn.isPublicIndex {
+			log.Info("Verifying link...")
 			isVerified := link.IsVerifiedByAny(keys)
 			if !isVerified {
 				log.Warn("Skipping unverified Index Link")
 				someFailed = true
 				continue
 			}
+			log.Info("Verified link: %v", link.Path)
 		}
 
 		peerAddr := link.Path
@@ -173,9 +177,10 @@ func (rn *remoteNamespace) joinPeerIndex(links []crdt.Link) api.APIResponse {
 		joined = joined.JoinIndex(theirIndex)
 	}
 
-	_, perr := rn.insertIndex(joined)
+	indexAddr, perr := rn.insertIndex(joined)
 
 	if perr != nil {
+		log.Error("Index replication failed")
 		failResponse.Err = errors.Wrap(perr, failMsg)
 		return failResponse
 	}
@@ -185,6 +190,8 @@ func (rn *remoteNamespace) joinPeerIndex(links []crdt.Link) api.APIResponse {
 	if someFailed {
 		resp.Msg = "Update ok with load failures"
 	}
+
+	log.Info("Index replicated to: %v", indexAddr)
 
 	return resp
 }
@@ -407,14 +414,11 @@ func (rn *remoteNamespace) namespaceLoader(addrs []crdt.Link) (<-chan crdt.Names
 			}
 
 			log.Info("Catted namespace from: %v", a)
-		LOOP:
-			for {
-				select {
-				case <-cancelch:
-					return
-				case nsch <- namespace:
-					break LOOP
-				}
+			select {
+			case <-cancelch:
+				return
+			case nsch <- namespace:
+				break
 			}
 		}
 	}()

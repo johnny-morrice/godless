@@ -192,7 +192,6 @@ func (queue *residentPriorityQueue) Enqueue(request api.APIRequest, data interfa
 		return errors.Wrap(err, "residentPriorityQueue.Enqueue failed")
 	}
 
-	queue.lockResource()
 	queue.Lock()
 	defer queue.Unlock()
 
@@ -200,12 +199,13 @@ func (queue *residentPriorityQueue) Enqueue(request api.APIRequest, data interfa
 		spot := &queue.buff[i]
 		if !spot.populated {
 			*spot = item
+			queue.lockResource()
 			return nil
 		}
 	}
 	log.Debug("Queued request.")
 
-	return corruptBuffer
+	return fullQueue
 }
 
 func (queue *residentPriorityQueue) Drain() <-chan interface{} {
@@ -214,21 +214,19 @@ func (queue *residentPriorityQueue) Drain() <-chan interface{} {
 		for {
 			popch := queue.waitForPop()
 
-			for {
-				select {
-				case queuePop := <-popch:
-					if queuePop.err != nil {
-						log.Error("Error draining residentPriorityQueue: %v", queuePop.err)
-						close(queue.datach)
-						return
-					}
-
-					queue.datach <- queuePop.data
-					continue LOOP
-				case <-queue.stopper:
+			select {
+			case queuePop := <-popch:
+				if queuePop.err != nil {
+					log.Error("Error draining residentPriorityQueue: %v", queuePop.err.Error())
 					close(queue.datach)
 					return
 				}
+
+				queue.datach <- queuePop.data
+				continue LOOP
+			case <-queue.stopper:
+				close(queue.datach)
+				return
 			}
 
 		}
@@ -338,6 +336,7 @@ func findRequestPriority(request api.APIRequest) (residentPriority, error) {
 }
 
 var corruptBuffer error = errors.New("Corrupt residentPriorityQueue buffer")
+var fullQueue error = errors.New("Queue is full")
 
 type residentPriority uint8
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/johnny-morrice/godless/log"
 	crypto "github.com/libp2p/go-libp2p-crypto"
+	mh "github.com/multiformats/go-multihash"
 	"github.com/pkg/errors"
 )
 
@@ -32,7 +33,7 @@ func ParsePublicKey(text PublicKeyText) (PublicKey, error) {
 }
 
 func ParsePrivateKey(text PrivateKeyText) (PrivateKey, error) {
-	p2pKey, err := crypto.UnmarshalEd25519PrivateKey(text)
+	p2pKey, err := crypto.UnmarshalPrivateKey(text)
 	if err != nil {
 		return PrivateKey{}, nil
 	}
@@ -142,7 +143,7 @@ func (pub PublicKey) Equals(other PublicKey) bool {
 func (pub PublicKey) Hash() (PublicKeyHash, error) {
 	const failMsg = "PublicKey.Hash failed"
 
-	bs, err := pub.p2pKey.Hash()
+	bs, err := keyHash(pub.p2pKey)
 
 	if err != nil {
 		return nil, errors.Wrap(err, failMsg)
@@ -314,4 +315,15 @@ func (keys *KeyStore) init() {
 	if keys.pubKeyHashes == nil {
 		keys.pubKeyHashes = []PublicKeyHash{}
 	}
+}
+
+// keyHash hashes a key.
+func keyHash(k crypto.Key) ([]byte, error) {
+	kb, err := k.Bytes()
+	if err != nil {
+		return nil, err
+	}
+
+	h, _ := mh.Sum(kb, mh.SHA2_256, -1)
+	return []byte(h), nil
 }

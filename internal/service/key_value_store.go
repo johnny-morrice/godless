@@ -92,7 +92,15 @@ func (kv *keyValueStore) Call(request api.APIRequest) (<-chan api.APIResponse, e
 
 func (kv *keyValueStore) enqueue(kvq api.KvQuery) {
 	log.Info("Enqueing request...")
-	go kv.queue.Enqueue(kvq.Request, kvq)
+	go func() {
+		err := kv.queue.Enqueue(kvq.Request, kvq)
+		if err != nil {
+			log.Error("Failed to enqueue request: %v", err.Error())
+			fail := api.RESPONSE_FAIL
+			fail.Err = err
+			kvq.Response <- fail
+		}
+	}()
 }
 
 func (kv *keyValueStore) replicate(request api.APIRequest) (<-chan api.APIResponse, error) {
@@ -127,7 +135,7 @@ func (kv *keyValueStore) runQuery(request api.APIRequest) (<-chan api.APIRespons
 }
 
 func (kv *keyValueStore) reflect(request api.APIRequest) (<-chan api.APIResponse, error) {
-	log.Info("api.APIService running reflect request: %v", request.Replicate)
+	log.Info("api.APIService running reflect request: %v", request.Reflection)
 	kvq := api.MakeKvReflect(request)
 
 	kv.enqueue(kvq)

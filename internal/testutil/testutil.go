@@ -133,14 +133,12 @@ func WaitGroupTimeout(t *testing.T, wg *sync.WaitGroup, timeout time.Duration) {
 
 	timer := time.NewTimer(timeout)
 
-	for {
-		select {
-		case <-timer.C:
-			t.Error("WaitGroup timeout out after", timeout)
-			return
-		case <-done:
-			return
-		}
+	select {
+	case <-timer.C:
+		t.Error("WaitGroup timeout out after", timeout)
+		return
+	case <-done:
+		return
 	}
 }
 
