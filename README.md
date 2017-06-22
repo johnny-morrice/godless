@@ -6,9 +6,9 @@ What does that mean?
 
 Godless is a way of sharing structured data between computers without using servers or the cloud.
 
-Godless is a CRDT database, and query language, that uses [Interplanetary Filesystem](https://ipfs.io/) as a data store.
+Check [the wiki](https://github.com/johnny-morrice/godless/wiki) for a tutorial.
 
-## Demo
+## Try it!
 
 Run IPFS:
 
@@ -61,6 +61,14 @@ queryResponse: <
   >
 >
 ```
+
+## How does it work?
+
+Data is stored in a [CRDT](https://en.wikipedia.org/wiki/Conflict-free_replicated_data_type) namespace suitable for sharing between peers.  This is indexed using an another datastructure which itself is a CRDT.  Indexes and namespaces are arranged into a canonical order and saved to the [Interplanetary File System](http://ipfs.io/).  
+
+The datastructures can be reassembled at another peer by looking up the IPFS hash.  Index hashes are shared over PubSub.
+
+Crucially, data is signed using strong cryptography.  You can specify a key in your queries to sign (in joins) or verify (in selects).  This is crucial to maintaining data consistency in the face of arbitrary joins by other net users :).
 
 ## Installing
 
