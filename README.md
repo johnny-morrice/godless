@@ -78,6 +78,8 @@ Godless is currently in alpha stage for Linux only.
 
 Check out the [releases page](https://github.com/johnny-morrice/godless/releases).
 
+Download signatures from [teoma.org.uk](https://teoma.org.uk/godless.html).
+
 ### For Golang programmers
 
 ```
