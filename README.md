@@ -1,6 +1,10 @@
 # Godless
 
-A toy distributed database for the future internet.
+A toy peer-to-peer database for the future internet.
+
+What does that mean?
+
+Godless is a way of sharing structured data between computers without using servers or the cloud.
 
 Godless is a CRDT database, and query language, that uses [Interplanetary Filesystem](https://ipfs.io/) as a data store.
 
