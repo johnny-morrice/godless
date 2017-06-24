@@ -90,15 +90,15 @@ func RandLettersRange(rand *rand.Rand, min, max int) string {
 func RandStr(rand *rand.Rand, elements string, min, max int) string {
 	count := rand.Intn(max - min)
 	count += min
-	parts := make([]string, count)
+	parts := make([]byte, count)
 
 	for i := 0; i < count; i++ {
 		index := rand.Intn(len(elements))
 		b := elements[index]
-		parts[i] = string([]byte{b})
+		parts[i] = b
 	}
 
-	return strings.Join(parts, "")
+	return string(parts)
 }
 
 func Trim(err error) string {
