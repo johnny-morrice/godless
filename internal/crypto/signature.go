@@ -82,6 +82,18 @@ func (sig Signature) TextLess(other Signature) bool {
 }
 
 func (sig Signature) Cmp(other Signature) int {
+	if sig.sig == nil && other.sig != nil {
+		return -1
+	}
+
+	if sig.sig != nil && other.sig == nil {
+		return 1
+	}
+
+	if sig.sig == nil && other.sig == nil {
+		return 0
+	}
+
 	return bytes.Compare(sig.sig, other.sig)
 }
 
