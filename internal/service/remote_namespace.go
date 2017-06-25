@@ -98,7 +98,7 @@ func (rn *remoteNamespace) memoryImageWriteLoop() {
 		index, err := rn.MemoryImage.JoinAllIndices()
 
 		if err != nil {
-			log.Error("Error writing MemoryImage: %v", err.Error())
+			log.Error("Error joining MemoryImage indices: %v", err.Error())
 			continue
 		}
 
@@ -457,8 +457,8 @@ func (rn *remoteNamespace) namespaceLoader(addrs []crdt.Link) (<-chan crdt.Names
 			namespace, err := rn.Store.CatNamespace(a.Path)
 
 			if err != nil {
-				log.Error("remoteNamespace.namespaceLoader failed: %v", err)
-				return
+				log.Error("remoteNamespace.namespaceLoader failed to CatNamespace: %v", err)
+				continue
 			}
 
 			log.Info("Catted namespace from: %v", a)
