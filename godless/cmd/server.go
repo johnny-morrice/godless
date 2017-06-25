@@ -22,6 +22,7 @@ package cmd
 
 import (
 	"os"
+	"runtime"
 	"time"
 
 	lib "github.com/johnny-morrice/godless"
@@ -86,10 +87,11 @@ func shutdown(godless *lib.Godless) {
 func init() {
 	storeCmd.AddCommand(serveCmd)
 
+	defaultLimit := runtime.NumCPU()
 	serveCmd.PersistentFlags().StringVar(&addr, "address", "localhost:8085", "Listen address for server")
 	serveCmd.PersistentFlags().DurationVar(&interval, "interval", time.Minute*1, "Interval between replications")
 	serveCmd.PersistentFlags().BoolVar(&earlyConnect, "early", false, "Early check on IPFS API access")
-	serveCmd.PersistentFlags().IntVar(&apiQueryLimit, "limit", 1, "Number of simulataneous queries run by the API. limit < 0 for no restrictions.")
+	serveCmd.PersistentFlags().IntVar(&apiQueryLimit, "limit", defaultLimit, "Number of simulataneous queries run by the API. limit < 0 for no restrictions.")
 	serveCmd.PersistentFlags().BoolVar(&publicServer, "public", false, "Don't limit pubsub updates to the public key list")
 	serveCmd.PersistentFlags().DurationVar(&serverTimeout, "timeout", time.Minute, "Timeout for serverside HTTP queries")
 }
