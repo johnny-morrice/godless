@@ -109,7 +109,7 @@ func (rn *remoteNamespace) memoryImageWriteLoop() {
 			continue
 		}
 
-		log.Info("Added MemoryImage Index to IPFS at %v", path)
+		log.Info("Added MemoryImage Index to IPFS at: %v", path)
 		err = rn.setHead(path)
 
 		if err != nil {
@@ -339,7 +339,9 @@ func (rn *remoteNamespace) dumpReflectNamespaces() api.APIResponse {
 		everything = everything.JoinNamespace(ns)
 		return api.TraversalUpdate{More: true}
 	})
+
 	searcher := api.SignedTableSearcher{
+		Keys:   rn.KeyStore.GetAllPublicKeys(),
 		Reader: lambda,
 		Tables: index.AllTables(),
 	}
