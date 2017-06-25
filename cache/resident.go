@@ -22,19 +22,35 @@ type residentMemoryImage struct {
 func (memimg *residentMemoryImage) PushIndex(index crdt.Index) error {
 	memimg.Lock()
 	defer memimg.Unlock()
-	panic("not implemented")
+
+	memimg.extra = append(memimg.extra, index)
+	return nil
 }
 
-func (memimg *residentMemoryImage) ForeachIndex(func(index crdt.Index)) error {
+func (memimg *residentMemoryImage) ForeachIndex(f func(index crdt.Index)) error {
 	memimg.RLock()
 	defer memimg.RUnlock()
-	panic("not implemented")
+
+	if !memimg.joined.IsEmpty() {
+		f(memimg.joined)
+	}
+
+	for _, index := range memimg.extra {
+		f(index)
+	}
+
+	return nil
 }
 
 func (memimg *residentMemoryImage) JoinAllIndices() (crdt.Index, error) {
 	defer memimg.Unlock()
 	memimg.Lock()
-	panic("not implemented")
+
+	for _, index := range memimg.extra {
+		memimg.joined = memimg.joined.JoinIndex(index)
+	}
+
+	return memimg.joined, nil
 }
 
 // MakeResidentMemoryImage makes an non-ACID api.MemoryImage implementation that is only suitable for tests.
