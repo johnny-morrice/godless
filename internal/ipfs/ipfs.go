@@ -277,7 +277,7 @@ func (peer *IPFSPeer) AddIndex(index crdt.Index) (crdt.IPFSPath, error) {
 }
 
 func (peer *IPFSPeer) CatIndex(addr crdt.IPFSPath) (crdt.Index, error) {
-	log.Info("Catting index from IPFS...")
+	log.Info("Catting index from IPFS at: %v ...", addr)
 
 	if verr := peer.validateShell(); verr != nil {
 		return crdt.EmptyIndex(), verr
@@ -316,7 +316,7 @@ func (peer *IPFSPeer) AddNamespace(namespace crdt.Namespace) (crdt.IPFSPath, err
 }
 
 func (peer *IPFSPeer) CatNamespace(addr crdt.IPFSPath) (crdt.Namespace, error) {
-	log.Info("Catting namespace from IPFS...")
+	log.Info("Catting namespace from IPFS at: %v ...", addr)
 
 	if verr := peer.validateShell(); verr != nil {
 		return crdt.EmptyNamespace(), verr
