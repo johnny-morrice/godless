@@ -22,6 +22,11 @@ type IndexCache interface {
 	SetIndex(indexAddr crdt.IPFSPath, index crdt.Index) error
 }
 
+type NamespaceCache interface {
+	GetNamespace(namespaceAddr crdt.IPFSPath) (crdt.Namespace, error)
+	SetNamespace(namespaceAddr crdt.IPFSPath, namespace crdt.Namespace) error
+}
+
 type KeyStore interface {
 	PutPrivateKey(priv crypto.PrivateKey) error
 	GetPrivateKey(hash crypto.PublicKeyHash) (crypto.PrivateKey, error)
