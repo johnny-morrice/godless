@@ -22,7 +22,6 @@ type residentMemoryImage struct {
 func (memimg *residentMemoryImage) PushIndex(index crdt.Index) error {
 	memimg.Lock()
 	defer memimg.Unlock()
-	log.Debug("PushIndex")
 
 	memimg.extra = append(memimg.extra, index)
 	return nil
@@ -31,7 +30,6 @@ func (memimg *residentMemoryImage) PushIndex(index crdt.Index) error {
 func (memimg *residentMemoryImage) ForeachIndex(f func(index crdt.Index)) error {
 	memimg.RLock()
 	defer memimg.RUnlock()
-	log.Debug("ForeachIndex")
 
 	if !memimg.joined.IsEmpty() {
 		f(memimg.joined)
@@ -47,11 +45,12 @@ func (memimg *residentMemoryImage) ForeachIndex(f func(index crdt.Index)) error 
 func (memimg *residentMemoryImage) JoinAllIndices() (crdt.Index, error) {
 	defer memimg.Unlock()
 	memimg.Lock()
-	log.Debug("JoinAllIndices")
 
 	for _, index := range memimg.extra {
 		memimg.joined = memimg.joined.JoinIndex(index)
 	}
+
+	memimg.extra = memimg.extra[:0]
 
 	return memimg.joined, nil
 }
