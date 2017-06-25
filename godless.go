@@ -200,6 +200,7 @@ func (godless *Godless) setupNamespace() error {
 		IndexCache:    indexCache,
 		KeyStore:      godless.KeyStore,
 		IsPublicIndex: godless.PublicServer,
+		MemoryImage:   cache.MakeResidentMemoryImage(),
 	}
 
 	godless.remote = service.MakeRemoteNamespace(namespaceOptions)

@@ -64,8 +64,10 @@ func TestKeyValueStoreITCase(t *testing.T) {
 
 	mock.EXPECT().AddIndex(gomock.Any()).MinTimes(1).Return(addrIndex, nil)
 	mock.EXPECT().AddNamespace(gomock.Any()).MinTimes(1).Return(namespaceAddr, nil)
-	mock.EXPECT().CatIndex(gomock.Any()).MinTimes(1).Return(index, nil)
 	mock.EXPECT().CatNamespace(gomock.Any()).MinTimes(1).Return(crdt.EmptyNamespace(), nil)
+
+	// No index catting with memoryImage
+	// mock.EXPECT().CatIndex(gomock.Any()).MinTimes(1).Return(index, nil)
 
 	go func() {
 		defer api.CloseAPI()

@@ -10,12 +10,59 @@ import (
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/internal/testutil"
-	"github.com/johnny-morrice/godless/log"
 	"github.com/pkg/errors"
 )
 
+func TestResidentMemoryImageConcurrency(t *testing.T) {
+	const count = __CONCURRENCY_LEVEL / 30
+
+	memimg := MakeResidentMemoryImage()
+	indices := genIndices(count)
+
+	wg := &sync.WaitGroup{}
+	for _, idx := range indices {
+		index := idx
+		wg.Add(3)
+		go func() {
+			err := memimg.PushIndex(index)
+			testutil.AssertNil(t, err)
+			wg.Done()
+		}()
+		go func() {
+			_, err := memimg.JoinAllIndices()
+			testutil.AssertNil(t, err)
+			wg.Done()
+		}()
+		go func() {
+			err := memimg.ForeachIndex(func(index crdt.Index) {
+				if index.IsEmpty() {
+					t.Error("Unexpected empty index")
+				}
+			})
+
+			testutil.AssertNil(t, err)
+			wg.Done()
+		}()
+	}
+
+	const timeout = time.Second * 2
+	testutil.WaitGroupTimeout(t, wg, timeout)
+}
+
+func TestResidentMemoryImagePushIndex(t *testing.T) {
+	t.FailNow()
+}
+
+func TestResidentMemoryImageForeachIndex(t *testing.T) {
+	t.FailNow()
+}
+
+func TestResidentMemoryImageJoinAllIndices(t *testing.T) {
+	t.FailNow()
+}
+
 func TestResidentHeadCacheConcurrency(t *testing.T) {
-	headCount := __CONCURRENCY_LEVEL
+	const headCount = __CONCURRENCY_LEVEL
 	heads := genHeads(headCount)
 
 	cache := MakeResidentHeadCache()
@@ -55,7 +102,7 @@ func TestResidentHeadCacheGetSet(t *testing.T) {
 }
 
 func TestResidentIndexCacheConcurrency(t *testing.T) {
-	count := __CONCURRENCY_LEVEL / 2
+	const count = __CONCURRENCY_LEVEL / 2
 
 	heads := genHeads(count)
 	indices := genIndices(count)
@@ -152,7 +199,6 @@ func TestResidentPriorityQueueDrain(t *testing.T) {
 		defer wg.Done()
 		drainCount := 0
 		for head := range queue.Drain() {
-			log.Debug("Drained")
 			drainCount++
 			found := false
 			for _, inputHead := range heads {
@@ -165,7 +211,6 @@ func TestResidentPriorityQueueDrain(t *testing.T) {
 			}
 
 			if drainCount >= dataLength {
-				log.Debug("Closed queue")
 				queue.Close()
 			}
 		}

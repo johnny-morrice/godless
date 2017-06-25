@@ -1,6 +1,9 @@
 package service
 
 import (
+	"strings"
+	"time"
+
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/internal/eval"
@@ -42,6 +45,7 @@ type remoteNamespace struct {
 	RemoteNamespaceOptions
 	namespaceTube chan addNamespace
 	indexTube     chan addIndex
+	pulser        *time.Ticker
 }
 
 type RemoteNamespaceOptions struct {
@@ -51,20 +55,71 @@ type RemoteNamespaceOptions struct {
 	IndexCache    api.IndexCache
 	KeyStore      api.KeyStore
 	IsPublicIndex bool
+	Pulse         time.Duration
 }
 
 func MakeRemoteNamespace(options RemoteNamespaceOptions) api.RemoteNamespaceTree {
+	pulseInterval := options.Pulse
+	if pulseInterval == 0 {
+		pulseInterval = __DEFAULT_PULSE
+	}
+
+	requiredOptions := []interface{}{
+		options.Store,
+		options.HeadCache,
+		options.MemoryImage,
+		options.IndexCache,
+		options.KeyStore,
+	}
+
+	for _, req := range requiredOptions {
+		if req == nil {
+			panic("required RemoteNamespaceOption item was nil")
+		}
+	}
+
 	remote := &remoteNamespace{
 		RemoteNamespaceOptions: options,
 		namespaceTube:          make(chan addNamespace),
 		indexTube:              make(chan addIndex),
+		pulser:                 time.NewTicker(pulseInterval),
 	}
-	go remote.AddNamespaces()
-	go remote.AddIndices()
+
+	go remote.addNamespaces()
+	go remote.addIndices()
+	go remote.memoryImageWriteLoop()
+
 	return remote
 }
 
-func (rn *remoteNamespace) AddNamespaces() {
+func (rn *remoteNamespace) memoryImageWriteLoop() {
+	for {
+		<-rn.pulser.C
+		index, err := rn.MemoryImage.JoinAllIndices()
+
+		if err != nil {
+			log.Error("Error writing MemoryImage: %v", err.Error())
+			continue
+		}
+
+		path, err := rn.persistIndex(index)
+
+		if err != nil {
+			log.Error("Error saving MemoryImage to IPFS: %v", err.Error())
+			continue
+		}
+
+		log.Info("Added MemoryImage Index to IPFS at %v", path)
+		err = rn.setHead(path)
+
+		if err != nil {
+			log.Error("Failed to update HEAD cache")
+			continue
+		}
+	}
+}
+
+func (rn *remoteNamespace) addNamespaces() {
 	for tubeItem := range rn.namespaceTube {
 		add := tubeItem
 		go func() {
@@ -74,42 +129,38 @@ func (rn *remoteNamespace) AddNamespaces() {
 	}
 }
 
-func (rn *remoteNamespace) AddIndices() {
+func (rn *remoteNamespace) addIndices() {
 	for tubeItem := range rn.indexTube {
-		add := tubeItem
-		index := crdt.EmptyIndex()
+		addRequest := tubeItem
+		go func() {
+			index := addRequest.index
 
-		head, headErr := rn.getHead()
+			errch := make(chan error, 1)
 
-		if headErr != nil {
-			add.reply(crdt.NIL_PATH, headErr)
-		}
+			go func() {
+				err := rn.MemoryImage.PushIndex(index)
+				errch <- err
+			}()
 
-		if !crdt.IsNilPath(head) {
-			headIndex, loadErr := rn.loadIndex(head)
+			persistErr := <-errch
 
-			if loadErr != nil {
-				add.reply(crdt.NIL_PATH, loadErr)
-				continue
+			path, ipfsErr := rn.persistIndex(index)
+
+			if persistErr == nil {
+				persistErr = ipfsErr
+			} else if ipfsErr != nil {
+				messages := []string{persistErr.Error(), ipfsErr.Error()}
+				msg := strings.Join(messages, " and ")
+				persistErr = errors.New(msg)
 			}
 
-			index = headIndex
-		}
-
-		nextIndex := index.JoinIndex(add.index)
-		path, addErr := rn.addIndex(nextIndex)
-
-		if addErr == nil {
-			log.Info("Persisted index at: %v", path)
-			rn.setHead(path)
-		}
-
-		add.reply(path, addErr)
+			addRequest.reply(path, persistErr)
+		}()
 	}
 }
 
-func (rn *remoteNamespace) addIndex(index crdt.Index) (crdt.IPFSPath, error) {
-	const failMsg = "remoteNamespace.addIndex failed"
+func (rn *remoteNamespace) persistIndex(index crdt.Index) (crdt.IPFSPath, error) {
+	const failMsg = "remoteNamespace.persistIndex failed"
 	indexAddr, addErr := rn.Store.AddIndex(index)
 
 	if addErr != nil {
@@ -117,6 +168,7 @@ func (rn *remoteNamespace) addIndex(index crdt.Index) (crdt.IPFSPath, error) {
 	}
 
 	cacheErr := rn.IndexCache.SetIndex(indexAddr, index)
+
 	if cacheErr != nil {
 		log.Error("Failed to write index cache for: %v (%v)", indexAddr, cacheErr)
 	}
@@ -420,18 +472,17 @@ func (rn *remoteNamespace) namespaceLoader(addrs []crdt.Link) (<-chan crdt.Names
 	return nsch, cancelch
 }
 
-// Load chunks over IPFS
-// TODO opportunity to query IPFS in parallel?
 func (rn *remoteNamespace) loadCurrentIndex() (crdt.Index, error) {
-	myAddr, err := rn.getHead()
+	const failMsg = "remoteNamespace.loadCurrentIndex failed"
 
-	if err != nil {
-		return crdt.EmptyIndex(), errors.Wrap(err, "remoteNamespace.loadCurrentIndex failed")
-	} else if crdt.IsNilPath(myAddr) {
-		return crdt.EmptyIndex(), errors.New("No current index")
-	}
+	joined := crdt.EmptyIndex()
+	memImgErr := rn.MemoryImage.ForeachIndex(func(index crdt.Index) {
+		joined = joined.JoinIndex(index)
+	})
 
-	return rn.loadIndex(myAddr)
+	// TODO could fall back to GetHead on memory image failure.
+
+	return joined, errors.Wrap(memImgErr, failMsg)
 }
 
 func (rn *remoteNamespace) insertNamespace(namespace crdt.Namespace) (crdt.IPFSPath, error) {
@@ -477,3 +528,5 @@ func (rn *remoteNamespace) getHead() (crdt.IPFSPath, error) {
 func (rn *remoteNamespace) setHead(head crdt.IPFSPath) error {
 	return rn.HeadCache.SetHead(head)
 }
+
+const __DEFAULT_PULSE = time.Second * 10

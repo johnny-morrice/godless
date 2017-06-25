@@ -295,8 +295,10 @@ func TestJoinTableSuccess(t *testing.T) {
 	indexB := indexA.JoinNamespace(signedAddrB, namespaceB)
 
 	mock.EXPECT().AddNamespace(matchNamespace(namespaceB)).Return(addrB, nil)
-	mock.EXPECT().CatIndex(addrIndexA).Return(indexA, nil).MinTimes(1)
 	mock.EXPECT().AddIndex(matchIndex(indexB)).Return(addrIndexB, nil)
+
+	// No index Catting with MemoryImage
+	// mock.EXPECT().CatIndex(addrIndexA).Return(indexA, nil).MinTimes(1)
 
 	remote := loadRemote(mock, addrIndexA)
 
@@ -418,10 +420,11 @@ func loadRemote(store api.RemoteStore, addr crdt.IPFSPath) api.RemoteNamespaceTr
 
 func remoteOptions(store api.RemoteStore, headCache api.HeadCache) service.RemoteNamespaceOptions {
 	options := service.RemoteNamespaceOptions{
-		Store:      store,
-		HeadCache:  headCache,
-		IndexCache: fakeIndexCache{},
-		KeyStore:   &crypto.KeyStore{},
+		Store:       store,
+		HeadCache:   headCache,
+		IndexCache:  fakeIndexCache{},
+		KeyStore:    &crypto.KeyStore{},
+		MemoryImage: cache.MakeResidentMemoryImage(),
 	}
 
 	return options
