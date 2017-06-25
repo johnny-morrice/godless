@@ -12,6 +12,38 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Non-ACID api.MemoryImage implementation.  For use only in tests.
+type residentMemoryImage struct {
+	joined crdt.Index
+	extra  []crdt.Index
+	sync.RWMutex
+}
+
+func (memimg *residentMemoryImage) PushIndex(index crdt.Index) error {
+	memimg.Lock()
+	defer memimg.Unlock()
+	panic("not implemented")
+}
+
+func (memimg *residentMemoryImage) ForeachIndex(func(index crdt.Index)) error {
+	memimg.RLock()
+	defer memimg.RUnlock()
+	panic("not implemented")
+}
+
+func (memimg *residentMemoryImage) JoinAllIndices() (crdt.Index, error) {
+	defer memimg.Unlock()
+	memimg.Lock()
+	panic("not implemented")
+}
+
+// MakeResidentMemoryImage makes an non-ACID api.MemoryImage implementation that is only suitable for tests.
+func MakeResidentMemoryImage() api.MemoryImage {
+	return &residentMemoryImage{
+		extra: make([]crdt.Index, 0, __DEFAULT_BUFFER_SIZE),
+	}
+}
+
 // Memcache style key value store.
 // Will drop oldest.
 type residentIndexCache struct {
