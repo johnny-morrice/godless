@@ -26,6 +26,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// TODO allow single cache option.
 // Godless options.
 type Options struct {
 	// IpfsServiceUrl is required.
@@ -50,6 +51,8 @@ type Options struct {
 	HeadCache api.HeadCache
 	// IndexCache is optional.  Build a 12-factor app by supplying your own remote cache.
 	IndexCache api.IndexCache
+	// NamespaceCache is optional. Build a 12 yadadaddada... FIXME
+	NamespaceCache api.NamespaceCache
 	// PriorityQueue is optional. Build a 12-factor app by supplying your own remote cache.
 	PriorityQueue api.RequestPriorityQueue
 	// APIQueryLimit is optional.  Tune performance by setting the number of simultaneous queries.
@@ -183,6 +186,12 @@ func (godless *Godless) setupNamespace() error {
 		indexCache = cache.MakeResidentIndexCache(__BUFFER_SIZE)
 	}
 
+	namespaceCache := godless.NamespaceCache
+
+	if namespaceCache == nil {
+		namespaceCache = cache.MakeResidentNamespaceCache(__BUFFER_SIZE)
+	}
+
 	if godless.IndexHash != "" {
 		head := crdt.IPFSPath(godless.IndexHash)
 
@@ -195,12 +204,13 @@ func (godless *Godless) setupNamespace() error {
 	}
 
 	namespaceOptions := service.RemoteNamespaceOptions{
-		Store:         godless.store,
-		HeadCache:     headCache,
-		IndexCache:    indexCache,
-		KeyStore:      godless.KeyStore,
-		IsPublicIndex: godless.PublicServer,
-		MemoryImage:   cache.MakeResidentMemoryImage(),
+		Store:          godless.store,
+		HeadCache:      headCache,
+		IndexCache:     indexCache,
+		NamespaceCache: namespaceCache,
+		KeyStore:       godless.KeyStore,
+		IsPublicIndex:  godless.PublicServer,
+		MemoryImage:    cache.MakeResidentMemoryImage(),
 	}
 
 	godless.remote = service.MakeRemoteNamespace(namespaceOptions)

@@ -49,13 +49,14 @@ type remoteNamespace struct {
 }
 
 type RemoteNamespaceOptions struct {
-	Store         api.RemoteStore
-	HeadCache     api.HeadCache
-	MemoryImage   api.MemoryImage
-	IndexCache    api.IndexCache
-	KeyStore      api.KeyStore
-	IsPublicIndex bool
-	Pulse         time.Duration
+	Store          api.RemoteStore
+	HeadCache      api.HeadCache
+	MemoryImage    api.MemoryImage
+	IndexCache     api.IndexCache
+	NamespaceCache api.NamespaceCache
+	KeyStore       api.KeyStore
+	IsPublicIndex  bool
+	Pulse          time.Duration
 }
 
 func MakeRemoteNamespace(options RemoteNamespaceOptions) api.RemoteNamespaceTree {
@@ -454,7 +455,7 @@ func (rn *remoteNamespace) namespaceLoader(addrs []crdt.Link) (<-chan crdt.Names
 	go func() {
 		defer close(nsch)
 		for _, a := range addrs {
-			namespace, err := rn.Store.CatNamespace(a.Path)
+			namespace, err := rn.loadNamespace(a.Path)
 
 			if err != nil {
 				log.Error("remoteNamespace.namespaceLoader failed to CatNamespace: %v", err)
@@ -472,6 +473,25 @@ func (rn *remoteNamespace) namespaceLoader(addrs []crdt.Link) (<-chan crdt.Names
 	}()
 
 	return nsch, cancelch
+}
+
+func (rn *remoteNamespace) loadNamespace(namespaceAddr crdt.IPFSPath) (crdt.Namespace, error) {
+	const failMsg = "remoteNamespace.loadNamespace failed"
+
+	ns, cacheErr := rn.NamespaceCache.GetNamespace(namespaceAddr)
+
+	if cacheErr == nil {
+		return ns, nil
+	}
+
+	log.Info("Cache miss for namespace at: %v", namespaceAddr)
+	ns, remoteErr := rn.Store.CatNamespace(namespaceAddr)
+
+	if remoteErr != nil {
+		return crdt.EmptyNamespace(), errors.Wrap(remoteErr, failMsg)
+	}
+
+	return ns, nil
 }
 
 func (rn *remoteNamespace) loadCurrentIndex() (crdt.Index, error) {
