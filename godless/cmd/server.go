@@ -57,6 +57,7 @@ func serve() {
 		KeyStore:          keyStore,
 		PublicServer:      publicServer,
 		IpfsClient:        client,
+		Pulse:             pulse,
 	}
 
 	godless, err := lib.New(options)
@@ -74,6 +75,7 @@ func serve() {
 
 var addr string
 var interval time.Duration
+var pulse time.Duration
 var earlyConnect bool
 var apiQueryLimit int
 var publicServer bool
@@ -89,7 +91,8 @@ func init() {
 
 	defaultLimit := runtime.NumCPU()
 	serveCmd.PersistentFlags().StringVar(&addr, "address", "localhost:8085", "Listen address for server")
-	serveCmd.PersistentFlags().DurationVar(&interval, "interval", time.Minute*1, "Interval between replications")
+	serveCmd.PersistentFlags().DurationVar(&interval, "peerpulse", time.Minute*1, "Interval between peer replications")
+	serveCmd.PersistentFlags().DurationVar(&pulse, "pulse", time.Second, "Interval between writes to IPFS")
 	serveCmd.PersistentFlags().BoolVar(&earlyConnect, "early", false, "Early check on IPFS API access")
 	serveCmd.PersistentFlags().IntVar(&apiQueryLimit, "limit", defaultLimit, "Number of simulataneous queries run by the API. limit < 0 for no restrictions.")
 	serveCmd.PersistentFlags().BoolVar(&publicServer, "public", false, "Don't limit pubsub updates to the public key list")

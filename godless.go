@@ -41,6 +41,7 @@ type Options struct {
 	FailEarly bool
 	// ReplicateInterval is optional.  The duration between peer-to-peer replications.
 	ReplicateInterval time.Duration
+	Pulse             time.Duration
 	// Topics is optional.  Two godless servers which share a topic will replicate indices. An empty topics slice will disable replication.
 	Topics []string
 	// IpfsClient is optional.  Specify a HTTP client for IPFS.
@@ -204,6 +205,7 @@ func (godless *Godless) setupNamespace() error {
 	}
 
 	namespaceOptions := service.RemoteNamespaceOptions{
+		Pulse:          godless.Pulse,
 		Store:          godless.store,
 		HeadCache:      headCache,
 		IndexCache:     indexCache,
