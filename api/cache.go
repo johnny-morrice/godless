@@ -2,7 +2,6 @@ package api
 
 import (
 	"github.com/johnny-morrice/godless/crdt"
-	"github.com/johnny-morrice/godless/internal/crypto"
 )
 
 type HeadCache interface {
@@ -25,13 +24,4 @@ type IndexCache interface {
 type NamespaceCache interface {
 	GetNamespace(namespaceAddr crdt.IPFSPath) (crdt.Namespace, error)
 	SetNamespace(namespaceAddr crdt.IPFSPath, namespace crdt.Namespace) error
-}
-
-type KeyStore interface {
-	PutPrivateKey(priv crypto.PrivateKey) error
-	GetPrivateKey(hash crypto.PublicKeyHash) (crypto.PrivateKey, error)
-	GetAllPrivateKeys() []crypto.PrivateKey
-	GetAllPublicKeys() []crypto.PublicKey
-	PutPublicKey(pub crypto.PublicKey) error
-	GetPublicKey(hash crypto.PublicKeyHash) (crypto.PublicKey, error)
 }
