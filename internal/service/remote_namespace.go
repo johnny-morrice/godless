@@ -515,6 +515,12 @@ func (rn *remoteNamespace) insertNamespace(namespace crdt.Namespace) (crdt.IPFSP
 		return crdt.NIL_PATH, errors.Wrap(result.err, failMsg)
 	}
 
+	cacheErr := rn.NamespaceCache.SetNamespace(result.path, namespace)
+
+	if cacheErr != nil {
+		log.Error("Failed to write to namespace cache at: %v (%v)", result.path, cacheErr)
+	}
+
 	return result.path, nil
 }
 
