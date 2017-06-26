@@ -95,7 +95,7 @@ func MakeRemoteNamespace(options RemoteNamespaceOptions) api.RemoteNamespaceTree
 func (rn *remoteNamespace) memoryImageWriteLoop() {
 	for {
 		<-rn.pulser.C
-		index, err := rn.MemoryImage.JoinAllIndices()
+		index, err := rn.MemoryImage.GetIndex()
 
 		if err != nil {
 			log.Error("Error joining MemoryImage indices: %v", err.Error())
@@ -138,7 +138,7 @@ func (rn *remoteNamespace) addIndices() {
 			errch := make(chan error, 1)
 
 			go func() {
-				err := rn.MemoryImage.PushIndex(index)
+				err := rn.MemoryImage.JoinIndex(index)
 				errch <- err
 			}()
 
@@ -477,14 +477,11 @@ func (rn *remoteNamespace) namespaceLoader(addrs []crdt.Link) (<-chan crdt.Names
 func (rn *remoteNamespace) loadCurrentIndex() (crdt.Index, error) {
 	const failMsg = "remoteNamespace.loadCurrentIndex failed"
 
-	joined := crdt.EmptyIndex()
-	memImgErr := rn.MemoryImage.ForeachIndex(func(index crdt.Index) {
-		joined = joined.JoinIndex(index)
-	})
+	index, err := rn.MemoryImage.GetIndex()
 
-	// TODO could fall back to GetHead on memory image failure.
+	// TODO fall back to GetHead on memory image failure.
 
-	return joined, errors.Wrap(memImgErr, failMsg)
+	return index, errors.Wrap(err, failMsg)
 }
 
 func (rn *remoteNamespace) insertNamespace(namespace crdt.Namespace) (crdt.IPFSPath, error) {

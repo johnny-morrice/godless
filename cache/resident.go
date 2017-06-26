@@ -15,51 +15,26 @@ import (
 // Non-ACID api.MemoryImage implementation.  For use only in tests.
 type residentMemoryImage struct {
 	joined crdt.Index
-	extra  []crdt.Index
-	sync.RWMutex
+	sync.Mutex
 }
 
-func (memimg *residentMemoryImage) PushIndex(index crdt.Index) error {
+func (memimg *residentMemoryImage) JoinIndex(index crdt.Index) error {
 	memimg.Lock()
 	defer memimg.Unlock()
 
-	memimg.extra = append(memimg.extra, index)
+	memimg.joined = memimg.joined.JoinIndex(index)
 	return nil
 }
 
-func (memimg *residentMemoryImage) ForeachIndex(f func(index crdt.Index)) error {
-	memimg.RLock()
-	defer memimg.RUnlock()
-
-	if !memimg.joined.IsEmpty() {
-		f(memimg.joined)
-	}
-
-	for _, index := range memimg.extra {
-		f(index)
-	}
-
-	return nil
-}
-
-func (memimg *residentMemoryImage) JoinAllIndices() (crdt.Index, error) {
-	defer memimg.Unlock()
+func (memimg *residentMemoryImage) GetIndex() (crdt.Index, error) {
 	memimg.Lock()
-
-	for _, index := range memimg.extra {
-		memimg.joined = memimg.joined.JoinIndex(index)
-	}
-
-	memimg.extra = memimg.extra[:0]
-
+	memimg.Unlock()
 	return memimg.joined, nil
 }
 
 // MakeResidentMemoryImage makes an non-ACID api.MemoryImage implementation that is only suitable for tests.
 func MakeResidentMemoryImage() api.MemoryImage {
-	return &residentMemoryImage{
-		extra: make([]crdt.Index, 0, __DEFAULT_BUFFER_SIZE),
-	}
+	return &residentMemoryImage{joined: crdt.EmptyIndex()}
 }
 
 // Memcache style key value store.

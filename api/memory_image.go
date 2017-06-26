@@ -5,7 +5,6 @@ import (
 )
 
 type MemoryImage interface {
-	PushIndex(index crdt.Index) error
-	ForeachIndex(func(index crdt.Index)) error
-	JoinAllIndices() (crdt.Index, error)
+	JoinIndex(index crdt.Index) error
+	GetIndex() (crdt.Index, error)
 }
