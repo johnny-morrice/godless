@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 	"time"
+	"unsafe"
 
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
@@ -37,22 +38,77 @@ func MakeResidentMemoryImage() api.MemoryImage {
 	return &residentMemoryImage{joined: crdt.EmptyIndex()}
 }
 
-// Memcache style key value store.
-// Will drop oldest.
+type residentNamespaceCache struct {
+	*kvCache
+}
+
+func MakeResidentNamespaceCache(buffSize int) api.NamespaceCache {
+	return residentNamespaceCache{kvCache: makeKvCache(buffSize)}
+}
+
+func (cache residentNamespaceCache) SetNamespace(addr crdt.IPFSPath, namespace crdt.Namespace) error {
+	ptr := unsafe.Pointer(&namespace)
+	return cache.set(addr, ptr)
+}
+
+func (cache residentNamespaceCache) GetNamespace(addr crdt.IPFSPath) (crdt.Namespace, error) {
+	ptr, err := cache.get(addr)
+
+	if err != nil {
+		return crdt.EmptyNamespace(), nil
+	}
+
+	namespacePtr := (*crdt.Namespace)(ptr)
+	return *namespacePtr, nil
+}
+
 type residentIndexCache struct {
-	sync.RWMutex
-	buff  []indexCacheItem
-	assoc map[crdt.IPFSPath]*indexCacheItem
+	*kvCache
 }
 
 func MakeResidentIndexCache(buffSize int) api.IndexCache {
+	return residentIndexCache{kvCache: makeKvCache(buffSize)}
+}
+
+func (cache residentIndexCache) SetIndex(addr crdt.IPFSPath, index crdt.Index) error {
+	ptr := unsafe.Pointer(&index)
+	return cache.set(addr, ptr)
+}
+
+func (cache residentIndexCache) GetIndex(addr crdt.IPFSPath) (crdt.Index, error) {
+	ptr, err := cache.get(addr)
+
+	if err != nil {
+		return crdt.EmptyIndex(), nil
+	}
+
+	indexPtr := (*crdt.Index)(ptr)
+	return *indexPtr, nil
+}
+
+// Memcache style key value store.
+// Will drop oldest.
+type kvCache struct {
+	sync.RWMutex
+	buff  []cacheItem
+	assoc map[crdt.IPFSPath]*cacheItem
+}
+
+type cacheItem struct {
+	key           crdt.IPFSPath
+	obj           unsafe.Pointer
+	timestamp     int64
+	nanoTimestamp int
+}
+
+func makeKvCache(buffSize int) *kvCache {
 	if buffSize <= 0 {
 		buffSize = __DEFAULT_BUFFER_SIZE
 	}
 
-	cache := &residentIndexCache{
-		buff:  make([]indexCacheItem, buffSize),
-		assoc: map[crdt.IPFSPath]*indexCacheItem{},
+	cache := &kvCache{
+		buff:  make([]cacheItem, buffSize),
+		assoc: map[crdt.IPFSPath]*cacheItem{},
 	}
 
 	cache.initBuff()
@@ -60,51 +116,44 @@ func MakeResidentIndexCache(buffSize int) api.IndexCache {
 	return cache
 }
 
-type indexCacheItem struct {
-	key           crdt.IPFSPath
-	index         crdt.Index
-	timestamp     int64
-	nanoTimestamp int
-}
-
-func (cache *residentIndexCache) initBuff() {
+func (cache *kvCache) initBuff() {
 	for i := 0; i < len(cache.buff); i++ {
 		item := &cache.buff[i]
 		item.timestamp, item.nanoTimestamp = makeTimestamp()
 	}
 }
 
-func (cache *residentIndexCache) GetIndex(indexAddr crdt.IPFSPath) (crdt.Index, error) {
+func (cache *kvCache) get(addr crdt.IPFSPath) (unsafe.Pointer, error) {
 	cache.RLock()
 	defer cache.RUnlock()
 
-	item, present := cache.assoc[indexAddr]
+	item, present := cache.assoc[addr]
 
 	if !present {
-		return crdt.EmptyIndex(), fmt.Errorf("No cached index for: %v", indexAddr)
+		return nil, fmt.Errorf("No cached item for: %v", addr)
 	}
 
-	return item.index, nil
+	return item.obj, nil
 }
 
-func (cache *residentIndexCache) SetIndex(indexAddr crdt.IPFSPath, index crdt.Index) error {
+func (cache *kvCache) set(addr crdt.IPFSPath, pointer unsafe.Pointer) error {
 	cache.Lock()
 	defer cache.Unlock()
 
-	item, present := cache.assoc[indexAddr]
+	item, present := cache.assoc[addr]
 
 	if present {
 		item.timestamp, item.nanoTimestamp = makeTimestamp()
 		return nil
 	}
 
-	return cache.addNewItem(indexAddr, index)
+	return cache.addNewItem(addr, pointer)
 }
 
-func (cache *residentIndexCache) addNewItem(indexAddr crdt.IPFSPath, index crdt.Index) error {
-	newItem := indexCacheItem{
-		key:   indexAddr,
-		index: index,
+func (cache *kvCache) addNewItem(addr crdt.IPFSPath, pointer unsafe.Pointer) error {
+	newItem := cacheItem{
+		key: addr,
+		obj: pointer,
 	}
 
 	newItem.timestamp, newItem.nanoTimestamp = makeTimestamp()
@@ -112,12 +161,12 @@ func (cache *residentIndexCache) addNewItem(indexAddr crdt.IPFSPath, index crdt.
 	bufferedItem := cache.popOldest()
 	*bufferedItem = newItem
 
-	cache.assoc[indexAddr] = bufferedItem
+	cache.assoc[addr] = bufferedItem
 	return nil
 }
 
-func (cache *residentIndexCache) popOldest() *indexCacheItem {
-	var oldest *indexCacheItem
+func (cache *kvCache) popOldest() *cacheItem {
+	var oldest *cacheItem
 
 	for i := 0; i < len(cache.buff); i++ {
 		item := &cache.buff[i]

@@ -24,21 +24,16 @@ func TestResidentMemoryImageConcurrency(t *testing.T) {
 		index := idx
 		wg.Add(3)
 		go func() {
-			err := memimg.PushIndex(index)
+			err := memimg.JoinIndex(index)
 			testutil.AssertNil(t, err)
 			wg.Done()
 		}()
+
 		go func() {
-			_, err := memimg.JoinAllIndices()
-			testutil.AssertNil(t, err)
-			wg.Done()
-		}()
-		go func() {
-			err := memimg.ForeachIndex(func(index crdt.Index) {
-				if index.IsEmpty() {
-					t.Error("Unexpected empty index")
-				}
-			})
+			index, err := memimg.GetIndex()
+			if index.IsEmpty() {
+				t.Error("Unexpected empty index")
+			}
 
 			testutil.AssertNil(t, err)
 			wg.Done()
@@ -49,15 +44,11 @@ func TestResidentMemoryImageConcurrency(t *testing.T) {
 	testutil.WaitGroupTimeout(t, wg, timeout)
 }
 
-func TestResidentMemoryImagePushIndex(t *testing.T) {
+func TestResidentMemoryImageJoinIndex(t *testing.T) {
 	t.FailNow()
 }
 
-func TestResidentMemoryImageForeachIndex(t *testing.T) {
-	t.FailNow()
-}
-
-func TestResidentMemoryImageJoinAllIndices(t *testing.T) {
+func TestResidentMemoryImageGetIndex(t *testing.T) {
 	t.FailNow()
 }
 
@@ -207,7 +198,7 @@ func TestResidentPriorityQueueDrain(t *testing.T) {
 				}
 			}
 			if !found {
-				t.Error("Unexpected drain value: %v", head)
+				t.Error("Unexpected drain value:", head)
 			}
 
 			if drainCount >= dataLength {
