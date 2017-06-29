@@ -74,39 +74,199 @@ type boltCache struct {
 }
 
 func (cache boltCache) initBuckets() error {
-	panic("not implemented")
-}
-
-func (cache boltCache) Close() error {
-	panic("not implemented")
+	return createAllBucketsIfNotExists(cache.db, BOLT_NAMESPACE_CACHE_BUCKET, BOLT_INDEX_CACHE_BUCKET, BOLT_HEAD_CACHE_BUCKET)
 }
 
 func (cache boltCache) GetHead() (crdt.IPFSPath, error) {
-	panic("not implemented")
+	const failMsg = "boltCache.GetHead failed"
+
+	var head crdt.IPFSPath
+	err := cache.viewHead(func(bucket *bolt.Bucket) error {
+		value := bucket.Get(BOLT_HEAD_CACHE_KEY)
+
+		if value == nil {
+			return errors.New("No HEAD set")
+		}
+
+		head = crdt.IPFSPath(value)
+		return nil
+	})
+
+	if err != nil {
+		return crdt.NIL_PATH, errors.Wrap(err, failMsg)
+	}
+
+	return head, nil
 }
 
 func (cache boltCache) SetHead(head crdt.IPFSPath) error {
-	panic("not implemented")
+	const failMsg = "boltCache.SetHead failed"
+
+	value := []byte(head)
+
+	err := cache.updateHead(func(bucket *bolt.Bucket) error {
+		return bucket.Put(BOLT_HEAD_CACHE_KEY, value)
+	})
+
+	if err != nil {
+		return errors.Wrap(err, failMsg)
+	}
+
+	return nil
 }
 
 func (cache boltCache) GetIndex(indexAddr crdt.IPFSPath) (crdt.Index, error) {
-	panic("not implemented")
+	const failMsg = "boltCache.GetIndex failed"
+
+	indexMessage := &proto.IndexMessage{}
+	key := []byte(indexAddr)
+	err := cache.viewIndex(func(bucket *bolt.Bucket) error {
+		return getMessage(bucket, key, indexMessage)
+	})
+
+	if err != nil {
+		return crdt.EmptyIndex(), errors.Wrap(err, failMsg)
+	}
+
+	// TODO handle the invalid entries.
+	index, _ := crdt.ReadIndexMessage(indexMessage)
+
+	return index, nil
 }
 
 func (cache boltCache) SetIndex(indexAddr crdt.IPFSPath, index crdt.Index) error {
-	panic("not implemented")
+	const failMsg = "boltCache.SetIndex failed"
+
+	// TODO handle the invalid entries.
+	indexMessage, _ := crdt.MakeIndexMessage(index)
+	key := []byte(indexAddr)
+
+	err := cache.updateIndex(func(bucket *bolt.Bucket) error {
+		return putMessage(bucket, key, indexMessage)
+	})
+
+	if err != nil {
+		return errors.Wrap(err, failMsg)
+	}
+
+	return nil
 }
 
 func (cache boltCache) GetNamespace(namespaceAddr crdt.IPFSPath) (crdt.Namespace, error) {
-	panic("not implemented")
+	const failMsg = "boltCache.GetNamespace"
+
+	namespaceMessage := &proto.NamespaceMessage{}
+	key := []byte(namespaceAddr)
+	err := cache.viewNamespace(func(bucket *bolt.Bucket) error {
+		return getMessage(bucket, key, namespaceMessage)
+	})
+
+	if err != nil {
+		return crdt.EmptyNamespace(), errors.Wrap(err, failMsg)
+	}
+
+	// TODO handle invalid entries
+	namespace, _, err := crdt.ReadNamespaceMessage(namespaceMessage)
+
+	if err != nil {
+		return crdt.EmptyNamespace(), errors.Wrap(err, failMsg)
+	}
+
+	return namespace, nil
 }
 
 func (cache boltCache) SetNamespace(namespaceAddr crdt.IPFSPath, namespace crdt.Namespace) error {
-	panic("not implemented")
+	const failMsg = "boltCache.SetNamespace"
+
+	// TODO handle invalid entries
+	namespaceMessage, _ := crdt.MakeNamespaceMessage(namespace)
+	key := []byte(namespaceAddr)
+
+	err := cache.updateNamespace(func(bucket *bolt.Bucket) error {
+		return putMessage(bucket, key, namespaceMessage)
+	})
+
+	if err != nil {
+		return errors.Wrap(err, failMsg)
+	}
+
+	return nil
+}
+
+func (cache boltCache) viewNamespace(viewer func(bucket *bolt.Bucket) error) error {
+	return cache.db.View(func(transaction *bolt.Tx) error {
+		bucket, err := getBucket(transaction, BOLT_NAMESPACE_CACHE_BUCKET)
+
+		if err != nil {
+			return err
+		}
+
+		return viewer(bucket)
+	})
+}
+
+func (cache boltCache) updateNamespace(updater func(bucket *bolt.Bucket) error) error {
+	return cache.db.Update(func(transaction *bolt.Tx) error {
+		bucket, err := getBucket(transaction, BOLT_NAMESPACE_CACHE_BUCKET)
+
+		if err != nil {
+			return err
+		}
+
+		return updater(bucket)
+	})
+}
+
+func (cache boltCache) viewIndex(viewer func(bucket *bolt.Bucket) error) error {
+	return cache.db.View(func(transaction *bolt.Tx) error {
+		bucket, err := getBucket(transaction, BOLT_INDEX_CACHE_BUCKET)
+
+		if err != nil {
+			return err
+		}
+
+		return viewer(bucket)
+	})
+}
+
+func (cache boltCache) updateIndex(updater func(bucket *bolt.Bucket) error) error {
+	return cache.db.Update(func(transaction *bolt.Tx) error {
+		bucket, err := getBucket(transaction, BOLT_INDEX_CACHE_BUCKET)
+
+		if err != nil {
+			return err
+		}
+
+		return updater(bucket)
+	})
+}
+
+func (cache boltCache) viewHead(viewer func(bucket *bolt.Bucket) error) error {
+	return cache.db.View(func(transaction *bolt.Tx) error {
+		bucket, err := getBucket(transaction, BOLT_HEAD_CACHE_BUCKET)
+
+		if err != nil {
+			return err
+		}
+
+		return viewer(bucket)
+	})
+}
+
+func (cache boltCache) updateHead(updater func(bucket *bolt.Bucket) error) error {
+	return cache.db.Update(func(transaction *bolt.Tx) error {
+		bucket, err := getBucket(transaction, BOLT_HEAD_CACHE_BUCKET)
+
+		if err != nil {
+			return err
+		}
+
+		return updater(bucket)
+	})
 }
 
 func (cache boltCache) CloseCache() error {
-	panic("not implemented")
+	return cache.db.Close()
 }
 
 type boltMemoryImage struct {
@@ -114,7 +274,7 @@ type boltMemoryImage struct {
 }
 
 func (memimg boltMemoryImage) initBuckets() error {
-	return initBucket(memimg.db, BOLT_MEMORY_IMAGE_BUCKET_NAME)
+	return createAllBucketsIfNotExists(memimg.db, BOLT_MEMORY_IMAGE_BUCKET)
 }
 
 func (memimg boltMemoryImage) GetIndex() (crdt.Index, error) {
@@ -140,7 +300,12 @@ func (memimg boltMemoryImage) JoinIndex(index crdt.Index) error {
 
 	err := memimg.update(func(bucket *bolt.Bucket) error {
 		currentMessage := &proto.IndexMessage{}
-		getMessage(bucket, BOLT_MEMORY_IMAGE_INDEX_KEY, currentMessage)
+		getErr := getMessage(bucket, BOLT_MEMORY_IMAGE_INDEX_KEY, currentMessage)
+
+		if getErr != nil {
+			return getErr
+		}
+
 		// TODO handle the invalid entries.
 		currentIndex, _ := crdt.ReadIndexMessage(currentMessage)
 		joinedIndex := currentIndex.JoinIndex(index)
@@ -159,14 +324,24 @@ func (memimg boltMemoryImage) JoinIndex(index crdt.Index) error {
 
 func (memimg boltMemoryImage) view(viewer func(bucket *bolt.Bucket) error) error {
 	return memimg.db.View(func(transaction *bolt.Tx) error {
-		bucket := transaction.Bucket(BOLT_MEMORY_IMAGE_BUCKET_NAME)
+		bucket, err := getBucket(transaction, BOLT_MEMORY_IMAGE_BUCKET)
+
+		if err != nil {
+			return err
+		}
+
 		return viewer(bucket)
 	})
 }
 
 func (memimg boltMemoryImage) update(updater func(bucket *bolt.Bucket) error) error {
 	return memimg.db.Update(func(transaction *bolt.Tx) error {
-		bucket := transaction.Bucket(BOLT_MEMORY_IMAGE_BUCKET_NAME)
+		bucket, err := getBucket(transaction, BOLT_MEMORY_IMAGE_BUCKET)
+
+		if err != nil {
+			return err
+		}
+
 		return updater(bucket)
 	})
 }
@@ -179,11 +354,32 @@ func connectBolt(options BoltOptions) (*bolt.DB, error) {
 	return bolt.Open(options.FilePath, options.Mode, options.DBOptions)
 }
 
-func initBucket(db *bolt.DB, bucketName []byte) error {
+func getBucket(transaction *bolt.Tx, bucketName []byte) (*bolt.Bucket, error) {
+	bucket := transaction.Bucket(bucketName)
+
+	if bucket == nil {
+		bucketNameText := string(bucketName)
+		return nil, fmt.Errorf("No bucket for: %v", bucketNameText)
+	}
+
+	return bucket, nil
+}
+
+func createAllBucketsIfNotExists(db *bolt.DB, bucketName ...[]byte) error {
+	const failMsg = "createAllBucketsIfNotExists"
 	return db.Update(func(transaction *bolt.Tx) error {
-		_, err := transaction.CreateBucketIfNotExists(bucketName)
-		return err
+		for _, name := range bucketName {
+			_, err := transaction.CreateBucketIfNotExists(name)
+
+			if err != nil {
+				return errors.Wrap(err, failMsg)
+			}
+		}
+
+		return nil
 	})
+
+	return nil
 }
 
 func putMessage(bucket *bolt.Bucket, key []byte, value pb.Message) error {
@@ -223,6 +419,9 @@ func getMessage(bucket *bolt.Bucket, key []byte, value pb.Message) error {
 	return nil
 }
 
+var BOLT_HEAD_CACHE_KEY = []byte("head")
+var BOLT_HEAD_CACHE_BUCKET = []byte("head_cache")
+var BOLT_NAMESPACE_CACHE_BUCKET = []byte("namespace_cache")
+var BOLT_INDEX_CACHE_BUCKET = []byte("index_cache")
 var BOLT_MEMORY_IMAGE_INDEX_KEY = []byte("current_index")
-var BOLT_MEMORY_IMAGE_BUCKET_NAME = []byte("memory_image")
-var BOLT_CACHE_BUCKET_NAME = []byte("cache")
+var BOLT_MEMORY_IMAGE_BUCKET = []byte("memory_image")
