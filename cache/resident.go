@@ -33,6 +33,14 @@ func (memimg *residentMemoryImage) GetIndex() (crdt.Index, error) {
 	return memimg.joined, nil
 }
 
+func MakeResidentMemoryCache(indexBufferSize, namespaceBufferSize int) api.Cache {
+	return cacheUnion{
+		headCache:      MakeResidentHeadCache(),
+		indexCache:     MakeResidentIndexCache(indexBufferSize),
+		namespaceCache: MakeResidentNamespaceCache(namespaceBufferSize),
+	}
+}
+
 // MakeResidentMemoryImage makes an non-ACID api.MemoryImage implementation that is only suitable for tests.
 func MakeResidentMemoryImage() api.MemoryImage {
 	return &residentMemoryImage{joined: crdt.EmptyIndex()}
