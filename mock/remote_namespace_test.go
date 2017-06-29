@@ -422,13 +422,43 @@ func remoteOptions(store api.RemoteStore, headCache api.HeadCache) service.Remot
 	options := service.RemoteNamespaceOptions{
 		Store:          store,
 		HeadCache:      headCache,
-		IndexCache:     cache.MakeResidentIndexCache(__UNKNOWN_CACHE_SIZE),
-		NamespaceCache: cache.MakeResidentNamespaceCache(__UNKNOWN_CACHE_SIZE),
+		IndexCache:     fakeIndexCache{},
+		NamespaceCache: fakeNamespaceCache{},
 		KeyStore:       &crypto.KeyStore{},
 		MemoryImage:    cache.MakeResidentMemoryImage(),
 	}
 
 	return options
+}
+
+type fakeNamespaceCache struct {
+}
+
+func (cache fakeNamespaceCache) GetNamespace(crdt.IPFSPath) (crdt.Namespace, error) {
+	return crdt.EmptyNamespace(), cache.err()
+}
+
+func (cache fakeNamespaceCache) SetNamespace(crdt.IPFSPath, crdt.Namespace) error {
+	return cache.err()
+}
+
+func (cache fakeNamespaceCache) err() error {
+	return errors.New("Not a real namespace cache")
+}
+
+type fakeIndexCache struct {
+}
+
+func (cache fakeIndexCache) GetIndex(crdt.IPFSPath) (crdt.Index, error) {
+	return crdt.EmptyIndex(), cache.err()
+}
+
+func (cache fakeIndexCache) SetIndex(crdt.IPFSPath, crdt.Index) error {
+	return cache.err()
+}
+
+func (cache fakeIndexCache) err() error {
+	return errors.New("Not a real index cache")
 }
 
 func panicOnBadInit(err error) {
