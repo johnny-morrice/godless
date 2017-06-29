@@ -308,6 +308,8 @@ func (memimg boltMemoryImage) GetIndex() (crdt.Index, error) {
 	// TODO handle the invalid entries.
 	index, _ := crdt.ReadIndexMessage(indexMessage)
 
+	log.Info("Read Bolt MemoryImage")
+
 	return index, nil
 }
 
@@ -340,6 +342,8 @@ func (memimg boltMemoryImage) JoinIndex(index crdt.Index) error {
 	if err != nil {
 		return errors.Wrap(err, failMsg)
 	}
+
+	log.Info("Updated Bolt MemoryImage")
 
 	return nil
 }
