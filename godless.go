@@ -33,6 +33,8 @@ type Options struct {
 	IpfsServiceUrl string
 	// KeyStore is required. A private Key store.
 	KeyStore api.KeyStore
+	// MemoryImage is required.
+	MemoryImage api.MemoryImage
 	// WebServiceAddr is optional.  If not set, the webservice will be disabled.
 	WebServiceAddr string
 	// IndexHash is optional.  Set to load an existing index from IPFS.
@@ -130,14 +132,23 @@ func (godless *Godless) findMissingParameters() error {
 
 	if godless.KeyStore == nil {
 		msg := godless.missingParameterText("KeyStore")
-		if missing == nil {
-			missing = errors.New(msg)
-		} else {
-			missing = errors.Wrap(missing, msg)
-		}
+		missing = addErrorMessage(missing, msg)
+	}
+
+	if godless.MemoryImage == nil {
+		msg := godless.missingParameterText("MemoryImage")
+		missing = addErrorMessage(missing, msg)
 	}
 
 	return missing
+}
+
+func addErrorMessage(err error, msg string) error {
+	if err == nil {
+		return errors.New(msg)
+	} else {
+		return errors.Wrap(err, msg)
+	}
 }
 
 func (godless *Godless) missingParameterText(param string) string {
@@ -235,7 +246,7 @@ func (godless *Godless) setupNamespace() error {
 		NamespaceCache: godless.NamespaceCache,
 		KeyStore:       godless.KeyStore,
 		IsPublicIndex:  godless.PublicServer,
-		MemoryImage:    cache.MakeResidentMemoryImage(),
+		MemoryImage:    godless.MemoryImage,
 	}
 
 	godless.remote = service.MakeRemoteNamespace(namespaceOptions)

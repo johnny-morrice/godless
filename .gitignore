@@ -2,3 +2,4 @@
 godless/godless
 *.test
 nohup.out
+*.bolt

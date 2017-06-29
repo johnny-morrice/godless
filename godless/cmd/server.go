@@ -50,11 +50,12 @@ func serve(cmd *cobra.Command) {
 	client := http.DefaultBackendClient()
 	client.Timeout = serverTimeout
 
-	queue := makePriorityQueue()
-	cache, cacheErr := makeCache(cmd)
+	queue := makePriorityQueue(cmd)
+	memimg, err := makeMemoryImage()
+	cache, err := makeCache(cmd)
 
-	if cacheErr != nil {
-		die(cacheErr)
+	if err != nil {
+		die(err)
 	}
 
 	options := lib.Options{
@@ -71,6 +72,7 @@ func serve(cmd *cobra.Command) {
 		Pulse:             pulse,
 		PriorityQueue:     queue,
 		Cache:             cache,
+		MemoryImage:       memimg,
 	}
 
 	godless, err := lib.New(options)
@@ -98,12 +100,14 @@ var memoryBufferLength int
 var publicServer bool
 var serverTimeout time.Duration
 var cacheType string
+var databaseFilePath string
+var boltFactory *cache.BoltFactory
 
 func makeCache(cmd *cobra.Command) (api.Cache, error) {
 	switch cacheType {
-	case "memory":
+	case __MEMORY_CACHE_TYPE:
 		return makeMemoryCache()
-	case "bolt":
+	case __BOLT_CACHE_TYPE:
 		return makeBoltCache()
 	default:
 		err := fmt.Errorf("Unknown cache: '%v'", cacheType)
@@ -115,12 +119,36 @@ func makeCache(cmd *cobra.Command) (api.Cache, error) {
 }
 
 func makeBoltCache() (api.Cache, error) {
-	panic("not implemented")
+	factory := getBoltFactoryInstance()
+	return factory.MakeCache()
 }
 
 func makeMemoryCache() (api.Cache, error) {
 	memCache := cache.MakeResidentMemoryCache(memoryBufferLength, memoryBufferLength)
 	return memCache, nil
+}
+
+func makeMemoryImage() (api.MemoryImage, error) {
+	factory := getBoltFactoryInstance()
+	return factory.MakeMemoryImage()
+}
+
+func getBoltFactoryInstance() *cache.BoltFactory {
+	if boltFactory == nil {
+		options := cache.BoltOptions{
+			FilePath: databaseFilePath,
+			Mode:     0600,
+		}
+		factory, err := cache.MakeBoltCacheFactory(options)
+
+		if err != nil {
+			die(err)
+		}
+
+		boltFactory = &factory
+	}
+
+	return boltFactory
 }
 
 func shutdownOnTrap(godless *lib.Godless) {
@@ -137,7 +165,7 @@ func onTrap(handler func(signal os.Signal)) {
 	handler(sig)
 }
 
-func makePriorityQueue() api.RequestPriorityQueue {
+func makePriorityQueue(cmd *cobra.Command) api.RequestPriorityQueue {
 	return cache.MakeResidentBufferQueue(apiQueueLength)
 }
 
@@ -158,13 +186,18 @@ func init() {
 	serveCmd.PersistentFlags().BoolVar(&publicServer, "public", __DEFAULT_SERVER_PUBLIC_STATUS, "Don't limit pubsub updates to the public key list")
 	serveCmd.PersistentFlags().DurationVar(&serverTimeout, "timeout", __DEFAULT_SERVER_TIMEOUT, "Timeout for serverside HTTP queries")
 	serveCmd.PersistentFlags().IntVar(&apiQueueLength, "qlength", __DEFAULT_QUEUE_LENGTH, "API Priority queue length")
-	serveCmd.PersistentFlags().StringVar(&cacheType, "cache", __DEFAULT_CACHE_TYPE, "Cache type (bolt|memory)")
+	serveCmd.PersistentFlags().StringVar(&cacheType, "cache", __DEFAULT_CACHE_TYPE, "Cache type (disk|memory)")
 	serveCmd.PersistentFlags().IntVar(&memoryBufferLength, "buffer", __DEFAULT_MEMORY_BUFFER_LENGTH, "Buffer length if using memory cache")
+	serveCmd.PersistentFlags().StringVar(&databaseFilePath, "dbpath", __DEFAULT_BOLT_DB_PATH, "Embedded database file path")
 }
 
+const __MEMORY_CACHE_TYPE = "memory"
+const __BOLT_CACHE_TYPE = "disk"
+
+const __DEFAULT_BOLT_DB_PATH = "godless.bolt"
 const __DEFAULT_EARLY_CONNECTION = false
 const __DEFAULT_SERVER_PUBLIC_STATUS = false
-const __DEFAULT_CACHE_TYPE = "memory"
+const __DEFAULT_CACHE_TYPE = __MEMORY_CACHE_TYPE
 const __DEFAULT_LISTEN_ADDR = "localhost:8085"
 const __DEFAULT_SERVER_TIMEOUT = time.Minute * 10
 const __DEFAULT_QUEUE_LENGTH = 4096
