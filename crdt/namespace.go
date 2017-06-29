@@ -42,7 +42,6 @@ func JoinStreamEntries(stream []NamespaceStreamEntry) ([]NamespaceStreamEntry, [
 	return stream, invalidEntries, nil
 }
 
-// FIXME implement test!!!
 func FilterSignedEntries(stream []NamespaceStreamEntry, keys []crypto.PublicKey) ([]NamespaceStreamEntry, []InvalidNamespaceEntry, error) {
 	const failMsg = "FilterSignedEntries failed"
 

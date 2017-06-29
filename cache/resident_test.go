@@ -14,15 +14,21 @@ import (
 )
 
 func TestResidentMemoryImageConcurrency(t *testing.T) {
-	const count = __CONCURRENCY_LEVEL / 30
+	const count = __CONCURRENCY_LEVEL / 10
 
 	memimg := MakeResidentMemoryImage()
 	indices := genIndices(count)
 
 	wg := &sync.WaitGroup{}
+
+	initialIndex := crdt.MakeIndex(map[crdt.TableName]crdt.Link{
+		"hi": crdt.UnsignedLink("world"),
+	})
+	memimg.JoinIndex(initialIndex)
+
 	for _, idx := range indices {
 		index := idx
-		wg.Add(3)
+		wg.Add(2)
 		go func() {
 			err := memimg.JoinIndex(index)
 			testutil.AssertNil(t, err)

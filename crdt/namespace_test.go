@@ -11,9 +11,14 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
+	"github.com/johnny-morrice/godless/internal/crypto"
 	"github.com/johnny-morrice/godless/internal/testutil"
 	"github.com/johnny-morrice/godless/log"
 )
+
+func TestFilterSignedEntries(t *testing.T) {
+	t.FailNow()
+}
 
 func TestMakeRowStream(t *testing.T) {
 	if testing.Short() {
@@ -716,4 +721,20 @@ func panicInvalidNamespace(invalid []InvalidNamespaceEntry) {
 	if invalidCount > 0 {
 		panic(fmt.Sprintf("%v invalid entries", invalidCount))
 	}
+}
+
+func generateTestKeys(count int) []crypto.PrivateKey {
+	keys := make([]crypto.PrivateKey, count)
+
+	for i := 0; i < count; i++ {
+		priv, _, err := crypto.GenerateKey()
+
+		if err != nil {
+			panic(err)
+		}
+
+		keys[count] = priv
+	}
+
+	return keys
 }

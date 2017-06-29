@@ -29,7 +29,7 @@ func (memimg *residentMemoryImage) JoinIndex(index crdt.Index) error {
 
 func (memimg *residentMemoryImage) GetIndex() (crdt.Index, error) {
 	memimg.Lock()
-	memimg.Unlock()
+	defer memimg.Unlock()
 	return memimg.joined, nil
 }
 
