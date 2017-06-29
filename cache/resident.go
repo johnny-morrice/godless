@@ -67,7 +67,7 @@ func (cache residentNamespaceCache) GetNamespace(addr crdt.IPFSPath) (crdt.Names
 	ptr, err := cache.get(addr)
 
 	if err != nil {
-		return crdt.EmptyNamespace(), nil
+		return crdt.EmptyNamespace(), fmt.Errorf("Cache miss for Namespace at: %v", addr)
 	}
 
 	namespacePtr := (*crdt.Namespace)(ptr)
@@ -91,7 +91,7 @@ func (cache residentIndexCache) GetIndex(addr crdt.IPFSPath) (crdt.Index, error)
 	ptr, err := cache.get(addr)
 
 	if err != nil {
-		return crdt.EmptyIndex(), nil
+		return crdt.EmptyIndex(), fmt.Errorf("Cache miss for Index at: %v", addr)
 	}
 
 	indexPtr := (*crdt.Index)(ptr)

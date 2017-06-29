@@ -102,6 +102,8 @@ func (visitor *NamespaceTreeSelect) resultStream() ([]crdt.NamespaceStreamEntry,
 		return nil, errors.Wrap(err, failMsg)
 	}
 
+	log.Info("Search found %v entries", len(stream))
+
 	return stream, nil
 }
 

@@ -465,7 +465,6 @@ func (rn *remoteNamespace) traverseTableNamespaces(tableAddrs []crdt.Link, f api
 	nsch, cancelch := rn.namespaceLoader(tableAddrs)
 	defer close(cancelch)
 	for ns := range nsch {
-		log.Info("Traversing another namespace...")
 		update := f.ReadNamespace(ns)
 
 		if !(update.More && update.Error == nil) {

@@ -7,6 +7,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/log"
 	"github.com/johnny-morrice/godless/proto"
 	"github.com/pkg/errors"
 
@@ -91,6 +92,10 @@ func (cache boltCache) GetHead() (crdt.IPFSPath, error) {
 		return crdt.NIL_PATH, errors.Wrap(err, failMsg)
 	}
 
+	if !crdt.IsNilPath(head) {
+		log.Info("Found HEAD in Bolt: %v", head)
+	}
+
 	return head, nil
 }
 
@@ -106,6 +111,8 @@ func (cache boltCache) SetHead(head crdt.IPFSPath) error {
 	if err != nil {
 		return errors.Wrap(err, failMsg)
 	}
+
+	log.Info("Wrote HEAD to Bolt: %v", head)
 
 	return nil
 }
@@ -126,6 +133,8 @@ func (cache boltCache) GetIndex(indexAddr crdt.IPFSPath) (crdt.Index, error) {
 	// TODO handle the invalid entries.
 	index, _ := crdt.ReadIndexMessage(indexMessage)
 
+	log.Info("Found index in Bolt: %v", indexAddr)
+
 	return index, nil
 }
 
@@ -143,6 +152,8 @@ func (cache boltCache) SetIndex(indexAddr crdt.IPFSPath, index crdt.Index) error
 	if err != nil {
 		return errors.Wrap(err, failMsg)
 	}
+
+	log.Info("Wrote index to Bolt: %v", indexAddr)
 
 	return nil
 }
@@ -167,6 +178,8 @@ func (cache boltCache) GetNamespace(namespaceAddr crdt.IPFSPath) (crdt.Namespace
 		return crdt.EmptyNamespace(), errors.Wrap(err, failMsg)
 	}
 
+	log.Info("Found Namespace in Bolt: %v", namespaceAddr)
+
 	return namespace, nil
 }
 
@@ -184,6 +197,8 @@ func (cache boltCache) SetNamespace(namespaceAddr crdt.IPFSPath, namespace crdt.
 	if err != nil {
 		return errors.Wrap(err, failMsg)
 	}
+
+	log.Info("Wrote Namespace to Bolt: %v", namespaceAddr)
 
 	return nil
 }
