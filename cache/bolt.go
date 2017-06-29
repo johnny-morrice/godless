@@ -53,6 +53,10 @@ func (cache boltCache) SetNamespace(namespaceAddr crdt.IPFSPath, namespace crdt.
 	panic("not implemented")
 }
 
+func (cache boltCache) CloseCache() error {
+	panic("not implemented")
+}
+
 func MakeBoltCache(options BoltOptions) (api.Cache, error) {
 	const failMsg = "MakeBoltCache failed"
 

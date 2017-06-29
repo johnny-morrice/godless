@@ -177,11 +177,27 @@ func (godless *Godless) connectIpfs() error {
 	return nil
 }
 
+func (godless *Godless) makeCacheStopper(cache api.Cache) chan<- struct{} {
+	stopper := make(chan struct{}, 1)
+	go func() {
+		<-stopper
+		err := cache.CloseCache()
+		if err == nil {
+			log.Info("Closed cache")
+		} else {
+			log.Error("Error closing cache: %v", err.Error())
+		}
+	}()
+
+	return stopper
+}
+
 func (godless *Godless) connectCache() error {
 	if godless.Cache != nil {
 		godless.HeadCache = godless.Cache
 		godless.IndexCache = godless.Cache
 		godless.NamespaceCache = godless.Cache
+		godless.addStopper(godless.makeCacheStopper(godless.Cache))
 		return nil
 	}
 

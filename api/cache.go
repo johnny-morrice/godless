@@ -4,10 +4,15 @@ import (
 	"github.com/johnny-morrice/godless/crdt"
 )
 
+type CacheCloser interface {
+	CloseCache() error
+}
+
 type Cache interface {
 	HeadCache
 	IndexCache
 	NamespaceCache
+	CacheCloser
 }
 
 type HeadCache interface {

@@ -34,3 +34,7 @@ func (cache cacheUnion) GetNamespace(namespaceAddr crdt.IPFSPath) (crdt.Namespac
 func (cache cacheUnion) SetNamespace(namespaceAddr crdt.IPFSPath, namespace crdt.Namespace) error {
 	return cache.namespaceCache.SetNamespace(namespaceAddr, namespace)
 }
+
+func (cache cacheUnion) CloseCache() error {
+	return nil
+}
