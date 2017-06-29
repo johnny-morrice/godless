@@ -91,11 +91,16 @@ func MakeRemoteNamespace(options RemoteNamespaceOptions) api.RemoteNamespaceTree
 		pulser:                 time.NewTicker(pulseInterval),
 	}
 
+	remote.initializeMemoryImage()
 	go remote.addNamespaces()
 	go remote.addIndices()
 	go remote.memoryImageWriteLoop()
 
 	return remote
+}
+
+func (rn *remoteNamespace) initializeMemoryImage() {
+
 }
 
 func (rn *remoteNamespace) memoryImageWriteLoop() {

@@ -83,11 +83,6 @@ func (cache boltCache) GetHead() (crdt.IPFSPath, error) {
 	var head crdt.IPFSPath
 	err := cache.viewHead(func(bucket *bolt.Bucket) error {
 		value := bucket.Get(BOLT_HEAD_CACHE_KEY)
-
-		if value == nil {
-			return errors.New("No HEAD set")
-		}
-
 		head = crdt.IPFSPath(value)
 		return nil
 	})
@@ -282,7 +277,13 @@ func (memimg boltMemoryImage) GetIndex() (crdt.Index, error) {
 	indexMessage := &proto.IndexMessage{}
 
 	err := memimg.view(func(bucket *bolt.Bucket) error {
-		return getMessage(bucket, BOLT_MEMORY_IMAGE_INDEX_KEY, indexMessage)
+		indexBytes := bucket.Get(BOLT_MEMORY_IMAGE_INDEX_KEY)
+
+		if indexBytes == nil {
+			return nil
+		}
+
+		return pb.Unmarshal(indexBytes, indexMessage)
 	})
 
 	if err != nil {
@@ -300,14 +301,20 @@ func (memimg boltMemoryImage) JoinIndex(index crdt.Index) error {
 
 	err := memimg.update(func(bucket *bolt.Bucket) error {
 		currentMessage := &proto.IndexMessage{}
-		getErr := getMessage(bucket, BOLT_MEMORY_IMAGE_INDEX_KEY, currentMessage)
+		currentIndexBytes := bucket.Get(BOLT_MEMORY_IMAGE_INDEX_KEY)
 
-		if getErr != nil {
-			return getErr
+		currentIndex := crdt.EmptyIndex()
+		if currentIndexBytes != nil {
+			// TODO handle the invalid entries.
+			pbErr := pb.Unmarshal(currentIndexBytes, currentMessage)
+
+			if pbErr != nil {
+				return pbErr
+			}
+
+			currentIndex, _ = crdt.ReadIndexMessage(currentMessage)
 		}
 
-		// TODO handle the invalid entries.
-		currentIndex, _ := crdt.ReadIndexMessage(currentMessage)
 		joinedIndex := currentIndex.JoinIndex(index)
 
 		// TODO handle the invalid entries.
