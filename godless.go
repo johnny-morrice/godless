@@ -214,9 +214,9 @@ func (godless *Godless) setupNamespace() error {
 	namespaceOptions := service.RemoteNamespaceOptions{
 		Pulse:          godless.Pulse,
 		Store:          godless.store,
-		HeadCache:      godless.Cache,
-		IndexCache:     godless.Cache,
-		NamespaceCache: godless.Cache,
+		HeadCache:      godless.HeadCache,
+		IndexCache:     godless.IndexCache,
+		NamespaceCache: godless.NamespaceCache,
 		KeyStore:       godless.KeyStore,
 		IsPublicIndex:  godless.PublicServer,
 		MemoryImage:    cache.MakeResidentMemoryImage(),
