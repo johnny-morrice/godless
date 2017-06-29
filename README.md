@@ -19,7 +19,8 @@ $ ipfs daemon --enable-pubsub-experiment
 Run server:
 
 ```
-$ godless store server --early --topics=godless
+$ godless init
+$ godless store server --early --public --topics=godless
 ```
 
 Any other godless server that uses the same topic will replicate all data.
