@@ -48,11 +48,14 @@ type Options struct {
 	IpfsClient *gohttp.Client
 	// IpfsPingTimeout is optional.  Specify a lower timeout for "Am I Connected?" checks.
 	IpfsPingTimeout time.Duration
+	// Cache is optional. Build a 12-factor app by supplying your own remote cache.
+	// HeadCache, IndexCache and NamespaceCache can be used to specify different caches for different data types.
+	Cache api.Cache
 	// HeadCache is optional.  Build a 12-factor app by supplying your own remote cache.
 	HeadCache api.HeadCache
 	// IndexCache is optional.  Build a 12-factor app by supplying your own remote cache.
 	IndexCache api.IndexCache
-	// NamespaceCache is optional. Build a 12 yadadaddada... FIXME
+	// NamespaceCache is optional. Build a 12-factor app by supplying your own remote cache.
 	NamespaceCache api.NamespaceCache
 	// PriorityQueue is optional. Build a 12-factor app by supplying your own remote cache.
 	PriorityQueue api.RequestPriorityQueue
@@ -87,6 +90,7 @@ func New(options Options) (*Godless, error) {
 
 	setupFuncs := []func() error{
 		godless.connectIpfs,
+		godless.connectCache,
 		godless.setupNamespace,
 		godless.launchAPI,
 		godless.serveWeb,
@@ -173,43 +177,46 @@ func (godless *Godless) connectIpfs() error {
 	return nil
 }
 
-// MakeRemoteNamespace creates a data store representing p2p data.
+func (godless *Godless) connectCache() error {
+	if godless.Cache != nil {
+		godless.HeadCache = godless.Cache
+		godless.IndexCache = godless.Cache
+		godless.NamespaceCache = godless.Cache
+		return nil
+	}
+
+	if godless.HeadCache == nil {
+		godless.HeadCache = cache.MakeResidentHeadCache()
+	}
+
+	if godless.IndexCache == nil {
+		godless.IndexCache = cache.MakeResidentIndexCache(__UNKNOWN_BUFFER_SIZE)
+	}
+
+	if godless.NamespaceCache == nil {
+		godless.NamespaceCache = cache.MakeResidentNamespaceCache(__UNKNOWN_BUFFER_SIZE)
+	}
+
+	return nil
+}
+
 func (godless *Godless) setupNamespace() error {
-	headCache := godless.HeadCache
-
-	if headCache == nil {
-		headCache = cache.MakeResidentHeadCache()
-	}
-
-	indexCache := godless.IndexCache
-
-	if indexCache == nil {
-		indexCache = cache.MakeResidentIndexCache(__BUFFER_SIZE)
-	}
-
-	namespaceCache := godless.NamespaceCache
-
-	if namespaceCache == nil {
-		namespaceCache = cache.MakeResidentNamespaceCache(__BUFFER_SIZE)
-	}
-
 	if godless.IndexHash != "" {
 		head := crdt.IPFSPath(godless.IndexHash)
 
-		err := headCache.SetHead(head)
+		err := godless.HeadCache.SetHead(head)
 
 		if err != nil {
 			return err
 		}
-
 	}
 
 	namespaceOptions := service.RemoteNamespaceOptions{
 		Pulse:          godless.Pulse,
 		Store:          godless.store,
-		HeadCache:      headCache,
-		IndexCache:     indexCache,
-		NamespaceCache: namespaceCache,
+		HeadCache:      godless.Cache,
+		IndexCache:     godless.Cache,
+		NamespaceCache: godless.Cache,
 		KeyStore:       godless.KeyStore,
 		IsPublicIndex:  godless.PublicServer,
 		MemoryImage:    cache.MakeResidentMemoryImage(),
@@ -229,7 +236,7 @@ func (godless *Godless) launchAPI() error {
 	queue := godless.PriorityQueue
 
 	if queue == nil {
-		queue = cache.MakeResidentBufferQueue(__BUFFER_SIZE)
+		queue = cache.MakeResidentBufferQueue(__UNKNOWN_BUFFER_SIZE)
 	}
 
 	api, errch := service.LaunchKeyValueStore(godless.remote, queue, limit)
@@ -358,4 +365,4 @@ func breakOnError(pipeline []func() error) error {
 }
 
 // We don't know the right buffer size here, so let the cache package handle it.
-const __BUFFER_SIZE = -1
+const __UNKNOWN_BUFFER_SIZE = -1

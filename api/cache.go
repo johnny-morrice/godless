@@ -4,6 +4,12 @@ import (
 	"github.com/johnny-morrice/godless/crdt"
 )
 
+type Cache interface {
+	HeadCache
+	IndexCache
+	NamespaceCache
+}
+
 type HeadCache interface {
 	SetHead(head crdt.IPFSPath) error
 	GetHead() (crdt.IPFSPath, error)
