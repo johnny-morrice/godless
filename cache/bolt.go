@@ -7,6 +7,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/proto"
 	"github.com/pkg/errors"
 
 	pb "github.com/gogo/protobuf/proto"
@@ -117,11 +118,60 @@ func (memimg boltMemoryImage) initBuckets() error {
 }
 
 func (memimg boltMemoryImage) GetIndex() (crdt.Index, error) {
-	panic("not implemented")
+	const failMsg = "boltMemoryIndex.GetIndex failed"
+	indexMessage := &proto.IndexMessage{}
+
+	err := memimg.view(func(bucket *bolt.Bucket) error {
+		return getMessage(bucket, BOLT_MEMORY_IMAGE_INDEX_KEY, indexMessage)
+	})
+
+	if err != nil {
+		return crdt.EmptyIndex(), errors.Wrap(err, failMsg)
+	}
+
+	// TODO handle the invalid entries.
+	index, _ := crdt.ReadIndexMessage(indexMessage)
+
+	return index, nil
 }
 
 func (memimg boltMemoryImage) JoinIndex(index crdt.Index) error {
-	panic("not implemented")
+	const failMsg = "boltMemoryIndex.JoinIndex failed"
+
+	currentIndex, err := memimg.GetIndex()
+
+	if err != nil {
+		return errors.Wrap(err, failMsg)
+	}
+
+	joinedIndex := currentIndex.JoinIndex(index)
+
+	// TODO handle the invalid entries.
+	joinedMessage, _ := crdt.MakeIndexMessage(joinedIndex)
+
+	err = memimg.update(func(bucket *bolt.Bucket) error {
+		return putMessage(bucket, BOLT_MEMORY_IMAGE_INDEX_KEY, joinedMessage)
+	})
+
+	if err != nil {
+		return errors.Wrap(err, failMsg)
+	}
+
+	return nil
+}
+
+func (memimg boltMemoryImage) view(viewer func(bucket *bolt.Bucket) error) error {
+	return memimg.db.View(func(transaction *bolt.Tx) error {
+		bucket := transaction.Bucket(BOLT_MEMORY_IMAGE_BUCKET_NAME)
+		return viewer(bucket)
+	})
+}
+
+func (memimg boltMemoryImage) update(updater func(bucket *bolt.Bucket) error) error {
+	return memimg.db.Update(func(transaction *bolt.Tx) error {
+		bucket := transaction.Bucket(BOLT_MEMORY_IMAGE_BUCKET_NAME)
+		return updater(bucket)
+	})
 }
 
 func connectBolt(options BoltOptions) (*bolt.DB, error) {
@@ -172,6 +222,6 @@ func getMessage(bucket *bolt.Bucket, key []byte, value pb.Message) error {
 	return nil
 }
 
-var CURRENT_INDEX_KEY = []byte("current_index")
+var BOLT_MEMORY_IMAGE_INDEX_KEY = []byte("current_index")
 var BOLT_MEMORY_IMAGE_BUCKET_NAME = []byte("memory_image")
 var BOLT_CACHE_BUCKET_NAME = []byte("cache")
