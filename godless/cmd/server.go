@@ -22,6 +22,7 @@ package cmd
 
 import (
 	"os"
+	"os/signal"
 	"runtime"
 	"time"
 
@@ -71,6 +72,8 @@ func serve() {
 		die(err)
 	}
 
+	shutdownOnTrap(godless)
+
 	for runError := range godless.Errors() {
 		log.Error("%v", runError)
 	}
@@ -86,6 +89,20 @@ var apiQueryLimit int
 var apiQueueLength int
 var publicServer bool
 var serverTimeout time.Duration
+
+func shutdownOnTrap(godless *lib.Godless) {
+	onTrap(func(signal os.Signal) {
+		log.Warn("Caught signal: %v", signal.String())
+		shutdown(godless)
+	})
+}
+
+func onTrap(handler func(signal os.Signal)) {
+	sigch := make(chan os.Signal, 1)
+	signal.Notify(sigch, os.Interrupt, os.Kill)
+	sig := <-sigch
+	handler(sig)
+}
 
 func makePriorityQueue() api.RequestPriorityQueue {
 	return cache.MakeResidentBufferQueue(apiQueueLength)
