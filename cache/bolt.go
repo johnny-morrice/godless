@@ -6,7 +6,6 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
-	"github.com/johnny-morrice/godless/log"
 	"github.com/pkg/errors"
 )
 
@@ -15,6 +14,55 @@ type BoltOptions struct {
 	FilePath  string
 	Mode      os.FileMode
 	Db        *bolt.DB
+}
+
+type BoltFactory struct {
+	BoltOptions
+}
+
+func (factory BoltFactory) MakeCache() (api.Cache, error) {
+	const failMsg = "BoltFactory.MakeCache failed"
+
+	cache := boltCache{db: factory.Db}
+
+	err := cache.initBuckets()
+
+	if err != nil {
+		return nil, errors.Wrap(err, failMsg)
+	}
+
+	return cache, nil
+}
+
+func (factory BoltFactory) MakeMemoryImage() (api.MemoryImage, error) {
+	const failMsg = "BoltFactory.MakeMemoryImage failed"
+
+	memImg := boltMemoryImage{db: factory.Db}
+
+	err := memImg.initBuckets()
+
+	if err != nil {
+		return nil, errors.Wrap(err, failMsg)
+	}
+
+	return memImg, nil
+}
+
+func MakeBoltCacheFactory(options BoltOptions) (BoltFactory, error) {
+	const failMsg = "MakeBoltCacheFactory"
+
+	db, err := connectBolt(options)
+
+	if err != nil {
+		return BoltFactory{}, errors.Wrap(err, failMsg)
+	}
+
+	factory := BoltFactory{
+		BoltOptions: options,
+	}
+	factory.Db = db
+
+	return factory, nil
 }
 
 type boltCache struct {
@@ -57,36 +105,22 @@ func (cache boltCache) CloseCache() error {
 	panic("not implemented")
 }
 
-func MakeBoltCache(options BoltOptions) (api.Cache, error) {
-	const failMsg = "MakeBoltCache failed"
+type boltMemoryImage struct {
+	db *bolt.DB
+}
 
-	db, err := connectBolt(options)
+func (memimg boltMemoryImage) initBuckets() error {
+	panic("not implemented")
+}
 
-	if err != nil {
-		return nil, errors.Wrap(err, failMsg)
-	}
+func (memimg boltMemoryImage) GetIndex() (crdt.Index, error) {
+	panic("not implemented")
+}
 
-	cache := boltCache{db: db}
-
-	err = cache.initBuckets()
-
-	if err != nil {
-		closeErr := cache.Close()
-
-		if closeErr != nil {
-			log.Error("Error closing database: %v", err.Error())
-		}
-
-		return nil, errors.Wrap(err, failMsg)
-	}
-
-	return cache, nil
+func (memimg boltMemoryImage) JoinIndex(index crdt.Index) error {
+	panic("not implemented")
 }
 
 func connectBolt(options BoltOptions) (*bolt.DB, error) {
 	return bolt.Open(options.FilePath, options.Mode, options.DBOptions)
-}
-
-func MakeBoltMemoryImage() api.MemoryImage {
-	panic("not implemented")
 }
