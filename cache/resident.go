@@ -33,6 +33,10 @@ func (memimg *residentMemoryImage) GetIndex() (crdt.Index, error) {
 	return memimg.joined, nil
 }
 
+func (memimg *residentMemoryImage) CloseMemoryImage() error {
+	return nil
+}
+
 func MakeResidentMemoryCache(indexBufferSize, namespaceBufferSize int) api.Cache {
 	return cacheUnion{
 		headCache:      MakeResidentHeadCache(),

@@ -138,18 +138,15 @@ func (memimg boltMemoryImage) GetIndex() (crdt.Index, error) {
 func (memimg boltMemoryImage) JoinIndex(index crdt.Index) error {
 	const failMsg = "boltMemoryIndex.JoinIndex failed"
 
-	currentIndex, err := memimg.GetIndex()
+	err := memimg.update(func(bucket *bolt.Bucket) error {
+		currentMessage := &proto.IndexMessage{}
+		getMessage(bucket, BOLT_MEMORY_IMAGE_INDEX_KEY, currentMessage)
+		// TODO handle the invalid entries.
+		currentIndex, _ := crdt.ReadIndexMessage(currentMessage)
+		joinedIndex := currentIndex.JoinIndex(index)
 
-	if err != nil {
-		return errors.Wrap(err, failMsg)
-	}
-
-	joinedIndex := currentIndex.JoinIndex(index)
-
-	// TODO handle the invalid entries.
-	joinedMessage, _ := crdt.MakeIndexMessage(joinedIndex)
-
-	err = memimg.update(func(bucket *bolt.Bucket) error {
+		// TODO handle the invalid entries.
+		joinedMessage, _ := crdt.MakeIndexMessage(joinedIndex)
 		return putMessage(bucket, BOLT_MEMORY_IMAGE_INDEX_KEY, joinedMessage)
 	})
 
@@ -172,6 +169,10 @@ func (memimg boltMemoryImage) update(updater func(bucket *bolt.Bucket) error) er
 		bucket := transaction.Bucket(BOLT_MEMORY_IMAGE_BUCKET_NAME)
 		return updater(bucket)
 	})
+}
+
+func (memimg boltMemoryImage) CloseMemoryImage() error {
+	return memimg.db.Close()
 }
 
 func connectBolt(options BoltOptions) (*bolt.DB, error) {

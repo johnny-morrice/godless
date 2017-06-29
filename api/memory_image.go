@@ -7,4 +7,5 @@ import (
 type MemoryImage interface {
 	JoinIndex(index crdt.Index) error
 	GetIndex() (crdt.Index, error)
+	CloseMemoryImage() error
 }
