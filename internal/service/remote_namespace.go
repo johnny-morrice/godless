@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -59,25 +60,29 @@ type RemoteNamespaceOptions struct {
 	Pulse          time.Duration
 }
 
+func checkOptions(options RemoteNamespaceOptions) {
+	requiredOptions := map[string]interface{}{
+		"Store":       options.Store,
+		"HeadCache":   options.HeadCache,
+		"MemoryImage": options.MemoryImage,
+		"IndexCache":  options.IndexCache,
+		"KeyStore":    options.KeyStore,
+	}
+
+	for name, req := range requiredOptions {
+		if req == nil {
+			panic(fmt.Sprintf("required RemoteNamespaceOption %v was nil", name))
+		}
+	}
+}
+
 func MakeRemoteNamespace(options RemoteNamespaceOptions) api.RemoteNamespaceTree {
 	pulseInterval := options.Pulse
 	if pulseInterval == 0 {
 		pulseInterval = __DEFAULT_PULSE
 	}
 
-	requiredOptions := []interface{}{
-		options.Store,
-		options.HeadCache,
-		options.MemoryImage,
-		options.IndexCache,
-		options.KeyStore,
-	}
-
-	for _, req := range requiredOptions {
-		if req == nil {
-			panic("required RemoteNamespaceOption item was nil")
-		}
-	}
+	checkOptions(options)
 
 	remote := &remoteNamespace{
 		RemoteNamespaceOptions: options,
