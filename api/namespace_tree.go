@@ -2,7 +2,7 @@ package api
 
 import (
 	"github.com/johnny-morrice/godless/crdt"
-	"github.com/johnny-morrice/godless/internal/crypto"
+	"github.com/johnny-morrice/godless/crypto"
 )
 
 type NamespaceTree interface {

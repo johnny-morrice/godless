@@ -11,7 +11,7 @@ import (
 	"sort"
 
 	"github.com/johnny-morrice/godless/crdt"
-	"github.com/johnny-morrice/godless/internal/crypto"
+	"github.com/johnny-morrice/godless/crypto"
 	"github.com/johnny-morrice/godless/internal/util"
 	"github.com/johnny-morrice/godless/log"
 	"github.com/johnny-morrice/godless/proto"

@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/johnny-morrice/godless/crdt"
-	"github.com/johnny-morrice/godless/internal/crypto"
+	"github.com/johnny-morrice/godless/crypto"
 )
 
 // Visitor outline to help with editor macros.

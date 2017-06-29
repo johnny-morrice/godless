@@ -6,7 +6,7 @@ package mock_godless
 import (
 	gomock "github.com/golang/mock/gomock"
 	crdt "github.com/johnny-morrice/godless/crdt"
-	crypto "github.com/johnny-morrice/godless/internal/crypto"
+	crypto "github.com/johnny-morrice/godless/crypto"
 	query "github.com/johnny-morrice/godless/query"
 )
 

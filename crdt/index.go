@@ -5,7 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 
-	"github.com/johnny-morrice/godless/internal/crypto"
+	"github.com/johnny-morrice/godless/crypto"
 	"github.com/johnny-morrice/godless/log"
 	"github.com/johnny-morrice/godless/proto"
 	"github.com/pkg/errors"

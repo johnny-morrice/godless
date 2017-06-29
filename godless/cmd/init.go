@@ -34,7 +34,7 @@ import (
 
 	lib "github.com/johnny-morrice/godless"
 	"github.com/johnny-morrice/godless/api"
-	"github.com/johnny-morrice/godless/internal/crypto"
+	"github.com/johnny-morrice/godless/crypto"
 	"github.com/johnny-morrice/godless/log"
 )
 

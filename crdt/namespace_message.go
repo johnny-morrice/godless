@@ -3,7 +3,7 @@ package crdt
 import (
 	"io"
 
-	"github.com/johnny-morrice/godless/internal/crypto"
+	"github.com/johnny-morrice/godless/crypto"
 	"github.com/johnny-morrice/godless/internal/debug"
 	"github.com/johnny-morrice/godless/internal/util"
 	"github.com/johnny-morrice/godless/log"

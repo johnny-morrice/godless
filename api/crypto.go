@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/johnny-morrice/godless/internal/crypto"
+	"github.com/johnny-morrice/godless/crypto"
 )
 
 type KeyStore interface {

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/johnny-morrice/godless/internal/crypto"
+	"github.com/johnny-morrice/godless/crypto"
 	"github.com/johnny-morrice/godless/log"
 	"github.com/pkg/errors"
 )

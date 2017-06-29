@@ -17,7 +17,7 @@ import (
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/cache"
 	"github.com/johnny-morrice/godless/crdt"
-	"github.com/johnny-morrice/godless/internal/crypto"
+	"github.com/johnny-morrice/godless/crypto"
 	"github.com/johnny-morrice/godless/internal/http"
 	"github.com/johnny-morrice/godless/internal/ipfs"
 	"github.com/johnny-morrice/godless/internal/service"

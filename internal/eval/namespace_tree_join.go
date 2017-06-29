@@ -3,7 +3,7 @@ package eval
 import (
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
-	"github.com/johnny-morrice/godless/internal/crypto"
+	"github.com/johnny-morrice/godless/crypto"
 	"github.com/johnny-morrice/godless/log"
 	"github.com/johnny-morrice/godless/query"
 	"github.com/pkg/errors"
