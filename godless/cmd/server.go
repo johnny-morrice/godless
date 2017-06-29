@@ -21,6 +21,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"runtime"
@@ -41,15 +42,20 @@ var serveCmd = &cobra.Command{
 	Long:  `A godless server listens to queries over HTTP.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		readKeysFromViper()
-		serve()
+		serve(cmd)
 	},
 }
 
-func serve() {
+func serve(cmd *cobra.Command) {
 	client := http.DefaultBackendClient()
 	client.Timeout = serverTimeout
 
 	queue := makePriorityQueue()
+	cache, cacheErr := makeCache(cmd)
+
+	if cacheErr != nil {
+		die(cacheErr)
+	}
 
 	options := lib.Options{
 		IpfsServiceUrl:    ipfsService,
@@ -64,6 +70,7 @@ func serve() {
 		IpfsClient:        client,
 		Pulse:             pulse,
 		PriorityQueue:     queue,
+		Cache:             cache,
 	}
 
 	godless, err := lib.New(options)
@@ -87,8 +94,34 @@ var pulse time.Duration
 var earlyConnect bool
 var apiQueryLimit int
 var apiQueueLength int
+var memoryBufferLength int
 var publicServer bool
 var serverTimeout time.Duration
+var cacheType string
+
+func makeCache(cmd *cobra.Command) (api.Cache, error) {
+	switch cacheType {
+	case "memory":
+		return makeMemoryCache()
+	case "bolt":
+		return makeBoltCache()
+	default:
+		err := fmt.Errorf("Unknown cache: '%v'", cacheType)
+		cmd.Help()
+		die(err)
+	}
+
+	return nil, fmt.Errorf("Bug in makeCache")
+}
+
+func makeBoltCache() (api.Cache, error) {
+	panic("not implemented")
+}
+
+func makeMemoryCache() (api.Cache, error) {
+	memCache := cache.MakeResidentMemoryCache(memoryBufferLength, memoryBufferLength)
+	return memCache, nil
+}
 
 func shutdownOnTrap(godless *lib.Godless) {
 	onTrap(func(signal os.Signal) {
@@ -117,17 +150,24 @@ func init() {
 	storeCmd.AddCommand(serveCmd)
 
 	defaultLimit := runtime.NumCPU()
-	serveCmd.PersistentFlags().StringVar(&addr, "address", "localhost:8085", "Listen address for server")
+	serveCmd.PersistentFlags().StringVar(&addr, "address", __DEFAULT_LISTEN_ADDR, "Listen address for server")
 	serveCmd.PersistentFlags().DurationVar(&interval, "synctime", __DEFAULT_REPLICATION_INTERVAL, "Interval between peer replications")
 	serveCmd.PersistentFlags().DurationVar(&pulse, "pulse", __DEFAULT_PULSE, "Interval between writes to IPFS")
-	serveCmd.PersistentFlags().BoolVar(&earlyConnect, "early", false, "Early check on IPFS API access")
+	serveCmd.PersistentFlags().BoolVar(&earlyConnect, "early", __DEFAULT_EARLY_CONNECTION, "Early check on IPFS API access")
 	serveCmd.PersistentFlags().IntVar(&apiQueryLimit, "limit", defaultLimit, "Number of simulataneous queries run by the API. limit < 0 for no restrictions.")
-	serveCmd.PersistentFlags().BoolVar(&publicServer, "public", false, "Don't limit pubsub updates to the public key list")
+	serveCmd.PersistentFlags().BoolVar(&publicServer, "public", __DEFAULT_SERVER_PUBLIC_STATUS, "Don't limit pubsub updates to the public key list")
 	serveCmd.PersistentFlags().DurationVar(&serverTimeout, "timeout", __DEFAULT_SERVER_TIMEOUT, "Timeout for serverside HTTP queries")
 	serveCmd.PersistentFlags().IntVar(&apiQueueLength, "qlength", __DEFAULT_QUEUE_LENGTH, "API Priority queue length")
+	serveCmd.PersistentFlags().StringVar(&cacheType, "cache", __DEFAULT_CACHE_TYPE, "Cache type (bolt|memory)")
+	serveCmd.PersistentFlags().IntVar(&memoryBufferLength, "buffer", __DEFAULT_MEMORY_BUFFER_LENGTH, "Buffer length if using memory cache")
 }
 
+const __DEFAULT_EARLY_CONNECTION = false
+const __DEFAULT_SERVER_PUBLIC_STATUS = false
+const __DEFAULT_CACHE_TYPE = "memory"
+const __DEFAULT_LISTEN_ADDR = "localhost:8085"
 const __DEFAULT_SERVER_TIMEOUT = time.Minute * 10
 const __DEFAULT_QUEUE_LENGTH = 4096
 const __DEFAULT_PULSE = time.Second
 const __DEFAULT_REPLICATION_INTERVAL = time.Minute
+const __DEFAULT_MEMORY_BUFFER_LENGTH = -1
