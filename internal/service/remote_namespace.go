@@ -100,6 +100,32 @@ func MakeRemoteNamespace(options RemoteNamespaceOptions) api.RemoteNamespaceTree
 }
 
 func (rn *remoteNamespace) initializeMemoryImage() {
+	head, err := rn.getHead()
+
+	if err != nil {
+		log.Error("remoteNamespace initialization failed to get HEAD: %v", err.Error())
+		return
+	}
+
+	if crdt.IsNilPath(head) {
+		return
+	}
+
+	index, err := rn.loadIndex(head)
+
+	if err != nil {
+		log.Error("remoteNamespace initialization failed to load Index: %v", err.Error())
+	}
+
+	go func() {
+		_, err := rn.insertIndex(index)
+
+		if err == nil {
+			log.Info("Initialized remoteNamespace with Index at: %v", head)
+		} else {
+			log.Error("Failed to initialize remoteNamespace with Index (%v): ", head, err.Error())
+		}
+	}()
 
 }
 
