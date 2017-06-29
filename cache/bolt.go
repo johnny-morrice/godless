@@ -1,12 +1,15 @@
 package cache
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/boltdb/bolt"
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/pkg/errors"
+
+	pb "github.com/gogo/protobuf/proto"
 )
 
 type BoltOptions struct {
@@ -110,7 +113,7 @@ type boltMemoryImage struct {
 }
 
 func (memimg boltMemoryImage) initBuckets() error {
-	panic("not implemented")
+	return initBucket(memimg.db, BOLT_MEMORY_IMAGE_BUCKET_NAME)
 }
 
 func (memimg boltMemoryImage) GetIndex() (crdt.Index, error) {
@@ -124,3 +127,51 @@ func (memimg boltMemoryImage) JoinIndex(index crdt.Index) error {
 func connectBolt(options BoltOptions) (*bolt.DB, error) {
 	return bolt.Open(options.FilePath, options.Mode, options.DBOptions)
 }
+
+func initBucket(db *bolt.DB, bucketName []byte) error {
+	return db.Update(func(transaction *bolt.Tx) error {
+		_, err := transaction.CreateBucketIfNotExists(bucketName)
+		return err
+	})
+}
+
+func putMessage(bucket *bolt.Bucket, key []byte, value pb.Message) error {
+	keyText := string(key)
+	valueBytes, err := pb.Marshal(value)
+
+	if err != nil {
+		msg := fmt.Sprintf("Failed to Marshal protobuf message for Bolt key: %v", keyText)
+		return errors.Wrap(err, msg)
+	}
+
+	err = bucket.Put(key, valueBytes)
+
+	if err != nil {
+		msg := fmt.Sprintf("Failed to Put value at Bolt key: %v", keyText)
+		return errors.Wrap(err, msg)
+	}
+
+	return nil
+}
+
+func getMessage(bucket *bolt.Bucket, key []byte, value pb.Message) error {
+	keyText := string(key)
+	valueBytes := bucket.Get(key)
+
+	if valueBytes == nil {
+		return fmt.Errorf("Failed to Get value at Bolt key: %v", keyText)
+	}
+
+	err := pb.Unmarshal(valueBytes, value)
+
+	if err != nil {
+		msg := fmt.Sprintf("Failed to Unmarshal protobuf message for Bolt key: %v", keyText)
+		return errors.Wrap(err, msg)
+	}
+
+	return nil
+}
+
+var CURRENT_INDEX_KEY = []byte("current_index")
+var BOLT_MEMORY_IMAGE_BUCKET_NAME = []byte("memory_image")
+var BOLT_CACHE_BUCKET_NAME = []byte("cache")
