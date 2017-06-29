@@ -289,7 +289,6 @@ func (queue *residentPriorityQueue) Enqueue(request api.APIRequest, data interfa
 			return nil
 		}
 	}
-	log.Debug("Queued request.")
 
 	return fullQueue
 }

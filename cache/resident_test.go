@@ -44,12 +44,23 @@ func TestResidentMemoryImageConcurrency(t *testing.T) {
 	testutil.WaitGroupTimeout(t, wg, timeout)
 }
 
-func TestResidentMemoryImageJoinIndex(t *testing.T) {
-	t.FailNow()
-}
+func TestResidentMemoryImageGetAndJoinIndex(t *testing.T) {
+	indexA := crdt.MakeIndex(map[crdt.TableName]crdt.Link{
+		"hi": crdt.UnsignedLink("world"),
+	})
+	indexB := crdt.MakeIndex(map[crdt.TableName]crdt.Link{
+		"dude": crdt.UnsignedLink("yes"),
+	})
 
-func TestResidentMemoryImageGetIndex(t *testing.T) {
-	t.FailNow()
+	expected := indexA.JoinIndex(indexB)
+
+	memimg := MakeResidentMemoryImage()
+	memimg.JoinIndex(indexA)
+	memimg.JoinIndex(indexB)
+	actual, err := memimg.GetIndex()
+
+	testutil.AssertNil(t, err)
+	testutil.Assert(t, "Unexpected index", expected.Equals(actual))
 }
 
 func TestResidentHeadCacheConcurrency(t *testing.T) {
