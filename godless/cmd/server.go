@@ -26,6 +26,8 @@ import (
 	"time"
 
 	lib "github.com/johnny-morrice/godless"
+	"github.com/johnny-morrice/godless/api"
+	"github.com/johnny-morrice/godless/cache"
 	"github.com/johnny-morrice/godless/internal/http"
 	"github.com/johnny-morrice/godless/log"
 	"github.com/spf13/cobra"
@@ -46,6 +48,8 @@ func serve() {
 	client := http.DefaultBackendClient()
 	client.Timeout = serverTimeout
 
+	queue := makePriorityQueue()
+
 	options := lib.Options{
 		IpfsServiceUrl:    ipfsService,
 		WebServiceAddr:    addr,
@@ -58,6 +62,7 @@ func serve() {
 		PublicServer:      publicServer,
 		IpfsClient:        client,
 		Pulse:             pulse,
+		PriorityQueue:     queue,
 	}
 
 	godless, err := lib.New(options)
@@ -78,8 +83,13 @@ var interval time.Duration
 var pulse time.Duration
 var earlyConnect bool
 var apiQueryLimit int
+var apiQueueLength int
 var publicServer bool
 var serverTimeout time.Duration
+
+func makePriorityQueue() api.RequestPriorityQueue {
+	return cache.MakeResidentBufferQueue(apiQueueLength)
+}
 
 func shutdown(godless *lib.Godless) {
 	godless.Shutdown()
@@ -91,10 +101,16 @@ func init() {
 
 	defaultLimit := runtime.NumCPU()
 	serveCmd.PersistentFlags().StringVar(&addr, "address", "localhost:8085", "Listen address for server")
-	serveCmd.PersistentFlags().DurationVar(&interval, "peerpulse", time.Minute*1, "Interval between peer replications")
-	serveCmd.PersistentFlags().DurationVar(&pulse, "pulse", time.Second, "Interval between writes to IPFS")
+	serveCmd.PersistentFlags().DurationVar(&interval, "synctime", __DEFAULT_REPLICATION_INTERVAL, "Interval between peer replications")
+	serveCmd.PersistentFlags().DurationVar(&pulse, "pulse", __DEFAULT_PULSE, "Interval between writes to IPFS")
 	serveCmd.PersistentFlags().BoolVar(&earlyConnect, "early", false, "Early check on IPFS API access")
 	serveCmd.PersistentFlags().IntVar(&apiQueryLimit, "limit", defaultLimit, "Number of simulataneous queries run by the API. limit < 0 for no restrictions.")
 	serveCmd.PersistentFlags().BoolVar(&publicServer, "public", false, "Don't limit pubsub updates to the public key list")
-	serveCmd.PersistentFlags().DurationVar(&serverTimeout, "timeout", time.Minute, "Timeout for serverside HTTP queries")
+	serveCmd.PersistentFlags().DurationVar(&serverTimeout, "timeout", __DEFAULT_SERVER_TIMEOUT, "Timeout for serverside HTTP queries")
+	serveCmd.PersistentFlags().IntVar(&apiQueueLength, "qlength", __DEFAULT_QUEUE_LENGTH, "API Priority queue length")
 }
+
+const __DEFAULT_SERVER_TIMEOUT = time.Minute * 10
+const __DEFAULT_QUEUE_LENGTH = 4096
+const __DEFAULT_PULSE = time.Second
+const __DEFAULT_REPLICATION_INTERVAL = time.Minute
