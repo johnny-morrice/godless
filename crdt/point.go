@@ -85,6 +85,8 @@ func SignedPoint(text PointText, keys []crypto.PrivateKey) (Point, error) {
 		signed.Signatures[i] = sig
 	}
 
+	signed.Signatures = crypto.OrderSignatures(signed.Signatures)
+
 	return signed, nil
 }
 

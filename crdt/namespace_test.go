@@ -16,8 +16,183 @@ import (
 	"github.com/johnny-morrice/godless/log"
 )
 
+func genSmallNamespace(values []reflect.Value, rand *rand.Rand) {
+	const smallSize = 20
+	gen := GenNamespace(rand, smallSize)
+	v := reflect.ValueOf(gen)
+	values[0] = v
+}
+
 func TestFilterSignedEntries(t *testing.T) {
-	t.FailNow()
+	const count = 10
+	const maxSignage = 3
+	const invalidProbability = 1 / 8
+	keys := generateTestKeys(count)
+
+	config := &quick.Config{
+		Values:   genSmallNamespace,
+		MaxCount: testutil.ENCODE_REPEAT_COUNT,
+	}
+
+	signer := namespaceSigner{
+		keys:               keys,
+		maxPointSignage:    maxSignage,
+		invalidProbability: invalidProbability,
+	}
+
+	err := quick.Check(signer.filterStreamOk, config)
+
+	testutil.AssertVerboseErrorIsNil(t, err)
+}
+
+type namespaceSigner struct {
+	maxPointSignage    int
+	invalidProbability float32
+	keys               []crypto.PrivateKey
+}
+
+func (signer namespaceSigner) randomKey() crypto.PrivateKey {
+	sigIndex := testutil.Rand().Intn(len(signer.keys))
+	return signer.keys[sigIndex]
+}
+
+func (signer namespaceSigner) publicKeys() []crypto.PublicKey {
+	pub := make([]crypto.PublicKey, len(signer.keys))
+
+	for i, priv := range signer.keys {
+		pub[i] = priv.GetPublicKey()
+	}
+
+	return pub
+}
+
+func (signer namespaceSigner) signEntry(t TableName, r RowName, e EntryName, entry Entry) (Entry, []InvalidNamespaceEntry) {
+	unsigned := entry.GetValues()
+	signed := make([]Point, len(unsigned))
+	invalidEntries := make([]InvalidNamespaceEntry, 0, len(unsigned))
+
+	rand := testutil.Rand()
+	randLimit := signer.maxPointSignage - 1
+	for i, p := range unsigned {
+		if rand.Float32() < signer.invalidProbability {
+			invalid := NamespaceStreamEntry{
+				Table: t,
+				Row:   r,
+				Entry: e,
+				Point: StreamPoint{
+					Text: p.Text,
+				},
+			}
+			invalidEntries = append(invalidEntries, InvalidNamespaceEntry(invalid))
+			continue
+		}
+
+		signCount := rand.Intn(randLimit) + 1
+		signKeys := make([]crypto.PrivateKey, signCount)
+		for i := 0; i < signCount; i++ {
+			signKeys[i] = signer.randomKey()
+		}
+		signedPoint, err := SignedPoint(p.Text, signKeys)
+
+		if err != nil {
+			panic(err)
+		}
+
+		signed[i] = signedPoint
+	}
+
+	return MakeEntry(signed), invalidEntries
+}
+
+func (signer namespaceSigner) sign(namespace Namespace) (Namespace, []InvalidNamespaceEntry) {
+	if len(signer.keys) == 0 {
+		panic("keys had len 0")
+	}
+
+	if signer.maxPointSignage == 0 {
+		panic("maxPointSignage was 0")
+	}
+
+	signed := EmptyNamespace()
+	expectedInvalid := []InvalidNamespaceEntry{}
+
+	namespace.ForeachEntry(func(t TableName, r RowName, e EntryName, entry Entry) {
+		signedEntry, invalid := signer.signEntry(t, r, e, entry)
+		expectedInvalid = append(expectedInvalid, invalid...)
+		signed.addEntry(t, r, e, signedEntry)
+	})
+
+	return signed, expectedInvalid
+}
+
+func (signer namespaceSigner) unsignedExpected(expectedInvalid, actualInvalid []InvalidNamespaceEntry) bool {
+	if len(expectedInvalid) != len(actualInvalid) {
+		log.Debug("Unexpected number of invalid entries")
+		return false
+	}
+
+	expected := EmptyNamespace()
+	actual := EmptyNamespace()
+
+	for i, ex := range expectedInvalid {
+		ac := actualInvalid[i]
+
+		expected.addStreamEntry(NamespaceStreamEntry(ex))
+		actual.addStreamEntry(NamespaceStreamEntry(ac))
+	}
+
+	return expected.Equals(actual)
+}
+
+func (signer namespaceSigner) filterStreamOk(namespace Namespace) bool {
+	expected, expectedInvalidPoints := signer.sign(namespace)
+	expectedStream, invalid := MakeNamespaceStream(expected)
+
+	if len(invalid) != 0 {
+		log.Debug("Failed for invalid initial stream")
+		return false
+	}
+
+	actualStream, actualInvalidPoints, err := FilterSignedEntries(expectedStream, signer.publicKeys())
+
+	if !signer.unsignedExpected(expectedInvalidPoints, actualInvalidPoints) {
+		log.Debug("Unsigned were unexpected")
+		return false
+	}
+
+	if len(invalid) != 0 {
+		log.Debug("Failed for invalid after FilterSignedEntries")
+		return false
+	}
+
+	if err != nil {
+		log.Debug("Failed for error in filtering")
+		return false
+	}
+
+	actual, invalid, err := ReadNamespaceStream(actualStream)
+
+	if len(invalid) != 0 {
+		log.Debug("Failed for invalid after ReadNamespaceStream")
+		return false
+	}
+
+	if err != nil {
+		log.Debug("Failed for error in ReadNamespaceStream")
+		return false
+	}
+
+	same := expected.Equals(actual)
+
+	if !same {
+		log.Debug("Unexpected filtered stream")
+		expectedText := fmt.Sprint(expectedStream)
+		actualText := fmt.Sprint(actualStream)
+
+		testutil.LogDiff(expectedText, actualText)
+	}
+
+	return same
 }
 
 func TestMakeRowStream(t *testing.T) {
@@ -733,7 +908,7 @@ func generateTestKeys(count int) []crypto.PrivateKey {
 			panic(err)
 		}
 
-		keys[count] = priv
+		keys[i] = priv
 	}
 
 	return keys

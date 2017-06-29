@@ -81,19 +81,23 @@ func MakeNamespace(tables map[TableName]Table) Namespace {
 }
 
 func (ns Namespace) FilterVerified(keys []crypto.PublicKey) Namespace {
-	empty := EmptyNamespace()
+	verified := EmptyNamespace()
 
 	ns.ForeachEntry(func(t TableName, r RowName, e EntryName, entry Entry) {
 		signed := entry.FilterVerified(keys)
-		table := EmptyTable()
-		row := EmptyRow()
-
-		row.addEntry(e, signed)
-		table.addRow(r, row)
-		empty.addTable(t, table)
+		verified.addEntry(t, r, e, signed)
 	})
 
-	return empty
+	return verified
+}
+
+func (ns Namespace) addEntry(t TableName, r RowName, e EntryName, entry Entry) {
+	table := EmptyTable()
+	row := EmptyRow()
+
+	row.addEntry(e, entry)
+	table.addRow(r, row)
+	ns.addTable(t, table)
 }
 
 // Strip removes empty tables and rows that would not be saved to the backing store.
@@ -239,7 +243,12 @@ func (ns Namespace) Equals(other Namespace) bool {
 
 	for k, v := range ns.Tables {
 		otherv, present := other.Tables[k]
-		if !present || !v.Equals(otherv) {
+
+		if !present {
+			return false
+		}
+
+		if !v.Equals(otherv) {
 			return false
 		}
 	}
@@ -355,7 +364,11 @@ func (t Table) Equals(other Table) bool {
 
 	for k, v := range t.Rows {
 		otherv, present := other.Rows[k]
-		if !present || !v.Equals(otherv) {
+		if !present {
+			return false
+		}
+
+		if !v.Equals(otherv) {
 			return false
 		}
 	}
@@ -445,7 +458,11 @@ func (row Row) Equals(other Row) bool {
 	for k, v := range row.Entries {
 		otherv, present := other.Entries[k]
 
-		if !present || !v.Equals(otherv) {
+		if !present {
+			return false
+		}
+
+		if !v.Equals(otherv) {
 			return false
 		}
 	}

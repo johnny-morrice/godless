@@ -207,7 +207,7 @@ func AssertLenEquals(t *testing.T, expected int, hasLen interface{}) {
 	}
 }
 
-func LogDiff(old, new string) {
+func LogDiff(old, new string) bool {
 	oldParts := strings.Split(old, "")
 	newParts := strings.Split(new, "")
 
@@ -241,11 +241,12 @@ func LogDiff(old, new string) {
 			log.Error("First difference at %v", i)
 			log.Error("Old was: '%v'", oldFragment)
 			log.Error("New was: '%v'", newFragment)
-			return
+			return true
 		}
 	}
 
 	log.Error("logdiff called but no difference found")
+	return false
 }
 
 const __CALLER_DEPTH = 2

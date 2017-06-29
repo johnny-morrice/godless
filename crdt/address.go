@@ -53,6 +53,8 @@ func SignedLink(path IPFSPath, keys []crypto.PrivateKey) (Link, error) {
 		signed.Signatures[i] = sig
 	}
 
+	signed.Signatures = crypto.OrderSignatures(signed.Signatures)
+
 	return signed, nil
 }
 
