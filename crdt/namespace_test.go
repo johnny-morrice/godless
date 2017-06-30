@@ -23,6 +23,34 @@ func genSmallNamespace(values []reflect.Value, rand *rand.Rand) {
 	values[0] = v
 }
 
+func TestEntryFilterVerified(t *testing.T) {
+	priv, pub, err := crypto.GenerateKey()
+
+	if err != nil {
+		panic(err)
+	}
+
+	goodPoint, err := SignedPoint("Good", []crypto.PrivateKey{priv})
+
+	if err != nil {
+		panic(err)
+	}
+
+	badPoint := UnsignedPoint("Bad")
+	unfilteredEntry := MakeEntry([]Point{
+		goodPoint,
+		badPoint,
+	})
+
+	expected := MakeEntry([]Point{
+		goodPoint,
+	})
+
+	actual := unfilteredEntry.FilterVerified([]crypto.PublicKey{pub})
+
+	testutil.Assert(t, "Unexpected Entry", expected.Equals(actual))
+}
+
 func TestNamespaceFilterVerified(t *testing.T) {
 	priv, pub, err := crypto.GenerateKey()
 

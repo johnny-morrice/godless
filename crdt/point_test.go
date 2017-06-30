@@ -32,3 +32,11 @@ func TestSignedPoint(t *testing.T) {
 	testutil.AssertLenEquals(t, 0, signed.Signatures)
 	testutil.Assert(t, "Expected empty text for failed SignedPoint", signed.Text == "")
 }
+
+func TestPointIsVerifiedBy(t *testing.T) {
+	t.FailNow()
+}
+
+func TestPointIsVerifiedByAny(t *testing.T) {
+	t.FailNow()
+}
