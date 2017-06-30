@@ -31,6 +31,8 @@ var genCmd = &cobra.Command{
 	Use:   "gen",
 	Short: "Generate public/private keypair",
 	Run: func(cmd *cobra.Command, args []string) {
+		readKeysFromViper()
+
 		hash := generateKey()
 
 		fmt.Println(string(hash))
