@@ -4,8 +4,29 @@ import (
 	"io"
 )
 
+type DataPeer interface {
+	ContentAddressableStorage
+	ConnectablePeer
+	DisconnectablePeer
+	PubSubPublisher
+	PubSubSubscriber
+	PingablePeer
+}
+
+type PingablePeer interface {
+	IsUp() bool
+}
+
+type ConnectablePeer interface {
+	Connect() error
+}
+
+type DisconnectablePeer interface {
+	Disconnect() error
+}
+
 type ContentAddressableStorage interface {
-	Cat(address string) (io.Reader, error)
+	Cat(path string) (io.ReadCloser, error)
 	Add(r io.Reader) (string, error)
 }
 

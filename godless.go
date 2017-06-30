@@ -26,11 +26,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-// TODO allow single cache option.
 // Godless options.
 type Options struct {
-	// IpfsServiceUrl is required.
+	// IpfsServiceUrl is required, unless specifying your own DataPeer or RemoteStore.
 	IpfsServiceUrl string
+	// DataPeer is optional.
+	DataPeer api.DataPeer
+	// RemoteStore is optional.
+	RemoteStore api.RemoteStore
 	// KeyStore is required. A private Key store.
 	KeyStore api.KeyStore
 	// MemoryImage is required.
@@ -75,7 +78,6 @@ type Godless struct {
 	errwg    sync.WaitGroup
 	stopch   chan struct{}
 	stoppers []chan<- struct{}
-	store    api.RemoteStore
 	remote   api.RemoteNamespace
 	api      api.APIService
 }
@@ -91,7 +93,8 @@ func New(options Options) (*Godless, error) {
 	}
 
 	setupFuncs := []func() error{
-		godless.connectIpfs,
+		godless.connectDataPeer,
+		godless.connectRemoteStore,
 		godless.connectCache,
 		godless.setupNamespace,
 		godless.launchAPI,
@@ -125,10 +128,6 @@ func (godless *Godless) report() {
 
 func (godless *Godless) findMissingParameters() error {
 	var missing error
-	if godless.IpfsServiceUrl == "" {
-		msg := godless.missingParameterText("IpfsServiceUrl")
-		missing = errors.New(msg)
-	}
 
 	if godless.KeyStore == nil {
 		msg := godless.missingParameterText("KeyStore")
@@ -165,25 +164,45 @@ func (godless *Godless) Shutdown() {
 	godless.stopch <- struct{}{}
 }
 
-func (godless *Godless) connectIpfs() error {
-	client := godless.IpfsClient
-	pingTimeout := godless.IpfsPingTimeout
-
-	peer := &ipfs.IPFSPeer{
-		Url:         godless.IpfsServiceUrl,
-		Client:      client,
-		PingTimeout: pingTimeout,
+func (godless *Godless) connectDataPeer() error {
+	if godless.RemoteStore != nil {
+		return nil
 	}
 
-	if godless.FailEarly {
-		err := peer.Connect()
-
-		if err != nil {
-			return err
+	if godless.DataPeer == nil {
+		if godless.IpfsServiceUrl == "" {
+			msg := godless.missingParameterText("IpfsServiceUrl")
+			return errors.New(msg)
 		}
+
+		peer := &ipfs.WebServiceClient{
+			Url:         godless.IpfsServiceUrl,
+			PingTimeout: godless.IpfsPingTimeout,
+			Http:        godless.IpfsClient,
+		}
+
+		godless.DataPeer = peer
 	}
 
-	godless.store = peer
+	return nil
+}
+
+func (godless *Godless) connectRemoteStore() error {
+	if godless.RemoteStore == nil {
+		ipfs := &ipfs.IpfsRemoteStore{
+			Shell: godless.DataPeer,
+		}
+
+		if godless.FailEarly {
+			err := ipfs.Connect()
+
+			if err != nil {
+				return err
+			}
+		}
+
+		godless.RemoteStore = ipfs
+	}
 
 	return nil
 }
@@ -240,7 +259,7 @@ func (godless *Godless) setupNamespace() error {
 
 	namespaceOptions := service.RemoteNamespaceOptions{
 		Pulse:          godless.Pulse,
-		Store:          godless.store,
+		Store:          godless.RemoteStore,
 		HeadCache:      godless.HeadCache,
 		IndexCache:     godless.IndexCache,
 		NamespaceCache: godless.NamespaceCache,
@@ -310,7 +329,7 @@ func (godless *Godless) replicate() error {
 
 	options := service.ReplicateOptions{
 		API:         godless.api,
-		RemoteStore: godless.store,
+		RemoteStore: godless.RemoteStore,
 		Interval:    interval,
 		Topics:      pubsubTopics,
 		KeyStore:    godless.KeyStore,
