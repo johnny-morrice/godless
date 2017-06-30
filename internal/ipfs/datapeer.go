@@ -20,7 +20,7 @@ type WebServiceClient struct {
 	pinger      *ipfs.Shell
 }
 
-func (client WebServiceClient) Connect() error {
+func (client *WebServiceClient) Connect() error {
 	if client.PingTimeout == 0 {
 		client.PingTimeout = __DEFAULT_PING_TIMEOUT
 	}
@@ -39,11 +39,11 @@ func (client WebServiceClient) Connect() error {
 	return nil
 }
 
-func (client WebServiceClient) IsUp() bool {
+func (client *WebServiceClient) IsUp() bool {
 	return client.pinger.IsUp()
 }
 
-func (client WebServiceClient) Disconnect() error {
+func (client *WebServiceClient) Disconnect() error {
 	return nil
 }
 

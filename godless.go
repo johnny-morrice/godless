@@ -187,7 +187,7 @@ func (godless *Godless) connectDataPeer() error {
 		godless.DataPeer = peer
 	}
 
-	return nil
+	return godless.DataPeer.Connect()
 }
 
 func (godless *Godless) connectRemoteStore() error {
