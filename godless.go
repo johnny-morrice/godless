@@ -30,9 +30,9 @@ import (
 type Options struct {
 	// IpfsServiceUrl is required, unless specifying your own DataPeer or RemoteStore.
 	IpfsServiceUrl string
-	// DataPeer is optional.
+	// DataPeer is optional.  If specified, none of the IPFS options will be used.
 	DataPeer api.DataPeer
-	// RemoteStore is optional.
+	// RemoteStore is optional.  If specified, the DataPeer will not be used, nor any of the IPFS options.
 	RemoteStore api.RemoteStore
 	// KeyStore is required. A private Key store.
 	KeyStore api.KeyStore
@@ -46,7 +46,8 @@ type Options struct {
 	FailEarly bool
 	// ReplicateInterval is optional.  The duration between peer-to-peer replications.
 	ReplicateInterval time.Duration
-	Pulse             time.Duration
+	// Pulse is optional.  The duration between flushes of the index to IPFS.
+	Pulse time.Duration
 	// Topics is optional.  Two godless servers which share a topic will replicate indices. An empty topics slice will disable replication.
 	Topics []string
 	// IpfsClient is optional.  Specify a HTTP client for IPFS.
@@ -111,6 +112,10 @@ func New(options Options) (*Godless, error) {
 	godless.report()
 
 	return godless, nil
+}
+
+func (godless *Godless) Call(request api.APIRequest) (<-chan api.APIResponse, error) {
+	return godless.api.Call(request)
 }
 
 func (godless *Godless) report() {
