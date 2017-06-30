@@ -2,8 +2,6 @@
 //
 // Godless uses a Consistent Replicated Data Type called a Namespace to share schemaless data with peers.
 //
-// This package is a facade to Godless internals.
-//
 // Godless is in alpha, and should be considered experimental software.
 package godless
 
