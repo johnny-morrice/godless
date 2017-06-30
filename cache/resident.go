@@ -34,6 +34,7 @@ func (memimg *residentMemoryImage) GetIndex() (crdt.Index, error) {
 }
 
 func (memimg *residentMemoryImage) CloseMemoryImage() error {
+	log.Info("Closed residentMemoryImage")
 	return nil
 }
 
@@ -322,6 +323,7 @@ func (queue *residentPriorityQueue) Drain() <-chan interface{} {
 
 func (queue *residentPriorityQueue) Close() error {
 	close(queue.stopper)
+	log.Info("Closed residentPriorityQueue")
 	return nil
 }
 

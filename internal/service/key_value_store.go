@@ -146,6 +146,7 @@ func (kv *keyValueStore) reflect(request api.APIRequest) (<-chan api.APIResponse
 func (kv *keyValueStore) CloseAPI() {
 	kv.namespace.Close()
 	kv.queue.Close()
+	log.Info("API closed")
 }
 
 func convertToFailure(resp *api.APIResponse, message string) {

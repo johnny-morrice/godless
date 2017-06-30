@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/johnny-morrice/godless/api"
@@ -18,24 +19,24 @@ type addResponse struct {
 	err  error
 }
 
-type addNamespace struct {
+type addNamespaceRequest struct {
 	namespace crdt.Namespace
 	result    chan addResponse
 }
 
-func (add addNamespace) reply(path crdt.IPFSPath, err error) {
+func (add addNamespaceRequest) reply(path crdt.IPFSPath, err error) {
 	go func() {
 		defer close(add.result)
 		add.result <- addResponse{path: path, err: err}
 	}()
 }
 
-type addIndex struct {
+type addIndexRequest struct {
 	index  crdt.Index
 	result chan addResponse
 }
 
-func (add addIndex) reply(path crdt.IPFSPath, err error) {
+func (add addIndexRequest) reply(path crdt.IPFSPath, err error) {
 	go func() {
 		defer close(add.result)
 		add.result <- addResponse{path: path, err: err}
@@ -44,9 +45,11 @@ func (add addIndex) reply(path crdt.IPFSPath, err error) {
 
 type remoteNamespace struct {
 	RemoteNamespaceOptions
-	namespaceTube chan addNamespace
-	indexTube     chan addIndex
+	namespaceTube chan addNamespaceRequest
+	indexTube     chan addIndexRequest
 	pulser        *time.Ticker
+	stopch        chan struct{}
+	wg            *sync.WaitGroup
 }
 
 type RemoteNamespaceOptions struct {
@@ -86,11 +89,14 @@ func MakeRemoteNamespace(options RemoteNamespaceOptions) api.RemoteNamespaceTree
 
 	remote := &remoteNamespace{
 		RemoteNamespaceOptions: options,
-		namespaceTube:          make(chan addNamespace),
-		indexTube:              make(chan addIndex),
+		namespaceTube:          make(chan addNamespaceRequest),
+		indexTube:              make(chan addIndexRequest),
 		pulser:                 time.NewTicker(pulseInterval),
+		stopch:                 make(chan struct{}),
+		wg:                     &sync.WaitGroup{},
 	}
 
+	remote.wg.Add(__REMOTE_NAMESPACE_PROCESS_COUNT)
 	remote.initializeMemoryImage()
 	go remote.addNamespaces()
 	go remote.addIndices()
@@ -130,70 +136,95 @@ func (rn *remoteNamespace) initializeMemoryImage() {
 }
 
 func (rn *remoteNamespace) memoryImageWriteLoop() {
+	defer rn.wg.Done()
 	for {
-		<-rn.pulser.C
-		index, err := rn.MemoryImage.GetIndex()
-
-		if err != nil {
-			log.Error("Error joining MemoryImage indices: %v", err.Error())
-			continue
+		select {
+		case <-rn.stopch:
+			return
+		case <-rn.pulser.C:
+			rn.writeMemoryImage()
 		}
+	}
+}
 
-		path, err := rn.persistIndex(index)
+func (rn *remoteNamespace) writeMemoryImage() {
+	index, err := rn.MemoryImage.GetIndex()
 
-		if err != nil {
-			log.Error("Error saving MemoryImage to IPFS: %v", err.Error())
-			continue
-		}
+	if err != nil {
+		log.Error("Error joining MemoryImage indices: %v", err.Error())
+		return
+	}
 
-		log.Info("Added MemoryImage Index to IPFS at: %v", path)
-		err = rn.setHead(path)
+	path, err := rn.persistIndex(index)
 
-		if err != nil {
-			log.Error("Failed to update HEAD cache")
-			continue
-		}
+	if err != nil {
+		log.Error("Error saving MemoryImage to IPFS: %v", err.Error())
+		return
+	}
+
+	log.Info("Added MemoryImage Index to IPFS at: %v", path)
+	err = rn.setHead(path)
+
+	if err != nil {
+		log.Error("Failed to update HEAD cache")
+		return
 	}
 }
 
 func (rn *remoteNamespace) addNamespaces() {
-	for tubeItem := range rn.namespaceTube {
-		add := tubeItem
-		go func() {
-			path, err := rn.Store.AddNamespace(add.namespace)
-			add.reply(path, err)
-		}()
+	defer rn.wg.Done()
+	for {
+		select {
+		case tubeItem := <-rn.namespaceTube:
+			addRequest := tubeItem
+			go rn.addNamespace(addRequest)
+		case <-rn.stopch:
+			return
+		}
 	}
 }
 
 func (rn *remoteNamespace) addIndices() {
-	for tubeItem := range rn.indexTube {
-		addRequest := tubeItem
-		go func() {
-			index := addRequest.index
-
-			errch := make(chan error, 1)
-
-			go func() {
-				err := rn.MemoryImage.JoinIndex(index)
-				errch <- err
-			}()
-
-			persistErr := <-errch
-
-			path, ipfsErr := rn.persistIndex(index)
-
-			if persistErr == nil {
-				persistErr = ipfsErr
-			} else if ipfsErr != nil {
-				messages := []string{persistErr.Error(), ipfsErr.Error()}
-				msg := strings.Join(messages, " and ")
-				persistErr = errors.New(msg)
-			}
-
-			addRequest.reply(path, persistErr)
-		}()
+	defer rn.wg.Done()
+	for {
+		select {
+		case tubeItem := <-rn.indexTube:
+			addRequest := tubeItem
+			go rn.addIndex(addRequest)
+		case <-rn.stopch:
+			return
+		}
 	}
+}
+
+func (rn *remoteNamespace) addNamespace(addRequest addNamespaceRequest) {
+	path, err := rn.Store.AddNamespace(addRequest.namespace)
+	addRequest.reply(path, err)
+}
+
+func (rn *remoteNamespace) addIndex(addRequest addIndexRequest) {
+	index := addRequest.index
+
+	errch := make(chan error, 1)
+
+	go func() {
+		err := rn.MemoryImage.JoinIndex(index)
+		errch <- err
+	}()
+
+	persistErr := <-errch
+
+	path, ipfsErr := rn.persistIndex(index)
+
+	if persistErr == nil {
+		persistErr = ipfsErr
+	} else if ipfsErr != nil {
+		messages := []string{persistErr.Error(), ipfsErr.Error()}
+		msg := strings.Join(messages, " and ")
+		persistErr = errors.New(msg)
+	}
+
+	addRequest.reply(path, persistErr)
 }
 
 func (rn *remoteNamespace) persistIndex(index crdt.Index) (crdt.IPFSPath, error) {
@@ -214,8 +245,9 @@ func (rn *remoteNamespace) persistIndex(index crdt.Index) (crdt.IPFSPath, error)
 }
 
 func (rn *remoteNamespace) Close() {
-	close(rn.namespaceTube)
-	close(rn.indexTube)
+	close(rn.stopch)
+	rn.wg.Wait()
+	log.Info("Closed remoteNamespace")
 }
 
 func (rn *remoteNamespace) Replicate(links []crdt.Link, kvq api.KvQuery) {
@@ -542,7 +574,7 @@ func (rn *remoteNamespace) loadCurrentIndex() (crdt.Index, error) {
 func (rn *remoteNamespace) insertNamespace(namespace crdt.Namespace) (crdt.IPFSPath, error) {
 	const failMsg = "remoteNamespace.persistNamespace failed"
 	resultChan := make(chan addResponse)
-	rn.namespaceTube <- addNamespace{namespace: namespace, result: resultChan}
+	rn.namespaceTube <- addNamespaceRequest{namespace: namespace, result: resultChan}
 
 	result := <-resultChan
 
@@ -563,7 +595,7 @@ func (rn *remoteNamespace) insertIndex(index crdt.Index) (crdt.IPFSPath, error) 
 	const failMsg = "remoteNamespace.persistIndex failed"
 
 	resultChan := make(chan addResponse)
-	rn.indexTube <- addIndex{index: index, result: resultChan}
+	rn.indexTube <- addIndexRequest{index: index, result: resultChan}
 
 	result := <-resultChan
 
@@ -590,3 +622,4 @@ func (rn *remoteNamespace) setHead(head crdt.IPFSPath) error {
 }
 
 const __DEFAULT_PULSE = time.Second * 10
+const __REMOTE_NAMESPACE_PROCESS_COUNT = 3

@@ -276,7 +276,9 @@ func (cache boltCache) updateHead(updater func(bucket *bolt.Bucket) error) error
 }
 
 func (cache boltCache) CloseCache() error {
-	return cache.db.Close()
+	err := cache.db.Close()
+	log.Info("Closed boltCache")
+	return err
 }
 
 type boltMemoryImage struct {
@@ -373,7 +375,9 @@ func (memimg boltMemoryImage) update(updater func(bucket *bolt.Bucket) error) er
 }
 
 func (memimg boltMemoryImage) CloseMemoryImage() error {
-	return memimg.db.Close()
+	err := memimg.db.Close()
+	log.Info("Closed boltMemoryImage")
+	return err
 }
 
 func connectBolt(options BoltOptions) (*bolt.DB, error) {

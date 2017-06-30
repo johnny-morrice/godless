@@ -76,7 +76,7 @@ type Godless struct {
 	errch    chan error
 	errwg    sync.WaitGroup
 	stopch   chan struct{}
-	stoppers []chan<- struct{}
+	stoppers []api.Closer
 	remote   api.RemoteNamespace
 	api      api.APIService
 }
@@ -164,7 +164,10 @@ func (godless *Godless) Errors() <-chan error {
 
 // Shutdown stops all godless processes.  It does not wait for those goroutines to stop.
 func (godless *Godless) Shutdown() {
-	godless.stopch <- struct{}{}
+	godless.api.CloseAPI()
+	for _, closer := range godless.stoppers {
+		closer.Close()
+	}
 }
 
 func (godless *Godless) connectDataPeer() error {
@@ -210,19 +213,22 @@ func (godless *Godless) connectRemoteStore() error {
 	return nil
 }
 
-func (godless *Godless) makeCacheStopper(cache api.Cache) chan<- struct{} {
-	stopper := make(chan struct{}, 1)
+func (godless *Godless) makeCacheStopper(cache api.Cache) api.Closer {
+	stopch := make(chan struct{}, 1)
+	wg := &sync.WaitGroup{}
+	closer := api.MakeCloser(stopch, wg)
+
+	wg.Add(1)
 	go func() {
-		<-stopper
+		defer wg.Done()
+		<-stopch
 		err := cache.CloseCache()
-		if err == nil {
-			log.Info("Closed cache")
-		} else {
+		if err != nil {
 			log.Error("Error closing cache: %v", err.Error())
 		}
 	}()
 
-	return stopper
+	return closer
 }
 
 func (godless *Godless) connectCache() error {
@@ -230,7 +236,8 @@ func (godless *Godless) connectCache() error {
 		godless.HeadCache = godless.Cache
 		godless.IndexCache = godless.Cache
 		godless.NamespaceCache = godless.Cache
-		godless.addStopper(godless.makeCacheStopper(godless.Cache))
+		cacheCloser := godless.makeCacheStopper(godless.Cache)
+		godless.addCloser(cacheCloser)
 		return nil
 	}
 
@@ -305,13 +312,13 @@ func (godless *Godless) serveWeb() error {
 	}
 
 	webService := &service.WebService{API: godless.api}
-	stopch, err := http.Serve(addr, webService.Handler())
+	closer, err := http.Serve(addr, webService.Handler())
 
 	if err != nil {
 		return err
 	}
 
-	godless.addStopper(stopch)
+	godless.addCloser(closer)
 	return nil
 }
 
@@ -337,30 +344,18 @@ func (godless *Godless) replicate() error {
 		Topics:      pubsubTopics,
 		KeyStore:    godless.KeyStore,
 	}
-	stopch, errch := service.Replicate(options)
-	godless.addStopper(stopch)
+	closer, errch := service.Replicate(options)
+	godless.addCloser(closer)
 	godless.addErrors(errch)
 	return nil
 }
 
-func (godless *Godless) addStopper(stopch chan<- struct{}) {
+func (godless *Godless) addCloser(closer api.Closer) {
 	if godless.stopch == nil {
 		godless.stopch = make(chan struct{})
-		go func() {
-			godless.handleShutdown()
-		}()
 	}
 
-	godless.stoppers = append(godless.stoppers, stopch)
-}
-
-func (godless *Godless) handleShutdown() {
-	<-godless.stopch
-	log.Info("Shutting down")
-	for _, stopper := range godless.stoppers {
-		go close(stopper)
-	}
-
+	godless.stoppers = append(godless.stoppers, closer)
 }
 
 func (godless *Godless) addErrors(errch <-chan error) {

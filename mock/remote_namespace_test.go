@@ -61,6 +61,7 @@ func TestRemoteNamespaceRunKvReflection(t *testing.T) {
 		tableCName: crdt.UnsignedLink(addrC),
 	})
 
+	mockStore.EXPECT().AddIndex(matchIndex(index)).AnyTimes()
 	mockStore.EXPECT().CatIndex(addrIndex).Return(index, nil).MinTimes(1)
 	mockStore.EXPECT().CatNamespace(addrA).Return(namespaceA, nil)
 	mockStore.EXPECT().CatNamespace(addrB).Return(namespaceB, nil)
@@ -70,6 +71,7 @@ func TestRemoteNamespaceRunKvReflection(t *testing.T) {
 	joinedNamespace = joinedNamespace.JoinNamespace(namespaceC)
 
 	remote := loadRemote(mockStore, addrIndex)
+	defer remote.Close()
 
 	testReflectHead(t, remote, addrIndex)
 	testReflectIndex(t, remote, index)
@@ -171,6 +173,7 @@ func TestLoadTraverseSuccess(t *testing.T) {
 	mockSearcher.EXPECT().ReadNamespace(matchNamespace(namespaceC)).Return(keepReading)
 
 	remote := loadRemote(mockStore, addrIndex)
+	defer remote.Close()
 
 	if remote == nil {
 		t.Error("remote was nil")
@@ -214,6 +217,7 @@ func TestLoadTraverseFailure(t *testing.T) {
 	mockSearcher.EXPECT().ReadNamespace(matchNamespace(namespaceA)).Return(badTraverse)
 
 	remote := loadRemote(mockStore, indexAddr)
+	defer remote.Close()
 
 	if remote == nil {
 		t.Error("remote was nil")
@@ -257,6 +261,7 @@ func TestLoadTraverseAbort(t *testing.T) {
 	mockSearcher.EXPECT().ReadNamespace(matchNamespace(namespaceA)).Return(abort)
 
 	remote := loadRemote(mockStore, addrIndex)
+	defer remote.Close()
 
 	if remote == nil {
 		t.Error("remote was nil")
@@ -301,6 +306,7 @@ func TestJoinTableSuccess(t *testing.T) {
 	// mock.EXPECT().CatIndex(addrIndexA).Return(indexA, nil).MinTimes(1)
 
 	remote := loadRemote(mock, addrIndexA)
+	defer remote.Close()
 
 	if remote == nil {
 		t.Error("remote was nil")
@@ -335,6 +341,7 @@ func TestJoinTableFailure(t *testing.T) {
 	mock.EXPECT().AddIndex(matchIndex(index)).Return(crdt.NIL_PATH, errors.New("Expected error"))
 
 	remote := makeRemote(mock)
+	defer remote.Close()
 
 	testutil.AssertNonNil(t, remote)
 

@@ -28,8 +28,8 @@ type replicator struct {
 	keyStore api.KeyStore
 }
 
-func Replicate(options ReplicateOptions) (chan<- struct{}, <-chan error) {
-	stopch := make(chan struct{}, 1)
+func Replicate(options ReplicateOptions) (api.Closer, <-chan error) {
+	stopch := make(chan struct{})
 	errch := make(chan error, len(options.Topics))
 
 	interval := options.Interval
@@ -59,7 +59,9 @@ func Replicate(options ReplicateOptions) (chan<- struct{}, <-chan error) {
 		wg.Done()
 	}()
 
-	return stopch, errch
+	closer := api.MakeCloser(stopch, wg)
+
+	return closer, errch
 }
 
 func (p2p replicator) publishAllTopics() {
@@ -74,6 +76,7 @@ func (p2p replicator) publishAllTopics() {
 	for {
 		select {
 		case <-p2p.stopch:
+			log.Info("Stop publishing")
 			break
 		case <-ticker.C:
 			p2p.publishIndex()
@@ -215,6 +218,7 @@ func (p2p replicator) subscribeTopic(topic api.PubSubTopic) {
 				log.Info("Subscription error: %v", err)
 				return
 			case <-p2p.stopch:
+				log.Info("Stop subscribing on %v", topic)
 				return
 			}
 		}
