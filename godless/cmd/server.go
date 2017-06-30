@@ -201,6 +201,6 @@ const __DEFAULT_CACHE_TYPE = __MEMORY_CACHE_TYPE
 const __DEFAULT_LISTEN_ADDR = "localhost:8085"
 const __DEFAULT_SERVER_TIMEOUT = time.Minute * 10
 const __DEFAULT_QUEUE_LENGTH = 4096
-const __DEFAULT_PULSE = time.Second
+const __DEFAULT_PULSE = time.Second * 10
 const __DEFAULT_REPLICATION_INTERVAL = time.Minute
 const __DEFAULT_MEMORY_BUFFER_LENGTH = -1
