@@ -27,8 +27,8 @@ func TestRowCriteria_findRows(t *testing.T) {
 		"bar": crdt.MakeEntry([]crdt.Point{pointB}),
 	})
 
-	streamPointA := makeStreamPoint(pointA.Text, crypto.Signature{})
-	streamPointB := makeStreamPoint(pointB.Text, crypto.Signature{})
+	streamPointA := makeStreamPoint(pointA.Text(), crypto.Signature{})
+	streamPointB := makeStreamPoint(pointB.Text(), crypto.Signature{})
 
 	namespace := crdt.MakeNamespace(map[crdt.TableName]crdt.Table{
 		TABLE_KEY: crdt.MakeTable(map[crdt.RowName]crdt.Row{

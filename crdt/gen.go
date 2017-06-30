@@ -52,7 +52,7 @@ func genRow(rand *rand.Rand, size int) Row {
 }
 
 func genPoint(rand *rand.Rand, size int) Point {
-	return Point{Text: PointText(testutil.RandLettersRange(rand, 1, size))}
+	return UnsignedPoint(PointText(testutil.RandLettersRange(rand, 1, size)))
 }
 
 func GenIndex(rand *rand.Rand, size int) Index {

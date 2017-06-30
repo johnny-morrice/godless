@@ -254,11 +254,11 @@ func (tm signedTableMatcher) Matches(v interface{}) bool {
 		for i, myPoint := range entry.GetValues() {
 			otherPoint := otherEntry.GetValues()[i]
 
-			if myPoint.Text != otherPoint.Text {
+			if myPoint.Text() != otherPoint.Text() {
 				missing = true
 			}
 
-			if len(otherPoint.Signatures) == 0 {
+			if len(otherPoint.Signatures()) == 0 {
 				missing = true
 			}
 		}

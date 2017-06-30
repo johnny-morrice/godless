@@ -160,9 +160,7 @@ func (ns Namespace) addPointBatch(stream []NamespaceStreamEntry) ([]InvalidNames
 func (ns Namespace) addStreamEntry(entry NamespaceStreamEntry) error {
 	const failMsg = "Namespace.addStreamEntry failed"
 
-	point := Point{
-		Text: entry.Point.Text,
-	}
+	var sigs []crypto.Signature
 
 	if !crypto.IsNilSignature(entry.Point.Signature) {
 		sig, err := crypto.ParseSignature(entry.Point.Signature)
@@ -171,8 +169,10 @@ func (ns Namespace) addStreamEntry(entry NamespaceStreamEntry) error {
 			return errors.Wrap(err, failMsg)
 		}
 
-		point.Signatures = []crypto.Signature{sig}
+		sigs = []crypto.Signature{sig}
 	}
+
+	point := PresignedPoint(entry.Point.Text, sigs)
 
 	ns.addPoint(entry.Table, entry.Row, entry.Entry, point)
 	return nil

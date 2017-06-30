@@ -139,18 +139,18 @@ func (builder *streamBuilder) uniqSorted() {
 }
 
 func (builder *streamBuilder) makeStreamPoints(proto NamespaceStreamEntry, point Point) {
-	if len(point.Signatures) == 0 {
+	if len(point.Signatures()) == 0 {
 		entry := proto
-		entry.Point = StreamPoint{Text: point.Text}
+		entry.Point = StreamPoint{Text: point.Text()}
 		builder.stream = append(builder.stream, entry)
 	}
 
-	for _, sig := range point.Signatures {
+	for _, sig := range point.Signatures() {
 		entry := proto
-		streamPoint, err := MakeStreamPoint(point.Text, sig)
+		streamPoint, err := MakeStreamPoint(point.Text(), sig)
 
 		if err != nil {
-			entry.Point.Text = point.Text
+			entry.Point.Text = point.Text()
 			builder.invalid = append(builder.invalid, InvalidNamespaceEntry(entry))
 			continue
 		}
@@ -178,10 +178,7 @@ func readStreamPoint(stream []NamespaceStreamEntry) (Point, []InvalidNamespaceEn
 	}
 
 	first := stream[0]
-	point := Point{
-		Text:       first.Point.Text,
-		Signatures: make([]crypto.Signature, 0, len(stream)),
-	}
+	signatures := make([]crypto.Signature, 0, len(stream))
 
 	var invalid []InvalidNamespaceEntry
 
@@ -202,8 +199,10 @@ func readStreamPoint(stream []NamespaceStreamEntry) (Point, []InvalidNamespaceEn
 			continue
 		}
 
-		point.Signatures = append(point.Signatures, sig)
+		signatures = append(signatures, sig)
 	}
+
+	point := PresignedPoint(first.Point.Text, signatures)
 
 	return point, invalid, nil
 }
@@ -249,7 +248,7 @@ func streamLength(ns Namespace) int {
 
 	ns.ForeachEntry(func(t TableName, r RowName, e EntryName, entry Entry) {
 		for _, point := range entry.GetValues() {
-			sigCount := len(point.Signatures)
+			sigCount := len(point.Signatures())
 			if sigCount > 0 {
 				count += sigCount
 			} else {

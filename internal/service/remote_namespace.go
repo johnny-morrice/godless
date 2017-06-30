@@ -247,7 +247,7 @@ func (rn *remoteNamespace) joinPeerIndex(links []crdt.Link) api.APIResponse {
 			log.Info("Verified link: %v", link.Path)
 		}
 
-		peerAddr := link.Path
+		peerAddr := link.Path()
 
 		theirIndex, theirErr := rn.loadIndex(peerAddr)
 
@@ -490,7 +490,7 @@ func (rn *remoteNamespace) namespaceLoader(addrs []crdt.Link) (<-chan crdt.Names
 	go func() {
 		defer close(nsch)
 		for _, a := range addrs {
-			namespace, err := rn.loadNamespace(a.Path)
+			namespace, err := rn.loadNamespace(a.Path())
 
 			if err != nil {
 				log.Error("remoteNamespace.namespaceLoader failed to CatNamespace: %v", err)

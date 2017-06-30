@@ -113,9 +113,9 @@ type indexStreamBuilder struct {
 
 func (builder *indexStreamBuilder) makeIndexStreamEntries(t TableName, addrs []Link) {
 	for _, link := range addrs {
-		path := link.Path
+		path := link.Path()
 
-		if len(link.Signatures) == 0 {
+		if len(link.Signatures()) == 0 {
 			entry := IndexStreamEntry{
 				TableName: t,
 				Link:      path,
@@ -125,7 +125,7 @@ func (builder *indexStreamBuilder) makeIndexStreamEntries(t TableName, addrs []L
 			continue
 		}
 
-		for _, sig := range link.Signatures {
+		for _, sig := range link.Signatures() {
 			entry, err := MakeIndexStreamEntry(t, path, sig)
 			if err == nil {
 				builder.appendEntry(entry)
@@ -210,7 +210,7 @@ func countAddrEntries(addrs []Link) int {
 	count := 0
 
 	for _, link := range addrs {
-		sigCount := len(link.Signatures)
+		sigCount := len(link.Signatures())
 		if sigCount > 0 {
 			count = count + sigCount
 		} else {

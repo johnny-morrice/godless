@@ -135,7 +135,8 @@ func (index Index) addStreamEntry(entry IndexStreamEntry) error {
 		return errors.Wrap(err, failMsg)
 	}
 
-	index.addTable(entry.TableName, PreSignedLink(entry.Link, sig))
+	link := PresignedLink(entry.Link, []crypto.Signature{sig})
+	index.addTable(entry.TableName, link)
 
 	return nil
 }

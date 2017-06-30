@@ -2,92 +2,52 @@ package crdt
 
 import (
 	"github.com/johnny-morrice/godless/crypto"
-	"github.com/johnny-morrice/godless/log"
 	"github.com/pkg/errors"
 )
 
 type PointText string
 
 type Point struct {
-	Text       PointText
-	Signatures []crypto.Signature
+	signedText
+}
+
+func (p Point) Text() PointText {
+	return PointText(p.text)
+}
+
+func (p Point) Signatures() []crypto.Signature {
+	return p.signatures
 }
 
 func (p Point) HasText(text string) bool {
-	return p.Text == PointText(text)
+	return p.Text() == PointText(text)
 }
 
 func (p Point) Equals(other Point) bool {
-	ok := p.Text == other.Text
-	ok = ok && len(p.Signatures) == len(other.Signatures)
-
-	if !ok {
-		return false
-	}
-
-	for i, mySig := range p.Signatures {
-		theirSig := p.Signatures[i]
-
-		if !mySig.Equals(theirSig) {
-			return false
-		}
-	}
-
-	return true
+	return p.signedText.Equals(other.signedText)
 }
 
-func (p Point) IsVerifiedByAny(keys []crypto.PublicKey) bool {
-	for _, pub := range keys {
-		if p.IsVerifiedBy(pub) {
-			return true
-		}
-	}
-
-	return false
-}
-
-func (p Point) IsVerifiedBy(publicKey crypto.PublicKey) bool {
-	for _, sig := range p.Signatures {
-		ok, err := crypto.Verify(publicKey, []byte(p.Text), sig)
-
-		if err != nil {
-			log.Warn("Bad key while verifying Point signature")
-			continue
-		}
-
-		if ok {
-			return true
-		}
-	}
-
-	return false
+func PresignedPoint(text PointText, sigs []crypto.Signature) Point {
+	return Point{signedText: signedText{
+		text:       []byte(text),
+		signatures: sigs,
+	}}
 }
 
 func UnsignedPoint(text PointText) Point {
-	return Point{Text: text}
+	return Point{signedText: signedText{text: []byte(text)}}
 }
 
 func SignedPoint(text PointText, keys []crypto.PrivateKey) (Point, error) {
 	const failMsg = "SignedPoint failed"
 
-	signed := Point{
-		Text:       text,
-		Signatures: make([]crypto.Signature, len(keys)),
+	signed, err := makeSignedText([]byte(text), keys)
+
+	if err != nil {
+		return Point{}, errors.Wrap(err, failMsg)
 	}
 
-	for i, priv := range keys {
-		sig, err := crypto.Sign(priv, []byte(signed.Text))
-
-		if err != nil {
-			return Point{}, errors.Wrap(err, failMsg)
-		}
-
-		signed.Signatures[i] = sig
-	}
-
-	signed.Signatures = crypto.OrderSignatures(signed.Signatures)
-
-	return signed, nil
+	return Point{signedText: signed}, nil
 }
 
 type byPointValue []Point
@@ -101,7 +61,7 @@ func (p byPointValue) Swap(i, j int) {
 }
 
 func (p byPointValue) Less(i, j int) bool {
-	return p[i].Text < p[j].Text
+	return p[i].Text() < p[j].Text()
 }
 
 func uniqPointSorted(set []Point) []Point {
@@ -113,8 +73,8 @@ func uniqPointSorted(set []Point) []Point {
 	for i := 1; i < len(set); i++ {
 		p := set[i]
 		last := &set[uniqIndex]
-		if p.Text == last.Text {
-			last.Signatures = append(last.Signatures, p.Signatures...)
+		if p.Text() == last.Text() {
+			last.signedText.signatures = append(last.signedText.signatures, p.Signatures()...)
 		} else {
 			uniqIndex++
 			set[uniqIndex] = p
@@ -125,7 +85,7 @@ func uniqPointSorted(set []Point) []Point {
 
 	for i := 0; i < len(set); i++ {
 		point := &set[i]
-		point.Signatures = crypto.OrderSignatures(point.Signatures)
+		point.signedText.signatures = crypto.OrderSignatures(point.Signatures())
 	}
 
 	return set

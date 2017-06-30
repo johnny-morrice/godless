@@ -152,7 +152,7 @@ func (signer namespaceSigner) signEntry(t TableName, r RowName, e EntryName, ent
 				Row:   r,
 				Entry: e,
 				Point: StreamPoint{
-					Text: p.Text,
+					Text: p.Text(),
 				},
 			}
 			invalidEntries = append(invalidEntries, InvalidNamespaceEntry(invalid))
@@ -164,7 +164,7 @@ func (signer namespaceSigner) signEntry(t TableName, r RowName, e EntryName, ent
 		for i := 0; i < signCount; i++ {
 			signKeys[i] = signer.randomKey()
 		}
-		signedPoint, err := SignedPoint(p.Text, signKeys)
+		signedPoint, err := SignedPoint(p.Text(), signKeys)
 
 		if err != nil {
 			panic(err)

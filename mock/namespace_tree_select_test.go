@@ -450,7 +450,7 @@ func rowsH() []crdt.Row {
 			signedPoints := make([]crdt.Point, len(unsignedPoints))
 
 			for i, p := range unsignedPoints {
-				signed, err := crdt.SignedPoint(p.Text, keys)
+				signed, err := crdt.SignedPoint(p.Text(), keys)
 
 				if err != nil {
 					panic(err)

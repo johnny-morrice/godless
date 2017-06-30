@@ -81,7 +81,7 @@ func match(prefix []string, entries []crdt.Entry) (string, error) {
 			values := entry.GetValues()
 			if len(values) > 0 {
 				point := values[0]
-				first = string(point.Text)
+				first = string(point.Text())
 				found = true
 				break
 			}
