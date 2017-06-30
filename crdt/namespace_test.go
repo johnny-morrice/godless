@@ -23,6 +23,50 @@ func genSmallNamespace(values []reflect.Value, rand *rand.Rand) {
 	values[0] = v
 }
 
+func TestNamespaceFilterVerified(t *testing.T) {
+	priv, pub, err := crypto.GenerateKey()
+
+	if err != nil {
+		panic(err)
+	}
+
+	goodPoint, err := SignedPoint("Good", []crypto.PrivateKey{priv})
+
+	if err != nil {
+		panic(err)
+	}
+
+	badPoint := UnsignedPoint("Bad")
+	unfilteredEntry := MakeEntry([]Point{
+		goodPoint,
+		badPoint,
+	})
+
+	filteredEntry := MakeEntry([]Point{
+		goodPoint,
+	})
+
+	unfiltered := MakeNamespace(map[TableName]Table{
+		"Hi": MakeTable(map[RowName]Row{
+			"Dude": MakeRow(map[EntryName]Entry{
+				"Welcome": unfilteredEntry,
+			}),
+		}),
+	})
+
+	expected := MakeNamespace(map[TableName]Table{
+		"Hi": MakeTable(map[RowName]Row{
+			"Dude": MakeRow(map[EntryName]Entry{
+				"Welcome": filteredEntry,
+			}),
+		}),
+	})
+
+	actual := unfiltered.FilterVerified([]crypto.PublicKey{pub})
+
+	testutil.Assert(t, "Unexpected namespace", expected.Equals(actual))
+}
+
 func TestFilterSignedEntries(t *testing.T) {
 	const count = 10
 	const maxSignage = 3
@@ -145,7 +189,7 @@ func (signer namespaceSigner) unsignedExpected(expectedInvalid, actualInvalid []
 }
 
 func (signer namespaceSigner) filterStreamOk(namespace Namespace) bool {
-	expected, expectedInvalidPoints := signer.sign(namespace)
+	expected, expectedInvalid := signer.sign(namespace)
 	expectedStream, invalid := MakeNamespaceStream(expected)
 
 	if len(invalid) != 0 {
@@ -153,15 +197,10 @@ func (signer namespaceSigner) filterStreamOk(namespace Namespace) bool {
 		return false
 	}
 
-	actualStream, actualInvalidPoints, err := FilterSignedEntries(expectedStream, signer.publicKeys())
+	actualStream, actualInvalid, err := FilterSignedEntries(expectedStream, signer.publicKeys())
 
-	if !signer.unsignedExpected(expectedInvalidPoints, actualInvalidPoints) {
+	if !signer.unsignedExpected(expectedInvalid, actualInvalid) {
 		log.Debug("Unsigned were unexpected")
-		return false
-	}
-
-	if len(invalid) != 0 {
-		log.Debug("Failed for invalid after FilterSignedEntries")
 		return false
 	}
 
