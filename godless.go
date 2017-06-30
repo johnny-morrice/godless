@@ -162,7 +162,7 @@ func (godless *Godless) Errors() <-chan error {
 	return godless.errch
 }
 
-// Shutdown stops all godless processes.  It does not wait for those goroutines to stop.
+// Shutdown stops all godless processes.  It waits for all processes to stop.
 func (godless *Godless) Shutdown() {
 	godless.api.CloseAPI()
 	for _, closer := range godless.stoppers {
