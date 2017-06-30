@@ -9,7 +9,7 @@ import (
 
 func TestSignedPoint(t *testing.T) {
 	const keyCount = 5
-	const text = "hello"
+	const text PointText = "hello"
 	keys := generateTestKeys(keyCount)
 	duplicateKeys := append(keys, keys...)
 	badKeys := append(keys, crypto.PrivateKey{})

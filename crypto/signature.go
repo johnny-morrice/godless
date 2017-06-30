@@ -98,6 +98,10 @@ func (sig Signature) Cmp(other Signature) int {
 }
 
 func Sign(priv PrivateKey, message []byte) (Signature, error) {
+	if priv.p2pKey == nil {
+		return Signature{}, errors.New("Uninitialized PrivateKey")
+	}
+
 	bs, err := priv.p2pKey.Sign(message)
 
 	if err != nil {
@@ -108,5 +112,13 @@ func Sign(priv PrivateKey, message []byte) (Signature, error) {
 }
 
 func Verify(pub PublicKey, message []byte, sig Signature) (bool, error) {
+	if pub.p2pKey == nil {
+		return false, errors.New("Uninitialized PublicKey")
+	}
+
+	if sig.sig == nil {
+		return false, errors.New("Uninitialized Signature")
+	}
+
 	return pub.p2pKey.Verify(message, sig.sig)
 }

@@ -39,7 +39,32 @@ func TestMallory(t *testing.T) {
 	ok, verifyErr := Verify(malloryPub, plainText, sig)
 	testutil.AssertNil(t, verifyErr)
 	testutil.Assert(t, "Expected signature failure", !ok)
+}
 
+func TestSignNil(t *testing.T) {
+	message := []byte("hello")
+	sig, err := Sign(PrivateKey{}, message)
+	testutil.AssertNonNil(t, err)
+	testutil.Assert(t, "Expected zero value", Signature{}.Equals(sig))
+}
+
+func TestVerifyNil(t *testing.T) {
+	message := []byte("hello")
+	priv, pub, err := GenerateKey()
+	realSig, err := Sign(priv, message)
+
+	testutil.AssertNil(t, err)
+	testutil.Assert(t, "Unexpected empty signature", len(realSig.sig) > 0)
+
+	ok, err := Verify(PublicKey{}, message, realSig)
+
+	testutil.Assert(t, "Unexpected verification", !ok)
+	testutil.AssertNonNil(t, err)
+
+	ok, err = Verify(pub, message, Signature{})
+
+	testutil.Assert(t, "Unexpected verification", !ok)
+	testutil.AssertNonNil(t, err)
 }
 
 func setupPanic(err error) {
