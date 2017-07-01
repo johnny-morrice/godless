@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"sync"
+	"time"
 
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
@@ -207,55 +208,68 @@ func (peer *IpfsRemoteStore) SubscribeAddrStream(topic api.PubSubTopic) (<-chan 
 	go func() {
 		defer tidy()
 
-		topicText := string(topic)
+		peer.restartSubscriptionUntilDisconnect(topic, stream)
 
-		var subscription api.PubSubSubscription
+	}()
 
-	RESTART:
+	return stream, errch
+}
+
+func (peer *IpfsRemoteStore) restartSubscriptionUntilDisconnect(topic api.PubSubTopic, stream chan<- crdt.Link) {
+	topicText := string(topic)
+
+	var subscription api.PubSubSubscription
+
+	var restartTicker *time.Ticker
+RESTART:
+	for {
+		if peer.closer.isClosed() {
+			return
+		}
+
+		var launchErr error
+		log.Info("(Re)starting subscription on %s", topic)
+
+		if restartTicker == nil {
+			restartTicker = time.NewTicker(__RESTART_TICK)
+			defer restartTicker.Stop()
+		} else {
+			<-restartTicker.C
+		}
+
+		subscription, launchErr = peer.Shell.PubSubSubscribe(topicText)
+
+		if launchErr != nil {
+			log.Error("Subcription launch failed, retrying: %s", launchErr.Error())
+			continue
+		}
+
 		for {
 			if peer.closer.isClosed() {
 				return
 			}
 
-			var launchErr error
-			log.Info("(Re)starting subscription on %s", topic)
-			subscription, launchErr = peer.Shell.PubSubSubscribe(topicText)
+			log.Info("Fetching next subscription message on %s...", topic)
+			record, recordErr := subscription.Next()
 
-			if launchErr != nil {
-				log.Error("Subcription launch failed, retrying: %s", launchErr.Error())
+			if recordErr != nil {
+				log.Error("Subscription read failed (topic %s), continuing: %s", topic, recordErr.Error())
+				continue RESTART
+			}
+
+			pubsubPeer := record.From()
+			bs := record.Data()
+			addr, err := crdt.ParseLink(crdt.LinkText(bs))
+
+			if err != nil {
+				log.Warn("Bad link from peer (topic %s): %v", topic, pubsubPeer)
 				continue
 			}
 
-			for {
-				if peer.closer.isClosed() {
-					return
-				}
-
-				log.Info("Fetching next subscription message on %s...", topic)
-				record, recordErr := subscription.Next()
-
-				if recordErr != nil {
-					log.Error("Subscription read failed (topic %s), continuing: %s", topic, recordErr.Error())
-					continue RESTART
-				}
-
-				pubsubPeer := record.From()
-				bs := record.Data()
-				addr, err := crdt.ParseLink(crdt.LinkText(bs))
-
-				if err != nil {
-					log.Warn("Bad link from peer (topic %s): %v", topic, pubsubPeer)
-					continue
-				}
-
-				stream <- addr
-				log.Info("Subscription update: '%s'", addr.Path())
-			}
+			stream <- addr
+			log.Info("Subscription update: '%s'", addr.Path())
 		}
-
-	}()
-
-	return stream, errch
+	}
 }
 
 func (peer *IpfsRemoteStore) AddIndex(index crdt.Index) (crdt.IPFSPath, error) {
@@ -385,3 +399,6 @@ func (peer *IpfsRemoteStore) cat(path crdt.IPFSPath, out decoder) error {
 
 	return nil
 }
+
+// TODO make parameter
+const __RESTART_TICK = time.Millisecond * 500
