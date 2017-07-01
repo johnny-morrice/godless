@@ -133,7 +133,7 @@ func (kv *keyValueStore) enqueue(kvq api.KvQuery) {
 }
 
 func (kv *keyValueStore) replicate(request api.APIRequest) (<-chan api.APIResponse, error) {
-	log.Info("api.APIService Replicating: %v", request.Replicate)
+	log.Info("api.APIService Replicating...")
 	kvq := api.MakeKvReplicate(request)
 	kv.enqueue(kvq)
 
@@ -164,7 +164,7 @@ func (kv *keyValueStore) runQuery(request api.APIRequest) (<-chan api.APIRespons
 }
 
 func (kv *keyValueStore) reflect(request api.APIRequest) (<-chan api.APIResponse, error) {
-	log.Info("api.APIService running reflect request: %v", request.Reflection)
+	log.Info("api.APIService running reflect request...")
 	kvq := api.MakeKvReflect(request)
 
 	kv.enqueue(kvq)
