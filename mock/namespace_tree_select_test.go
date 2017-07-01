@@ -590,7 +590,7 @@ func mktable(name string, rows []crdt.Row) crdt.Table {
 	table := crdt.EmptyTable()
 
 	for i, r := range rows {
-		rowKey := crdt.RowName(fmt.Sprintf("Row %v%v", name, i))
+		rowKey := crdt.RowName(fmt.Sprintf("Row %s%d", name, i))
 		table = table.JoinRow(rowKey, r)
 	}
 
@@ -637,7 +637,7 @@ func joinNamespaceStream(stream []crdt.NamespaceStreamEntry) []crdt.NamespaceStr
 func panicOnInvalidNamespace(invalid []crdt.InvalidNamespaceEntry) {
 	invalidCount := len(invalid)
 	if invalidCount > 0 {
-		panic(fmt.Sprintf("%v invalid entries", invalidCount))
+		panic(fmt.Sprintf("%d invalid entries", invalidCount))
 	}
 }
 

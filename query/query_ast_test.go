@@ -6,8 +6,8 @@ import (
 	"testing"
 	"testing/quick"
 
-	"github.com/johnny-morrice/godless/log"
 	"github.com/johnny-morrice/godless/internal/testutil"
+	"github.com/johnny-morrice/godless/log"
 )
 
 func TestQuoteUnquote(t *testing.T) {
@@ -34,7 +34,7 @@ func quoteUnquoteOk(token string) bool {
 	same := quoted == token
 
 	if !same {
-		log.Debug("token: %v quoted: %v", token, quoted)
+		log.Debug("token: %s quoted: %s", token, quoted)
 	}
 
 	return same

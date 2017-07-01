@@ -961,7 +961,7 @@ func namespaceText(namespace Namespace) string {
 func panicInvalidNamespace(invalid []InvalidNamespaceEntry) {
 	invalidCount := len(invalid)
 	if invalidCount > 0 {
-		panic(fmt.Sprintf("%v invalid entries", invalidCount))
+		panic(fmt.Sprintf("%d invalid entries", invalidCount))
 	}
 }
 

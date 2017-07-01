@@ -116,7 +116,7 @@ func writeViperConfig() {
 	file, err := os.Create(configFilePath)
 
 	if err != nil {
-		msg := fmt.Sprintf("Failed to create file at '%v'", configFilePath)
+		msg := fmt.Sprintf("Failed to create file at '%s'", configFilePath)
 		err = errors.Wrap(err, msg)
 		die(err)
 	}
@@ -136,20 +136,20 @@ func writeJson(file *os.File, contents interface{}) {
 	bs, err := json.MarshalIndent(contents, "", "  ")
 
 	if err != nil {
-		log.Error("Encoding JSON config failed: %v", err.Error())
+		log.Error("Encoding JSON config failed: %s", err.Error())
 	}
 
 	w := bufio.NewWriter(file)
 	_, err = w.Write(bs)
 
 	if err != nil {
-		log.Error("Error buffering JSON config: %v", err.Error())
+		log.Error("Error buffering JSON config: %s", err.Error())
 	}
 
 	err = w.Flush()
 
 	if err != nil {
-		log.Error("Error writing config file: %v", err.Error())
+		log.Error("Error writing config file: %s", err.Error())
 	}
 }
 

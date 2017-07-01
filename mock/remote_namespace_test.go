@@ -390,8 +390,6 @@ func (imatcher indexmatcher) Matches(v interface{}) bool {
 
 	same := imatcher.index.Equals(other)
 
-	log.Debug("Match Index? %v: %v to %v", same, imatcher.index, other)
-
 	return same
 }
 

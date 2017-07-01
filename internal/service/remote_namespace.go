@@ -112,7 +112,7 @@ func (rn *remoteNamespace) initializeMemoryImage() {
 	head, err := rn.getHead()
 
 	if err != nil {
-		log.Error("remoteNamespace initialization failed to get HEAD: %v", err.Error())
+		log.Error("remoteNamespace initialization failed to get HEAD: %s", err.Error())
 		return
 	}
 
@@ -123,16 +123,16 @@ func (rn *remoteNamespace) initializeMemoryImage() {
 	index, err := rn.loadIndex(head)
 
 	if err != nil {
-		log.Error("remoteNamespace initialization failed to load Index: %v", err.Error())
+		log.Error("remoteNamespace initialization failed to load Index: %s", err.Error())
 	}
 
 	go func() {
 		_, err := rn.insertIndex(index)
 
 		if err == nil {
-			log.Info("Initialized remoteNamespace with Index at: %v", head)
+			log.Info("Initialized remoteNamespace with Index at: %s", head)
 		} else {
-			log.Error("Failed to initialize remoteNamespace with Index (%v): %v", head, err.Error())
+			log.Error("Failed to initialize remoteNamespace with Index (%s): %s", head, err.Error())
 		}
 	}()
 
@@ -154,18 +154,18 @@ func (rn *remoteNamespace) writeMemoryImage() {
 	index, err := rn.MemoryImage.GetIndex()
 
 	if err != nil {
-		log.Error("Error joining MemoryImage indices: %v", err.Error())
+		log.Error("Error joining MemoryImage indices: %s", err.Error())
 		return
 	}
 
 	path, err := rn.persistIndex(index)
 
 	if err != nil {
-		log.Error("Error saving MemoryImage to IPFS: %v", err.Error())
+		log.Error("Error saving MemoryImage to IPFS: %s", err.Error())
 		return
 	}
 
-	log.Info("Added MemoryImage Index to IPFS at: %v", path)
+	log.Info("Added MemoryImage Index to IPFS at: %s", path)
 	err = rn.setHead(path)
 
 	if err != nil {
@@ -241,7 +241,7 @@ func (rn *remoteNamespace) persistIndex(index crdt.Index) (crdt.IPFSPath, error)
 	cacheErr := rn.IndexCache.SetIndex(indexAddr, index)
 
 	if cacheErr != nil {
-		log.Error("Failed to write index cache for: %v (%v)", indexAddr, cacheErr)
+		log.Error("Failed to write index cache for: %s (%s)", indexAddr, cacheErr.Error())
 	}
 
 	return indexAddr, nil
@@ -279,7 +279,7 @@ func (rn *remoteNamespace) joinPeerIndex(links []crdt.Link) api.APIResponse {
 				someFailed = true
 				continue
 			}
-			log.Info("Verified link: %v", link.Path)
+			log.Info("Verified link: %s", link.Path)
 		}
 
 		peerAddr := link.Path()
@@ -287,7 +287,7 @@ func (rn *remoteNamespace) joinPeerIndex(links []crdt.Link) api.APIResponse {
 		theirIndex, theirErr := rn.loadIndex(peerAddr)
 
 		if theirErr != nil {
-			log.Error("Failed to replicate Index at: %v", peerAddr)
+			log.Error("Failed to replicate Index at: %s", peerAddr)
 			someFailed = true
 			continue
 		}
@@ -309,7 +309,7 @@ func (rn *remoteNamespace) joinPeerIndex(links []crdt.Link) api.APIResponse {
 		resp.Msg = "Update ok with load failures"
 	}
 
-	log.Info("Index replicated to: %v", indexAddr)
+	log.Info("Index replicated to: %s", indexAddr)
 
 	return resp
 }
@@ -321,7 +321,7 @@ func (rn *remoteNamespace) loadIndex(indexAddr crdt.IPFSPath) (crdt.Index, error
 	if cacheErr == nil {
 		return cached, nil
 	} else {
-		log.Warn("Index cache miss for: %v", indexAddr)
+		log.Warn("Index cache miss for: %s", indexAddr)
 	}
 
 	index, err := rn.Store.CatIndex(indexAddr)
@@ -508,7 +508,7 @@ func (rn *remoteNamespace) traverseTableNamespaces(tableAddrs []crdt.Link, f api
 		}
 
 		if update.Error != nil {
-			log.Info("Aborting traverse with error: %v", update.Error)
+			log.Info("Aborting traverse with error: %s", update.Error.Error())
 			return errors.Wrap(update.Error, "traverseTableNamespaces failed")
 		}
 	}
@@ -527,11 +527,11 @@ func (rn *remoteNamespace) namespaceLoader(addrs []crdt.Link) (<-chan crdt.Names
 			namespace, err := rn.loadNamespace(a.Path())
 
 			if err != nil {
-				log.Error("remoteNamespace.namespaceLoader failed to CatNamespace: %v", err.Error())
+				log.Error("remoteNamespace.namespaceLoader failed to CatNamespace: %s", err.Error())
 				continue
 			}
 
-			log.Info("Catted namespace from: %v", a)
+			log.Info("Catted namespace from: %s", a.Path())
 			select {
 			case <-rn.stopch:
 				return
@@ -555,7 +555,7 @@ func (rn *remoteNamespace) loadNamespace(namespaceAddr crdt.IPFSPath) (crdt.Name
 		return ns, nil
 	}
 
-	log.Info("Cache miss for namespace at: %v", namespaceAddr)
+	log.Info("Cache miss for namespace at: %s", namespaceAddr)
 	ns, remoteErr := rn.Store.CatNamespace(namespaceAddr)
 
 	if remoteErr != nil {
@@ -625,7 +625,7 @@ func (rn *remoteNamespace) insertNamespace(namespace crdt.Namespace) (crdt.IPFSP
 	cacheErr := rn.NamespaceCache.SetNamespace(result.path, namespace)
 
 	if cacheErr != nil {
-		log.Error("Failed to write to namespace cache at: %v (%v)", result.path, cacheErr.Error())
+		log.Error("Failed to write to namespace cache at: %s (%s)", result.path, cacheErr.Error())
 	}
 
 	return result.path, nil
@@ -649,7 +649,7 @@ func (rn *remoteNamespace) insertIndex(index crdt.Index) (crdt.IPFSPath, error) 
 func (rn *remoteNamespace) updateIndexCache(addr crdt.IPFSPath, index crdt.Index) {
 	err := rn.IndexCache.SetIndex(addr, index)
 	if err != nil {
-		log.Error("Failed to update index cache: %v", err.Error())
+		log.Error("Failed to update index cache: %s", err.Error())
 	}
 }
 

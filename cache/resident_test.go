@@ -88,7 +88,7 @@ func TestResidentHeadCacheConcurrency(t *testing.T) {
 				defer wg.Done()
 				found, err := cache.GetHead()
 				testutil.AssertNil(t, err)
-				message := fmt.Sprintf("Head too low, expected at least %v but got %v", found, head)
+				message := fmt.Sprintf("Head too low, expected at least %s but got %s", found, head)
 				testutil.Assert(t, message, headLessEqual(head, found))
 			}()
 		}

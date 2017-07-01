@@ -93,7 +93,7 @@ func (cache boltCache) GetHead() (crdt.IPFSPath, error) {
 	}
 
 	if !crdt.IsNilPath(head) {
-		log.Info("Found HEAD in Bolt: %v", head)
+		log.Info("Found HEAD in Bolt: %s", head)
 	}
 
 	return head, nil
@@ -112,7 +112,7 @@ func (cache boltCache) SetHead(head crdt.IPFSPath) error {
 		return errors.Wrap(err, failMsg)
 	}
 
-	log.Info("Wrote HEAD to Bolt: %v", head)
+	log.Info("Wrote HEAD to Bolt: %s", head)
 
 	return nil
 }
@@ -133,7 +133,7 @@ func (cache boltCache) GetIndex(indexAddr crdt.IPFSPath) (crdt.Index, error) {
 	// TODO handle the invalid entries.
 	index, _ := crdt.ReadIndexMessage(indexMessage)
 
-	log.Info("Found index in Bolt: %v", indexAddr)
+	log.Info("Found index in Bolt: %s", indexAddr)
 
 	return index, nil
 }
@@ -153,7 +153,7 @@ func (cache boltCache) SetIndex(indexAddr crdt.IPFSPath, index crdt.Index) error
 		return errors.Wrap(err, failMsg)
 	}
 
-	log.Info("Wrote index to Bolt: %v", indexAddr)
+	log.Info("Wrote index to Bolt: %s", indexAddr)
 
 	return nil
 }
@@ -178,7 +178,7 @@ func (cache boltCache) GetNamespace(namespaceAddr crdt.IPFSPath) (crdt.Namespace
 		return crdt.EmptyNamespace(), errors.Wrap(err, failMsg)
 	}
 
-	log.Info("Found Namespace in Bolt: %v", namespaceAddr)
+	log.Info("Found Namespace in Bolt: %s", namespaceAddr)
 
 	return namespace, nil
 }
@@ -198,7 +198,7 @@ func (cache boltCache) SetNamespace(namespaceAddr crdt.IPFSPath, namespace crdt.
 		return errors.Wrap(err, failMsg)
 	}
 
-	log.Info("Wrote Namespace to Bolt: %v", namespaceAddr)
+	log.Info("Wrote Namespace to Bolt: %s", namespaceAddr)
 
 	return nil
 }
@@ -389,7 +389,7 @@ func getBucket(transaction *bolt.Tx, bucketName []byte) (*bolt.Bucket, error) {
 
 	if bucket == nil {
 		bucketNameText := string(bucketName)
-		return nil, fmt.Errorf("No bucket for: %v", bucketNameText)
+		return nil, fmt.Errorf("No bucket for: %s", bucketNameText)
 	}
 
 	return bucket, nil
@@ -417,14 +417,14 @@ func putMessage(bucket *bolt.Bucket, key []byte, value pb.Message) error {
 	valueBytes, err := pb.Marshal(value)
 
 	if err != nil {
-		msg := fmt.Sprintf("Failed to Marshal protobuf message for Bolt key: %v", keyText)
+		msg := fmt.Sprintf("Failed to Marshal protobuf message for Bolt key: %s", keyText)
 		return errors.Wrap(err, msg)
 	}
 
 	err = bucket.Put(key, valueBytes)
 
 	if err != nil {
-		msg := fmt.Sprintf("Failed to Put value at Bolt key: %v", keyText)
+		msg := fmt.Sprintf("Failed to Put value at Bolt key: %s", keyText)
 		return errors.Wrap(err, msg)
 	}
 
@@ -436,13 +436,13 @@ func getMessage(bucket *bolt.Bucket, key []byte, value pb.Message) error {
 	valueBytes := bucket.Get(key)
 
 	if valueBytes == nil {
-		return fmt.Errorf("Failed to Get value at Bolt key: %v", keyText)
+		return fmt.Errorf("Failed to Get value at Bolt key: %s", keyText)
 	}
 
 	err := pb.Unmarshal(valueBytes, value)
 
 	if err != nil {
-		msg := fmt.Sprintf("Failed to Unmarshal protobuf message for Bolt key: %v", keyText)
+		msg := fmt.Sprintf("Failed to Unmarshal protobuf message for Bolt key: %s", keyText)
 		return errors.Wrap(err, msg)
 	}
 

@@ -47,7 +47,7 @@ func (client *Client) SendReflection(command api.APIReflectionType) (api.APIResp
 		return api.RESPONSE_FAIL, fmt.Errorf("Unknown api.APIReflectionType: %v", command)
 	}
 
-	path := fmt.Sprintf("%v/%v", REFLECT_API_ROOT, part)
+	path := fmt.Sprintf("%s/%s", REFLECT_API_ROOT, part)
 	return client.Post(path, http.MIME_EMPTY, &bytes.Buffer{})
 }
 
@@ -70,7 +70,7 @@ func (client *Client) SendQuery(q *query.Query) (api.APIResponse, error) {
 
 func (client *Client) Post(path, bodyType string, body io.Reader) (api.APIResponse, error) {
 	addr := fmt.Sprintf("http://%s%s%s", client.addr, API_ROOT, path)
-	log.Info("HTTP POST to %v", addr)
+	log.Info("HTTP POST to %s", addr)
 
 	resp, err := client.web.Post(addr, bodyType, body)
 
@@ -121,12 +121,12 @@ func (client *Client) decodeUnexpectedResponse(resp *gohttp.Response) (api.APIRe
 
 		if err != nil {
 			log.Warn("Failed to read response body")
-			return api.RESPONSE_FAIL, fmt.Errorf("Unexpected API response (%v): %v", resp.StatusCode, ct)
+			return api.RESPONSE_FAIL, fmt.Errorf("Unexpected API response (%d): %v", resp.StatusCode, ct)
 		}
 
-		return api.RESPONSE_FAIL, fmt.Errorf("Unexpected API response (%v): \n\n%v", resp.StatusCode, string(all))
+		return api.RESPONSE_FAIL, fmt.Errorf("Unexpected API response (%d): \n\n%s", resp.StatusCode, string(all))
 	} else {
-		return api.RESPONSE_FAIL, fmt.Errorf("Unexpected API response (%v): %v", resp.StatusCode, ct)
+		return api.RESPONSE_FAIL, fmt.Errorf("Unexpected API response (%d): %v", resp.StatusCode, ct)
 	}
 }
 
@@ -140,5 +140,5 @@ func (client *Client) decodeSuccessResponse(resp *gohttp.Response) (api.APIRespo
 }
 
 func incorrectContentType(status int, ct []string) error {
-	return fmt.Errorf("%v response had incorrect content type, was: %v", status, ct)
+	return fmt.Errorf("%d response had incorrect content type, was: %v", status, ct)
 }

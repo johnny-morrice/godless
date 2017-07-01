@@ -41,7 +41,7 @@ func EncodeIndex(index Index, w io.Writer) ([]InvalidIndexEntry, error) {
 
 	invalidCount := len(invalid)
 	if invalidCount > 0 {
-		log.Error("EncodeIndex: %v invalid entries", invalidCount)
+		log.Error("EncodeIndex: %d invalid entries", invalidCount)
 	}
 
 	bs, err := pb.Marshal(message)
@@ -54,7 +54,7 @@ func EncodeIndex(index Index, w io.Writer) ([]InvalidIndexEntry, error) {
 	written, err = w.Write(bs)
 
 	if err != nil {
-		return invalid, errors.Wrap(err, fmt.Sprintf("%v after %v bytes", failMsg, written))
+		return invalid, errors.Wrap(err, fmt.Sprintf("%s after %d bytes", failMsg, written))
 	}
 
 	return invalid, nil
@@ -187,7 +187,7 @@ func (index Index) GetTableAddrs(tableName TableName) ([]Link, error) {
 	indices, ok := index.Index[tableName]
 
 	if !ok {
-		return nil, fmt.Errorf("No table in index: '%v'", tableName)
+		return nil, fmt.Errorf("No table in index: '%s'", tableName)
 	}
 
 	return indices, nil

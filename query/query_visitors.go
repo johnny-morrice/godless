@@ -226,7 +226,7 @@ func (printer *queryPrinter) indent(indent int) {
 	printer.tabIndent += indent
 
 	if printer.tabIndent < 0 {
-		panic(fmt.Sprintf("Invalid tabIndent: %v", printer.tabIndent))
+		panic(fmt.Sprintf("Invalid tabIndent: %d", printer.tabIndent))
 	}
 }
 

@@ -59,5 +59,7 @@ func logdie(msg string, args ...interface{}) {
 }
 
 func logMsg(level, msg string, args ...interface{}) {
-	log.Print(spew.Sprintf(fmt.Sprintf("%v %v", level, msg), args...))
+	format := fmt.Sprintf("%s %s", level, msg)
+	spewDump := spew.Sprintf(format, args...)
+	log.Print(spewDump)
 }

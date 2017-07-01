@@ -63,7 +63,7 @@ func prettyQuery(query *Query) string {
 
 func queryParseOk(expected *Query) bool {
 	source := prettyQuery(expected)
-	log.Debug("Pretty Printed input: \"%v\"", source)
+	log.Debug("Pretty Printed input: \"%s\"", source)
 
 	actual, err := CompileQuery(source)
 
@@ -75,7 +75,7 @@ func queryParseOk(expected *Query) bool {
 
 	if !same {
 		actualSource := prettyQuery(actual)
-		log.Debug("Pretty Printed output: \"%v\"", actualSource)
+		log.Debug("Pretty Printed output: \"%s\"", actualSource)
 		testutil.LogDiff(source, prettyQuery(actual))
 	}
 

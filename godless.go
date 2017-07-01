@@ -127,7 +127,7 @@ func (godless *Godless) report() {
 	privCount := len(godless.KeyStore.GetAllPrivateKeys())
 	pubCount := len(godless.KeyStore.GetAllPublicKeys())
 
-	log.Info("Godless API using %v private and %v public keys", privCount, pubCount)
+	log.Info("Godless API using %d private and %d public keys", privCount, pubCount)
 }
 
 func (godless *Godless) findMissingParameters() error {

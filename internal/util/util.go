@@ -31,7 +31,8 @@ func WriteBytes(bs []byte, w io.Writer) error {
 	written, err := w.Write(bs)
 
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("write failed after %v bytes", written))
+		msg := fmt.Sprintf("write failed after %d bytes", written)
+		return errors.Wrap(err, msg)
 	}
 
 	return nil

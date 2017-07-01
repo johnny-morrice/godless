@@ -310,7 +310,9 @@ func (query *Query) PrettyPrint(w io.Writer) error {
 }
 
 func (query *Query) Analyse() string {
-	return fmt.Sprintf("Compiled:\n\n%v\n\nAST:\n\n%v", prettyPrintJson(query), prettyPrintJson(query.AST))
+	jsonQuery := prettyPrintJson(query)
+	jsonAST := prettyPrintJson(query.AST)
+	return fmt.Sprintf("Compiled:\n\n%s\n\nAST:\n\n%s", jsonQuery, jsonAST)
 }
 
 func (query *Query) Validate() error {

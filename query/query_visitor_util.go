@@ -68,7 +68,7 @@ func (visitor *ErrorCollectVisitor) badTableName(table crdt.TableName) {
 }
 
 func (visitor *ErrorCollectVisitor) BadWhereOpCode(position int, where *QueryWhere) {
-	err := fmt.Errorf("Unknown Where OpCode at position %v: %v", position, where)
+	err := fmt.Errorf("Unknown Where OpCode at position %d: %v", position, where)
 	visitor.CollectError(err)
 }
 
@@ -81,7 +81,7 @@ func (visitor *ErrorCollectVisitor) CollectError(err error) {
 	if visitor.err == nil {
 		visitor.err = err
 	} else {
-		visitor.err = errors.Wrapf(err, "%v, and", visitor.err)
+		visitor.err = errors.Wrapf(err, "%v, and", visitor.err.Error())
 	}
 
 }

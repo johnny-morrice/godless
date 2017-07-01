@@ -81,10 +81,10 @@ func (service *WebService) runQuery(rw gohttp.ResponseWriter, req *gohttp.Reques
 }
 
 func invalidRequest(rw gohttp.ResponseWriter, err error) {
-	log.Info("Invalid Request details: %v", err.Error())
+	log.Info("Invalid Request details: %s", err.Error())
 	reportErr := sendErr(rw, err)
 	if reportErr != nil {
-		log.Error("Error sending error report: '%v'", reportErr.Error())
+		log.Error("Error sending error report: '%s'", reportErr.Error())
 	}
 }
 
@@ -126,7 +126,7 @@ func sendErr(rw gohttp.ResponseWriter, err error) error {
 	encerr := api.EncodeAPIResponseText(message, &buff)
 
 	if encerr != nil {
-		panic(fmt.Sprintf("Bug encoding json error message: '%v'; ", encerr))
+		panic(fmt.Sprintf("Bug encoding json error message: '%v'; ", encerr.Error()))
 	}
 
 	log.Info("Sending error APIResponse (%v bytes) to HTTP client...", buff.Len())
@@ -153,7 +153,7 @@ func sendMessage(rw gohttp.ResponseWriter, resp api.APIResponse) error {
 		panic(fmt.Sprintf("BUG encoding resp: %v", encerr))
 	}
 
-	log.Info("Sending APIResponse (%v bytes) to HTTP client...", buff.Len())
+	log.Info("Sending APIResponse (%d bytes) to HTTP client...", buff.Len())
 	rw.Header()[http.CONTENT_TYPE] = []string{http.MIME_PROTO}
 	_, senderr := rw.Write(buff.Bytes())
 

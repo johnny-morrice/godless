@@ -30,9 +30,9 @@ func Serve(laddr string, handler http.Handler) (api.Closer, error) {
 		blocked := listener.Close()
 
 		if blocked == nil {
-			log.Info("Listener closed.")
+			log.Info("Listener closed")
 		} else {
-			log.Info("Listener closed with: '%v'", blocked.Error())
+			log.Info("Listener closed with: '%s'", blocked.Error())
 		}
 
 	}()
@@ -42,7 +42,7 @@ func Serve(laddr string, handler http.Handler) (api.Closer, error) {
 
 		httpClose := http.Serve(listener, handler)
 
-		log.Info("HTTP server closed: '%v'", httpClose.Error())
+		log.Info("HTTP server closed: %s", httpClose.Error())
 	}()
 
 	return closer, nil

@@ -47,7 +47,7 @@ func (record *IpfsRecord) logInvalid(invalid []crdt.InvalidNamespaceEntry) {
 	invalidCount := len(invalid)
 
 	if invalidCount > 0 {
-		log.Error("IPFSRecord: %v invalid entries", invalidCount)
+		log.Error("IPFSRecord: %d invalid entries", invalidCount)
 	}
 }
 
@@ -99,7 +99,7 @@ func (index *IPFSIndex) logInvalid(invalid []crdt.InvalidIndexEntry) {
 	invalidCount := len(invalid)
 
 	if invalidCount > 0 {
-		log.Error("IPFSRecord: %v invalid entries", invalidCount)
+		log.Error("IPFSRecord: %d invalid entries", invalidCount)
 	}
 }
 
@@ -147,15 +147,15 @@ func (peer *IpfsRemoteStore) PublishAddr(addr crdt.Link, topics []api.PubSubTopi
 
 	for _, t := range topics {
 		topicText := string(t)
-		log.Info("Publishing to topic: %v", t)
+		log.Info("Publishing to topic: %s", t)
 		pubsubErr := peer.Shell.PubSubPublish(topicText, string(publishValue))
 
 		if pubsubErr != nil {
-			log.Warn("Pubsub failed (topic %v): %v", t, pubsubErr.Error())
+			log.Warn("Pubsub failed (topic %s): %s", t, pubsubErr.Error())
 			continue
 		}
 
-		log.Info("Published to topic: %v", t)
+		log.Info("Published to topic: %s", t)
 	}
 
 	return nil
@@ -189,20 +189,20 @@ func (peer *IpfsRemoteStore) SubscribeAddrStream(topic api.PubSubTopic) (<-chan 
 	RESTART:
 		for {
 			var launchErr error
-			log.Info("(Re)starting subscription on %v", topic)
+			log.Info("(Re)starting subscription on %s", topic)
 			subscription, launchErr = peer.Shell.PubSubSubscribe(topicText)
 
 			if launchErr != nil {
-				log.Error("Subcription launch failed, retrying: %v", launchErr.Error())
+				log.Error("Subcription launch failed, retrying: %s", launchErr.Error())
 				continue
 			}
 
 			for {
-				log.Info("Fetching next subscription message on %v...", topic)
+				log.Info("Fetching next subscription message on %s...", topic)
 				record, recordErr := subscription.Next()
 
 				if recordErr != nil {
-					log.Error("Subscription read failed (topic %v), continuing: %v", topic, recordErr.Error())
+					log.Error("Subscription read failed (topic %s), continuing: %s", topic, recordErr.Error())
 					continue RESTART
 				}
 
@@ -211,12 +211,12 @@ func (peer *IpfsRemoteStore) SubscribeAddrStream(topic api.PubSubTopic) (<-chan 
 				addr, err := crdt.ParseLink(crdt.LinkText(bs))
 
 				if err != nil {
-					log.Warn("Bad link from peer (topic %v): %v", topic, pubsubPeer)
+					log.Warn("Bad link from peer (topic %s): %v", topic, pubsubPeer)
 					continue
 				}
 
 				stream <- addr
-				log.Info("Subscription update: '%v' from '%v'", addr, pubsubPeer)
+				log.Info("Subscription update: '%s' from '%v'", addr, pubsubPeer)
 			}
 		}
 
@@ -248,7 +248,7 @@ func (peer *IpfsRemoteStore) AddIndex(index crdt.Index) (crdt.IPFSPath, error) {
 }
 
 func (peer *IpfsRemoteStore) CatIndex(addr crdt.IPFSPath) (crdt.Index, error) {
-	log.Info("Catting index from IPFS at: %v ...", addr)
+	log.Info("Catting index from IPFS at: %s ...", addr)
 
 	if verr := peer.validateShell(); verr != nil {
 		return crdt.EmptyIndex(), verr
@@ -287,7 +287,7 @@ func (peer *IpfsRemoteStore) AddNamespace(namespace crdt.Namespace) (crdt.IPFSPa
 }
 
 func (peer *IpfsRemoteStore) CatNamespace(addr crdt.IPFSPath) (crdt.Namespace, error) {
-	log.Info("Catting namespace from IPFS at: %v ...", addr)
+	log.Info("Catting namespace from IPFS at: %s ...", addr)
 
 	if verr := peer.validateShell(); verr != nil {
 		return crdt.EmptyNamespace(), verr
@@ -343,11 +343,11 @@ func (peer *IpfsRemoteStore) cat(path crdt.IPFSPath, out decoder) error {
 	remainder, drainerr := ioutil.ReadAll(reader)
 
 	if drainerr != nil {
-		log.Warn("error draining reader: %v", drainerr.Error())
+		log.Warn("error draining reader: %s", drainerr.Error())
 	}
 
 	if len(remainder) != 0 {
-		log.Warn("remaining bits after gob: %v", remainder)
+		log.Warn("remaining bits after gob: %d", remainder)
 	}
 
 	return nil

@@ -203,7 +203,7 @@ func AssertLenEquals(t *testing.T, expected int, hasLen interface{}) {
 	actual := value.Len()
 
 	if expected != actual {
-		t.Errorf("Expected len %v but received %v", expected, actual)
+		t.Errorf("Expected len %d but received %d", expected, actual)
 	}
 }
 
@@ -238,9 +238,9 @@ func LogDiff(old, new string) bool {
 			oldFragment := old[fragmentStart:oldEnd]
 			newFragment := new[fragmentStart:newEnd]
 
-			log.Error("First difference at %v", i)
-			log.Error("Old was: '%v'", oldFragment)
-			log.Error("New was: '%v'", newFragment)
+			log.Error("First difference at %d", i)
+			log.Error("Old was: '%s'", oldFragment)
+			log.Error("New was: '%s'", newFragment)
 			return true
 		}
 	}

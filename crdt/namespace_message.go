@@ -85,7 +85,7 @@ func MakeNamespaceMessage(ns Namespace) (*proto.NamespaceMessage, []InvalidNames
 func reportEmptyTable(stream []NamespaceStreamEntry, from string) {
 	for _, entry := range stream {
 		if entry.Table == "" {
-			log.Warn("Empty table name in %v", from)
+			log.Warn("Empty table name in %s", from)
 		}
 	}
 }
@@ -98,7 +98,7 @@ func EncodeNamespace(ns Namespace, w io.Writer) ([]InvalidNamespaceEntry, error)
 
 	invalidCount := len(invalid)
 	if invalidCount > 0 {
-		log.Error("EncodeNamespace: %v invalid points", invalidCount)
+		log.Error("EncodeNamespace: %d invalid points", invalidCount)
 	}
 
 	err := util.Encode(message, w)

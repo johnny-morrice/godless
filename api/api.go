@@ -6,7 +6,6 @@ import (
 	"bytes"
 
 	"github.com/johnny-morrice/godless/crdt"
-	"github.com/johnny-morrice/godless/log"
 	"github.com/johnny-morrice/godless/query"
 	"github.com/pkg/errors"
 )
@@ -175,44 +174,35 @@ func (resp APIResponse) Equals(other APIResponse) bool {
 	ok = ok && resp.Type == other.Type
 
 	if !ok {
-		log.Warn("not ok")
 		return false
 	}
 
 	if resp.Err != nil {
 		if other.Err == nil {
-			log.Warn("err not equal")
 			return false
 		} else if resp.Err.Error() != other.Err.Error() {
-			log.Warn("err text not equal")
 			return false
 		}
 	}
 
 	if resp.Type == API_QUERY {
 		if len(resp.QueryResponse.Entries) != len(other.QueryResponse.Entries) {
-			log.Warn("rows have unequal length")
-			log.Warn("resp %v other %v", len(resp.QueryResponse.Entries), len(other.QueryResponse.Entries))
 			return false
 		}
 
 		if !crdt.StreamEquals(resp.QueryResponse.Entries, other.QueryResponse.Entries) {
-			log.Warn("rows not equal")
 			return false
 		}
 	} else if resp.Type == API_REFLECT {
 		if resp.ReflectResponse.Path != other.ReflectResponse.Path {
-			log.Warn("path not equal")
 			return false
 		}
 
 		if !resp.ReflectResponse.Index.Equals(other.ReflectResponse.Index) {
-			log.Warn("index not equal")
 			return false
 		}
 
 		if !resp.ReflectResponse.Namespace.Equals(other.ReflectResponse.Namespace) {
-			log.Warn("namespace not equal")
 			return false
 		}
 	}

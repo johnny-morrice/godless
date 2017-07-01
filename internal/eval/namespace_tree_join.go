@@ -55,12 +55,12 @@ func (visitor *NamespaceTreeJoin) VisitPublicKeyHash(hash crypto.PublicKeyHash) 
 	priv, matchErr := visitor.keyStore.GetPrivateKey(hash)
 
 	if matchErr != nil {
-		log.Warn("Private key lookup failed with: %v", matchErr.Error())
+		log.Warn("Private key lookup failed with: %s", matchErr.Error())
 		visitor.BadPublicKey(hash)
 		return
 	}
 
-	log.Info("Joining with private key for %v", string(hash))
+	log.Info("Joining with private key for %s", string(hash))
 	visitor.privateKeys = append(visitor.privateKeys, priv)
 }
 

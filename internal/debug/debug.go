@@ -10,6 +10,6 @@ func AssertLenEquals(slice, other interface{}) {
 	bV := reflect.ValueOf(other)
 
 	if aV.Len() != bV.Len() {
-		panic(fmt.Sprintf("Mismatch len: %v %v", slice, other))
+		panic(fmt.Sprintf("Mismatch len: %d %d", slice, other))
 	}
 }

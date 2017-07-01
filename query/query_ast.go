@@ -366,7 +366,7 @@ func unquote(token string) (string, error) {
 	unquoted, err := strconv.Unquote(token)
 
 	if err != nil {
-		return "", errors.Wrap(err, fmt.Sprintf("Invalid string escape: '%v'", token))
+		return "", errors.Wrap(err, fmt.Sprintf("Invalid string escape: '%s'", token))
 	}
 
 	return unquoted, nil

@@ -62,11 +62,10 @@ func (kv *keyValueStore) runQueueItem(errch chan<- error, thing interface{}) {
 	kv.lockResource()
 	defer kv.unlockResource()
 
-	log.Info("API executing request, %v remain in queue", kv.queue.Len())
+	log.Info("API executing request, %d remain in queue", kv.queue.Len())
 	kvq, ok := thing.(api.KvQuery)
 
 	if !ok {
-		// errch <- fmt.Errorf("Corrupt queue found a '%v' but expected %v: %v", reflect.TypeOf(anything).Name(), reflect.TypeOf(api.KvQuery{}).Name(), anything)
 		log.Error("Corrupt queue")
 		errch <- fmt.Errorf("Corrupt queue")
 	}
@@ -125,7 +124,7 @@ func (kv *keyValueStore) enqueue(kvq api.KvQuery) {
 	kv.fork(func() {
 		err := kv.queue.Enqueue(kvq.Request, kvq)
 		if err != nil {
-			log.Error("Failed to enqueue request: %v", err.Error())
+			log.Error("Failed to enqueue request: %s", err.Error())
 			fail := api.RESPONSE_FAIL
 			fail.Err = err
 			go kv.writeResponse(kvq.Response, fail)
@@ -146,9 +145,9 @@ func (kv *keyValueStore) runQuery(request api.APIRequest) (<-chan api.APIRespons
 	if log.CanLog(log.LOG_INFO) {
 		text, err := query.PrettyText()
 		if err == nil {
-			log.Info("api.APIService running query.Query:\n%v", text)
+			log.Info("api.APIService running query.Query:\n%s", text)
 		} else {
-			log.Debug("Failed to pretty print query: %v", err.Error())
+			log.Debug("Failed to pretty print query: %s", err.Error())
 		}
 
 	}

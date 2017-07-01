@@ -84,7 +84,7 @@ func serve(cmd *cobra.Command) {
 	shutdownOnTrap(godless)
 
 	for runError := range godless.Errors() {
-		log.Error("%v", runError.Error())
+		log.Error("%s", runError.Error())
 	}
 
 	defer shutdown(godless)
@@ -110,7 +110,7 @@ func makeCache(cmd *cobra.Command) (api.Cache, error) {
 	case __BOLT_CACHE_TYPE:
 		return makeBoltCache()
 	default:
-		err := fmt.Errorf("Unknown cache: '%v'", cacheType)
+		err := fmt.Errorf("Unknown cache: '%s'", cacheType)
 		cmd.Help()
 		die(err)
 	}
@@ -153,7 +153,7 @@ func getBoltFactoryInstance() *cache.BoltFactory {
 
 func shutdownOnTrap(godless *lib.Godless) {
 	onTrap(func(signal os.Signal) {
-		log.Warn("Caught signal: %v", signal.String())
+		log.Warn("Caught signal: %s", signal.String())
 		shutdown(godless)
 	})
 }

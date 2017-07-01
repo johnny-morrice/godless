@@ -90,7 +90,7 @@ func (p2p replicator) publishIndex() {
 	resp, reflectErr := p2p.sendReflectRequest()
 
 	if reflectErr != nil {
-		log.Error("Failed to reflect for index address: %v", reflectErr)
+		log.Error("Failed to reflect for index address: %s", reflectErr.Error())
 		return
 	}
 
@@ -102,14 +102,14 @@ func (p2p replicator) publishIndex() {
 	link, signErr := crdt.SignedLink(head, privKeys)
 
 	if signErr != nil {
-		log.Error("Failed to sign Index Link (%v): %v", head, signErr.Error())
+		log.Error("Failed to sign Index Link (%s): %s", head, signErr.Error())
 		return
 	}
 
 	publishErr := p2p.store.PublishAddr(link, p2p.topics)
 
 	if publishErr != nil {
-		log.Error("Failed to publish index to all topics: %v", publishErr.Error())
+		log.Error("Failed to publish index to all topics: %s", publishErr.Error())
 		return
 	}
 
@@ -124,17 +124,17 @@ func (p2p replicator) sendReflectRequest() (api.APIResponse, error) {
 	respch, err := p2p.api.Call(api.APIRequest{Type: api.API_REFLECT, Reflection: api.REFLECT_HEAD_PATH})
 
 	if err != nil {
-		return failResp, errors.Wrap(err, "Reflection failed (Early API failure) for: %v %v")
+		return failResp, errors.Wrap(err, "Reflection failed (Early API failure)")
 	}
 
 	resp := <-respch
-	log.Info("Reflection API Response message: %v", resp.Msg)
+	log.Info("Reflection API Response message: %s", resp.Msg)
 
 	if resp.Err != nil {
 		return resp, resp.Err
 	}
 
-	log.Info("Replicator got HEAD at %v", resp.ReflectResponse.Path)
+	log.Info("Replicator got HEAD at %s", resp.ReflectResponse.Path)
 
 	return resp, nil
 }
@@ -199,7 +199,7 @@ func (p2p replicator) subscribeTopic(topic api.PubSubTopic) {
 		p2p:    p2p,
 	}
 
-	log.Info("Dispatching subscription updates every: %v", p2p.interval)
+	log.Info("Dispatching subscription updates every: %d", p2p.interval)
 
 	go func() {
 		for {
@@ -215,10 +215,10 @@ func (p2p replicator) subscribeTopic(topic api.PubSubTopic) {
 				if !present {
 					break
 				}
-				log.Info("Subscription error: %v", err.Error())
+				log.Info("Subscription error: %s", err.Error())
 				return
 			case <-p2p.stopch:
-				log.Info("Stop subscribing on %v", topic)
+				log.Info("Stop subscribing on %s", topic)
 				return
 			}
 		}

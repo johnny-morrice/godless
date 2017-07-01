@@ -6,7 +6,6 @@ import (
 
 	pb "github.com/gogo/protobuf/proto"
 	"github.com/johnny-morrice/godless/crypto"
-	"github.com/johnny-morrice/godless/log"
 	"github.com/johnny-morrice/godless/proto"
 	"github.com/pkg/errors"
 )
@@ -126,8 +125,6 @@ func MakeLinkMessage(link Link) (*proto.LinkMessage, error) {
 		Link:       string(link.Path()),
 		Signatures: messageSigs,
 	}
-
-	log.Debug("Created link message: %v", message)
 
 	return message, nil
 }

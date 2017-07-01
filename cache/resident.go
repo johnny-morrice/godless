@@ -68,7 +68,7 @@ func (cache residentNamespaceCache) GetNamespace(addr crdt.IPFSPath) (crdt.Names
 	ptr, err := cache.get(addr)
 
 	if err != nil {
-		return crdt.EmptyNamespace(), fmt.Errorf("Cache miss for Namespace at: %v", addr)
+		return crdt.EmptyNamespace(), fmt.Errorf("Cache miss for Namespace at: %s", addr)
 	}
 
 	namespacePtr := (*crdt.Namespace)(ptr)
@@ -92,7 +92,7 @@ func (cache residentIndexCache) GetIndex(addr crdt.IPFSPath) (crdt.Index, error)
 	ptr, err := cache.get(addr)
 
 	if err != nil {
-		return crdt.EmptyIndex(), fmt.Errorf("Cache miss for Index at: %v", addr)
+		return crdt.EmptyIndex(), fmt.Errorf("Cache miss for Index at: %s", addr)
 	}
 
 	indexPtr := (*crdt.Index)(ptr)
@@ -143,7 +143,7 @@ func (cache *kvCache) get(addr crdt.IPFSPath) (unsafe.Pointer, error) {
 	item, present := cache.assoc[addr]
 
 	if !present {
-		return nil, fmt.Errorf("No cached item for: %v", addr)
+		return nil, fmt.Errorf("No cached item for: %s", addr)
 	}
 
 	return item.obj, nil
@@ -303,7 +303,7 @@ func (queue *residentPriorityQueue) Drain() <-chan interface{} {
 			select {
 			case queuePop := <-popch:
 				if queuePop.err != nil {
-					log.Error("Error draining residentPriorityQueue: %v", queuePop.err.Error())
+					log.Error("Error draining residentPriorityQueue: %s", queuePop.err.Error())
 					close(queue.datach)
 					return
 				}

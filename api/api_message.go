@@ -133,7 +133,7 @@ func makeAPIReflectMessage(resp APIReflectResponse, message *proto.APIResponseMe
 		invalidCount := len(invalid)
 
 		if invalidCount > 0 {
-			log.Error("makeAPIReflectMessage: %v invalid Index entries", invalidCount)
+			log.Error("makeAPIReflectMessage: %d invalid Index entries", invalidCount)
 		}
 
 		reflectMessage.Index = indexMessage
@@ -143,7 +143,7 @@ func makeAPIReflectMessage(resp APIReflectResponse, message *proto.APIResponseMe
 		invalidCount := len(invalid)
 
 		if invalidCount > 0 {
-			log.Error("makeAPIReflectMessage: %v invalid Namespace entries", invalidCount)
+			log.Error("makeAPIReflectMessage: %d invalid Namespace entries", invalidCount)
 		}
 
 		reflectMessage.Namespace = namespace
@@ -171,7 +171,7 @@ func readAPIReflectResponse(message *proto.APIReflectResponseMessage, resp *APIR
 		invalidCount := len(invalid)
 
 		if invalidCount > 0 {
-			log.Error("readAPIReflectResponse: %v invalid Index entries", invalidCount)
+			log.Error("readAPIReflectResponse: %d invalid Index entries", invalidCount)
 		}
 
 		reflectResp.Index = index
@@ -182,7 +182,7 @@ func readAPIReflectResponse(message *proto.APIReflectResponseMessage, resp *APIR
 		invalidCount := len(invalid)
 
 		if invalidCount > 0 {
-			log.Error("readAPIReflectResponse: %v invalid Index entries", invalidCount)
+			log.Error("readAPIReflectResponse: %d invalid Index entries", invalidCount)
 		}
 
 		if err == nil {

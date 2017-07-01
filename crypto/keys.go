@@ -26,7 +26,7 @@ func PublicKeysAsText(publicKeys []PublicKey) string {
 		text, err := SerializePublicKey(pub)
 
 		if err != nil {
-			log.Error("Failed to serialize PublicKey: %v", err.Error())
+			log.Error("Failed to serialize PublicKey: %s", err.Error())
 		}
 
 		pubTexts = append(pubTexts, string(text))
@@ -43,7 +43,7 @@ func PrivateKeysAsText(privateKeys []PrivateKey) string {
 	for _, priv := range privateKeys {
 		text, err := SerializePrivateKey(priv)
 		if err != nil {
-			log.Error("Failed to serialize PrivateKey: %v", err.Error())
+			log.Error("Failed to serialize PrivateKey: %s", err.Error())
 		}
 
 		privTexts = append(privTexts, string(text))
@@ -61,7 +61,7 @@ func PrivateKeysFromText(privateKeyText string) []PrivateKey {
 		priv, err := ParsePrivateKey(PrivateKeyText(text))
 
 		if err != nil {
-			log.Error("Failed to parse PrivateKey: %v", err.Error())
+			log.Error("Failed to parse PrivateKey: %s", err.Error())
 		}
 
 		keys = append(keys, priv)
@@ -79,7 +79,7 @@ func PublicKeysFromText(publicKeyText string) []PublicKey {
 		pub, err := ParsePublicKey(PublicKeyText(text))
 
 		if err != nil {
-			log.Error("Failed to parse PublicKey: %v", err.Error())
+			log.Error("Failed to parse PublicKey: %s", err.Error())
 		}
 
 		keys = append(keys, pub)
@@ -188,7 +188,7 @@ type PublicKey struct {
 }
 
 func (pub PublicKey) Equals(other PublicKey) bool {
-	const errFmt = "Could not serialize PublicKey for Equals: %v"
+	const errFmt = "Could not serialize PublicKey for Equals: %s"
 
 	if pub.p2pKey == nil && other.p2pKey == nil {
 		return true
@@ -295,7 +295,7 @@ func (keys *KeyStore) GetPrivateKey(hash PublicKeyHash) (PrivateKey, error) {
 		}
 	}
 
-	return PrivateKey{}, fmt.Errorf("No private key found for: %v", pub)
+	return PrivateKey{}, fmt.Errorf("No private key found for: %s", string(hash))
 }
 
 func (keys *KeyStore) GetAllPrivateKeys() []PrivateKey {
@@ -365,7 +365,7 @@ func (keys *KeyStore) lookupPublicKey(hash PublicKeyHash) (PublicKey, error) {
 		}
 	}
 
-	return PublicKey{}, fmt.Errorf("No Public Key found for %v", hash)
+	return PublicKey{}, fmt.Errorf("No Public Key found for %s", string(hash))
 }
 
 func (keys *KeyStore) GetPublicKey(hash PublicKeyHash) (PublicKey, error) {

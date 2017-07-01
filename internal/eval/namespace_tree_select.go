@@ -95,14 +95,14 @@ func (visitor *NamespaceTreeSelect) resultStream() ([]crdt.NamespaceStreamEntry,
 
 	invalidCount := len(invalid)
 	if invalidCount > 0 {
-		log.Error("NamespaceTreeSelect found %v invalidEntries", invalidCount)
+		log.Error("NamespaceTreeSelect found %d invalidEntries", invalidCount)
 	}
 
 	if err != nil {
 		return nil, errors.Wrap(err, failMsg)
 	}
 
-	log.Info("Search found %v entries", len(stream))
+	log.Info("Search found %d entries", len(stream))
 
 	return stream, nil
 }
@@ -115,7 +115,7 @@ func (visitor *NamespaceTreeSelect) VisitPublicKeyHash(hash crypto.PublicKeyHash
 	pub, err := visitor.keyStore.GetPublicKey(hash)
 
 	if err != nil {
-		log.Warn("Public key lookup failed with: %v", err.Error())
+		log.Warn("Public key lookup failed with: %s", err.Error())
 		visitor.BadPublicKey(hash)
 		return
 	}
@@ -249,7 +249,7 @@ func (crit *rowCriteria) logInvalid(invalid []crdt.InvalidNamespaceEntry) {
 	invalidCount := len(invalid)
 
 	if invalidCount > 0 {
-		log.Error("rowCriteria found %v invalid entries", invalidCount)
+		log.Error("rowCriteria found %d invalid entries", invalidCount)
 	}
 }
 

@@ -108,7 +108,7 @@ func (ns Namespace) Strip() (Namespace, []InvalidNamespaceEntry, error) {
 
 	invalidCount := len(invalid)
 	if invalidCount > 0 {
-		log.Warn("Stripped %v invalid points", invalidCount)
+		log.Warn("Stripped %d invalid points", invalidCount)
 	}
 
 	namespace, invalid, err := ReadNamespaceStream(stream)
@@ -232,7 +232,7 @@ func (ns Namespace) GetTable(key TableName) (Table, error) {
 	if table, present := ns.Tables[key]; present {
 		return table, nil
 	} else {
-		return Table{}, fmt.Errorf("No such Table in Namespace '%v'", key)
+		return Table{}, fmt.Errorf("No such Table in Namespace '%s'", key)
 	}
 }
 
@@ -344,7 +344,7 @@ func (t Table) GetRow(rowKey RowName) (Row, error) {
 	if row, present := t.Rows[rowKey]; present {
 		return row, nil
 	} else {
-		return Row{}, fmt.Errorf("No such Row in Table '%v'", rowKey)
+		return Row{}, fmt.Errorf("No such Row in Table '%s'", rowKey)
 	}
 }
 
@@ -432,7 +432,7 @@ func (row Row) GetEntry(entryKey EntryName) (Entry, error) {
 	if entry, present := row.Entries[entryKey]; present {
 		return entry, nil
 	} else {
-		return Entry{}, fmt.Errorf("No such Entry in Row '%v'", entryKey)
+		return Entry{}, fmt.Errorf("No such Entry in Row '%s'", entryKey)
 	}
 }
 
