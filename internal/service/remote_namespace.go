@@ -224,9 +224,8 @@ func (rn *remoteNamespace) addIndex(addRequest addIndexRequest) {
 		errch <- err
 	}()
 
-	persistErr := <-errch
-
 	path, ipfsErr := rn.persistIndex(index)
+	persistErr := <-errch
 
 	if persistErr == nil {
 		persistErr = ipfsErr
