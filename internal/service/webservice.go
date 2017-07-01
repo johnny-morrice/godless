@@ -18,7 +18,19 @@ const QUERY_API_ROOT = "/query"
 const REFLECT_API_ROOT = "/reflect"
 
 type WebService struct {
-	API api.APIRequestService
+	apiService api.APIRequestService
+	stopch     chan struct{}
+}
+
+func MakeWebService(apiService api.APIRequestService) *WebService {
+	return &WebService{
+		apiService: apiService,
+		stopch:     make(chan struct{}),
+	}
+}
+
+func (service *WebService) Close() {
+	close(service.stopch)
 }
 
 func (service *WebService) Handler() gohttp.Handler {
@@ -51,7 +63,7 @@ func (service *WebService) reflectDumpNamespace(rw gohttp.ResponseWriter, req *g
 }
 
 func (service *WebService) reflect(rw gohttp.ResponseWriter, reflection api.APIReflectionType) {
-	respch, err := service.API.Call(api.APIRequest{Type: api.API_REFLECT, Reflection: reflection})
+	respch, err := service.apiService.Call(api.APIRequest{Type: api.API_REFLECT, Reflection: reflection})
 	service.respond(rw, respch, err)
 }
 
@@ -64,7 +76,7 @@ func (service *WebService) runQuery(rw gohttp.ResponseWriter, req *gohttp.Reques
 		return
 	}
 
-	respch, err := service.API.Call(api.APIRequest{Type: api.API_QUERY, Query: q})
+	respch, err := service.apiService.Call(api.APIRequest{Type: api.API_QUERY, Query: q})
 	service.respond(rw, respch, err)
 }
 
@@ -76,7 +88,17 @@ func invalidRequest(rw gohttp.ResponseWriter, err error) {
 	}
 }
 
-// TODO more coherency.
+func (service *WebService) readResponse(respch <-chan api.APIResponse) api.APIResponse {
+	select {
+	case resp := <-respch:
+		return resp
+	case <-service.stopch:
+		fail := api.RESPONSE_FAIL
+		fail.Err = errors.New("WebService closed")
+		return fail
+	}
+}
+
 func (service *WebService) respond(rw gohttp.ResponseWriter, respch <-chan api.APIResponse, err error) {
 	if err != nil {
 		invalidRequest(rw, err)
@@ -84,7 +106,7 @@ func (service *WebService) respond(rw gohttp.ResponseWriter, respch <-chan api.A
 	}
 
 	log.Info("Webservice waiting for API...")
-	resp := <-respch
+	resp := service.readResponse(respch)
 	log.Info("Webservice received API response")
 
 	err = sendMessage(rw, resp)

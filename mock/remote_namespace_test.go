@@ -433,6 +433,7 @@ func remoteOptions(store api.RemoteStore, headCache api.HeadCache) service.Remot
 		NamespaceCache: fakeNamespaceCache{},
 		KeyStore:       &crypto.KeyStore{},
 		MemoryImage:    cache.MakeResidentMemoryImage(),
+		Debug:          true,
 	}
 
 	return options

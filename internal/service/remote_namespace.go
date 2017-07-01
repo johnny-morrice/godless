@@ -61,6 +61,7 @@ type RemoteNamespaceOptions struct {
 	KeyStore       api.KeyStore
 	IsPublicIndex  bool
 	Pulse          time.Duration
+	Debug          bool
 }
 
 func checkOptions(options RemoteNamespaceOptions) {
@@ -129,7 +130,7 @@ func (rn *remoteNamespace) initializeMemoryImage() {
 		if err == nil {
 			log.Info("Initialized remoteNamespace with Index at: %v", head)
 		} else {
-			log.Error("Failed to initialize remoteNamespace with Index (%v): ", head, err.Error())
+			log.Error("Failed to initialize remoteNamespace with Index (%v): %v", head, err.Error())
 		}
 	}()
 
@@ -177,7 +178,7 @@ func (rn *remoteNamespace) addNamespaces() {
 		select {
 		case tubeItem := <-rn.namespaceTube:
 			addRequest := tubeItem
-			go rn.addNamespace(addRequest)
+			rn.fork(func() { rn.addNamespace(addRequest) })
 		case <-rn.stopch:
 			return
 		}
@@ -190,7 +191,7 @@ func (rn *remoteNamespace) addIndices() {
 		select {
 		case tubeItem := <-rn.indexTube:
 			addRequest := tubeItem
-			go rn.addIndex(addRequest)
+			rn.fork(func() { rn.addIndex(addRequest) })
 		case <-rn.stopch:
 			return
 		}
@@ -571,12 +572,48 @@ func (rn *remoteNamespace) loadCurrentIndex() (crdt.Index, error) {
 	return index, errors.Wrap(err, failMsg)
 }
 
+func (rn *remoteNamespace) fork(f func()) {
+	if rn.Debug {
+		f()
+		return
+	}
+
+	go f()
+}
+
+func (rn *remoteNamespace) writeNamespaceTube(addRequest addNamespaceRequest) {
+	select {
+	case <-rn.stopch:
+		return
+	case rn.namespaceTube <- addRequest:
+		return
+	}
+}
+
+func (rn *remoteNamespace) writeIndexTube(addRequest addIndexRequest) {
+	select {
+	case <-rn.stopch:
+		return
+	case rn.indexTube <- addRequest:
+		return
+	}
+}
+
+func (rn *remoteNamespace) readAddResponse(respch chan addResponse) addResponse {
+	select {
+	case <-rn.stopch:
+		return addResponse{err: errors.New("remote namespace stopped")}
+	case resp := <-respch:
+		return resp
+	}
+}
+
 func (rn *remoteNamespace) insertNamespace(namespace crdt.Namespace) (crdt.IPFSPath, error) {
 	const failMsg = "remoteNamespace.persistNamespace failed"
 	resultChan := make(chan addResponse)
-	rn.namespaceTube <- addNamespaceRequest{namespace: namespace, result: resultChan}
+	rn.writeNamespaceTube(addNamespaceRequest{namespace: namespace, result: resultChan})
 
-	result := <-resultChan
+	result := rn.readAddResponse(resultChan)
 
 	if result.err != nil {
 		return crdt.NIL_PATH, errors.Wrap(result.err, failMsg)
@@ -595,9 +632,9 @@ func (rn *remoteNamespace) insertIndex(index crdt.Index) (crdt.IPFSPath, error) 
 	const failMsg = "remoteNamespace.persistIndex failed"
 
 	resultChan := make(chan addResponse)
-	rn.indexTube <- addIndexRequest{index: index, result: resultChan}
+	rn.writeIndexTube(addIndexRequest{index: index, result: resultChan})
 
-	result := <-resultChan
+	result := rn.readAddResponse(resultChan)
 
 	if result.err != nil {
 		return crdt.NIL_PATH, errors.Wrap(result.err, failMsg)

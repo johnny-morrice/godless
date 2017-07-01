@@ -8,9 +8,11 @@ import (
 )
 
 type keyValueStore struct {
+	Debug     bool
 	namespace api.RemoteNamespace
 	queue     api.RequestPriorityQueue
 	semaphore chan struct{}
+	stopch    chan struct{}
 }
 
 func LaunchKeyValueStore(ns api.RemoteNamespace, queue api.RequestPriorityQueue, queryLimit int) (api.APIService, <-chan error) {
@@ -19,6 +21,7 @@ func LaunchKeyValueStore(ns api.RemoteNamespace, queue api.RequestPriorityQueue,
 	kv := &keyValueStore{
 		namespace: ns,
 		queue:     queue,
+		stopch:    make(chan struct{}),
 	}
 
 	if queryLimit > 0 {
@@ -32,25 +35,41 @@ func LaunchKeyValueStore(ns api.RemoteNamespace, queue api.RequestPriorityQueue,
 
 func (kv *keyValueStore) executeLoop(errch chan<- error) {
 	defer close(errch)
-	for anything := range kv.queue.Drain() {
-		thing := anything
-		go func() {
-			kv.lockResource()
-			defer kv.unlockResource()
-
-			log.Info("API executing request, %v remain in queue", kv.queue.Len())
-			kvq, ok := thing.(api.KvQuery)
-
-			if !ok {
-				// errch <- fmt.Errorf("Corrupt queue found a '%v' but expected %v: %v", reflect.TypeOf(anything).Name(), reflect.TypeOf(api.KvQuery{}).Name(), anything)
-				log.Error("Corrupt queue")
-				errch <- fmt.Errorf("Corrupt queue")
-			}
-
-			kv.run(kvq)
-		}()
-
+	drainch := kv.queue.Drain()
+	for {
+		select {
+		case anything := <-drainch:
+			thing := anything
+			kv.fork(func() { kv.runQueueItem(errch, thing) })
+		case <-kv.stopch:
+			return
+		}
 	}
+}
+
+func (kv *keyValueStore) fork(f func()) {
+	if kv.Debug {
+		f()
+		return
+	}
+
+	go f()
+}
+
+func (kv *keyValueStore) runQueueItem(errch chan<- error, thing interface{}) {
+	kv.lockResource()
+	defer kv.unlockResource()
+
+	log.Info("API executing request, %v remain in queue", kv.queue.Len())
+	kvq, ok := thing.(api.KvQuery)
+
+	if !ok {
+		// errch <- fmt.Errorf("Corrupt queue found a '%v' but expected %v: %v", reflect.TypeOf(anything).Name(), reflect.TypeOf(api.KvQuery{}).Name(), anything)
+		log.Error("Corrupt queue")
+		errch <- fmt.Errorf("Corrupt queue")
+	}
+
+	kv.run(kvq)
 }
 
 func (kv *keyValueStore) run(kvq api.KvQuery) {
@@ -90,17 +109,26 @@ func (kv *keyValueStore) Call(request api.APIRequest) (<-chan api.APIResponse, e
 	}
 }
 
+func (kv *keyValueStore) writeResponse(respch chan<- api.APIResponse, resp api.APIResponse) {
+	select {
+	case <-kv.stopch:
+		return
+	case respch <- resp:
+		return
+	}
+}
+
 func (kv *keyValueStore) enqueue(kvq api.KvQuery) {
 	log.Info("Enqueing request...")
-	go func() {
+	kv.fork(func() {
 		err := kv.queue.Enqueue(kvq.Request, kvq)
 		if err != nil {
 			log.Error("Failed to enqueue request: %v", err.Error())
 			fail := api.RESPONSE_FAIL
 			fail.Err = err
-			kvq.Response <- fail
+			go kv.writeResponse(kvq.Response, fail)
 		}
-	}()
+	})
 }
 
 func (kv *keyValueStore) replicate(request api.APIRequest) (<-chan api.APIResponse, error) {
@@ -144,13 +172,8 @@ func (kv *keyValueStore) reflect(request api.APIRequest) (<-chan api.APIResponse
 }
 
 func (kv *keyValueStore) CloseAPI() {
+	close(kv.stopch)
 	kv.namespace.Close()
 	kv.queue.Close()
 	log.Info("API closed")
-}
-
-func convertToFailure(resp *api.APIResponse, message string) {
-	respType := resp.Type
-	*resp = api.RESPONSE_FAIL
-	resp.Type = respType
 }
