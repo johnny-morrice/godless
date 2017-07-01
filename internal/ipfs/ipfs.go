@@ -249,7 +249,7 @@ func (peer *IpfsRemoteStore) SubscribeAddrStream(topic api.PubSubTopic) (<-chan 
 				}
 
 				stream <- addr
-				log.Info("Subscription update: '%s' from '%v'", addr, pubsubPeer)
+				log.Info("Subscription update: '%s'", addr.Path())
 			}
 		}
 
