@@ -88,16 +88,18 @@ func testReflectHead(t *testing.T, remote api.RemoteNamespace, expected crdt.IPF
 
 func testReflectIndex(t *testing.T, remote api.RemoteNamespace, expected crdt.Index) {
 	resp := reflectOnRemote(remote, api.REFLECT_INDEX)
+	actual := resp.ReflectResponse.Index
 
 	testutil.AssertNil(t, resp.Err)
-	testutil.Assert(t, "Unexpected index", expected.Equals(resp.ReflectResponse.Index))
+	testutil.Assert(t, "Unexpected index", expected.Equals(actual))
 }
 
 func testReflectNamespace(t *testing.T, remote api.RemoteNamespace, expected crdt.Namespace) {
 	resp := reflectOnRemote(remote, api.REFLECT_DUMP_NAMESPACE)
+	actual := resp.ReflectResponse.Namespace
 
 	testutil.AssertNil(t, resp.Err)
-	testutil.Assert(t, "Unexpected namespace", expected.Equals(resp.ReflectResponse.Namespace))
+	testutil.Assert(t, "Unexpected namespace", expected.Equals(actual))
 }
 
 func reflectOnRemote(remote api.RemoteNamespace, reflection api.APIReflectionType) api.APIResponse {
@@ -161,7 +163,8 @@ func TestLoadTraverseSuccess(t *testing.T) {
 
 	keepReading := api.TraversalUpdate{More: true}
 
-	mockStore.EXPECT().CatIndex(addrIndex).Return(index, nil).MinTimes(1)
+	mockStore.EXPECT().AddIndex(index).Return(addrIndex, nil).AnyTimes()
+	mockStore.EXPECT().CatIndex(addrIndex).Return(index, nil).AnyTimes()
 
 	mockStore.EXPECT().CatNamespace(addrA).Return(namespaceA, nil)
 	mockStore.EXPECT().CatNamespace(addrB).Return(namespaceB, nil)

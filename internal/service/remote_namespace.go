@@ -100,30 +100,36 @@ func MakeRemoteNamespace(options RemoteNamespaceOptions) api.RemoteNamespaceTree
 	}
 
 	remote.wg.Add(__REMOTE_NAMESPACE_PROCESS_COUNT)
-	remote.initializeMemoryImage()
+	initWait := remote.initializeMemoryImage()
 	go remote.addNamespaces()
 	go remote.addIndices()
 	go remote.memoryImageWriteLoop()
 
+	if initWait != nil {
+		<-initWait
+	}
+
 	return remote
 }
 
-func (rn *remoteNamespace) initializeMemoryImage() {
+func (rn *remoteNamespace) initializeMemoryImage() <-chan struct{} {
+	donech := make(chan struct{})
 	head, err := rn.getHead()
 
 	if err != nil {
 		log.Error("remoteNamespace initialization failed to get HEAD: %s", err.Error())
-		return
+		return nil
 	}
 
 	if crdt.IsNilPath(head) {
-		return
+		return nil
 	}
 
 	index, err := rn.loadIndex(head)
 
 	if err != nil {
 		log.Error("remoteNamespace initialization failed to load Index: %s", err.Error())
+		return nil
 	}
 
 	go func() {
@@ -134,8 +140,11 @@ func (rn *remoteNamespace) initializeMemoryImage() {
 		} else {
 			log.Error("Failed to initialize remoteNamespace with Index (%s): %s", head, err.Error())
 		}
+
+		close(donech)
 	}()
 
+	return donech
 }
 
 func (rn *remoteNamespace) memoryImageWriteLoop() {
