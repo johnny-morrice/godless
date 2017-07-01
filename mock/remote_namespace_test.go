@@ -172,9 +172,9 @@ func TestLoadTraverseSuccess(t *testing.T) {
 	mockStore.EXPECT().CatNamespace(addrC).Return(namespaceC, nil)
 
 	mockSearcher.EXPECT().Search(index).Return([]crdt.Link{signedAddrA, signedAddrB, signedAddrC})
-	mockSearcher.EXPECT().ReadNamespace(matchNamespace(namespaceA)).Return(keepReading)
-	mockSearcher.EXPECT().ReadNamespace(matchNamespace(namespaceB)).Return(keepReading)
-	mockSearcher.EXPECT().ReadNamespace(matchNamespace(namespaceC)).Return(keepReading)
+	mockSearcher.EXPECT().ReadSearchResult(matchNamespaceResult(namespaceA)).Return(keepReading)
+	mockSearcher.EXPECT().ReadSearchResult(matchNamespaceResult(namespaceB)).Return(keepReading)
+	mockSearcher.EXPECT().ReadSearchResult(matchNamespaceResult(namespaceC)).Return(keepReading)
 
 	remote := loadRemote(mockStore, addrIndex)
 	defer remote.Close()
@@ -221,7 +221,7 @@ func TestLoadTraverseFailure(t *testing.T) {
 	mockStore.EXPECT().CatIndex(indexAddr).Return(index, nil).MinTimes(1)
 
 	mockSearcher.EXPECT().Search(index).Return([]crdt.Link{signedNamespaceAddr})
-	mockSearcher.EXPECT().ReadNamespace(matchNamespace(namespaceA)).Return(badTraverse)
+	mockSearcher.EXPECT().ReadSearchResult(matchNamespaceResult(namespaceA)).Return(badTraverse)
 
 	remote := loadRemote(mockStore, indexAddr)
 	defer remote.Close()
@@ -268,7 +268,7 @@ func TestLoadTraverseAbort(t *testing.T) {
 	mockStore.EXPECT().CatIndex(addrIndex).Return(index, nil).MinTimes(1)
 
 	mockSearcher.EXPECT().Search(index).Return([]crdt.Link{signedAddrA})
-	mockSearcher.EXPECT().ReadNamespace(matchNamespace(namespaceA)).Return(abort)
+	mockSearcher.EXPECT().ReadSearchResult(matchNamespaceResult(namespaceA)).Return(abort)
 
 	remote := loadRemote(mockStore, addrIndex)
 	defer remote.Close()
@@ -363,6 +363,28 @@ func TestJoinTableFailure(t *testing.T) {
 	testutil.AssertNonNil(t, jerr)
 }
 
+type resultNamespaceMatcher struct {
+	ns crdt.Namespace
+}
+
+func matchNamespaceResult(ns crdt.Namespace) gomock.Matcher {
+	return resultNamespaceMatcher{ns: ns}
+}
+
+func (matcher resultNamespaceMatcher) Matches(v interface{}) bool {
+	other, ok := v.(api.SearchResult)
+
+	if !ok {
+		return false
+	}
+
+	return matcher.ns.Equals(other.Namespace)
+}
+
+func (matcher resultNamespaceMatcher) String() string {
+	return fmt.Sprintf("matches SearchResult with Namespace: %v", matcher.ns)
+}
+
 type nsmatcher struct {
 	ns crdt.Namespace
 }
@@ -371,18 +393,18 @@ func matchNamespace(ns crdt.Namespace) gomock.Matcher {
 	return nsmatcher{ns}
 }
 
-func (nsm nsmatcher) Matches(v interface{}) bool {
+func (matcher nsmatcher) Matches(v interface{}) bool {
 	other, ok := v.(crdt.Namespace)
 
 	if !ok {
 		return false
 	}
 
-	return nsm.ns.Equals(other)
+	return matcher.ns.Equals(other)
 }
 
-func (nsm nsmatcher) String() string {
-	return fmt.Sprintf("matches Namespace: %v", nsm.ns)
+func (matcher nsmatcher) String() string {
+	return fmt.Sprintf("matches Namespace: %v", matcher.ns)
 }
 
 type indexmatcher struct {
@@ -393,21 +415,21 @@ func matchIndex(index crdt.Index) indexmatcher {
 	return indexmatcher{index: index}
 }
 
-func (imatcher indexmatcher) Matches(v interface{}) bool {
+func (matcher indexmatcher) Matches(v interface{}) bool {
 	other, ok := v.(crdt.Index)
 
 	if !ok {
-		log.Debug("Not an Index for: %v vs %v", imatcher.index, v)
+		log.Debug("Not an Index for: %v vs %v", matcher.index, v)
 		return false
 	}
 
-	same := imatcher.index.Equals(other)
+	same := matcher.index.Equals(other)
 
 	return same
 }
 
-func (imatcher indexmatcher) String() string {
-	return fmt.Sprintf("matches Index: %v", imatcher.index)
+func (matcher indexmatcher) String() string {
+	return fmt.Sprintf("matches Index: %v", matcher.index)
 }
 
 func readApiResponse(kvq api.KvQuery) api.APIResponse {

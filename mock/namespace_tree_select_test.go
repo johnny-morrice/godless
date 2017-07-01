@@ -552,8 +552,11 @@ func streamH() []crdt.NamespaceStreamEntry {
 	return makeTableStream(ALT_TABLE_KEY, tableH())
 }
 
-func feedNamespace(ntr api.NamespaceTreeReader) {
-	ntr.ReadNamespace(mkselectns())
+func feedNamespace(reader api.NamespaceTreeReader) {
+	result := api.SearchResult{
+		Namespace: mkselectns(),
+	}
+	reader.ReadSearchResult(result)
 }
 
 func mkselectns() crdt.Namespace {

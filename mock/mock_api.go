@@ -232,14 +232,14 @@ func (_m *MockNamespaceSearcher) EXPECT() *_MockNamespaceSearcherRecorder {
 	return _m.recorder
 }
 
-func (_m *MockNamespaceSearcher) ReadNamespace(_param0 crdt.Namespace) api.TraversalUpdate {
-	ret := _m.ctrl.Call(_m, "ReadNamespace", _param0)
+func (_m *MockNamespaceSearcher) ReadSearchResult(_param0 api.SearchResult) api.TraversalUpdate {
+	ret := _m.ctrl.Call(_m, "ReadSearchResult", _param0)
 	ret0, _ := ret[0].(api.TraversalUpdate)
 	return ret0
 }
 
-func (_mr *_MockNamespaceSearcherRecorder) ReadNamespace(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "ReadNamespace", arg0)
+func (_mr *_MockNamespaceSearcherRecorder) ReadSearchResult(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ReadSearchResult", arg0)
 }
 
 func (_m *MockNamespaceSearcher) Search(_param0 crdt.Index) []crdt.Link {

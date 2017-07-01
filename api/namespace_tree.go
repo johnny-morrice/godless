@@ -15,8 +15,14 @@ type RemoteNamespaceTree interface {
 	NamespaceTree
 }
 
+type SearchResult struct {
+	Namespace            crdt.Namespace
+	NamespaceLoadFailure bool
+	IndexLoadFailure     bool
+}
+
 type NamespaceTreeReader interface {
-	ReadNamespace(ns crdt.Namespace) TraversalUpdate
+	ReadSearchResult(result SearchResult) TraversalUpdate
 }
 
 type TraversalUpdate struct {
@@ -39,8 +45,8 @@ type SignedTableSearcher struct {
 	Keys   []crypto.PublicKey
 }
 
-func (searcher SignedTableSearcher) ReadNamespace(ns crdt.Namespace) TraversalUpdate {
-	return searcher.Reader.ReadNamespace(ns)
+func (searcher SignedTableSearcher) ReadSearchResult(result SearchResult) TraversalUpdate {
+	return searcher.Reader.ReadSearchResult(result)
 }
 
 func (searcher SignedTableSearcher) Search(index crdt.Index) []crdt.Link {
@@ -64,10 +70,8 @@ func (searcher SignedTableSearcher) Search(index crdt.Index) []crdt.Link {
 	return verified
 }
 
-// NamespaceTreeReader functions return true when they have finished reading
-// the tree.
-type NamespaceTreeLambda func(ns crdt.Namespace) TraversalUpdate
+type NamespaceTreeLambda func(result SearchResult) TraversalUpdate
 
-func (ntl NamespaceTreeLambda) ReadNamespace(ns crdt.Namespace) TraversalUpdate {
-	return ntl(ns)
+func (lambda NamespaceTreeLambda) ReadSearchResult(result SearchResult) TraversalUpdate {
+	return lambda(result)
 }

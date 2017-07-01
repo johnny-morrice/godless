@@ -15,10 +15,12 @@ type NamespaceTreeSelect struct {
 	query.NoJoinVisitor
 	query.NoDebugVisitor
 	query.ErrorCollectVisitor
-	Namespace api.NamespaceTree
-	crit      *rowCriteria
-	keys      []crypto.PublicKey
-	keyStore  api.KeyStore
+	Namespace          api.NamespaceTree
+	crit               *rowCriteria
+	keys               []crypto.PublicKey
+	keyStore           api.KeyStore
+	namespaceLoadError bool
+	indexLoadError     bool
 }
 
 func MakeNamespaceTreeSelect(namespace api.NamespaceTree, keyStore api.KeyStore) *NamespaceTreeSelect {
@@ -49,16 +51,20 @@ func (visitor *NamespaceTreeSelect) RunQuery() api.APIResponse {
 	}
 
 	log.Info("Searching namespaces...")
-	lambda := api.NamespaceTreeLambda(visitor.crit.selectMatching)
 
 	searcher := api.SignedTableSearcher{
-		Reader: lambda,
+		Reader: api.NamespaceTreeLambda(visitor.ReadSearchResult),
 		Tables: []crdt.TableName{visitor.crit.tableKey},
 	}
 	searchErr := visitor.Namespace.LoadTraverse(searcher)
 
 	if searchErr != nil {
 		fail.Err = errors.Wrap(searchErr, failMsg)
+		return fail
+	}
+
+	if visitor.indexLoadError {
+		fail.Err = errors.New("Index load failure")
 		return fail
 	}
 
@@ -73,8 +79,26 @@ func (visitor *NamespaceTreeSelect) RunQuery() api.APIResponse {
 		return fail
 	}
 
+	if visitor.namespaceLoadError {
+		response.Msg = "ok with load errors"
+	}
+
 	response.QueryResponse.Entries = stream
 	return response
+}
+
+func (visitor *NamespaceTreeSelect) ReadSearchResult(result api.SearchResult) api.TraversalUpdate {
+	if result.NamespaceLoadFailure {
+		visitor.namespaceLoadError = true
+		return api.TraversalUpdate{More: true}
+	}
+
+	if result.IndexLoadFailure {
+		visitor.indexLoadError = true
+		return api.TraversalUpdate{}
+	}
+
+	return visitor.crit.selectMatching(result.Namespace)
 }
 
 func (visitor *NamespaceTreeSelect) resultStream() ([]crdt.NamespaceStreamEntry, error) {

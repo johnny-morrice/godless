@@ -416,9 +416,23 @@ func (rn *remoteNamespace) dumpReflectNamespaces() api.APIResponse {
 
 	everything := crdt.EmptyNamespace()
 
-	lambda := api.NamespaceTreeLambda(func(ns crdt.Namespace) api.TraversalUpdate {
-		everything = everything.JoinNamespace(ns)
-		return api.TraversalUpdate{More: true}
+	namespaceError := false
+	indexError := false
+	lambda := api.NamespaceTreeLambda(func(result api.SearchResult) api.TraversalUpdate {
+		more := api.TraversalUpdate{More: true}
+
+		if result.NamespaceLoadFailure {
+			namespaceError = true
+			return more
+		}
+
+		if result.IndexLoadFailure {
+			indexError = true
+			return api.TraversalUpdate{More: false}
+		}
+
+		everything = everything.JoinNamespace(result.Namespace)
+		return more
 	})
 
 	searcher := api.SignedTableSearcher{
@@ -435,7 +449,20 @@ func (rn *remoteNamespace) dumpReflectNamespaces() api.APIResponse {
 		response.Type = api.API_REFLECT
 	}
 
+	if indexError {
+		log.Error("Index load errors should be handled already")
+		err := errors.New("Index load failure")
+		response = api.RESPONSE_FAIL
+		response.Err = errors.Wrap(err, failMsg)
+		response.Type = api.API_REFLECT
+	}
+
 	response.ReflectResponse.Namespace = everything
+
+	if namespaceError {
+		response.Msg = "ok with load errors"
+	}
+
 	return response
 }
 
@@ -497,6 +524,8 @@ func (rn *remoteNamespace) LoadTraverse(searcher api.NamespaceSearcher) error {
 	index, indexerr := rn.loadCurrentIndex()
 
 	if indexerr != nil {
+		indexLoadFailure := api.SearchResult{IndexLoadFailure: true}
+		searcher.ReadSearchResult(indexLoadFailure)
 		return errors.Wrap(indexerr, failMsg)
 	}
 
@@ -506,10 +535,10 @@ func (rn *remoteNamespace) LoadTraverse(searcher api.NamespaceSearcher) error {
 }
 
 func (rn *remoteNamespace) traverseTableNamespaces(tableAddrs []crdt.Link, f api.NamespaceTreeReader) error {
-	nsch, cancelch := rn.namespaceLoader(tableAddrs)
+	resultch, cancelch := rn.namespaceLoader(tableAddrs)
 	defer close(cancelch)
-	for ns := range nsch {
-		update := f.ReadNamespace(ns)
+	for result := range resultch {
+		update := f.ReadSearchResult(result)
 
 		log.Debug("Update: %v", update)
 
@@ -528,33 +557,35 @@ func (rn *remoteNamespace) traverseTableNamespaces(tableAddrs []crdt.Link, f api
 }
 
 // Preload namespaces while the previous is analysed.
-func (rn *remoteNamespace) namespaceLoader(addrs []crdt.Link) (<-chan crdt.Namespace, chan<- struct{}) {
-	nsch := make(chan crdt.Namespace)
+func (rn *remoteNamespace) namespaceLoader(addrs []crdt.Link) (<-chan api.SearchResult, chan<- struct{}) {
+	resultch := make(chan api.SearchResult)
 	cancelch := make(chan struct{}, 1)
 
 	go func() {
-		defer close(nsch)
+		defer close(resultch)
 		for _, a := range addrs {
 			namespace, err := rn.loadNamespace(a.Path())
 
 			if err != nil {
-				log.Error("remoteNamespace.namespaceLoader failed to CatNamespace: %s", err.Error())
+				log.Error("remoteNamespace.namespaceLoader: %s", err.Error())
+				resultch <- api.SearchResult{NamespaceLoadFailure: true}
 				continue
 			}
 
 			log.Info("Catted namespace from: %s", a.Path())
+			successResult := api.SearchResult{Namespace: namespace}
 			select {
 			case <-rn.stopch:
 				return
 			case <-cancelch:
 				return
-			case nsch <- namespace:
+			case resultch <- successResult:
 				break
 			}
 		}
 	}()
 
-	return nsch, cancelch
+	return resultch, cancelch
 }
 
 func (rn *remoteNamespace) loadNamespace(namespaceAddr crdt.IPFSPath) (crdt.Namespace, error) {
