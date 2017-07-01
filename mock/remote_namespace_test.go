@@ -215,7 +215,10 @@ func TestLoadTraverseFailure(t *testing.T) {
 
 	badTraverse := api.TraversalUpdate{More: true, Error: errors.New("Expected error")}
 	mockStore.EXPECT().CatNamespace(namespaceAddr).Return(namespaceA, nil)
+
+	mockStore.EXPECT().AddIndex(index).AnyTimes().Return(indexAddr, nil)
 	mockStore.EXPECT().CatIndex(indexAddr).Return(index, nil).MinTimes(1)
+
 	mockSearcher.EXPECT().Search(index).Return([]crdt.Link{signedNamespaceAddr})
 	mockSearcher.EXPECT().ReadNamespace(matchNamespace(namespaceA)).Return(badTraverse)
 
@@ -259,7 +262,10 @@ func TestLoadTraverseAbort(t *testing.T) {
 
 	abort := api.TraversalUpdate{}
 	mockStore.EXPECT().CatNamespace(addrA).Return(namespaceA, nil)
+
+	mockStore.EXPECT().AddIndex(index).Return(addrIndex, nil).AnyTimes()
 	mockStore.EXPECT().CatIndex(addrIndex).Return(index, nil).MinTimes(1)
+
 	mockSearcher.EXPECT().Search(index).Return([]crdt.Link{signedAddrA})
 	mockSearcher.EXPECT().ReadNamespace(matchNamespace(namespaceA)).Return(abort)
 
