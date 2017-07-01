@@ -17,7 +17,8 @@ import (
 )
 
 func TestRemoteNamespaceReplicate(t *testing.T) {
-	// TODO integration test as design stands.
+	// TODO was integration test in previous design,
+	// can now implement as unit.  Please do.
 }
 
 func TestRemoteNamespaceRunKvReflection(t *testing.T) {

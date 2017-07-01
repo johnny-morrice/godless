@@ -1,6 +1,6 @@
 package api
 
-//go:generate mockgen -package mock_godless -destination ../mock/mock_api.go -imports lib=github.com/johnny-morrice/api -self_package lib github.com/johnny-morrice/godless/api RemoteNamespace,RemoteStore,NamespaceTree,NamespaceSearcher
+//go:generate mockgen -package mock_godless -destination ../mock/mock_api.go -imports lib=github.com/johnny-morrice/api -self_package lib github.com/johnny-morrice/godless/api RemoteNamespace,RemoteStore,NamespaceTree,NamespaceSearcher,DataPeer,PubSubSubscription,PubSubRecord
 
 import (
 	"bytes"

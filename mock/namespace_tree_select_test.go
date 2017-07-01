@@ -641,5 +641,12 @@ func panicOnInvalidNamespace(invalid []crdt.InvalidNamespaceEntry) {
 	}
 }
 
+func panicOnInvalidIndex(invalid []crdt.InvalidIndexEntry) {
+	invalidCount := len(invalid)
+	if invalidCount > 0 {
+		panic(fmt.Sprintf("%d invalid entries", invalidCount))
+	}
+}
+
 var __SELECT_PRIVATE_KEY crypto.PrivateKey
 var __SELECT_PUBLIC_KEY crypto.PublicKey

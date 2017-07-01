@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"io/ioutil"
+	"sync"
 
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
@@ -103,8 +104,32 @@ func (index *IPFSIndex) logInvalid(invalid []crdt.InvalidIndexEntry) {
 	}
 }
 
+type ipfsCloser struct {
+	sync.Mutex
+	closed bool
+}
+
+func (closer *ipfsCloser) isClosed() bool {
+	closer.Lock()
+	defer closer.Unlock()
+
+	return closer.closed
+}
+
+func (closer *ipfsCloser) closeIpfs() {
+	closer.Lock()
+	defer closer.Unlock()
+
+	closer.closed = true
+}
+
 type IpfsRemoteStore struct {
-	Shell api.DataPeer
+	Shell  api.DataPeer
+	closer ipfsCloser
+}
+
+func MakeIpfsRemoteStore(peer api.DataPeer) api.RemoteStore {
+	return &IpfsRemoteStore{Shell: peer}
 }
 
 func (peer *IpfsRemoteStore) Connect() error {
@@ -112,8 +137,8 @@ func (peer *IpfsRemoteStore) Connect() error {
 }
 
 func (peer *IpfsRemoteStore) Disconnect() error {
-	// Nothing to do.
-	return nil
+	peer.closer.closeIpfs()
+	return peer.Shell.Disconnect()
 }
 
 func (peer *IpfsRemoteStore) validateShell() error {
@@ -188,6 +213,10 @@ func (peer *IpfsRemoteStore) SubscribeAddrStream(topic api.PubSubTopic) (<-chan 
 
 	RESTART:
 		for {
+			if peer.closer.isClosed() {
+				return
+			}
+
 			var launchErr error
 			log.Info("(Re)starting subscription on %s", topic)
 			subscription, launchErr = peer.Shell.PubSubSubscribe(topicText)
@@ -198,6 +227,10 @@ func (peer *IpfsRemoteStore) SubscribeAddrStream(topic api.PubSubTopic) (<-chan 
 			}
 
 			for {
+				if peer.closer.isClosed() {
+					return
+				}
+
 				log.Info("Fetching next subscription message on %s...", topic)
 				record, recordErr := subscription.Next()
 
@@ -314,9 +347,9 @@ func (peer *IpfsRemoteStore) add(chunk encoder) (crdt.IPFSPath, error) {
 		return crdt.NIL_PATH, errors.Wrap(err, failMsg)
 	}
 
-	path, sherr := peer.Shell.Add(buff)
+	path, err := peer.Shell.Add(buff)
 
-	if sherr != nil {
+	if err != nil {
 		return crdt.NIL_PATH, errors.Wrap(err, failMsg)
 	}
 
