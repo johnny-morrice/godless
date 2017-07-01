@@ -24,6 +24,7 @@ type addNamespaceRequest struct {
 	result    chan addResponse
 }
 
+// TODO leaks goroutine after shutdown.
 func (add addNamespaceRequest) reply(path crdt.IPFSPath, err error) {
 	go func() {
 		defer close(add.result)
@@ -36,6 +37,7 @@ type addIndexRequest struct {
 	result chan addResponse
 }
 
+// TODO leaks goroutine after shutdown.
 func (add addIndexRequest) reply(path crdt.IPFSPath, err error) {
 	go func() {
 		defer close(add.result)
@@ -502,8 +504,7 @@ func (rn *remoteNamespace) traverseTableNamespaces(tableAddrs []crdt.Link, f api
 
 		if !(update.More && update.Error == nil) {
 			log.Info("Cancelling traverse...")
-			cancelch <- struct{}{}
-			log.Info("Cancelled traverse")
+			return nil
 		}
 
 		if update.Error != nil {
@@ -526,12 +527,14 @@ func (rn *remoteNamespace) namespaceLoader(addrs []crdt.Link) (<-chan crdt.Names
 			namespace, err := rn.loadNamespace(a.Path())
 
 			if err != nil {
-				log.Error("remoteNamespace.namespaceLoader failed to CatNamespace: %v", err)
+				log.Error("remoteNamespace.namespaceLoader failed to CatNamespace: %v", err.Error())
 				continue
 			}
 
 			log.Info("Catted namespace from: %v", a)
 			select {
+			case <-rn.stopch:
+				return
 			case <-cancelch:
 				return
 			case nsch <- namespace:
@@ -622,7 +625,7 @@ func (rn *remoteNamespace) insertNamespace(namespace crdt.Namespace) (crdt.IPFSP
 	cacheErr := rn.NamespaceCache.SetNamespace(result.path, namespace)
 
 	if cacheErr != nil {
-		log.Error("Failed to write to namespace cache at: %v (%v)", result.path, cacheErr)
+		log.Error("Failed to write to namespace cache at: %v (%v)", result.path, cacheErr.Error())
 	}
 
 	return result.path, nil

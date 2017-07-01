@@ -197,14 +197,14 @@ func (pub PublicKey) Equals(other PublicKey) bool {
 	myBytes, myErr := SerializePublicKey(pub)
 
 	if myErr != nil {
-		log.Error(errFmt, myErr)
+		log.Error(errFmt, myErr.Error())
 		return false
 	}
 
 	theirBytes, theirErr := SerializePublicKey(other)
 
 	if theirErr != nil {
-		log.Error(errFmt, theirErr)
+		log.Error(errFmt, theirErr.Error())
 		return false
 	}
 

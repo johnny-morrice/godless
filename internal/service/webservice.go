@@ -81,10 +81,10 @@ func (service *WebService) runQuery(rw gohttp.ResponseWriter, req *gohttp.Reques
 }
 
 func invalidRequest(rw gohttp.ResponseWriter, err error) {
-	log.Info("Invalid Request details: %v", err)
+	log.Info("Invalid Request details: %v", err.Error())
 	reportErr := sendErr(rw, err)
 	if reportErr != nil {
-		log.Error("Error sending JSON error report: '%v'", reportErr)
+		log.Error("Error sending error report: '%v'", reportErr.Error())
 	}
 }
 

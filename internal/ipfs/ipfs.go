@@ -343,7 +343,7 @@ func (peer *IpfsRemoteStore) cat(path crdt.IPFSPath, out decoder) error {
 	remainder, drainerr := ioutil.ReadAll(reader)
 
 	if drainerr != nil {
-		log.Warn("error draining reader: %v", drainerr)
+		log.Warn("error draining reader: %v", drainerr.Error())
 	}
 
 	if len(remainder) != 0 {

@@ -38,9 +38,11 @@ func (kv *keyValueStore) executeLoop(errch chan<- error) {
 	drainch := kv.queue.Drain()
 	for {
 		select {
-		case anything := <-drainch:
-			thing := anything
-			kv.fork(func() { kv.runQueueItem(errch, thing) })
+		case anything, ok := <-drainch:
+			if ok {
+				thing := anything
+				kv.fork(func() { kv.runQueueItem(errch, thing) })
+			}
 		case <-kv.stopch:
 			return
 		}
@@ -146,7 +148,7 @@ func (kv *keyValueStore) runQuery(request api.APIRequest) (<-chan api.APIRespons
 		if err == nil {
 			log.Info("api.APIService running query.Query:\n%v", text)
 		} else {
-			log.Debug("Failed to pretty print query: %v", err)
+			log.Debug("Failed to pretty print query: %v", err.Error())
 		}
 
 	}

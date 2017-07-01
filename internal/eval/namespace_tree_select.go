@@ -115,7 +115,7 @@ func (visitor *NamespaceTreeSelect) VisitPublicKeyHash(hash crypto.PublicKeyHash
 	pub, err := visitor.keyStore.GetPublicKey(hash)
 
 	if err != nil {
-		log.Warn("Public key lookup failed with: %v", err)
+		log.Warn("Public key lookup failed with: %v", err.Error())
 		visitor.BadPublicKey(hash)
 		return
 	}

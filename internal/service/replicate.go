@@ -215,7 +215,7 @@ func (p2p replicator) subscribeTopic(topic api.PubSubTopic) {
 				if !present {
 					break
 				}
-				log.Info("Subscription error: %v", err)
+				log.Info("Subscription error: %v", err.Error())
 				return
 			case <-p2p.stopch:
 				log.Info("Stop subscribing on %v", topic)

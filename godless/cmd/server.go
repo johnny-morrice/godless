@@ -84,7 +84,7 @@ func serve(cmd *cobra.Command) {
 	shutdownOnTrap(godless)
 
 	for runError := range godless.Errors() {
-		log.Error("%v", runError)
+		log.Error("%v", runError.Error())
 	}
 
 	defer shutdown(godless)
