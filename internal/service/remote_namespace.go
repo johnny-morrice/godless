@@ -511,7 +511,9 @@ func (rn *remoteNamespace) traverseTableNamespaces(tableAddrs []crdt.Link, f api
 	for ns := range nsch {
 		update := f.ReadNamespace(ns)
 
-		if !(update.More && update.Error == nil) {
+		log.Debug("Update: %v", update)
+
+		if !update.More && update.Error == nil {
 			log.Info("Cancelling traverse...")
 			return nil
 		}

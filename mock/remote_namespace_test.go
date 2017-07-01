@@ -309,7 +309,10 @@ func TestJoinTableSuccess(t *testing.T) {
 	indexB := indexA.JoinNamespace(signedAddrB, namespaceB)
 
 	mock.EXPECT().AddNamespace(matchNamespace(namespaceB)).Return(addrB, nil)
-	mock.EXPECT().AddIndex(matchIndex(indexB)).Return(addrIndexB, nil)
+
+	mock.EXPECT().CatIndex(addrIndexA).Return(indexA, nil).AnyTimes()
+	mock.EXPECT().AddIndex(indexA).Return(addrIndexA, nil).AnyTimes()
+	mock.EXPECT().AddIndex(matchIndex(indexB)).Return(addrIndexB, nil).AnyTimes()
 
 	// No index Catting with MemoryImage
 	// mock.EXPECT().CatIndex(addrIndexA).Return(indexA, nil).MinTimes(1)
