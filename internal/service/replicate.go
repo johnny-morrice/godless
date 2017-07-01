@@ -199,7 +199,7 @@ func (p2p replicator) subscribeTopic(topic api.PubSubTopic) {
 		p2p:    p2p,
 	}
 
-	log.Info("Dispatching subscription updates every: %d", p2p.interval)
+	log.Info("Dispatching subscription updates every: %v", p2p.interval)
 
 	go func() {
 		for {
