@@ -26,9 +26,9 @@ func (resp APIResponse) Generate(rand *rand.Rand, size int) reflect.Value {
 
 	if rand.Float32() < 0.5 {
 		if gen.Type == API_QUERY {
-			gen.QueryResponse = genQueryResponse(rand, size)
+			genQueryResponse(rand, size, &gen)
 		} else {
-			gen.ReflectResponse = genReflectResponse(rand, size)
+			genReflectResponse(rand, size, &gen)
 		}
 	} else {
 		errText := testutil.RandPoint(rand, size)
@@ -38,30 +38,25 @@ func (resp APIResponse) Generate(rand *rand.Rand, size int) reflect.Value {
 	return reflect.ValueOf(gen)
 }
 
-func genQueryResponse(rand *rand.Rand, size int) APIQueryResponse {
-	gen := APIQueryResponse{}
+func genQueryResponse(rand *rand.Rand, size int, gen *APIResponse) {
 	ns := crdt.GenNamespace(rand, size)
-	stream := makeNamespaceStream(ns)
-	gen.Entries = stream
-	return gen
+	gen.Namespace = ns
+	gen.Path = genResponsePath(rand, size)
 }
 
-func genReflectResponse(rand *rand.Rand, size int) APIReflectResponse {
-	gen := APIReflectResponse{}
-
+func genReflectResponse(rand *rand.Rand, size int, gen *APIResponse) {
 	branch := rand.Float32()
 	if branch < 0.333 {
-		gen.Type = REFLECT_HEAD_PATH
-		gen.Path = crdt.IPFSPath(testutil.RandLetters(rand, size))
+		gen.Path = genResponsePath(rand, size)
 	} else if branch < 0.666 {
-		gen.Type = REFLECT_DUMP_NAMESPACE
 		gen.Namespace = crdt.GenNamespace(rand, size)
 	} else {
-		gen.Type = REFLECT_INDEX
 		gen.Index = crdt.GenIndex(rand, size)
 	}
+}
 
-	return gen
+func genResponsePath(rand *rand.Rand, size int) crdt.IPFSPath {
+	return crdt.IPFSPath(testutil.RandLettersRange(rand, 1, size))
 }
 
 func TestEncodeAPIResponse(t *testing.T) {

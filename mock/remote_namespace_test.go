@@ -84,12 +84,12 @@ func testReflectHead(t *testing.T, remote api.RemoteNamespace, expected crdt.IPF
 	resp := reflectOnRemote(remote, api.REFLECT_HEAD_PATH)
 
 	testutil.AssertNil(t, resp.Err)
-	testutil.AssertEquals(t, "Unexpected HEAD path", expected, resp.ReflectResponse.Path)
+	testutil.AssertEquals(t, "Unexpected HEAD path", expected, resp.Path)
 }
 
 func testReflectIndex(t *testing.T, remote api.RemoteNamespace, expected crdt.Index) {
 	resp := reflectOnRemote(remote, api.REFLECT_INDEX)
-	actual := resp.ReflectResponse.Index
+	actual := resp.Index
 
 	testutil.AssertNil(t, resp.Err)
 	testutil.Assert(t, "Unexpected index", expected.Equals(actual))
@@ -97,7 +97,7 @@ func testReflectIndex(t *testing.T, remote api.RemoteNamespace, expected crdt.In
 
 func testReflectNamespace(t *testing.T, remote api.RemoteNamespace, expected crdt.Namespace) {
 	resp := reflectOnRemote(remote, api.REFLECT_DUMP_NAMESPACE)
-	actual := resp.ReflectResponse.Namespace
+	actual := resp.Namespace
 
 	testutil.AssertNil(t, resp.Err)
 	testutil.Assert(t, "Unexpected namespace", expected.Equals(actual))

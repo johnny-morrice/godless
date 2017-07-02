@@ -364,7 +364,6 @@ func (rn *remoteNamespace) RunKvReflection(reflect api.APIReflectionType, kvq ap
 // TODO Not sure if best place for these to live.
 func (rn *remoteNamespace) getReflectHead() api.APIResponse {
 	response := api.RESPONSE_REFLECT
-	response.ReflectResponse.Type = api.REFLECT_HEAD_PATH
 
 	myAddr, err := rn.getHead()
 
@@ -375,7 +374,7 @@ func (rn *remoteNamespace) getReflectHead() api.APIResponse {
 		response.Err = errors.New("No index available")
 		response.Msg = api.RESPONSE_FAIL_MSG
 	} else {
-		response.ReflectResponse.Path = myAddr
+		response.Path = myAddr
 	}
 
 	return response
@@ -393,8 +392,7 @@ func (rn *remoteNamespace) getReflectIndex() api.APIResponse {
 		return response
 	}
 
-	response.ReflectResponse.Index = index
-	response.ReflectResponse.Type = api.REFLECT_INDEX
+	response.Index = index
 
 	return response
 }
@@ -402,7 +400,6 @@ func (rn *remoteNamespace) getReflectIndex() api.APIResponse {
 func (rn *remoteNamespace) dumpReflectNamespaces() api.APIResponse {
 	const failMsg = "remoteNamespace.dumpReflectNamespace failed"
 	response := api.RESPONSE_REFLECT
-	response.ReflectResponse.Type = api.REFLECT_DUMP_NAMESPACE
 
 	index, err := rn.loadCurrentIndex()
 
@@ -456,7 +453,7 @@ func (rn *remoteNamespace) dumpReflectNamespaces() api.APIResponse {
 		response.Type = api.API_REFLECT
 	}
 
-	response.ReflectResponse.Namespace = everything
+	response.Namespace = everything
 
 	if namespaceError {
 		response.Msg = "ok with load errors"

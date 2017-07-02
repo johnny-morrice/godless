@@ -5,9 +5,10 @@ package api
 import (
 	"bytes"
 
+	"github.com/pkg/errors"
+
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/query"
-	"github.com/pkg/errors"
 )
 
 type APIService interface {
@@ -40,10 +41,6 @@ func (arf APIResponderFunc) RunQuery() APIResponse {
 	return arf()
 }
 
-type APIQueryResponse struct {
-	Entries []crdt.NamespaceStreamEntry
-}
-
 type APIReflectionType uint16
 
 const (
@@ -52,13 +49,6 @@ const (
 	REFLECT_DUMP_NAMESPACE
 	REFLECT_INDEX
 )
-
-type APIReflectResponse struct {
-	Type      APIReflectionType
-	Namespace crdt.Namespace `json:",omitEmpty"`
-	Path      crdt.IPFSPath  `json:",omitEmpty"`
-	Index     crdt.Index     `json:",omitEmpty"`
-}
 
 type APIMessageType uint8
 
@@ -130,7 +120,6 @@ func MakeKvReplicate(request APIRequest) KvQuery {
 	return makeApiQuery(request, kvReplicator{links: request.Replicate})
 }
 
-// TODO these should make more general sense and be public.
 func (kvq KvQuery) WriteResponse(val APIResponse) {
 	kvq.Response <- val
 	close(kvq.Response)
@@ -145,11 +134,12 @@ func (kvq KvQuery) Run(kvn RemoteNamespace) {
 }
 
 type APIResponse struct {
-	Msg             string
-	Err             error
-	Type            APIMessageType
-	QueryResponse   APIQueryResponse   `json:",omitEmpty"`
-	ReflectResponse APIReflectResponse `json:",omitEmpty"`
+	Msg       string
+	Err       error
+	Type      APIMessageType
+	Path      crdt.IPFSPath
+	Namespace crdt.Namespace
+	Index     crdt.Index
 }
 
 func (resp APIResponse) IsEmpty() bool {
@@ -172,6 +162,7 @@ func (resp APIResponse) AsText() (string, error) {
 func (resp APIResponse) Equals(other APIResponse) bool {
 	ok := resp.Msg == other.Msg
 	ok = ok && resp.Type == other.Type
+	ok = ok && resp.Path == other.Path
 
 	if !ok {
 		return false
@@ -185,26 +176,12 @@ func (resp APIResponse) Equals(other APIResponse) bool {
 		}
 	}
 
-	if resp.Type == API_QUERY {
-		if len(resp.QueryResponse.Entries) != len(other.QueryResponse.Entries) {
-			return false
-		}
+	if !resp.Namespace.Equals(other.Namespace) {
+		return false
+	}
 
-		if !crdt.StreamEquals(resp.QueryResponse.Entries, other.QueryResponse.Entries) {
-			return false
-		}
-	} else if resp.Type == API_REFLECT {
-		if resp.ReflectResponse.Path != other.ReflectResponse.Path {
-			return false
-		}
-
-		if !resp.ReflectResponse.Index.Equals(other.ReflectResponse.Index) {
-			return false
-		}
-
-		if !resp.ReflectResponse.Namespace.Equals(other.ReflectResponse.Namespace) {
-			return false
-		}
+	if !resp.Index.Equals(other.Index) {
+		return false
 	}
 
 	return true

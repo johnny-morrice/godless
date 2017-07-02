@@ -94,7 +94,7 @@ func (p2p replicator) publishIndex() {
 		return
 	}
 
-	head := crdt.IPFSPath(resp.ReflectResponse.Path)
+	head := crdt.IPFSPath(resp.Path)
 
 	// API should do this for its HEAD.
 	privKeys := p2p.keyStore.GetAllPrivateKeys()
@@ -134,7 +134,7 @@ func (p2p replicator) sendReflectRequest() (api.APIResponse, error) {
 		return resp, resp.Err
 	}
 
-	log.Info("Replicator got HEAD at %s", resp.ReflectResponse.Path)
+	log.Info("Replicator got HEAD at %s", resp.Path)
 
 	return resp, nil
 }

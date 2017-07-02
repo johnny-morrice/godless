@@ -171,11 +171,10 @@ func (cache boltCache) GetNamespace(namespaceAddr crdt.IPFSPath) (crdt.Namespace
 		return crdt.EmptyNamespace(), errors.Wrap(err, failMsg)
 	}
 
-	// TODO handle invalid entries
-	namespace, _, err := crdt.ReadNamespaceMessage(namespaceMessage)
+	namespace, invalid := crdt.ReadNamespaceMessage(namespaceMessage)
 
-	if err != nil {
-		return crdt.EmptyNamespace(), errors.Wrap(err, failMsg)
+	if len(invalid) > 0 {
+		log.Error("Bolt ignoring %d invalid entries", len(invalid))
 	}
 
 	log.Info("Found Namespace in Bolt: %s", namespaceAddr)

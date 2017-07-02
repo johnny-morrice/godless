@@ -194,30 +194,30 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 	}
 
 	responseA := api.RESPONSE_QUERY
-	responseA.QueryResponse.Entries = streamA()
+	responseA.Namespace = namespaceA()
 
 	responseB := api.RESPONSE_QUERY
-	responseB.QueryResponse.Entries = joinNamespaceStream(append(streamB(), streamC()...))
+	responseB.Namespace = namespaceB().JoinNamespace(namespaceC())
 
 	responseC := api.RESPONSE_QUERY
-	responseC.QueryResponse.Entries = streamC()
+	responseC.Namespace = namespaceC()
 
 	responseD := api.RESPONSE_QUERY
-	responseD.QueryResponse.Entries = streamD()
+	responseD.Namespace = namespaceD()
 
 	responseE := api.RESPONSE_QUERY
-	responseE.QueryResponse.Entries = streamE()
+	responseE.Namespace = namespaceE()
 
 	responseF := api.RESPONSE_QUERY
 
 	responseG := api.RESPONSE_QUERY
-	responseG.QueryResponse.Entries = streamF()
+	responseG.Namespace = namespaceF()
 
 	responseH := api.RESPONSE_QUERY
-	responseH.QueryResponse.Entries = joinNamespaceStream(append(streamG(), streamH()...))
+	responseH.Namespace = namespaceG().JoinNamespace(namespaceH())
 
 	responseI := api.RESPONSE_QUERY
-	responseI.QueryResponse.Entries = streamH()
+	responseI.Namespace = namespaceH()
 
 	expect := []api.APIResponse{
 		responseA,
@@ -243,8 +243,8 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		actual := selector.RunQuery()
 		expected := expect[i]
 		if !expected.Equals(actual) {
-			if actual.QueryResponse.Entries == nil {
-				t.Error("actual.QueryResponse.Entries was nil")
+			if actual.Namespace.IsEmpty() {
+				t.Error("actual.Namespace was empty")
 			}
 
 			if actual.Err != nil {
@@ -520,6 +520,37 @@ func tableZ() crdt.Table {
 	return mktable("Z", rowsZ())
 }
 
+func streamToNamespace(stream []crdt.NamespaceStreamEntry) crdt.Namespace {
+	ns, invalid := crdt.ReadNamespaceStream(stream)
+	panicOnInvalidNamespace(invalid)
+	return ns
+}
+
+func namespaceA() crdt.Namespace {
+	return streamToNamespace(streamA())
+}
+func namespaceB() crdt.Namespace {
+	return streamToNamespace(streamB())
+}
+func namespaceC() crdt.Namespace {
+	return streamToNamespace(streamC())
+}
+func namespaceD() crdt.Namespace {
+	return streamToNamespace(streamD())
+}
+func namespaceE() crdt.Namespace {
+	return streamToNamespace(streamE())
+}
+func namespaceF() crdt.Namespace {
+	return streamToNamespace(streamF())
+}
+func namespaceG() crdt.Namespace {
+	return streamToNamespace(streamG())
+}
+func namespaceH() crdt.Namespace {
+	return streamToNamespace(streamH())
+}
+
 func streamA() []crdt.NamespaceStreamEntry {
 	return makeTableStream(MAIN_TABLE_KEY, tableA())
 }
@@ -623,18 +654,6 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-}
-
-func joinNamespaceStream(stream []crdt.NamespaceStreamEntry) []crdt.NamespaceStreamEntry {
-	joined, invalid, err := crdt.JoinStreamEntries(stream)
-
-	if err != nil {
-		panic(err)
-	}
-
-	panicOnInvalidNamespace(invalid)
-
-	return joined
 }
 
 func panicOnInvalidNamespace(invalid []crdt.InvalidNamespaceEntry) {

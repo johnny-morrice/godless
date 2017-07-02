@@ -72,18 +72,13 @@ func (visitor *NamespaceTreeSelect) RunQuery() api.APIResponse {
 
 	response := api.RESPONSE_QUERY
 
-	stream, streamErr := visitor.resultStream()
-
-	if streamErr != nil {
-		fail.Err = errors.Wrap(streamErr, failMsg)
-		return fail
-	}
+	namespace := visitor.getSelectResults()
 
 	if visitor.namespaceLoadError {
 		response.Msg = "ok with load errors"
 	}
 
-	response.QueryResponse.Entries = stream
+	response.Namespace = namespace
 	return response
 }
 
@@ -101,34 +96,31 @@ func (visitor *NamespaceTreeSelect) ReadSearchResult(result api.SearchResult) ap
 	return visitor.crit.selectMatching(result.Namespace)
 }
 
-func (visitor *NamespaceTreeSelect) resultStream() ([]crdt.NamespaceStreamEntry, error) {
+func (visitor *NamespaceTreeSelect) getSelectResults() crdt.Namespace {
 	const failMsg = "NamespaceTreeSelect.resultStream failed"
 
 	stream := visitor.crit.result
-	var invalid []crdt.InvalidNamespaceEntry
-	var err error
+	namespace, invalid := crdt.ReadNamespaceStream(stream)
+	visitor.logInvalid(invalid)
+
 	if visitor.needsSignature() {
 		log.Info("Filtering results by public key...")
-		stream, invalid, err = crdt.FilterSignedEntries(stream, visitor.keys)
+		namespace = namespace.FilterVerified(visitor.keys)
 		log.Info("Filtering complete")
-	} else {
-		log.Info("Joining results...")
-		stream, invalid, err = crdt.JoinStreamEntries(stream)
-		log.Info("Join complete")
 	}
 
+	namespace, invalid = namespace.Strip()
+
+	visitor.logInvalid(invalid)
+
+	return namespace
+}
+
+func (visitor *NamespaceTreeSelect) logInvalid(invalid []crdt.InvalidNamespaceEntry) {
 	invalidCount := len(invalid)
 	if invalidCount > 0 {
 		log.Error("NamespaceTreeSelect found %d invalidEntries", invalidCount)
 	}
-
-	if err != nil {
-		return nil, errors.Wrap(err, failMsg)
-	}
-
-	log.Info("Search found %d entries", len(stream))
-
-	return stream, nil
 }
 
 func (visitor *NamespaceTreeSelect) needsSignature() bool {

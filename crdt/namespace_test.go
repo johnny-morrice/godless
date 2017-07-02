@@ -225,27 +225,17 @@ func (signer namespaceSigner) filterStreamOk(namespace Namespace) bool {
 		return false
 	}
 
-	actualStream, actualInvalid, err := FilterSignedEntries(expectedStream, signer.publicKeys())
+	actualStream, actualInvalid := FilterSignedEntries(expectedStream, signer.publicKeys())
 
 	if !signer.unsignedExpected(expectedInvalid, actualInvalid) {
 		log.Debug("Unsigned were unexpected")
 		return false
 	}
 
-	if err != nil {
-		log.Debug("Failed for error in filtering")
-		return false
-	}
-
-	actual, invalid, err := ReadNamespaceStream(actualStream)
+	actual, invalid := ReadNamespaceStream(actualStream)
 
 	if len(invalid) != 0 {
 		log.Debug("Failed for invalid after ReadNamespaceStream")
-		return false
-	}
-
-	if err != nil {
-		log.Debug("Failed for error in ReadNamespaceStream")
 		return false
 	}
 
@@ -372,10 +362,10 @@ func TestEncodeNamespaceStable(t *testing.T) {
 }
 
 func namespaceEncodeOk(randomNs Namespace) bool {
-	expected, invalid, err := randomNs.Strip()
+	expected, invalid := randomNs.Strip()
 
-	if len(invalid) > 0 || err != nil {
-		panic("namespaceEncodeFailed")
+	if len(invalid) > 0 {
+		return false
 	}
 
 	actual := namespaceSerializationPass(randomNs)
@@ -915,13 +905,9 @@ func assertRowEquals(t *testing.T, expected, actual Row) {
 }
 
 func readNamespaceStream(stream []NamespaceStreamEntry) Namespace {
-	ns, invalid, err := ReadNamespaceStream(stream)
+	ns, invalid := ReadNamespaceStream(stream)
 
 	panicInvalidNamespace(invalid)
-
-	if err != nil {
-		panic(err)
-	}
 
 	return ns
 }

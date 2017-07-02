@@ -36,19 +36,9 @@ message APIResponseMessage {
 	string message = 1;
 	string error = 2;
 	uint32 type = 3;
-	APIQueryResponseMessage queryResponse = 4;
-	APIReflectResponseMessage reflectResponse = 5;
-}
-
-message APIQueryResponseMessage {
-	NamespaceMessage namespace = 1;
-}
-
-message APIReflectResponseMessage {
-	uint32 type = 1;
-	string path = 2;
-	IndexMessage index = 3;
-	NamespaceMessage namespace = 4;
+	string path = 4;
+	NamespaceMessage namespace = 5;
+	IndexMessage index = 6;
 }
 
 message QueryMessage {

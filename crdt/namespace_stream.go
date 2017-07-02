@@ -260,7 +260,7 @@ func streamLength(ns Namespace) int {
 	return count
 }
 
-func ReadNamespaceStream(stream []NamespaceStreamEntry) (Namespace, []InvalidNamespaceEntry, error) {
+func ReadNamespaceStream(stream []NamespaceStreamEntry) (Namespace, []InvalidNamespaceEntry) {
 	const failMsg = "ReadNamespaceStream failed"
 
 	ns := EmptyNamespace()
@@ -284,12 +284,7 @@ func ReadNamespaceStream(stream []NamespaceStreamEntry) (Namespace, []InvalidNam
 				err := ns.addStreamEntry(startEntry)
 
 				if err != nil {
-					invalid := InvalidNamespaceEntry(startEntry)
-					invalidEntries = append(invalidEntries, invalid)
-				}
-
-				if err != nil {
-					return EmptyNamespace(), invalidEntries, errors.Wrap(err, failMsg)
+					panic("BUG in namespace stream batch")
 				}
 
 				batchStart = batchEnd
@@ -303,7 +298,7 @@ func ReadNamespaceStream(stream []NamespaceStreamEntry) (Namespace, []InvalidNam
 			invalidEntries = append(invalidEntries, invalid...)
 
 			if err != nil {
-				return EmptyNamespace(), invalidEntries, errors.Wrap(err, failMsg)
+				panic("BUG in namespace stream batch")
 			}
 
 			batchStart = batchEnd
@@ -311,5 +306,5 @@ func ReadNamespaceStream(stream []NamespaceStreamEntry) (Namespace, []InvalidNam
 
 	}
 
-	return ns, invalidEntries, nil
+	return ns, invalidEntries
 }

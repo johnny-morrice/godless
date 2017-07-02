@@ -27,36 +27,25 @@ func (by byTableName) Less(i, j int) bool {
 	return by[i] < by[j]
 }
 
-func JoinStreamEntries(stream []NamespaceStreamEntry) ([]NamespaceStreamEntry, []InvalidNamespaceEntry, error) {
-	const failMsg = "JoinStreamEntries failed"
-	ns, readInvalid, err := ReadNamespaceStream(stream)
-
-	if err != nil {
-		return nil, readInvalid, errors.Wrap(err, failMsg)
-	}
+func JoinStreamEntries(stream []NamespaceStreamEntry) ([]NamespaceStreamEntry, []InvalidNamespaceEntry) {
+	ns, readInvalid := ReadNamespaceStream(stream)
 
 	stream, makeInvalid := MakeNamespaceStream(ns)
 
 	invalidEntries := append(readInvalid, makeInvalid...)
 
-	return stream, invalidEntries, nil
+	return stream, invalidEntries
 }
 
-func FilterSignedEntries(stream []NamespaceStreamEntry, keys []crypto.PublicKey) ([]NamespaceStreamEntry, []InvalidNamespaceEntry, error) {
-	const failMsg = "FilterSignedEntries failed"
-
-	unsigned, readInvalid, readErr := ReadNamespaceStream(stream)
-
-	if readErr != nil {
-		return nil, readInvalid, errors.Wrap(readErr, failMsg)
-	}
+func FilterSignedEntries(stream []NamespaceStreamEntry, keys []crypto.PublicKey) ([]NamespaceStreamEntry, []InvalidNamespaceEntry) {
+	unsigned, readInvalid := ReadNamespaceStream(stream)
 
 	signed := unsigned.FilterVerified(keys)
 	signedStream, makeInvalid := MakeNamespaceStream(signed)
 
 	invalidEntries := append(readInvalid, makeInvalid...)
 
-	return signedStream, invalidEntries, nil
+	return signedStream, invalidEntries
 }
 
 // Semi-lattice type that implements our storage
@@ -101,7 +90,7 @@ func (ns Namespace) addEntry(t TableName, r RowName, e EntryName, entry Entry) {
 }
 
 // Strip removes empty tables and rows that would not be saved to the backing store.
-func (ns Namespace) Strip() (Namespace, []InvalidNamespaceEntry, error) {
+func (ns Namespace) Strip() (Namespace, []InvalidNamespaceEntry) {
 	const failMsg = "Namespace.Strip failed"
 
 	stream, invalid := MakeNamespaceStream(ns)
@@ -111,13 +100,9 @@ func (ns Namespace) Strip() (Namespace, []InvalidNamespaceEntry, error) {
 		log.Warn("Stripped %d invalid points", invalidCount)
 	}
 
-	namespace, invalid, err := ReadNamespaceStream(stream)
+	namespace, invalid := ReadNamespaceStream(stream)
 
-	if err != nil {
-		return EmptyNamespace(), invalid, errors.Wrap(err, failMsg)
-	}
-
-	return namespace, invalid, nil
+	return namespace, invalid
 }
 
 func (ns Namespace) GetTableNames() []TableName {

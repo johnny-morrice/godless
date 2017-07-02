@@ -71,7 +71,7 @@ func ReadNamespaceStreamMessage(message *proto.NamespaceMessage) []NamespaceStre
 	return stream
 }
 
-func ReadNamespaceMessage(message *proto.NamespaceMessage) (Namespace, []InvalidNamespaceEntry, error) {
+func ReadNamespaceMessage(message *proto.NamespaceMessage) (Namespace, []InvalidNamespaceEntry) {
 	stream := ReadNamespaceStreamMessage(message)
 	return ReadNamespaceStream(stream)
 }
@@ -119,5 +119,6 @@ func DecodeNamespace(r io.Reader) (Namespace, []InvalidNamespaceEntry, error) {
 		return EmptyNamespace(), nil, errors.Wrap(err, failMsg)
 	}
 
-	return ReadNamespaceMessage(message)
+	namespace, invalid := ReadNamespaceMessage(message)
+	return namespace, invalid, nil
 }
