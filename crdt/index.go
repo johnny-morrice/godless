@@ -33,7 +33,6 @@ func MakeIndex(indices map[TableName]Link) Index {
 	return out
 }
 
-// Just encode as Gob for now.
 func EncodeIndex(index Index, w io.Writer) ([]InvalidIndexEntry, error) {
 	const failMsg = "EncodeIndex failed"
 
