@@ -14,46 +14,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-type addResponse struct {
-	path crdt.IPFSPath
-	err  error
-}
-
-type addNamespaceRequest struct {
-	namespace crdt.Namespace
-	result    chan addResponse
-}
-
-// TODO leaks goroutine after shutdown.
-func (add addNamespaceRequest) reply(path crdt.IPFSPath, err error) {
-	go func() {
-		defer close(add.result)
-		add.result <- addResponse{path: path, err: err}
-	}()
-}
-
-type addIndexRequest struct {
-	index  crdt.Index
-	result chan addResponse
-}
-
-// TODO leaks goroutine after shutdown.
-func (add addIndexRequest) reply(path crdt.IPFSPath, err error) {
-	go func() {
-		defer close(add.result)
-		add.result <- addResponse{path: path, err: err}
-	}()
-}
-
-type remoteNamespace struct {
-	RemoteNamespaceOptions
-	namespaceTube chan addNamespaceRequest
-	indexTube     chan addIndexRequest
-	pulser        *time.Ticker
-	stopch        chan struct{}
-	wg            *sync.WaitGroup
-}
-
 type RemoteNamespaceOptions struct {
 	Store          api.RemoteStore
 	HeadCache      api.HeadCache
@@ -82,6 +42,16 @@ func checkOptions(options RemoteNamespaceOptions) {
 	}
 }
 
+type remoteNamespace struct {
+	RemoteNamespaceOptions
+	namespaceTube chan addNamespaceRequest
+	indexTube     chan addIndexRequest
+	pulser        *time.Ticker
+	stopch        chan struct{}
+	wg            *sync.WaitGroup
+	memImgTracker dirtyTracker
+}
+
 func MakeRemoteNamespace(options RemoteNamespaceOptions) api.RemoteNamespaceTree {
 	pulseInterval := options.Pulse
 	if pulseInterval == 0 {
@@ -97,6 +67,7 @@ func MakeRemoteNamespace(options RemoteNamespaceOptions) api.RemoteNamespaceTree
 		pulser:                 time.NewTicker(pulseInterval),
 		stopch:                 make(chan struct{}),
 		wg:                     &sync.WaitGroup{},
+		memImgTracker:          makeDirtyTracker(),
 	}
 
 	remote.wg.Add(__REMOTE_NAMESPACE_PROCESS_COUNT)
@@ -154,8 +125,18 @@ func (rn *remoteNamespace) memoryImageWriteLoop() {
 		case <-rn.stopch:
 			return
 		case <-rn.pulser.C:
-			rn.writeMemoryImage()
+			rn.writeDirtyMemoryImage()
 		}
+	}
+}
+
+func (rn *remoteNamespace) writeDirtyMemoryImage() {
+	select {
+	case <-rn.stopch:
+		return
+	case <-rn.memImgTracker.dirt:
+		rn.writeMemoryImage()
+		return
 	}
 }
 
@@ -221,6 +202,7 @@ func (rn *remoteNamespace) addIndex(addRequest addIndexRequest) {
 
 	go func() {
 		err := rn.MemoryImage.JoinIndex(index)
+		rn.memImgTracker.markDirty()
 		errch <- err
 	}()
 
@@ -695,6 +677,55 @@ func (rn *remoteNamespace) getHead() (crdt.IPFSPath, error) {
 
 func (rn *remoteNamespace) setHead(head crdt.IPFSPath) error {
 	return rn.HeadCache.SetHead(head)
+}
+
+type dirtyTracker struct {
+	dirt chan struct{}
+}
+
+func makeDirtyTracker() dirtyTracker {
+	return dirtyTracker{dirt: make(chan struct{}, 1)}
+}
+
+func (tracker *dirtyTracker) markDirty() {
+	select {
+	case tracker.dirt <- struct{}{}:
+		return
+	default:
+		// Already written
+		return
+	}
+}
+
+type addResponse struct {
+	path crdt.IPFSPath
+	err  error
+}
+
+type addNamespaceRequest struct {
+	namespace crdt.Namespace
+	result    chan addResponse
+}
+
+// TODO leaks goroutine after shutdown.
+func (add addNamespaceRequest) reply(path crdt.IPFSPath, err error) {
+	go func() {
+		defer close(add.result)
+		add.result <- addResponse{path: path, err: err}
+	}()
+}
+
+type addIndexRequest struct {
+	index  crdt.Index
+	result chan addResponse
+}
+
+// TODO leaks goroutine after shutdown.
+func (add addIndexRequest) reply(path crdt.IPFSPath, err error) {
+	go func() {
+		defer close(add.result)
+		add.result <- addResponse{path: path, err: err}
+	}()
 }
 
 const __DEFAULT_PULSE = time.Second * 10
