@@ -119,6 +119,18 @@ func TestOrderSignatures(t *testing.T) {
 		isLessThan := cmp == -1
 		testutil.Assert(t, "Unexpected signature order", isLessThan)
 	}
+
+MY_SIGS:
+	for _, mySig := range sigs {
+		for _, otherSig := range ordered {
+			if mySig.Equals(otherSig) {
+				continue MY_SIGS
+			}
+		}
+
+		t.Error("Signature not found in ordered")
+		t.FailNow()
+	}
 }
 
 func TestSignatureEquals(t *testing.T) {
