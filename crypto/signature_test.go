@@ -1,10 +1,17 @@
 package crypto
 
 import (
+	"math/rand"
+	"reflect"
 	"testing"
+	"testing/quick"
 
 	"github.com/johnny-morrice/godless/internal/testutil"
 )
+
+// Worth stating here that testutil.Rand() provides a non-cryptographically
+// safe random number generator.  This is fine for generating test data but
+// should not be used for crypto.
 
 var alicePub PublicKey
 var malloryPub PublicKey
@@ -67,8 +74,141 @@ func TestVerifyNil(t *testing.T) {
 	testutil.AssertNonNil(t, err)
 }
 
+func TestIsNilSignature(t *testing.T) {
+	const nilSigText = ""
+	text := []byte("hello")
+
+	priv, _, err := GenerateKey()
+	setupPanic(err)
+	sig, err := Sign(priv, text)
+	setupPanic(err)
+	nonNilSigText, err := PrintSignature(sig)
+	setupPanic(err)
+
+	testutil.Assert(t, "Expected IsNil Signature", IsNilSignature(nilSigText))
+	testutil.Assert(t, "Unexpected IsNil Signature", !IsNilSignature(nonNilSigText))
+}
+
+func TestParsePrintSignature(t *testing.T) {
+	const count = 10
+	const maxSignage = 3
+	const invalidProbability = 1 / 8
+
+	config := &quick.Config{
+		MaxCount: testutil.ENCODE_REPEAT_COUNT,
+	}
+
+	err := quick.Check(testParseSignatureOk, config)
+
+	testutil.AssertVerboseErrorIsNil(t, err)
+}
+
+func TestOrderSignatures(t *testing.T) {
+	const size = 50
+	sigs := genManySigs(testutil.Rand(), size)
+	unorderedSignatures := append(sigs, sigs...)
+
+	ordered := OrderSignatures(unorderedSignatures)
+
+	testutil.AssertLenEquals(t, len(sigs), ordered)
+
+	for i := 1; i < len(ordered); i++ {
+		last := ordered[i-1]
+		current := ordered[i]
+		cmp := last.Cmp(current)
+		isLessThan := cmp == -1
+		testutil.Assert(t, "Unexpected signature order", isLessThan)
+	}
+}
+
+func TestSignatureEquals(t *testing.T) {
+	const size = 50
+	sigs := genManySigs(testutil.Rand(), size)
+
+	for i := 0; i < size; i++ {
+		mySig := sigs[i]
+		for j := 0; j < size; j++ {
+			otherSig := sigs[j]
+			shouldBeEquals := i == j
+			isEquals := mySig.Equals(otherSig)
+			msg := "Expected equality"
+			if !shouldBeEquals {
+				msg = "Unexpected equality"
+			}
+			testutil.Assert(t, msg, shouldBeEquals == isEquals)
+		}
+	}
+}
+
+func TestSignatureCmp(t *testing.T) {
+	const size = 50
+	sigs := genManySigs(testutil.Rand(), size)
+
+	for i := 0; i < size; i++ {
+		mySig := sigs[i]
+		for j := 0; j < size; j++ {
+			otherSig := sigs[j]
+			shouldBeEquals := i == j
+
+			cmp := mySig.Cmp(otherSig)
+			isEquals := cmp == 0
+			isValidCmp := cmp == -1 || cmp == 0 || cmp == 1
+
+			msg := "Expected equality"
+			if !shouldBeEquals {
+				msg = "Unexpected equality"
+			}
+
+			testutil.Assert(t, msg, shouldBeEquals == isEquals)
+			testutil.Assert(t, "Unexpected Cmp return", isValidCmp)
+		}
+	}
+}
+
+func testParseSignatureOk(inputSig Signature) bool {
+	sigText, err := PrintSignature(inputSig)
+
+	if err != nil {
+		return false
+	}
+
+	outputSig, err := ParseSignature(sigText)
+
+	if err != nil {
+		return false
+	}
+
+	return inputSig.Equals(outputSig)
+}
+
 func setupPanic(err error) {
 	if err != nil {
 		panic(err)
 	}
 }
+
+func genManySigs(rand *rand.Rand, size int) []Signature {
+	sigs := make([]Signature, size)
+
+	for i := 0; i < size; i++ {
+		sigs[i] = genSignature(rand)
+	}
+
+	return sigs
+}
+
+func genSignature(rand *rand.Rand) Signature {
+	text := []byte(__GEN_SIG_TEXT)
+	priv, _, err := GenerateKey()
+	setupPanic(err)
+	sig, err := Sign(priv, text)
+	setupPanic(err)
+	return sig
+}
+
+func (sig Signature) Generate(rand *rand.Rand, size int) reflect.Value {
+	gen := genSignature(rand)
+	return reflect.ValueOf(gen)
+}
+
+const __GEN_SIG_TEXT = "Hello World"

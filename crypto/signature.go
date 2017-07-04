@@ -66,7 +66,7 @@ func (sigs bySignatureText) Swap(i, j int) {
 }
 
 func (sigs bySignatureText) Less(i, j int) bool {
-	return sigs[i].TextLess(sigs[j])
+	return sigs[i].less(sigs[j])
 }
 
 type Signature struct {
@@ -77,7 +77,7 @@ func (sig Signature) Equals(other Signature) bool {
 	return sig.Cmp(other) == 0
 }
 
-func (sig Signature) TextLess(other Signature) bool {
+func (sig Signature) less(other Signature) bool {
 	return sig.Cmp(other) < 0
 }
 
