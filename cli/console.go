@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/peterh/liner"
 	"github.com/pkg/errors"
@@ -41,7 +42,10 @@ func RunTerminalConsole(options TerminalOptions) error {
 			continue
 		}
 
+		sendTime := time.Now()
 		resp, err := options.Client.SendQuery(query)
+		receiveTime := time.Now()
+		waitTime := receiveTime.Sub(sendTime)
 
 		if err != nil {
 			fmt.Printf("Error: %v", err.Error())
@@ -56,6 +60,8 @@ func RunTerminalConsole(options TerminalOptions) error {
 		}
 
 		printResponseTables(resp)
+
+		fmt.Printf("Waited %v for response from server.\n", waitTime)
 	}
 
 	return nil
@@ -78,12 +84,13 @@ func printIndexTables(index crdt.Index) {
 
 func printNamespaceTables(namespace crdt.Namespace) {
 	if namespace.IsEmpty() {
-		fmt.Println("No results returned")
+		fmt.Println("No results returned.")
 		return
 	}
 
 	table := makeNamespaceTable(namespace)
 	table.fprint(os.Stdout)
+	fmt.Printf("Found %d Namespace Entries.\n", table.countrows())
 }
 
 func printPath(path crdt.IPFSPath) {
@@ -98,6 +105,10 @@ type monospaceTable struct {
 	rows         [][]string
 	frozen       bool
 	totalWidth   int
+}
+
+func (table *monospaceTable) countrows() int {
+	return len(table.rows)
 }
 
 func (table *monospaceTable) fprint(w io.Writer) {
