@@ -36,39 +36,12 @@ type NamespaceStreamEntry struct {
 	Point StreamPoint
 }
 
-func (entry NamespaceStreamEntry) SamePoint(other NamespaceStreamEntry) bool {
+func (entry NamespaceStreamEntry) samePoint(other NamespaceStreamEntry) bool {
 	ok := entry.Table == other.Table
 	ok = ok && entry.Row == other.Row
 	ok = ok && entry.Entry == other.Entry
 	ok = ok && entry.Point.Text == other.Point.Text
 	return ok
-}
-
-func (entry NamespaceStreamEntry) Equals(other NamespaceStreamEntry) bool {
-	ok := entry.Table == other.Table
-	ok = ok && entry.Row == other.Row
-	ok = ok && entry.Entry == other.Entry
-
-	if !ok {
-		return false
-	}
-
-	if !entry.Point.Equals(other.Point) {
-		return false
-	}
-
-	return true
-}
-
-func StreamEquals(a, b []NamespaceStreamEntry) bool {
-	for i, ar := range a {
-		br := b[i]
-		if !ar.Equals(br) {
-			return false
-		}
-	}
-
-	return true
 }
 
 func SortNamespaceStream(stream []NamespaceStreamEntry) {
@@ -183,7 +156,7 @@ func readStreamPoint(stream []NamespaceStreamEntry) (Point, []InvalidNamespaceEn
 	var invalid []InvalidNamespaceEntry
 
 	for _, entry := range stream {
-		if !entry.SamePoint(first) {
+		if !entry.samePoint(first) {
 			notSame := errors.New("Corrupt stream")
 			return Point{}, nil, errors.Wrap(notSame, failMsg)
 		}
@@ -274,7 +247,7 @@ func ReadNamespaceStream(stream []NamespaceStreamEntry) (Namespace, []InvalidNam
 
 		if batchEnd < len(stream) {
 			entry := stream[batchEnd]
-			writePoint = !entry.SamePoint(startEntry)
+			writePoint = !entry.samePoint(startEntry)
 		} else {
 			writePoint = true
 		}

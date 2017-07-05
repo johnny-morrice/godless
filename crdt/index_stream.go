@@ -13,18 +13,6 @@ type IndexStreamEntry struct {
 	Link      IPFSPath
 }
 
-func (entry IndexStreamEntry) Equals(other IndexStreamEntry) bool {
-	ok := entry.TableName == other.TableName
-	ok = ok && entry.Link == other.Link
-	ok = ok && entry.Signature == other.Signature
-
-	if !ok {
-		return false
-	}
-
-	return true
-}
-
 func ReadIndexEntryMessage(message *proto.IndexEntryMessage) IndexStreamEntry {
 	entry := IndexStreamEntry{
 		TableName: TableName(message.Table),
