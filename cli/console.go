@@ -26,11 +26,13 @@ func RunTerminalConsole(options TerminalOptions) error {
 
 	line.SetCtrlCAborts(true)
 	for {
-		queryText, err := line.Prompt(">")
+		queryText, err := line.Prompt("> ")
 
 		if err != nil {
 			return err
 		}
+
+		line.AppendHistory(queryText)
 
 		query, err := query.CompileQuery(queryText)
 
@@ -76,6 +78,7 @@ func printIndexTables(index crdt.Index) {
 
 func printNamespaceTables(namespace crdt.Namespace) {
 	if namespace.IsEmpty() {
+		fmt.Println("No results returned")
 		return
 	}
 
@@ -204,6 +207,7 @@ func makeIndexTable(index crdt.Index) *monospaceTable {
 	panic("not implemented")
 }
 
+// TODO figure out how to make signatures look nice
 func makeNamespaceTable(namespace crdt.Namespace) *monospaceTable {
 	table := &monospaceTable{}
 	columns := []string{
@@ -211,7 +215,7 @@ func makeNamespaceTable(namespace crdt.Namespace) *monospaceTable {
 		"Row",
 		"Entry",
 		"Point",
-		"Signatures",
+		// "Signatures",
 	}
 
 	for _, c := range columns {
@@ -220,13 +224,13 @@ func makeNamespaceTable(namespace crdt.Namespace) *monospaceTable {
 
 	namespace.ForeachEntry(func(t crdt.TableName, r crdt.RowName, e crdt.EntryName, entry crdt.Entry) {
 		for _, point := range entry.GetValues() {
-			sigText := makeSigText(point.Signatures())
+			// sigText := makeSigText(point.Signatures())
 			row := []string{
 				string(t),
 				string(r),
 				string(e),
 				string(point.Text()),
-				sigText,
+				// sigText,
 			}
 
 			table.addRow(row)
