@@ -135,33 +135,35 @@ func (rn *remoteNamespace) writeDirtyMemoryImage() {
 	case <-rn.stopch:
 		return
 	case <-rn.memImgTracker.dirt:
-		rn.writeMemoryImage()
+		err := rn.WriteMemoryImage()
+		if err != nil {
+			log.Error("Error writing MemoryImage: %v", err)
+		}
 		return
 	}
 }
 
-func (rn *remoteNamespace) writeMemoryImage() {
+func (rn *remoteNamespace) WriteMemoryImage() error {
 	index, err := rn.MemoryImage.GetIndex()
 
 	if err != nil {
-		log.Error("Error joining MemoryImage indices: %s", err.Error())
-		return
+		return errors.Wrap(err, "Error joining MemoryImage indices")
 	}
 
 	path, err := rn.persistIndex(index)
 
 	if err != nil {
-		log.Error("Error saving MemoryImage to IPFS: %s", err.Error())
-		return
+		return errors.Wrap(err, "Error saving MemoryImage to IPFS")
 	}
 
 	log.Info("Added MemoryImage Index to IPFS at: %s", path)
 	err = rn.setHead(path)
 
 	if err != nil {
-		log.Error("Failed to update HEAD cache")
-		return
+		return errors.Wrap(err, "Failed to update HEAD cache")
 	}
+
+	return nil
 }
 
 func (rn *remoteNamespace) addNamespaces() {

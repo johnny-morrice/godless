@@ -63,6 +63,7 @@ type RemoteNamespace interface {
 	RunKvQuery(*query.Query, KvQuery)
 	RunKvReflection(APIReflectionType, KvQuery)
 	Replicate([]crdt.Link, KvQuery)
+	WriteMemoryImage() error
 	Close()
 }
 

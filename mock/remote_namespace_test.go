@@ -312,7 +312,7 @@ func TestJoinTableSuccess(t *testing.T) {
 	mock.EXPECT().AddNamespace(matchNamespace(namespaceB)).Return(addrB, nil)
 
 	mock.EXPECT().CatIndex(addrIndexA).Return(indexA, nil).AnyTimes()
-	mock.EXPECT().AddIndex(indexA).Return(addrIndexA, nil).AnyTimes()
+	mock.EXPECT().AddIndex(indexA).Return(addrIndexA, nil).MinTimes(1)
 	mock.EXPECT().AddIndex(matchIndex(indexB)).Return(addrIndexB, nil).AnyTimes()
 
 	// No index Catting with MemoryImage
@@ -325,11 +325,11 @@ func TestJoinTableSuccess(t *testing.T) {
 		t.Error("remote was nil")
 	}
 
-	jerr := remote.JoinTable(tableBName, tableB)
+	err := remote.JoinTable(tableBName, tableB)
+	testutil.AssertNil(t, err)
 
-	if jerr != nil {
-		t.Error(jerr)
-	}
+	err = remote.WriteMemoryImage()
+	testutil.AssertNil(t, err)
 }
 
 func TestJoinTableFailure(t *testing.T) {
@@ -351,16 +351,17 @@ func TestJoinTableFailure(t *testing.T) {
 	index := crdt.EmptyIndex().JoinNamespace(signedAddr, namespace)
 
 	mock.EXPECT().AddNamespace(matchNamespace(namespace)).Return(namespaceAddr, nil)
-	mock.EXPECT().AddIndex(matchIndex(index)).Return(crdt.NIL_PATH, errors.New("Expected error"))
+	mock.EXPECT().AddIndex(matchIndex(index)).Return(crdt.NIL_PATH, errors.New("Expected error")).MinTimes(1)
 
 	remote := makeRemote(mock)
 	defer remote.Close()
 
 	testutil.AssertNonNil(t, remote)
 
-	jerr := remote.JoinTable("Table Key", table)
-
-	testutil.AssertNonNil(t, jerr)
+	err := remote.JoinTable("Table Key", table)
+	testutil.AssertNonNil(t, err)
+	err = remote.WriteMemoryImage()
+	testutil.AssertNonNil(t, err)
 }
 
 type resultNamespaceMatcher struct {

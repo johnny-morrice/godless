@@ -64,6 +64,16 @@ func (_mr *_MockRemoteNamespaceRecorder) RunKvReflection(arg0, arg1 interface{})
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "RunKvReflection", arg0, arg1)
 }
 
+func (_m *MockRemoteNamespace) WriteMemoryImage() error {
+	ret := _m.ctrl.Call(_m, "WriteMemoryImage")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockRemoteNamespaceRecorder) WriteMemoryImage() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "WriteMemoryImage")
+}
+
 // Mock of RemoteStore interface
 type MockRemoteStore struct {
 	ctrl     *gomock.Controller
