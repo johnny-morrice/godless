@@ -41,11 +41,7 @@ var clientPlumbingCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		var q *query.Query
 		var err error
-		webClient := &http.Client{
-			Timeout: queryTimeout,
-		}
-
-		client := godless.MakeClientWithHttp(serverAddr, webClient)
+		client := makeClient()
 
 		validateClientPlumbingArgs(cmd)
 
@@ -86,6 +82,16 @@ var dryrun bool
 var queryBinary bool
 var reflect string
 
+func makeClient() api.Client {
+	webClient := &http.Client{
+		Timeout: queryTimeout,
+	}
+
+	client := godless.MakeClientWithHttp(serverAddr, webClient)
+
+	return client
+}
+
 func outputResponse(response api.APIResponse) {
 	var err error
 	if queryBinary {
@@ -124,7 +130,7 @@ func analyseQuery(query *query.Query) error {
 	return query.PrettyPrint(os.Stdout)
 }
 
-func sendQuery(client godless.Client, query *query.Query) (api.APIResponse, error) {
+func sendQuery(client api.Client, query *query.Query) (api.APIResponse, error) {
 	if query != nil {
 		return client.SendQuery(query)
 	} else if reflect != "" {

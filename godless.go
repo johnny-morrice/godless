@@ -20,7 +20,6 @@ import (
 	"github.com/johnny-morrice/godless/internal/ipfs"
 	"github.com/johnny-morrice/godless/internal/service"
 	"github.com/johnny-morrice/godless/log"
-	"github.com/johnny-morrice/godless/query"
 	"github.com/pkg/errors"
 )
 
@@ -367,18 +366,12 @@ func (godless *Godless) addErrors(errch <-chan error) {
 	}()
 }
 
-// Client is a Godless HTTP client.
-type Client interface {
-	SendQuery(*query.Query) (api.APIResponse, error)
-	SendReflection(api.APIReflectionType) (api.APIResponse, error)
-}
-
 // MakeClient creates a Godless HTTP Client.
-func MakeClient(serviceAddr string) Client {
+func MakeClient(serviceAddr string) api.Client {
 	return service.MakeClient(serviceAddr)
 }
 
-func MakeClientWithHttp(serviceAddr string, webClient *gohttp.Client) Client {
+func MakeClientWithHttp(serviceAddr string, webClient *gohttp.Client) api.Client {
 	return service.MakeClientWithHttp(serviceAddr, webClient)
 }
 

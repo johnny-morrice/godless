@@ -21,31 +21,50 @@
 package cmd
 
 import (
-	"github.com/johnny-morrice/godless/cli"
-	"github.com/johnny-morrice/godless/log"
+	"fmt"
+
 	"github.com/spf13/cobra"
+
+	"github.com/johnny-morrice/godless/crypto"
 )
 
-// client_consoleCmd represents the client_console command
-var clientConsoleCmd = &cobra.Command{
-	Use:   "console",
-	Short: "Godless terminal console",
-	Long:  `A REPL console for evaluating godless queries.`,
+// keyListCmd represents the key_list command
+var keyListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List godless key hashes",
 	Run: func(cmd *cobra.Command, args []string) {
-		log.SetLevel(log.LOG_WARN)
+		readKeysFromViper()
 
-		options := cli.TerminalOptions{
-			Client: makeClient(),
+		if listPrivateOnly {
+			for _, priv := range keyStore.GetAllPrivateKeys() {
+				pub := priv.GetPublicKey()
+				printKeyHash(pub)
+			}
+
+			return
 		}
 
-		err := cli.RunTerminalConsole(options)
-
-		if err != nil {
-			die(err)
+		for _, pub := range keyStore.GetAllPublicKeys() {
+			printKeyHash(pub)
 		}
 	},
 }
 
+func printKeyHash(pub crypto.PublicKey) {
+	hash, err := pub.Hash()
+
+	// TODO could print the other keys
+	if err != nil {
+		die(err)
+	}
+
+	fmt.Println(string(hash))
+}
+
+var listPrivateOnly bool
+
 func init() {
-	queryCmd.AddCommand(clientConsoleCmd)
+	keyCmd.AddCommand(keyListCmd)
+
+	keyListCmd.PersistentFlags().BoolVar(&listPrivateOnly, "private", false, "List private keys only")
 }
