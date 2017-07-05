@@ -14,8 +14,8 @@ type privKeyList []PrivateKey
 
 func (keys privKeyList) Generate(rand *rand.Rand, size int) reflect.Value {
 	privKeys := generateKeys(size)
-	keyList := privKeyList(privKeys)
-	return reflect.ValueOf(keyList)
+	gen := privKeyList(privKeys)
+	return reflect.ValueOf(gen)
 }
 
 func (keys pubKeyList) Generate(rand *rand.Rand, size int) reflect.Value {
@@ -27,8 +27,8 @@ func (keys pubKeyList) Generate(rand *rand.Rand, size int) reflect.Value {
 		pubs[i] = priv.GetPublicKey()
 	}
 
-	keyList := pubKeyList(pubs)
-	return reflect.ValueOf(keyList)
+	gen := pubKeyList(pubs)
+	return reflect.ValueOf(gen)
 }
 
 func (pub PublicKey) Generate(rand *rand.Rand, size int) reflect.Value {

@@ -65,7 +65,7 @@ func (link Link) SameLink(other Link) bool {
 
 type LinkText string
 
-func PrintLink(link Link) (LinkText, error) {
+func SerializeLink(link Link) (LinkText, error) {
 	const failMsg = "PrintLink failed"
 
 	message, makeErr := MakeLinkMessage(link)

@@ -1,11 +1,58 @@
 package crdt
 
 import (
+	"math/rand"
+	"reflect"
 	"testing"
+	"testing/quick"
 
 	"github.com/johnny-morrice/godless/crypto"
 	"github.com/johnny-morrice/godless/internal/testutil"
 )
+
+func generateSignedText() signedText {
+	const minTextLen = 3
+	const maxTextLen = 10
+
+	priv, _, err := crypto.GenerateKey()
+	setupPanic(err)
+	keys := []crypto.PrivateKey{priv}
+
+	text := testutil.RandLettersRange(testutil.Rand(), minTextLen, maxTextLen)
+
+	signed, err := makeSignedText([]byte(text), keys)
+	setupPanic(err)
+
+	return signed
+}
+
+func (link Link) Generate(rand *rand.Rand, size int) reflect.Value {
+	gen := Link{signedText: generateSignedText()}
+	return reflect.ValueOf(gen)
+}
+
+func TestParseLink(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+		return
+	}
+
+	config := &quick.Config{
+		MaxCount: testutil.ENCODE_REPEAT_COUNT,
+	}
+
+	err := quick.Check(parseLinkOk, config)
+
+	testutil.AssertVerboseErrorIsNil(t, err)
+}
+
+func parseLinkOk(expected Link) bool {
+	text, err := SerializeLink(expected)
+	setupPanic(err)
+	actual, err := ParseLink(text)
+	setupPanic(err)
+	return expected.Equals(actual)
+}
 
 func TestSignedLink(t *testing.T) {
 	const keyCount = 5
@@ -91,4 +138,10 @@ func TestLinkIsVerifiedByAny(t *testing.T) {
 	isVerified = point.IsVerifiedByAny(notMyPubKeys)
 
 	testutil.Assert(t, "Unexpected verification", !isVerified)
+}
+
+func setupPanic(err error) {
+	if err != nil {
+		panic(err)
+	}
 }

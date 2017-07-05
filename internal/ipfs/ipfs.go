@@ -165,7 +165,7 @@ func (peer *IpfsRemoteStore) PublishAddr(addr crdt.Link, topics []api.PubSubTopi
 		return verr
 	}
 
-	publishValue, printErr := crdt.PrintLink(addr)
+	publishValue, printErr := crdt.SerializeLink(addr)
 
 	if printErr != nil {
 		return errors.Wrap(printErr, failMsg)

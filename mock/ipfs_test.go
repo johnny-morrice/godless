@@ -216,7 +216,7 @@ func TestIpfsRemoteStoreSubscribeAddrStream(t *testing.T) {
 	const readCount = 10
 
 	expectedLink := crdt.UnsignedLink("Dude")
-	linkText, err := crdt.PrintLink(expectedLink)
+	linkText, err := crdt.SerializeLink(expectedLink)
 	panicOnBadInit(err)
 	linkBytes := []byte(linkText)
 
@@ -309,7 +309,7 @@ func TestIpfsRemoteStorePublishAddrSuccess(t *testing.T) {
 	store := ipfs.MakeIpfsRemoteStore(mock)
 
 	link := crdt.UnsignedLink("hi")
-	linkText, linkErr := crdt.PrintLink(link)
+	linkText, linkErr := crdt.SerializeLink(link)
 
 	panicOnBadInit(linkErr)
 
@@ -334,7 +334,7 @@ func TestIpfsRemoteStorePublishAddrFailure(t *testing.T) {
 	store := ipfs.MakeIpfsRemoteStore(mock)
 
 	link := crdt.UnsignedLink("hi")
-	linkText, linkErr := crdt.PrintLink(link)
+	linkText, linkErr := crdt.SerializeLink(link)
 
 	panicOnBadInit(linkErr)
 
