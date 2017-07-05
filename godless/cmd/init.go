@@ -63,8 +63,17 @@ func init() {
 var keyStore api.KeyStore = lib.MakeKeyStore()
 
 func flushKeysToViper() {
-	privTexts := crypto.PrivateKeysAsText(keyStore.GetAllPrivateKeys())
-	pubTexts := crypto.PublicKeysAsText(keyStore.GetAllPublicKeys())
+	privTexts, err := crypto.PrivateKeysAsText(keyStore.GetAllPrivateKeys())
+
+	if err != nil {
+		die(err)
+	}
+
+	pubTexts, err := crypto.PublicKeysAsText(keyStore.GetAllPublicKeys())
+
+	if err != nil {
+		die(err)
+	}
 
 	viper.Set(__PRIVATE_KEY_CONFIG_KEY, privTexts)
 	viper.Set(__PUBLIC_KEY_CONFIG_KEY, pubTexts)
@@ -86,8 +95,17 @@ func readKeysFromViper() {
 		die(err)
 	}
 
-	privKeys := crypto.PrivateKeysFromText(privTexts)
-	pubKeys := crypto.PublicKeysFromText(pubTexts)
+	privKeys, err := crypto.PrivateKeysFromText(privTexts)
+
+	if err != nil {
+		die(err)
+	}
+
+	pubKeys, err := crypto.PublicKeysFromText(pubTexts)
+
+	if err != nil {
+		die(err)
+	}
 
 	for _, pub := range pubKeys {
 		keyStore.PutPublicKey(pub)
