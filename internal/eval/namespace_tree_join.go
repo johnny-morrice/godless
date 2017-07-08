@@ -41,14 +41,17 @@ func (visitor *NamespaceTreeJoin) RunQuery() api.APIResponse {
 		panic("Expected table key")
 	}
 
-	err = visitor.Namespace.JoinTable(visitor.tableKey, visitor.table)
+	path, err := visitor.Namespace.JoinTable(visitor.tableKey, visitor.table)
 
 	if err != nil {
 		fail.Err = errors.Wrap(err, "NamespaceTreeJoin failed")
 		return fail
 	}
 
-	return api.RESPONSE_QUERY
+	resp := api.RESPONSE_QUERY
+	resp.Path = path
+
+	return resp
 }
 
 func (visitor *NamespaceTreeJoin) VisitPublicKeyHash(hash crypto.PublicKeyHash) {

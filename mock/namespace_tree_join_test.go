@@ -19,6 +19,11 @@ func TestRunQueryJoinSuccess(t *testing.T) {
 
 	mock := NewMockNamespaceTree(ctrl)
 
+	const indexAddr = crdt.IPFSPath("Index Addr")
+
+	expectedResponse := api.RESPONSE_QUERY
+	expectedResponse.Path = indexAddr
+
 	query := &query.Query{
 		OpCode:   query.JOIN,
 		TableKey: MAIN_TABLE_KEY,
@@ -58,13 +63,13 @@ func TestRunQueryJoinSuccess(t *testing.T) {
 			"Entry C": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Point C")}),
 		}),
 	})
-	mock.EXPECT().JoinTable(MAIN_TABLE_KEY, matchTable(table)).Return(nil)
+	mock.EXPECT().JoinTable(MAIN_TABLE_KEY, matchTable(table)).Return(indexAddr, nil)
 
 	joiner := makeNamespaceTreeJoin(mock)
 	query.Visit(joiner)
 	resp := joiner.RunQuery()
 
-	if !api.RESPONSE_QUERY.Equals(resp) {
+	if !expectedResponse.Equals(resp) {
 		t.Error("Expected", api.RESPONSE_QUERY, "but was", resp)
 	}
 }
@@ -74,6 +79,10 @@ func TestRunQueryJoinSigned(t *testing.T) {
 	defer ctrl.Finish()
 
 	mock := NewMockNamespaceTree(ctrl)
+
+	const indexAddr = crdt.IPFSPath("Index Addr")
+	expectedResponse := api.RESPONSE_QUERY
+	expectedResponse.Path = indexAddr
 
 	priv, _, cryptErr := crypto.GenerateKey()
 
@@ -128,13 +137,13 @@ func TestRunQueryJoinSigned(t *testing.T) {
 			"Entry C": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Point C")}),
 		}),
 	})
-	mock.EXPECT().JoinTable(MAIN_TABLE_KEY, matchSignedTable(table)).Return(nil)
+	mock.EXPECT().JoinTable(MAIN_TABLE_KEY, matchSignedTable(table)).Return(indexAddr, nil)
 
 	joiner := eval.MakeNamespaceTreeJoin(mock, keyStore)
 	query.Visit(joiner)
 	resp := joiner.RunQuery()
 
-	if !api.RESPONSE_QUERY.Equals(resp) {
+	if !expectedResponse.Equals(resp) {
 		t.Error("Expected", api.RESPONSE_QUERY, "but was", resp)
 	}
 }
@@ -168,13 +177,13 @@ func TestRunQueryJoinFailure(t *testing.T) {
 		}),
 	})
 
-	mock.EXPECT().JoinTable(MAIN_TABLE_KEY, matchTable(table)).Return(errors.New("Expected error"))
+	mock.EXPECT().JoinTable(MAIN_TABLE_KEY, matchTable(table)).Return(crdt.NIL_PATH, errors.New("Expected error"))
 
 	joiner := makeNamespaceTreeJoin(mock)
 	failQuery.Visit(joiner)
 	resp := joiner.RunQuery()
 
-	if resp.Msg != "error" {
+	if resp.Msg != api.RESPONSE_FAIL_MSG {
 		t.Error("Expected Msg error but received", resp.Msg)
 	}
 

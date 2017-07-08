@@ -470,7 +470,7 @@ func (rn *remoteNamespace) RunKvQuery(q *query.Query, kvq api.KvQuery) {
 }
 
 // TODO there should be more clarity on who locks and when.
-func (rn *remoteNamespace) JoinTable(tableKey crdt.TableName, table crdt.Table) error {
+func (rn *remoteNamespace) JoinTable(tableKey crdt.TableName, table crdt.Table) (crdt.IPFSPath, error) {
 	const failMsg = "remoteNamespace.JoinTable failed"
 
 	joined := crdt.EmptyNamespace().JoinTable(tableKey, table)
@@ -478,24 +478,24 @@ func (rn *remoteNamespace) JoinTable(tableKey crdt.TableName, table crdt.Table) 
 	addr, nsErr := rn.insertNamespace(joined)
 
 	if nsErr != nil {
-		return errors.Wrap(nsErr, failMsg)
+		return crdt.NIL_PATH, errors.Wrap(nsErr, failMsg)
 	}
 
 	signed, signErr := crdt.SignedLink(addr, rn.KeyStore.GetAllPrivateKeys())
 
 	if signErr != nil {
-		return errors.Wrap(signErr, failMsg)
+		return crdt.NIL_PATH, errors.Wrap(signErr, failMsg)
 	}
 
 	index := crdt.EmptyIndex().JoinTable(tableKey, signed)
 
-	_, indexErr := rn.insertIndex(index)
+	indexAddr, indexErr := rn.insertIndex(index)
 
 	if indexErr != nil {
-		return errors.Wrap(indexErr, failMsg)
+		return crdt.NIL_PATH, errors.Wrap(indexErr, failMsg)
 	}
 
-	return nil
+	return indexAddr, nil
 }
 
 func (rn *remoteNamespace) LoadTraverse(searcher api.NamespaceSearcher) error {

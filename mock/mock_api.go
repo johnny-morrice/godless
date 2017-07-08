@@ -201,10 +201,11 @@ func (_m *MockNamespaceTree) EXPECT() *_MockNamespaceTreeRecorder {
 	return _m.recorder
 }
 
-func (_m *MockNamespaceTree) JoinTable(_param0 crdt.TableName, _param1 crdt.Table) error {
+func (_m *MockNamespaceTree) JoinTable(_param0 crdt.TableName, _param1 crdt.Table) (crdt.IPFSPath, error) {
 	ret := _m.ctrl.Call(_m, "JoinTable", _param0, _param1)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(crdt.IPFSPath)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 func (_mr *_MockNamespaceTreeRecorder) JoinTable(arg0, arg1 interface{}) *gomock.Call {

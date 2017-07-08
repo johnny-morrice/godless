@@ -325,8 +325,9 @@ func TestJoinTableSuccess(t *testing.T) {
 		t.Error("remote was nil")
 	}
 
-	err := remote.JoinTable(tableBName, tableB)
+	path, err := remote.JoinTable(tableBName, tableB)
 	testutil.AssertNil(t, err)
+	testutil.AssertEquals(t, "Unexpected index address", addrIndexB, path)
 
 	err = remote.WriteMemoryImage()
 	testutil.AssertNil(t, err)
@@ -358,8 +359,9 @@ func TestJoinTableFailure(t *testing.T) {
 
 	testutil.AssertNonNil(t, remote)
 
-	err := remote.JoinTable("Table Key", table)
+	path, err := remote.JoinTable("Table Key", table)
 	testutil.AssertNonNil(t, err)
+	testutil.AssertEquals(t, "Expected empty index address", crdt.NIL_PATH, path)
 	err = remote.WriteMemoryImage()
 	testutil.AssertNonNil(t, err)
 }

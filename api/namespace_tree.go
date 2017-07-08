@@ -6,7 +6,7 @@ import (
 )
 
 type NamespaceTree interface {
-	JoinTable(crdt.TableName, crdt.Table) error
+	JoinTable(crdt.TableName, crdt.Table) (crdt.IPFSPath, error)
 	LoadTraverse(searcher NamespaceSearcher) error
 }
 
