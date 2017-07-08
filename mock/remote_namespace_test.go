@@ -17,8 +17,7 @@ import (
 )
 
 func TestRemoteNamespaceReplicate(t *testing.T) {
-	// TODO was integration test in previous design,
-	// can now implement as unit.  Please do.
+	t.FailNow()
 }
 
 func TestRemoteNamespaceRunKvReflection(t *testing.T) {
@@ -113,7 +112,7 @@ func reflectOnRemote(remote api.RemoteNamespace, reflection api.APIReflectionTyp
 }
 
 func TestRunKvQuery(t *testing.T) {
-	// TODO integration test as design stands.
+	t.FailNow()
 }
 
 func TestLoadTraverseSuccess(t *testing.T) {

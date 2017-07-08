@@ -1,8 +1,6 @@
 package mock_godless
 
 import (
-	"math/rand"
-	"sync"
 	"testing"
 	"time"
 
@@ -11,99 +9,18 @@ import (
 	"github.com/johnny-morrice/godless/cache"
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/internal/service"
-	"github.com/johnny-morrice/godless/internal/testutil"
 	"github.com/johnny-morrice/godless/query"
 )
 
-func TestKeyValueStoreITCase(t *testing.T) {
-	if testing.Short() {
-		t.SkipNow()
-		return
-	}
-
-	const queryCount = 100
-	const genSize = 50
-	const addrIndex = crdt.IPFSPath("Index Addr")
-	const namespaceAddr = crdt.IPFSPath("Namespace Addr")
-	const queryLimit = 50
-
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mock := NewMockRemoteStore(ctrl)
-
-	queries := make([]*query.Query, queryCount)
-	tables := []crdt.TableName{}
-
-	for i := 0; i < len(queries); i++ {
-		gen := query.GenQuery(testutil.Rand(), genSize)
-
-		if gen.OpCode == query.JOIN {
-			tables = append(tables, gen.TableKey)
-		} else {
-			// Use a real table on occasion :)
-			if rand.Float32() < 0.9 && len(tables) > 0 {
-				randIndex := rand.Intn(len(tables))
-				randTable := tables[randIndex]
-				gen.TableKey = randTable
-			}
-		}
-
-		queries[i] = gen
-	}
-
-	remote := makeRemote(mock)
-	api, errch := launchConcurrentAPI(remote, queryLimit)
-
-	index := crdt.EmptyIndex()
-
-	signedNamespaceAddr := crdt.UnsignedLink(namespaceAddr)
-	for _, t := range tables {
-		index = index.JoinTable(t, signedNamespaceAddr)
-	}
-
-	mock.EXPECT().AddIndex(gomock.Any()).MinTimes(1).Return(addrIndex, nil)
-	mock.EXPECT().AddNamespace(gomock.Any()).MinTimes(1).Return(namespaceAddr, nil)
-	mock.EXPECT().CatNamespace(gomock.Any()).MinTimes(1).Return(crdt.EmptyNamespace(), nil)
-
-	// No index catting with memoryImage
-	// mock.EXPECT().CatIndex(gomock.Any()).MinTimes(1).Return(index, nil)
-
-	go func() {
-		defer api.CloseAPI()
-		wg := &sync.WaitGroup{}
-
-		for _, q := range queries {
-			query := q
-			if rand.Float32() > 0.5 {
-				wg.Add(1)
-				go func() {
-					checkPlausibleResponse(t, api, query)
-					wg.Done()
-				}()
-			} else {
-				checkPlausibleResponse(t, api, query)
-			}
-		}
-
-		wg.Wait()
-	}()
-
-	for err := range errch {
-		testutil.AssertNonNil(t, err)
-	}
+func TestApiReplicate(t *testing.T) {
+	t.FailNow()
 }
 
-func checkPlausibleResponse(t *testing.T, service api.APIRequestService, q *query.Query) {
-	respch, _ := runQuery(service, q)
-	resp := <-respch
-
-	if resp.IsEmpty() {
-		t.Error("Response should not be empty")
-	}
+func TestApiReflect(t *testing.T) {
+	t.FailNow()
 }
 
-func TestRunQueryReadSuccess(t *testing.T) {
+func TestApiQueryRead(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -165,7 +82,7 @@ func writeStubResponse(q *query.Query, kvq api.KvQuery) {
 	kvq.Response <- api.RESPONSE_QUERY
 }
 
-func TestRunQueryWriteSuccess(t *testing.T) {
+func TestApiQueryJoinSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -208,7 +125,7 @@ func TestRunQueryWriteSuccess(t *testing.T) {
 	}
 }
 
-func TestRunQueryWriteFailure(t *testing.T) {
+func TestApiQueryJoinFailure(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -256,7 +173,7 @@ func TestRunQueryWriteFailure(t *testing.T) {
 }
 
 // No EXPECT but still valid mock: verifies no calls.
-func TestRunQueryInvalid(t *testing.T) {
+func TestApiQueryInvalid(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
