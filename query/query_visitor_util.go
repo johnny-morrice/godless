@@ -5,7 +5,6 @@ import (
 
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/crypto"
-	"github.com/johnny-morrice/godless/log"
 	"github.com/pkg/errors"
 )
 

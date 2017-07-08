@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -20,86 +21,149 @@ import (
 type TerminalOptions struct {
 	Client  api.Client
 	Verbose bool
+	History io.ReadWriter
+	Output  io.Writer
 }
 
-func RunTerminalConsole(options TerminalOptions) error {
-	line := liner.NewLiner()
-	defer line.Close()
+type Console struct {
+	TerminalOptions
+	line         *liner.State
+	outputBuffer *bufio.Writer
+}
 
-	line.SetCtrlCAborts(true)
+func MakeConsole(options TerminalOptions) *Console {
+	console := &Console{TerminalOptions: options}
+
+	if console.Output == nil {
+		console.Output = os.Stdout
+	}
+
+	console.outputBuffer = bufio.NewWriter(console.Output)
+
+	return console
+}
+
+func (console *Console) ReadEvalPrintLoop() error {
+	err := console.setupLiner()
+	defer console.shutdownLiner()
+
+	if err != nil {
+		return err
+	}
+
 	for {
-		queryText, err := line.Prompt("> ")
-
+		err := console.readEvalPrint()
 		if err != nil {
 			return err
 		}
-
-		line.AppendHistory(queryText)
-
-		query, err := query.CompileQuery(queryText)
-
-		if err != nil {
-			fmt.Printf("Compiliation error: %v", err.Error())
-			continue
-		}
-
-		sendTime := time.Now()
-		resp, err := options.Client.SendQuery(query)
-		receiveTime := time.Now()
-		waitTime := receiveTime.Sub(sendTime)
-
-		if err != nil {
-			fmt.Printf("Error: %v\n", err.Error())
-
-			if options.Verbose {
-				if resp.Msg != "" {
-					fmt.Printf("Response message: %v\n", resp.Msg)
-				}
-
-				if resp.Err != nil && resp.Err != err {
-					fmt.Printf("Response error: %v\n", resp.Err.Error())
-				}
-			}
-		}
-
-		printResponseTables(resp)
-
-		fmt.Printf("Waited %v for response from server.\n", waitTime)
 	}
 
 	return nil
 }
 
-func printResponseTables(resp api.APIResponse) {
-	printNamespaceTables(resp.Namespace)
-	printIndexTables(resp.Index)
-	printPath(resp.Path)
+func (console *Console) setupLiner() error {
+	console.line = liner.NewLiner()
+	console.line.SetCtrlCAborts(true)
+
+	if console.History != nil {
+		_, err := console.line.ReadHistory(console.History)
+		return err
+	}
+
+	return nil
 }
 
-func printIndexTables(index crdt.Index) {
+func (console *Console) shutdownLiner() {
+	defer console.outputBuffer.Flush()
+
+	_, err := console.line.WriteHistory(console.History)
+
+	if err != nil {
+		console.printf("Failed to write history\n")
+	}
+
+	console.line.Close()
+}
+
+func (console Console) readEvalPrint() error {
+	defer console.outputBuffer.Flush()
+	queryText, err := console.line.Prompt("> ")
+
+	if err != nil {
+		return err
+	}
+
+	console.line.AppendHistory(queryText)
+
+	query, err := query.CompileQuery(queryText)
+
+	if err != nil {
+		console.printf("Compiliation error: %v", err.Error())
+		return nil
+	}
+
+	sendTime := time.Now()
+	resp, err := console.Client.SendQuery(query)
+	receiveTime := time.Now()
+	waitTime := receiveTime.Sub(sendTime)
+
+	if err != nil {
+		console.printf("Error: %v\n", err.Error())
+
+		if console.Verbose {
+			if resp.Msg != "" {
+				console.printf("Response message: %v\n", resp.Msg)
+			}
+
+			if resp.Err != nil && resp.Err != err {
+				console.printf("Response error: %v\n", resp.Err.Error())
+			}
+		}
+	}
+
+	console.printResponseTables(resp, query)
+
+	console.printf("Waited %v for response from server.\n", waitTime)
+
+	return nil
+}
+
+func (console *Console) printResponseTables(resp api.APIResponse, q *query.Query) {
+	if q.OpCode == query.SELECT {
+		console.printNamespaceTables(resp.Namespace)
+	}
+
+	console.printPath(resp.Path)
+}
+
+func (console *Console) printIndexTables(index crdt.Index) {
 	if index.IsEmpty() {
 		return
 	}
 
 	table := makeIndexTable(index)
-	table.fprint(os.Stdout)
+	table.fprint(console.outputBuffer)
 }
 
-func printNamespaceTables(namespace crdt.Namespace) {
+func (console *Console) printNamespaceTables(namespace crdt.Namespace) {
 	if namespace.IsEmpty() {
-		fmt.Println("No results returned.")
+		console.printf("No results returned.\n")
 		return
 	}
 
 	table := makeNamespaceTable(namespace)
-	table.fprint(os.Stdout)
-	fmt.Printf("Found %d Namespace Entries.\n", table.countrows())
+	table.fprint(console.outputBuffer)
+	console.printf("Found %d Namespace Entries.\n", table.countrows())
 }
 
-func printPath(path crdt.IPFSPath) {
+func (console *Console) printPath(path crdt.IPFSPath) {
 	if !crdt.IsNilPath(path) {
 		fmt.Println(path)
 	}
+}
+
+func (console *Console) printf(format string, args ...interface{}) {
+	fmt.Fprintf(console.outputBuffer, format, args...)
 }
 
 type monospaceTable struct {

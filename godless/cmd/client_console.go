@@ -21,6 +21,8 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/johnny-morrice/godless/cli"
 	"github.com/johnny-morrice/godless/log"
 	"github.com/spf13/cobra"
@@ -38,7 +40,15 @@ var clientConsoleCmd = &cobra.Command{
 			Client: makeClient(),
 		}
 
-		err := cli.RunTerminalConsole(options)
+		historyFile := openConsoleHistory(&options)
+
+		if historyFile != nil {
+			defer historyFile.Close()
+			options.History = historyFile
+		}
+
+		console := cli.MakeConsole(options)
+		err := console.ReadEvalPrintLoop()
 
 		if err != nil {
 			die(err)
@@ -46,6 +56,37 @@ var clientConsoleCmd = &cobra.Command{
 	},
 }
 
+var consoleHistoryFilePath string
+
+func openOrCreate(filePath string) (*os.File, error) {
+	_, err := os.Stat(filePath)
+
+	if err != nil {
+		return os.Create(filePath)
+	}
+
+	return os.Open(filePath)
+}
+
+func openConsoleHistory(options *cli.TerminalOptions) *os.File {
+	if consoleHistoryFilePath != "" {
+		historyFile, err := openOrCreate(consoleHistoryFilePath)
+
+		if err != nil {
+			log.Error("Error opening history file: %s", err.Error())
+			return nil
+		}
+
+		return historyFile
+	}
+
+	return nil
+}
+
 func init() {
 	queryCmd.AddCommand(clientConsoleCmd)
+
+	clientConsoleCmd.Flags().StringVar(&consoleHistoryFilePath, "history", __DEFAULT_CONSOLE_HISTORY, "Console history file")
 }
+
+const __DEFAULT_CONSOLE_HISTORY = ".godless_history"
