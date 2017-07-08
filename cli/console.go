@@ -18,7 +18,8 @@ import (
 )
 
 type TerminalOptions struct {
-	Client api.Client
+	Client  api.Client
+	Verbose bool
 }
 
 func RunTerminalConsole(options TerminalOptions) error {
@@ -48,14 +49,16 @@ func RunTerminalConsole(options TerminalOptions) error {
 		waitTime := receiveTime.Sub(sendTime)
 
 		if err != nil {
-			fmt.Printf("Error: %v", err.Error())
+			fmt.Printf("Error: %v\n", err.Error())
 
-			if resp.Msg != "" {
-				fmt.Printf("Response message: %v", resp.Msg)
-			}
+			if options.Verbose {
+				if resp.Msg != "" {
+					fmt.Printf("Response message: %v\n", resp.Msg)
+				}
 
-			if resp.Err != nil && resp.Err != err {
-				fmt.Printf("Response error: %v", resp.Err.Error())
+				if resp.Err != nil && resp.Err != err {
+					fmt.Printf("Response error: %v\n", resp.Err.Error())
+				}
 			}
 		}
 

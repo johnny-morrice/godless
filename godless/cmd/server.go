@@ -47,6 +47,8 @@ var serveCmd = &cobra.Command{
 }
 
 func serve(cmd *cobra.Command) {
+	log.SetLevel(log.LOG_DEBUG)
+
 	client := http.DefaultBackendClient()
 	client.Timeout = serverTimeout
 

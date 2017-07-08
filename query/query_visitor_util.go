@@ -5,6 +5,7 @@ import (
 
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/crypto"
+	"github.com/johnny-morrice/godless/log"
 	"github.com/pkg/errors"
 )
 
@@ -49,7 +50,7 @@ type ErrorCollectVisitor struct {
 }
 
 func (visitor *ErrorCollectVisitor) BadPublicKey(hash crypto.PublicKeyHash) {
-	visitor.CollectError(fmt.Errorf("Bad PublicKeyHash: %v", hash))
+	visitor.CollectError(fmt.Errorf("Bad PublicKeyHash: %s", string(hash)))
 }
 
 func (visitor *ErrorCollectVisitor) BadOpcode(opCode QueryOpCode) {

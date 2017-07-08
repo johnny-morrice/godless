@@ -24,11 +24,9 @@ import (
 	"runtime"
 
 	"github.com/johnny-morrice/godless/godless/cmd"
-	"github.com/johnny-morrice/godless/log"
 )
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	log.SetLevel(log.LOG_DEBUG)
 	cmd.Execute()
 }
