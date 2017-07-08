@@ -12,16 +12,16 @@ import (
 
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
-	"github.com/johnny-morrice/godless/internal/ipfs"
+	"github.com/johnny-morrice/godless/internal/service"
 	"github.com/johnny-morrice/godless/internal/testutil"
 )
 
-func TestIpfsRemoteStoreConnectSuccess(t *testing.T) {
+func TestContentAddressableRemoteStoreConnectSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mock := NewMockDataPeer(ctrl)
-	store := ipfs.MakeIpfsRemoteStore(mock)
+	store := service.MakeContentAddressableRemoteStore(mock)
 
 	mock.EXPECT().Connect().Return(nil)
 
@@ -30,12 +30,12 @@ func TestIpfsRemoteStoreConnectSuccess(t *testing.T) {
 	testutil.AssertNil(t, err)
 }
 
-func TestIpfsRemoteStoreConnectFailure(t *testing.T) {
+func TestContentAddressableRemoteStoreConnectFailure(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mock := NewMockDataPeer(ctrl)
-	store := ipfs.MakeIpfsRemoteStore(mock)
+	store := service.MakeContentAddressableRemoteStore(mock)
 
 	mock.EXPECT().Connect().Return(expectedError())
 
@@ -44,14 +44,14 @@ func TestIpfsRemoteStoreConnectFailure(t *testing.T) {
 	testutil.AssertNonNil(t, err)
 }
 
-func TestIpfsRemoteStoreAddNamespaceSuccess(t *testing.T) {
+func TestContentAddressableRemoteStoreAddNamespaceSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	const nsAddrText string = "NS Addr"
 
 	mock := NewMockDataPeer(ctrl)
-	store := ipfs.MakeIpfsRemoteStore(mock)
+	store := service.MakeContentAddressableRemoteStore(mock)
 
 	ns := makeNamespaceForIPFS()
 
@@ -65,12 +65,12 @@ func TestIpfsRemoteStoreAddNamespaceSuccess(t *testing.T) {
 	testutil.AssertEquals(t, "Unexpected namespace path", nsAddrText, string(addr))
 }
 
-func TestIpfsRemoteStoreAddNamespaceFailure(t *testing.T) {
+func TestContentAddressableRemoteStoreAddNamespaceFailure(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mock := NewMockDataPeer(ctrl)
-	store := ipfs.MakeIpfsRemoteStore(mock)
+	store := service.MakeContentAddressableRemoteStore(mock)
 
 	ns := makeNamespaceForIPFS()
 
@@ -83,14 +83,14 @@ func TestIpfsRemoteStoreAddNamespaceFailure(t *testing.T) {
 	testutil.Assert(t, "Expected nil path", crdt.IsNilPath(addr))
 }
 
-func TestIpfsRemoteStoreAddIndexSuccess(t *testing.T) {
+func TestContentAddressableRemoteStoreAddIndexSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	const indexAddrText string = "Index Addr"
 
 	mock := NewMockDataPeer(ctrl)
-	store := ipfs.MakeIpfsRemoteStore(mock)
+	store := service.MakeContentAddressableRemoteStore(mock)
 
 	index := makeIndexForIPFS()
 
@@ -104,14 +104,14 @@ func TestIpfsRemoteStoreAddIndexSuccess(t *testing.T) {
 	testutil.AssertEquals(t, "Unexpected index path", indexAddrText, string(addr))
 }
 
-func TestIpfsRemoteStoreAddIndexFailure(t *testing.T) {
+func TestContentAddressableRemoteStoreAddIndexFailure(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	const indexAddrText string = "Index Addr"
 
 	mock := NewMockDataPeer(ctrl)
-	store := ipfs.MakeIpfsRemoteStore(mock)
+	store := service.MakeContentAddressableRemoteStore(mock)
 
 	index := makeIndexForIPFS()
 
@@ -124,14 +124,14 @@ func TestIpfsRemoteStoreAddIndexFailure(t *testing.T) {
 	testutil.Assert(t, "Expected nil path", crdt.IsNilPath(addr))
 }
 
-func TestIpfsRemoteStoreCatNamespaceSuccess(t *testing.T) {
+func TestContentAddressableRemoteStoreCatNamespaceSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	const namespaceAddr = "Namespace addr"
 
 	mock := NewMockDataPeer(ctrl)
-	store := ipfs.MakeIpfsRemoteStore(mock)
+	store := service.MakeContentAddressableRemoteStore(mock)
 
 	expected := makeNamespaceForIPFS()
 	reader := makeNamespaceReaderForIPFS()
@@ -145,14 +145,14 @@ func TestIpfsRemoteStoreCatNamespaceSuccess(t *testing.T) {
 	testutil.Assert(t, "Unexpected namespace", expected.Equals(actual))
 }
 
-func TestIpfsRemoteStoreCatNamespaceFailure(t *testing.T) {
+func TestContentAddressableRemoteStoreCatNamespaceFailure(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	const namespaceAddr = "Namespace addr"
 
 	mock := NewMockDataPeer(ctrl)
-	store := ipfs.MakeIpfsRemoteStore(mock)
+	store := service.MakeContentAddressableRemoteStore(mock)
 
 	mock.EXPECT().IsUp().Return(true).AnyTimes()
 	mock.EXPECT().Cat(namespaceAddr).Return(nil, expectedError())
@@ -163,14 +163,14 @@ func TestIpfsRemoteStoreCatNamespaceFailure(t *testing.T) {
 	testutil.Assert(t, "Expected zero namespace", namespace.IsEmpty())
 }
 
-func TestIpfsRemoteStoreCatIndexSuccess(t *testing.T) {
+func TestContentAddressableRemoteStoreCatIndexSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	const indexAddr = "Index addr"
 
 	mock := NewMockDataPeer(ctrl)
-	store := ipfs.MakeIpfsRemoteStore(mock)
+	store := service.MakeContentAddressableRemoteStore(mock)
 
 	expected := makeIndexForIPFS()
 	reader := makeIndexReaderForIPFS()
@@ -184,14 +184,14 @@ func TestIpfsRemoteStoreCatIndexSuccess(t *testing.T) {
 	testutil.Assert(t, "Unexpected index", expected.Equals(actual))
 }
 
-func TestIpfsRemoteStoreCatIndexFailure(t *testing.T) {
+func TestContentAddressableRemoteStoreCatIndexFailure(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	const indexAddr = "Index addr"
 
 	mock := NewMockDataPeer(ctrl)
-	store := ipfs.MakeIpfsRemoteStore(mock)
+	store := service.MakeContentAddressableRemoteStore(mock)
 
 	mock.EXPECT().IsUp().Return(true).AnyTimes()
 	mock.EXPECT().Cat(indexAddr).Return(nil, expectedError())
@@ -202,14 +202,14 @@ func TestIpfsRemoteStoreCatIndexFailure(t *testing.T) {
 	testutil.Assert(t, "Expected zero index", index.IsEmpty())
 }
 
-func TestIpfsRemoteStoreSubscribeAddrStream(t *testing.T) {
+func TestContentAddressableRemoteStoreSubscribeAddrStream(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mock := NewMockDataPeer(ctrl)
 	mockSub := NewMockPubSubSubscription(ctrl)
 	mockRecord := NewMockPubSubRecord(ctrl)
-	store := ipfs.MakeIpfsRemoteStore(mock)
+	store := service.MakeContentAddressableRemoteStore(mock)
 	defer store.Disconnect()
 
 	const topic = "Hello"
@@ -239,13 +239,13 @@ func TestIpfsRemoteStoreSubscribeAddrStream(t *testing.T) {
 
 }
 
-func TestIpfsRemoteStoreSubscribeAddrStreamRestart(t *testing.T) {
+func TestContentAddressableRemoteStoreSubscribeAddrStreamRestart(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mock := NewMockDataPeer(ctrl)
 	mockSub := NewMockPubSubSubscription(ctrl)
-	store := ipfs.MakeIpfsRemoteStore(mock)
+	store := service.MakeContentAddressableRemoteStore(mock)
 	defer store.Disconnect()
 
 	const topic = "Hello"
@@ -271,12 +271,12 @@ func TestIpfsRemoteStoreSubscribeAddrStreamRestart(t *testing.T) {
 	}
 }
 
-func TestIpfsRemoteStoreSubscribeAddrStreamFailure(t *testing.T) {
+func TestContentAddressableRemoteStoreSubscribeAddrStreamFailure(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mock := NewMockDataPeer(ctrl)
-	store := ipfs.MakeIpfsRemoteStore(mock)
+	store := service.MakeContentAddressableRemoteStore(mock)
 	defer store.Disconnect()
 
 	const topic = "Hello"
@@ -301,12 +301,12 @@ func TestIpfsRemoteStoreSubscribeAddrStreamFailure(t *testing.T) {
 	}
 }
 
-func TestIpfsRemoteStorePublishAddrSuccess(t *testing.T) {
+func TestContentAddressableRemoteStorePublishAddrSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mock := NewMockDataPeer(ctrl)
-	store := ipfs.MakeIpfsRemoteStore(mock)
+	store := service.MakeContentAddressableRemoteStore(mock)
 
 	link := crdt.UnsignedLink("hi")
 	linkText, linkErr := crdt.SerializeLink(link)
@@ -326,12 +326,12 @@ func TestIpfsRemoteStorePublishAddrSuccess(t *testing.T) {
 	testutil.AssertNil(t, err)
 }
 
-func TestIpfsRemoteStorePublishAddrFailure(t *testing.T) {
+func TestContentAddressableRemoteStorePublishAddrFailure(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mock := NewMockDataPeer(ctrl)
-	store := ipfs.MakeIpfsRemoteStore(mock)
+	store := service.MakeContentAddressableRemoteStore(mock)
 
 	link := crdt.UnsignedLink("hi")
 	linkText, linkErr := crdt.SerializeLink(link)
@@ -351,12 +351,12 @@ func TestIpfsRemoteStorePublishAddrFailure(t *testing.T) {
 	testutil.AssertNil(t, err)
 }
 
-func TestIpfsRemoteStoreDisconnectSuccess(t *testing.T) {
+func TestContentAddressableRemoteStoreDisconnectSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mock := NewMockDataPeer(ctrl)
-	store := ipfs.MakeIpfsRemoteStore(mock)
+	store := service.MakeContentAddressableRemoteStore(mock)
 
 	mock.EXPECT().Disconnect().Return(nil)
 
@@ -365,12 +365,12 @@ func TestIpfsRemoteStoreDisconnectSuccess(t *testing.T) {
 	testutil.AssertNil(t, err)
 }
 
-func TestIpfsRemoteStoreDisconnectFailure(t *testing.T) {
+func TestContentAddressableRemoteStoreDisconnectFailure(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mock := NewMockDataPeer(ctrl)
-	store := ipfs.MakeIpfsRemoteStore(mock)
+	store := service.MakeContentAddressableRemoteStore(mock)
 
 	mock.EXPECT().Disconnect().Return(expectedError())
 

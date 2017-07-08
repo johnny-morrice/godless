@@ -17,7 +17,7 @@ func TestRunQueryJoinSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mock := NewMockNamespaceTree(ctrl)
+	mock := NewMockRemoteNamespace(ctrl)
 
 	const indexAddr = crdt.IPFSPath("Index Addr")
 
@@ -78,7 +78,7 @@ func TestRunQueryJoinSigned(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mock := NewMockNamespaceTree(ctrl)
+	mock := NewMockRemoteNamespace(ctrl)
 
 	const indexAddr = crdt.IPFSPath("Index Addr")
 	expectedResponse := api.RESPONSE_QUERY
@@ -152,7 +152,7 @@ func TestRunQueryJoinFailure(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mock := NewMockNamespaceTree(ctrl)
+	mock := NewMockRemoteNamespace(ctrl)
 
 	failQuery := &query.Query{
 		OpCode:   query.JOIN,
@@ -200,7 +200,7 @@ func TestRunQueryJoinInvalid(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mock := NewMockNamespaceTree(ctrl)
+	mock := NewMockRemoteNamespace(ctrl)
 
 	invalidQueries := []*query.Query{
 		// Basically wrong.
@@ -294,7 +294,7 @@ func (tm tableMatcher) Matches(v interface{}) bool {
 	return tm.t.Equals(other)
 }
 
-func makeNamespaceTreeJoin(namespace api.NamespaceTree) *eval.NamespaceTreeJoin {
+func makeNamespaceTreeJoin(namespace api.RemoteNamespace) *eval.NamespaceTreeJoin {
 	// TODO use fake key store
 	keyStore := &crypto.KeyStore{}
 	return eval.MakeNamespaceTreeJoin(namespace, keyStore)

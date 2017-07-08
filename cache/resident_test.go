@@ -276,4 +276,4 @@ func wait() {
 	<-timer.C
 }
 
-var __REFLECT_REQUEST api.APIRequest = api.APIRequest{Type: api.API_REFLECT}
+var __REFLECT_REQUEST api.Request = api.Request{Type: api.API_REFLECT}

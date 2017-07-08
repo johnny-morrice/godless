@@ -1,4 +1,4 @@
-package ipfs
+package service
 
 import (
 	"bytes"
@@ -14,17 +14,17 @@ import (
 	"github.com/pkg/errors"
 )
 
-type IpfsRecord struct {
+type namespaceRecord struct {
 	Namespace crdt.Namespace
 }
 
-func makeIpfsRecord(namespace crdt.Namespace) *IpfsRecord {
-	return &IpfsRecord{
+func makeNamespaceRecord(namespace crdt.Namespace) *namespaceRecord {
+	return &namespaceRecord{
 		Namespace: namespace,
 	}
 }
 
-func (record *IpfsRecord) encode(w io.Writer) error {
+func (record *namespaceRecord) encode(w io.Writer) error {
 	invalid, err := crdt.EncodeNamespace(record.Namespace, w)
 
 	record.logInvalid(invalid)
@@ -32,7 +32,7 @@ func (record *IpfsRecord) encode(w io.Writer) error {
 	return err
 }
 
-func (record *IpfsRecord) decode(r io.Reader) error {
+func (record *namespaceRecord) decode(r io.Reader) error {
 	ns, invalid, err := crdt.DecodeNamespace(r)
 
 	record.logInvalid(invalid)
@@ -45,7 +45,7 @@ func (record *IpfsRecord) decode(r io.Reader) error {
 	return nil
 }
 
-func (record *IpfsRecord) logInvalid(invalid []crdt.InvalidNamespaceEntry) {
+func (record *namespaceRecord) logInvalid(invalid []crdt.InvalidNamespaceEntry) {
 	invalidCount := len(invalid)
 
 	if invalidCount > 0 {
@@ -61,17 +61,17 @@ type decoder interface {
 	decode(io.Reader) error
 }
 
-type IPFSIndex struct {
+type indexRecord struct {
 	Index crdt.Index
 }
 
-func makeIpfsIndex(index crdt.Index) *IPFSIndex {
-	return &IPFSIndex{
+func makeIndexRecord(index crdt.Index) *indexRecord {
+	return &indexRecord{
 		Index: index,
 	}
 }
 
-func (index *IPFSIndex) encode(w io.Writer) error {
+func (index *indexRecord) encode(w io.Writer) error {
 	invalid, err := crdt.EncodeIndex(index.Index, w)
 
 	index.logInvalid(invalid)
@@ -79,7 +79,7 @@ func (index *IPFSIndex) encode(w io.Writer) error {
 	return err
 }
 
-func (index *IPFSIndex) decode(r io.Reader) error {
+func (index *indexRecord) decode(r io.Reader) error {
 	dx, invalid, err := crdt.DecodeIndex(r)
 
 	index.logInvalid(invalid)
@@ -97,7 +97,7 @@ func (index *IPFSIndex) decode(r io.Reader) error {
 	return nil
 }
 
-func (index *IPFSIndex) logInvalid(invalid []crdt.InvalidIndexEntry) {
+func (index *indexRecord) logInvalid(invalid []crdt.InvalidIndexEntry) {
 	invalidCount := len(invalid)
 
 	if invalidCount > 0 {
@@ -124,25 +124,25 @@ func (closer *ipfsCloser) closeIpfs() {
 	closer.closed = true
 }
 
-type IpfsRemoteStore struct {
+type ContentAddressableRemoteStore struct {
 	Shell  api.DataPeer
 	closer ipfsCloser
 }
 
-func MakeIpfsRemoteStore(peer api.DataPeer) api.RemoteStore {
-	return &IpfsRemoteStore{Shell: peer}
+func MakeContentAddressableRemoteStore(peer api.DataPeer) api.RemoteStore {
+	return &ContentAddressableRemoteStore{Shell: peer}
 }
 
-func (peer *IpfsRemoteStore) Connect() error {
+func (peer *ContentAddressableRemoteStore) Connect() error {
 	return peer.Shell.Connect()
 }
 
-func (peer *IpfsRemoteStore) Disconnect() error {
+func (peer *ContentAddressableRemoteStore) Disconnect() error {
 	peer.closer.closeIpfs()
 	return peer.Shell.Disconnect()
 }
 
-func (peer *IpfsRemoteStore) validateShell() error {
+func (peer *ContentAddressableRemoteStore) validateShell() error {
 	if peer.Shell == nil {
 		return peer.Connect()
 	}
@@ -150,16 +150,16 @@ func (peer *IpfsRemoteStore) validateShell() error {
 	return peer.validateConnection()
 }
 
-func (peer *IpfsRemoteStore) validateConnection() error {
+func (peer *ContentAddressableRemoteStore) validateConnection() error {
 	if !peer.Shell.IsUp() {
-		return errors.New("IPFSPeer is not up")
+		return errors.New("ContentAddressableRemoteStore is not up")
 	}
 
 	return nil
 }
 
-func (peer *IpfsRemoteStore) PublishAddr(addr crdt.Link, topics []api.PubSubTopic) error {
-	const failMsg = "IPFSPeer.PublishAddr failed"
+func (peer *ContentAddressableRemoteStore) PublishAddr(addr crdt.Link, topics []api.PubSubTopic) error {
+	const failMsg = "ContentAddressableRemoteStore.PublishAddr failed"
 
 	if verr := peer.validateShell(); verr != nil {
 		return verr
@@ -187,7 +187,7 @@ func (peer *IpfsRemoteStore) PublishAddr(addr crdt.Link, topics []api.PubSubTopi
 	return nil
 }
 
-func (peer *IpfsRemoteStore) SubscribeAddrStream(topic api.PubSubTopic) (<-chan crdt.Link, <-chan error) {
+func (peer *ContentAddressableRemoteStore) SubscribeAddrStream(topic api.PubSubTopic) (<-chan crdt.Link, <-chan error) {
 	stream := make(chan crdt.Link)
 	errch := make(chan error)
 
@@ -215,7 +215,7 @@ func (peer *IpfsRemoteStore) SubscribeAddrStream(topic api.PubSubTopic) (<-chan 
 	return stream, errch
 }
 
-func (peer *IpfsRemoteStore) restartSubscriptionUntilDisconnect(topic api.PubSubTopic, stream chan<- crdt.Link) {
+func (peer *ContentAddressableRemoteStore) restartSubscriptionUntilDisconnect(topic api.PubSubTopic, stream chan<- crdt.Link) {
 	topicText := string(topic)
 
 	var subscription api.PubSubSubscription
@@ -272,8 +272,8 @@ RESTART:
 	}
 }
 
-func (peer *IpfsRemoteStore) AddIndex(index crdt.Index) (crdt.IPFSPath, error) {
-	const failMsg = "IPFSPeer.AddIndex failed"
+func (peer *ContentAddressableRemoteStore) AddIndex(index crdt.Index) (crdt.IPFSPath, error) {
+	const failMsg = "ContentAddressableRemoteStore.AddIndex failed"
 
 	log.Info("Adding index to IPFS...")
 
@@ -281,7 +281,7 @@ func (peer *IpfsRemoteStore) AddIndex(index crdt.Index) (crdt.IPFSPath, error) {
 		return crdt.NIL_PATH, verr
 	}
 
-	chunk := makeIpfsIndex(index)
+	chunk := makeIndexRecord(index)
 
 	path, addErr := peer.add(chunk)
 
@@ -294,18 +294,18 @@ func (peer *IpfsRemoteStore) AddIndex(index crdt.Index) (crdt.IPFSPath, error) {
 	return path, nil
 }
 
-func (peer *IpfsRemoteStore) CatIndex(addr crdt.IPFSPath) (crdt.Index, error) {
+func (peer *ContentAddressableRemoteStore) CatIndex(addr crdt.IPFSPath) (crdt.Index, error) {
 	log.Info("Catting index from IPFS at: %s ...", addr)
 
 	if verr := peer.validateShell(); verr != nil {
 		return crdt.EmptyIndex(), verr
 	}
 
-	chunk := &IPFSIndex{}
+	chunk := &indexRecord{}
 	caterr := peer.cat(addr, chunk)
 
 	if caterr != nil {
-		return crdt.EmptyIndex(), errors.Wrap(caterr, "IPFSPeer.CatNamespace failed")
+		return crdt.EmptyIndex(), errors.Wrap(caterr, "ContentAddressableRemoteStore.CatNamespace failed")
 	}
 
 	log.Info("Catted index")
@@ -313,19 +313,19 @@ func (peer *IpfsRemoteStore) CatIndex(addr crdt.IPFSPath) (crdt.Index, error) {
 	return chunk.Index, nil
 }
 
-func (peer *IpfsRemoteStore) AddNamespace(namespace crdt.Namespace) (crdt.IPFSPath, error) {
+func (peer *ContentAddressableRemoteStore) AddNamespace(namespace crdt.Namespace) (crdt.IPFSPath, error) {
 	log.Info("Adding Namespace to IPFS...")
 
 	if verr := peer.validateShell(); verr != nil {
 		return crdt.NIL_PATH, verr
 	}
 
-	chunk := makeIpfsRecord(namespace)
+	chunk := makeNamespaceRecord(namespace)
 
 	path, err := peer.add(chunk)
 
 	if err != nil {
-		return crdt.NIL_PATH, errors.Wrap(err, "IPFSPeer.AddNamespace failed")
+		return crdt.NIL_PATH, errors.Wrap(err, "ContentAddressableRemoteStore.AddNamespace failed")
 	}
 
 	log.Info("Added namespace")
@@ -333,18 +333,18 @@ func (peer *IpfsRemoteStore) AddNamespace(namespace crdt.Namespace) (crdt.IPFSPa
 	return path, nil
 }
 
-func (peer *IpfsRemoteStore) CatNamespace(addr crdt.IPFSPath) (crdt.Namespace, error) {
+func (peer *ContentAddressableRemoteStore) CatNamespace(addr crdt.IPFSPath) (crdt.Namespace, error) {
 	log.Info("Catting namespace from IPFS at: %s ...", addr)
 
 	if verr := peer.validateShell(); verr != nil {
 		return crdt.EmptyNamespace(), verr
 	}
 
-	chunk := &IpfsRecord{}
+	chunk := &namespaceRecord{}
 	caterr := peer.cat(addr, chunk)
 
 	if caterr != nil {
-		return crdt.EmptyNamespace(), errors.Wrap(caterr, "IPFSPeer.CatNamespace failed")
+		return crdt.EmptyNamespace(), errors.Wrap(caterr, "ContentAddressableRemoteStore.CatNamespace failed")
 	}
 
 	log.Info("Catted namespace")
@@ -352,8 +352,8 @@ func (peer *IpfsRemoteStore) CatNamespace(addr crdt.IPFSPath) (crdt.Namespace, e
 	return chunk.Namespace, nil
 }
 
-func (peer *IpfsRemoteStore) add(chunk encoder) (crdt.IPFSPath, error) {
-	const failMsg = "IPFSPeer.add failed"
+func (peer *ContentAddressableRemoteStore) add(chunk encoder) (crdt.IPFSPath, error) {
+	const failMsg = "ContentAddressableRemoteStore.add failed"
 	buff := &bytes.Buffer{}
 	err := chunk.encode(buff)
 
@@ -370,8 +370,8 @@ func (peer *IpfsRemoteStore) add(chunk encoder) (crdt.IPFSPath, error) {
 	return crdt.IPFSPath(path), nil
 }
 
-func (peer *IpfsRemoteStore) cat(path crdt.IPFSPath, out decoder) error {
-	const failMsg = "IPFSPeer.cat failed"
+func (peer *ContentAddressableRemoteStore) cat(path crdt.IPFSPath, out decoder) error {
+	const failMsg = "ContentAddressableRemoteStore.cat failed"
 	reader, err := peer.Shell.Cat(string(path))
 
 	if err != nil {

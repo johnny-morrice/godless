@@ -15,13 +15,13 @@ type ReplicateOptions struct {
 	Interval    time.Duration
 	KeyStore    api.KeyStore
 	RemoteStore api.RemoteStore
-	API         api.APIService
+	API         api.Service
 }
 
 type replicator struct {
 	topics   []api.PubSubTopic
 	interval time.Duration
-	api      api.APIService
+	api      api.Service
 	store    api.RemoteStore
 	errch    chan<- error
 	stopch   <-chan struct{}
@@ -116,12 +116,12 @@ func (p2p replicator) publishIndex() {
 	log.Info("Published index at %v", head)
 }
 
-func (p2p replicator) sendReflectRequest() (api.APIResponse, error) {
+func (p2p replicator) sendReflectRequest() (api.Response, error) {
 	log.Info("Replicator getting HEAD from API...")
 	failResp := api.RESPONSE_FAIL
 	failResp.Type = api.API_REFLECT
 
-	respch, err := p2p.api.Call(api.APIRequest{Type: api.API_REFLECT, Reflection: api.REFLECT_HEAD_PATH})
+	respch, err := p2p.api.Call(api.Request{Type: api.API_REFLECT, Reflection: api.REFLECT_HEAD_PATH})
 
 	if err != nil {
 		return failResp, errors.Wrap(err, "Reflection failed (Early API failure)")
@@ -170,7 +170,7 @@ func (batch *subscriptionBatch) update(link crdt.Link) {
 	select {
 	case <-batch.ticker.C:
 		log.Debug("Dispatching subscription batch")
-		request := api.APIRequest{Type: api.API_REPLICATE, Replicate: batch.batch}
+		request := api.Request{Type: api.API_REPLICATE, Replicate: batch.batch}
 		batch.reset()
 		go func() {
 			batch.p2p.api.Call(request)

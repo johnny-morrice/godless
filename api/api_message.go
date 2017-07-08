@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func MakeAPIResponseMessage(resp APIResponse) *proto.APIResponseMessage {
+func MakeAPIResponseMessage(resp Response) *proto.APIResponseMessage {
 	message := &proto.APIResponseMessage{
 		Message: resp.Msg,
 		Type:    uint32(resp.Type),
@@ -34,10 +34,10 @@ func MakeAPIResponseMessage(resp APIResponse) *proto.APIResponseMessage {
 	return message
 }
 
-func ReadAPIResponseMessage(message *proto.APIResponseMessage) APIResponse {
-	resp := APIResponse{
+func ReadAPIResponseMessage(message *proto.APIResponseMessage) Response {
+	resp := Response{
 		Msg:  message.Message,
-		Type: APIMessageType(message.Type),
+		Type: MessageType(message.Type),
 		Path: crdt.IPFSPath(message.Path),
 	}
 
@@ -57,7 +57,7 @@ func ReadAPIResponseMessage(message *proto.APIResponseMessage) APIResponse {
 	return resp
 }
 
-func EncodeAPIResponse(resp APIResponse, w io.Writer) error {
+func EncodeAPIResponse(resp Response, w io.Writer) error {
 	const failMsg = "EncodeAPIResponse failed"
 
 	message := MakeAPIResponseMessage(resp)
@@ -71,7 +71,7 @@ func EncodeAPIResponse(resp APIResponse, w io.Writer) error {
 	return nil
 }
 
-func DecodeAPIResponse(r io.Reader) (APIResponse, error) {
+func DecodeAPIResponse(r io.Reader) (Response, error) {
 	const failMsg = "DecodeAPIResponse failed"
 
 	message := &proto.APIResponseMessage{}
@@ -85,7 +85,7 @@ func DecodeAPIResponse(r io.Reader) (APIResponse, error) {
 	return ReadAPIResponseMessage(message), nil
 }
 
-func EncodeAPIResponseText(resp APIResponse, w io.Writer) error {
+func EncodeAPIResponseText(resp Response, w io.Writer) error {
 	const failMsg = "EncodeAPIResponseText failed"
 
 	message := MakeAPIResponseMessage(resp)
@@ -99,7 +99,7 @@ func EncodeAPIResponseText(resp APIResponse, w io.Writer) error {
 	return nil
 }
 
-func DecodeAPIResponseText(r io.Reader) (APIResponse, error) {
+func DecodeAPIResponseText(r io.Reader) (Response, error) {
 	const failMsg = "DecodeAPIResponseText failed"
 
 	message := &proto.APIResponseMessage{}

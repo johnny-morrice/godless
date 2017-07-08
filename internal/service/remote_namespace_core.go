@@ -52,7 +52,7 @@ type remoteNamespace struct {
 	memImgTracker dirtyTracker
 }
 
-func MakeRemoteNamespace(options RemoteNamespaceOptions) api.RemoteNamespaceTree {
+func MakeRemoteNamespaceCore(options RemoteNamespaceOptions) api.RemoteNamespaceCore {
 	pulseInterval := options.Pulse
 	if pulseInterval == 0 {
 		pulseInterval = __DEFAULT_PULSE
@@ -245,13 +245,13 @@ func (rn *remoteNamespace) Close() {
 	log.Info("Closed remoteNamespace")
 }
 
-func (rn *remoteNamespace) Replicate(links []crdt.Link, kvq api.KvQuery) {
-	runner := api.APIResponderFunc(func() api.APIResponse { return rn.joinPeerIndex(links) })
+func (rn *remoteNamespace) Replicate(links []crdt.Link, kvq api.Command) {
+	runner := api.ResponderLambda(func() api.Response { return rn.joinPeerIndex(links) })
 	response := runner.RunQuery()
 	kvq.WriteResponse(response)
 }
 
-func (rn *remoteNamespace) joinPeerIndex(links []crdt.Link) api.APIResponse {
+func (rn *remoteNamespace) joinPeerIndex(links []crdt.Link) api.Response {
 	const failMsg = "remoteNamespace.joinPeerIndex failed"
 	failResponse := api.RESPONSE_FAIL
 
@@ -328,15 +328,15 @@ func (rn *remoteNamespace) loadIndex(indexAddr crdt.IPFSPath) (crdt.Index, error
 }
 
 // TODO there are likely to be many reflection features.  Replace switches with polymorphism.
-func (rn *remoteNamespace) RunKvReflection(reflect api.APIReflectionType, kvq api.KvQuery) {
-	var runner api.APIResponder
+func (rn *remoteNamespace) Reflect(reflect api.ReflectionType, kvq api.Command) {
+	var runner api.Responder
 	switch reflect {
 	case api.REFLECT_HEAD_PATH:
-		runner = api.APIResponderFunc(rn.getReflectHead)
+		runner = api.ResponderLambda(rn.getReflectHead)
 	case api.REFLECT_INDEX:
-		runner = api.APIResponderFunc(rn.getReflectIndex)
+		runner = api.ResponderLambda(rn.getReflectIndex)
 	case api.REFLECT_DUMP_NAMESPACE:
-		runner = api.APIResponderFunc(rn.dumpReflectNamespaces)
+		runner = api.ResponderLambda(rn.dumpReflectNamespaces)
 	default:
 		panic("Unknown reflection command")
 	}
@@ -346,7 +346,7 @@ func (rn *remoteNamespace) RunKvReflection(reflect api.APIReflectionType, kvq ap
 }
 
 // TODO Not sure if best place for these to live.
-func (rn *remoteNamespace) getReflectHead() api.APIResponse {
+func (rn *remoteNamespace) getReflectHead() api.Response {
 	response := api.RESPONSE_REFLECT
 
 	myAddr, err := rn.getHead()
@@ -364,7 +364,7 @@ func (rn *remoteNamespace) getReflectHead() api.APIResponse {
 	return response
 }
 
-func (rn *remoteNamespace) getReflectIndex() api.APIResponse {
+func (rn *remoteNamespace) getReflectIndex() api.Response {
 	const failMsg = "remoteNamespace.getReflectIndex failed"
 	response := api.RESPONSE_REFLECT
 
@@ -381,7 +381,7 @@ func (rn *remoteNamespace) getReflectIndex() api.APIResponse {
 	return response
 }
 
-func (rn *remoteNamespace) dumpReflectNamespaces() api.APIResponse {
+func (rn *remoteNamespace) dumpReflectNamespaces() api.Response {
 	const failMsg = "remoteNamespace.dumpReflectNamespace failed"
 	response := api.RESPONSE_REFLECT
 
@@ -398,7 +398,7 @@ func (rn *remoteNamespace) dumpReflectNamespaces() api.APIResponse {
 
 	namespaceError := false
 	indexError := false
-	lambda := api.NamespaceTreeLambda(func(result api.SearchResult) api.TraversalUpdate {
+	lambda := api.SearchResultLambda(func(result api.SearchResult) api.TraversalUpdate {
 		more := api.TraversalUpdate{More: true}
 
 		if result.NamespaceLoadFailure {
@@ -446,9 +446,9 @@ func (rn *remoteNamespace) dumpReflectNamespaces() api.APIResponse {
 	return response
 }
 
-// RunKvQuery will block until the result can be written to kvq.
-func (rn *remoteNamespace) RunKvQuery(q *query.Query, kvq api.KvQuery) {
-	var runner api.APIResponder
+// RunQuery will block until the result can be written to kvq.
+func (rn *remoteNamespace) RunQuery(q *query.Query, kvq api.Command) {
+	var runner api.Responder
 
 	switch q.OpCode {
 	case query.JOIN:
@@ -514,7 +514,7 @@ func (rn *remoteNamespace) LoadTraverse(searcher api.NamespaceSearcher) error {
 	return rn.traverseTableNamespaces(tableAddrs, searcher)
 }
 
-func (rn *remoteNamespace) traverseTableNamespaces(tableAddrs []crdt.Link, f api.NamespaceTreeReader) error {
+func (rn *remoteNamespace) traverseTableNamespaces(tableAddrs []crdt.Link, f api.SearchResultTraverser) error {
 	resultch, cancelch := rn.namespaceLoader(tableAddrs)
 	defer close(cancelch)
 	for result := range resultch {

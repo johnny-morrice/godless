@@ -24,7 +24,7 @@ func TestApiQueryRead(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mock := NewMockRemoteNamespace(ctrl)
+	mock := NewMockCore(ctrl)
 	query := &query.Query{
 		OpCode:   query.SELECT,
 		TableKey: "Table Key",
@@ -41,7 +41,7 @@ func TestApiQueryRead(t *testing.T) {
 		},
 	}
 
-	mock.EXPECT().RunKvQuery(query, kvqmatcher{}).Do(writeStubResponse)
+	mock.EXPECT().RunQuery(query, kvqmatcher{}).Do(writeStubResponse)
 	mock.EXPECT().Close()
 
 	api, errch := launchAPI(mock)
@@ -64,21 +64,21 @@ func TestApiQueryRead(t *testing.T) {
 	}
 }
 
-func validateResponseCh(t *testing.T, respch <-chan api.APIResponse) api.APIResponse {
+func validateResponseCh(t *testing.T, respch <-chan api.Response) api.Response {
 	timeout := time.NewTimer(__TEST_TIMEOUT)
 
 	select {
 	case <-timeout.C:
 		t.Error("Timeout reading response")
 		t.FailNow()
-		return api.APIResponse{}
+		return api.Response{}
 	case r := <-respch:
 		timeout.Stop()
 		return r
 	}
 }
 
-func writeStubResponse(q *query.Query, kvq api.KvQuery) {
+func writeStubResponse(q *query.Query, kvq api.Command) {
 	kvq.Response <- api.RESPONSE_QUERY
 }
 
@@ -86,7 +86,7 @@ func TestApiQueryJoinSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mock := NewMockRemoteNamespace(ctrl)
+	mock := NewMockCore(ctrl)
 	query := &query.Query{
 		OpCode:   query.JOIN,
 		TableKey: "Table Key",
@@ -102,7 +102,7 @@ func TestApiQueryJoinSuccess(t *testing.T) {
 		},
 	}
 
-	mock.EXPECT().RunKvQuery(query, kvqmatcher{}).Do(writeStubResponse)
+	mock.EXPECT().RunQuery(query, kvqmatcher{}).Do(writeStubResponse)
 	mock.EXPECT().Close()
 
 	api, errch := launchAPI(mock)
@@ -129,7 +129,7 @@ func TestApiQueryJoinFailure(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mock := NewMockRemoteNamespace(ctrl)
+	mock := NewMockCore(ctrl)
 	query := &query.Query{
 		OpCode:   query.JOIN,
 		TableKey: "Table Key",
@@ -145,7 +145,7 @@ func TestApiQueryJoinFailure(t *testing.T) {
 		},
 	}
 
-	mock.EXPECT().RunKvQuery(query, kvqmatcher{}).Do(writeStubResponse)
+	mock.EXPECT().RunQuery(query, kvqmatcher{}).Do(writeStubResponse)
 	mock.EXPECT().Close()
 
 	api, errch := launchAPI(mock)
@@ -177,7 +177,7 @@ func TestApiQueryInvalid(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mock := NewMockRemoteNamespace(ctrl)
+	mock := NewMockCore(ctrl)
 	query := &query.Query{}
 
 	mock.EXPECT().Close()
@@ -196,18 +196,23 @@ func TestApiQueryInvalid(t *testing.T) {
 	api.CloseAPI()
 }
 
-func runQuery(service api.APIRequestService, query *query.Query) (<-chan api.APIResponse, error) {
-	return service.Call(api.APIRequest{Type: api.API_QUERY, Query: query})
+func runQuery(service api.RequestService, query *query.Query) (<-chan api.Response, error) {
+	return service.Call(api.Request{Type: api.API_QUERY, Query: query})
 }
 
-func launchAPI(remote api.RemoteNamespace) (api.APIService, <-chan error) {
+func launchAPI(remote api.Core) (api.Service, <-chan error) {
 	const queryLimit = 1
 	return launchConcurrentAPI(remote, queryLimit)
 }
 
-func launchConcurrentAPI(remote api.RemoteNamespace, queryLimit int) (api.APIService, <-chan error) {
+func launchConcurrentAPI(remote api.Core, queryLimit int) (api.Service, <-chan error) {
 	queue := cache.MakeResidentBufferQueue(__UNKNOWN_CACHE_SIZE)
-	return service.LaunchKeyValueStore(remote, queue, queryLimit)
+	options := service.QueuedApiServiceOptions{
+		Core:       remote,
+		Queue:      queue,
+		QueryLimit: queryLimit,
+	}
+	return service.LaunchQueuedApiService(options)
 }
 
 type kvqmatcher struct {
@@ -218,7 +223,7 @@ func (kvqmatcher) String() string {
 }
 
 func (kvqmatcher) Matches(v interface{}) bool {
-	_, ok := v.(api.KvQuery)
+	_, ok := v.(api.Command)
 
 	return ok
 }

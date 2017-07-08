@@ -18,7 +18,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mock := NewMockNamespaceTree(ctrl)
+	mock := NewMockRemoteNamespace(ctrl)
 
 	hash, cryptoErr := __SELECT_PUBLIC_KEY.Hash()
 
@@ -219,7 +219,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 	responseI := api.RESPONSE_QUERY
 	responseI.Namespace = namespaceH()
 
-	expect := []api.APIResponse{
+	expect := []api.Response{
 		responseA,
 		responseB,
 		responseC,
@@ -260,7 +260,7 @@ func TestRunQuerySelectFailure(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mock := NewMockNamespaceTree(ctrl)
+	mock := NewMockRemoteNamespace(ctrl)
 
 	mock.EXPECT().LoadTraverse(gomock.Any()).Return(errors.New("Expected Error"))
 
@@ -297,7 +297,7 @@ func TestRunQuerySelectInvalid(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mock := NewMockNamespaceTree(ctrl)
+	mock := NewMockRemoteNamespace(ctrl)
 
 	invalidQueries := []*query.Query{
 		// Basically wrong.
@@ -583,7 +583,7 @@ func streamH() []crdt.NamespaceStreamEntry {
 	return makeTableStream(ALT_TABLE_KEY, tableH())
 }
 
-func feedNamespace(reader api.NamespaceTreeReader) {
+func feedNamespace(reader api.SearchResultTraverser) {
 	result := api.SearchResult{
 		Namespace: mkselectns(),
 	}
@@ -642,7 +642,7 @@ func makeTableStream(name crdt.TableName, table crdt.Table) []crdt.NamespaceStre
 	return stream
 }
 
-func makeNamespaceTreeSelect(namespace api.NamespaceTree) *eval.NamespaceTreeSelect {
+func makeNamespaceTreeSelect(namespace api.RemoteNamespace) *eval.NamespaceTreeSelect {
 	keyStore := &crypto.KeyStore{}
 	return eval.MakeNamespaceTreeSelect(namespace, keyStore)
 }

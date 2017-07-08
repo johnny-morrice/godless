@@ -5,14 +5,14 @@ import (
 	"github.com/johnny-morrice/godless/crypto"
 )
 
-type NamespaceTree interface {
+type RemoteNamespace interface {
 	JoinTable(crdt.TableName, crdt.Table) (crdt.IPFSPath, error)
 	LoadTraverse(searcher NamespaceSearcher) error
 }
 
-type RemoteNamespaceTree interface {
+type RemoteNamespaceCore interface {
+	Core
 	RemoteNamespace
-	NamespaceTree
 }
 
 type SearchResult struct {
@@ -21,7 +21,7 @@ type SearchResult struct {
 	IndexLoadFailure     bool
 }
 
-type NamespaceTreeReader interface {
+type SearchResultTraverser interface {
 	ReadSearchResult(result SearchResult) TraversalUpdate
 }
 
@@ -36,11 +36,11 @@ type IndexSearch interface {
 
 type NamespaceSearcher interface {
 	IndexSearch
-	NamespaceTreeReader
+	SearchResultTraverser
 }
 
 type SignedTableSearcher struct {
-	Reader NamespaceTreeReader
+	Reader SearchResultTraverser
 	Tables []crdt.TableName
 	Keys   []crypto.PublicKey
 }
@@ -70,8 +70,8 @@ func (searcher SignedTableSearcher) Search(index crdt.Index) []crdt.Link {
 	return verified
 }
 
-type NamespaceTreeLambda func(result SearchResult) TraversalUpdate
+type SearchResultLambda func(result SearchResult) TraversalUpdate
 
-func (lambda NamespaceTreeLambda) ReadSearchResult(result SearchResult) TraversalUpdate {
+func (lambda SearchResultLambda) ReadSearchResult(result SearchResult) TraversalUpdate {
 	return lambda(result)
 }

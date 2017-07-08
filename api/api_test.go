@@ -13,8 +13,8 @@ import (
 	"github.com/johnny-morrice/godless/internal/testutil"
 )
 
-func (resp APIResponse) Generate(rand *rand.Rand, size int) reflect.Value {
-	gen := APIResponse{}
+func (resp Response) Generate(rand *rand.Rand, size int) reflect.Value {
+	gen := Response{}
 
 	gen.Msg = testutil.RandLetters(rand, size)
 
@@ -38,13 +38,13 @@ func (resp APIResponse) Generate(rand *rand.Rand, size int) reflect.Value {
 	return reflect.ValueOf(gen)
 }
 
-func genQueryResponse(rand *rand.Rand, size int, gen *APIResponse) {
+func genQueryResponse(rand *rand.Rand, size int, gen *Response) {
 	ns := crdt.GenNamespace(rand, size)
 	gen.Namespace = ns
 	gen.Path = genResponsePath(rand, size)
 }
 
-func genReflectResponse(rand *rand.Rand, size int, gen *APIResponse) {
+func genReflectResponse(rand *rand.Rand, size int, gen *Response) {
 	branch := rand.Float32()
 	if branch < 0.333 {
 		gen.Path = genResponsePath(rand, size)
@@ -89,15 +89,15 @@ func TestEncodeAPIResponseText(t *testing.T) {
 	testutil.AssertVerboseErrorIsNil(t, err)
 }
 
-func apiResponseEncodeOk(resp APIResponse) bool {
+func apiResponseEncodeOk(resp Response) bool {
 	return apiResponseTestWithSerializer(resp, apiResponseSerializationPass)
 }
 
-func apiResponseEncodeTextOk(resp APIResponse) bool {
+func apiResponseEncodeTextOk(resp Response) bool {
 	return apiResponseTestWithSerializer(resp, apiResponseSerializationTextPass)
 }
 
-func apiResponseTestWithSerializer(expected APIResponse, pass func(APIResponse) APIResponse) bool {
+func apiResponseTestWithSerializer(expected Response, pass func(Response) Response) bool {
 	actual := pass(expected)
 	same := expected.Equals(actual)
 
@@ -120,7 +120,7 @@ func apiResponseTestWithSerializer(expected APIResponse, pass func(APIResponse) 
 	return same
 }
 
-func apiResponseSerializationPass(resp APIResponse) APIResponse {
+func apiResponseSerializationPass(resp Response) Response {
 	buff := &bytes.Buffer{}
 	err := EncodeAPIResponse(resp, buff)
 
@@ -128,7 +128,7 @@ func apiResponseSerializationPass(resp APIResponse) APIResponse {
 		panic(err)
 	}
 
-	var decoded APIResponse
+	var decoded Response
 	decoded, err = DecodeAPIResponse(buff)
 
 	if err != nil {
@@ -138,7 +138,7 @@ func apiResponseSerializationPass(resp APIResponse) APIResponse {
 	return decoded
 }
 
-func apiResponseSerializationTextPass(resp APIResponse) APIResponse {
+func apiResponseSerializationTextPass(resp Response) Response {
 	buff := &bytes.Buffer{}
 	err := EncodeAPIResponseText(resp, buff)
 
@@ -146,7 +146,7 @@ func apiResponseSerializationTextPass(resp APIResponse) APIResponse {
 		panic(err)
 	}
 
-	var decoded APIResponse
+	var decoded Response
 	decoded, err = DecodeAPIResponseText(buff)
 
 	if err != nil {

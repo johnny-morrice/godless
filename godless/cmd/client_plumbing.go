@@ -65,7 +65,7 @@ var clientPlumbingCmd = &cobra.Command{
 			return
 		}
 
-		var response api.APIResponse
+		var response api.Response
 		response, err = sendQuery(client, q)
 
 		if err != nil {
@@ -92,7 +92,7 @@ func makeClient() api.Client {
 	return client
 }
 
-func outputResponse(response api.APIResponse) {
+func outputResponse(response api.Response) {
 	var err error
 	if queryBinary {
 		err = api.EncodeAPIResponse(response, os.Stdout)
@@ -130,7 +130,7 @@ func analyseQuery(query *query.Query) error {
 	return query.PrettyPrint(os.Stdout)
 }
 
-func sendQuery(client api.Client, query *query.Query) (api.APIResponse, error) {
+func sendQuery(client api.Client, query *query.Query) (api.Response, error) {
 	if query != nil {
 		return client.SendQuery(query)
 	} else if reflect != "" {
@@ -146,7 +146,7 @@ func sendQuery(client api.Client, query *query.Query) (api.APIResponse, error) {
 	}
 }
 
-func parseReflect() (api.APIReflectionType, error) {
+func parseReflect() (api.ReflectionType, error) {
 	switch reflect {
 	case "index":
 		return api.REFLECT_INDEX, nil

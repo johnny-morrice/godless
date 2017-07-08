@@ -272,7 +272,7 @@ func (queue *residentPriorityQueue) Len() int {
 	return count
 }
 
-func (queue *residentPriorityQueue) Enqueue(request api.APIRequest, data interface{}) error {
+func (queue *residentPriorityQueue) Enqueue(request api.Request, data interface{}) error {
 	item, err := makeResidentQueueItem(request, data)
 
 	if err != nil {
@@ -389,7 +389,7 @@ type residentQueueItem struct {
 	priority  residentPriority
 }
 
-func makeResidentQueueItem(request api.APIRequest, data interface{}) (residentQueueItem, error) {
+func makeResidentQueueItem(request api.Request, data interface{}) (residentQueueItem, error) {
 	priority, err := findRequestPriority(request)
 
 	if err != nil {
@@ -405,7 +405,7 @@ func makeResidentQueueItem(request api.APIRequest, data interface{}) (residentQu
 	return item, nil
 }
 
-func findRequestPriority(request api.APIRequest) (residentPriority, error) {
+func findRequestPriority(request api.Request) (residentPriority, error) {
 	switch request.Type {
 	case api.API_QUERY:
 		if request.Query.OpCode == query.JOIN {

@@ -127,7 +127,7 @@ func (console Console) readEvalPrint() error {
 	return nil
 }
 
-func (console *Console) printResponseTables(resp api.APIResponse, q *query.Query) {
+func (console *Console) printResponseTables(resp api.Response, q *query.Query) {
 	if q.OpCode == query.SELECT {
 		console.printNamespaceTables(resp.Namespace)
 	}

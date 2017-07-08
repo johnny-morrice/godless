@@ -34,7 +34,7 @@ func MakeClientWithHttp(addr string, webClient *gohttp.Client) *Client {
 	}
 }
 
-func (client *Client) SendReflection(command api.APIReflectionType) (api.APIResponse, error) {
+func (client *Client) SendReflection(command api.ReflectionType) (api.Response, error) {
 	var part string
 	switch command {
 	case api.REFLECT_HEAD_PATH:
@@ -51,7 +51,7 @@ func (client *Client) SendReflection(command api.APIReflectionType) (api.APIResp
 	return client.Post(path, http.MIME_EMPTY, &bytes.Buffer{})
 }
 
-func (client *Client) SendQuery(q *query.Query) (api.APIResponse, error) {
+func (client *Client) SendQuery(q *query.Query) (api.Response, error) {
 	validerr := q.Validate()
 
 	if validerr != nil {
@@ -68,7 +68,7 @@ func (client *Client) SendQuery(q *query.Query) (api.APIResponse, error) {
 	return client.Post(QUERY_API_ROOT, http.MIME_PROTO, buff)
 }
 
-func (client *Client) Post(path, bodyType string, body io.Reader) (api.APIResponse, error) {
+func (client *Client) Post(path, bodyType string, body io.Reader) (api.Response, error) {
 	addr := fmt.Sprintf("http://%s%s%s", client.addr, API_ROOT, path)
 	log.Info("HTTP POST to %s", addr)
 
@@ -93,7 +93,7 @@ func (client *Client) Post(path, bodyType string, body io.Reader) (api.APIRespon
 	}
 }
 
-func (client *Client) decodeHttpResponse(resp *gohttp.Response) (api.APIResponse, error) {
+func (client *Client) decodeHttpResponse(resp *gohttp.Response) (api.Response, error) {
 	if resp.StatusCode == WEB_API_SUCCESS {
 		return client.decodeSuccessResponse(resp)
 	} else if resp.StatusCode == WEB_API_ERROR {
@@ -103,7 +103,7 @@ func (client *Client) decodeHttpResponse(resp *gohttp.Response) (api.APIResponse
 	}
 }
 
-func (client *Client) decodeFailureResponse(resp *gohttp.Response) (api.APIResponse, error) {
+func (client *Client) decodeFailureResponse(resp *gohttp.Response) (api.Response, error) {
 	ct := resp.Header[http.CONTENT_TYPE]
 
 	if util.LinearContains(ct, http.MIME_PROTO) {
@@ -113,7 +113,7 @@ func (client *Client) decodeFailureResponse(resp *gohttp.Response) (api.APIRespo
 	}
 }
 
-func (client *Client) decodeUnexpectedResponse(resp *gohttp.Response) (api.APIResponse, error) {
+func (client *Client) decodeUnexpectedResponse(resp *gohttp.Response) (api.Response, error) {
 	ct := resp.Header[http.CONTENT_TYPE]
 
 	if util.LinearContains(ct, "text/plain; charset=utf-8") {
@@ -130,7 +130,7 @@ func (client *Client) decodeUnexpectedResponse(resp *gohttp.Response) (api.APIRe
 	}
 }
 
-func (client *Client) decodeSuccessResponse(resp *gohttp.Response) (api.APIResponse, error) {
+func (client *Client) decodeSuccessResponse(resp *gohttp.Response) (api.Response, error) {
 	ct := resp.Header[http.CONTENT_TYPE]
 	if util.LinearContains(ct, http.MIME_PROTO) {
 		return api.DecodeAPIResponse(resp.Body)

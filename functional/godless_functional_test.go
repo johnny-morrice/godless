@@ -1,4 +1,4 @@
-package mock_godless
+package functional_godless
 
 import (
 	"testing"

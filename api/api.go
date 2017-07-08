@@ -1,6 +1,6 @@
 package api
 
-//go:generate mockgen -package mock_godless -destination ../mock/mock_api.go -imports lib=github.com/johnny-morrice/api -self_package lib github.com/johnny-morrice/godless/api RemoteNamespace,RemoteStore,NamespaceTree,NamespaceSearcher,DataPeer,PubSubSubscription,PubSubRecord
+//go:generate mockgen -package mock_godless -destination ../mock/mock_api.go -imports lib=github.com/johnny-morrice/api -self_package lib github.com/johnny-morrice/godless/api Core,RemoteStore,RemoteNamespace,NamespaceSearcher,DataPeer,PubSubSubscription,PubSubRecord
 
 import (
 	"bytes"
@@ -11,143 +11,143 @@ import (
 	"github.com/johnny-morrice/godless/query"
 )
 
-type APIService interface {
-	APICloserService
-	APIRequestService
+type Core interface {
+	RunQuery(*query.Query, Command)
+	Reflect(ReflectionType, Command)
+	Replicate([]crdt.Link, Command)
+	WriteMemoryImage() error
+	Close()
 }
 
-type APIRequestService interface {
-	Call(APIRequest) (<-chan APIResponse, error)
+type Service interface {
+	CloserService
+	RequestService
 }
 
-type APICloserService interface {
+type RequestService interface {
+	Call(Request) (<-chan Response, error)
+}
+
+type CloserService interface {
 	CloseAPI()
 }
 
-type APIRequest struct {
-	Type       APIMessageType
-	Reflection APIReflectionType
+type Request struct {
+	Type       MessageType
+	Reflection ReflectionType
 	Query      *query.Query
 	Replicate  []crdt.Link
 }
 
-type APIResponder interface {
-	RunQuery() APIResponse
+type Responder interface {
+	RunQuery() Response
 }
 
-type APIResponderFunc func() APIResponse
+type ResponderLambda func() Response
 
-func (arf APIResponderFunc) RunQuery() APIResponse {
+func (arf ResponderLambda) RunQuery() Response {
 	return arf()
 }
 
-type APIReflectionType uint16
+type ReflectionType uint16
 
 const (
-	REFLECT_NOOP = APIReflectionType(iota)
+	REFLECT_NOOP = ReflectionType(iota)
 	REFLECT_HEAD_PATH
 	REFLECT_DUMP_NAMESPACE
 	REFLECT_INDEX
 )
 
-type APIMessageType uint8
+type MessageType uint8
 
 const (
-	API_MESSAGE_NOOP = APIMessageType(iota)
+	API_MESSAGE_NOOP = MessageType(iota)
 	API_QUERY
 	API_REFLECT
 	API_REPLICATE
 )
 
-type RemoteNamespace interface {
-	RunKvQuery(*query.Query, KvQuery)
-	RunKvReflection(APIReflectionType, KvQuery)
-	Replicate([]crdt.Link, KvQuery)
-	WriteMemoryImage() error
-	Close()
+type coreCommand interface {
+	Run(Core, Command)
 }
 
-type kvRunner interface {
-	Run(RemoteNamespace, KvQuery)
-}
-
-type kvReplicator struct {
+type coreReplicator struct {
 	links []crdt.Link
 }
 
-func (replicator kvReplicator) Run(kvn RemoteNamespace, kvq KvQuery) {
+func (replicator coreReplicator) Run(kvn Core, kvq Command) {
 	kvn.Replicate(replicator.links, kvq)
 }
 
-type kvQueryRunner struct {
+type coreQueryRunner struct {
 	query *query.Query
 }
 
-func (kqr kvQueryRunner) Run(kvn RemoteNamespace, kvq KvQuery) {
-	kvn.RunKvQuery(kqr.query, kvq)
+func (kqr coreQueryRunner) Run(kvn Core, kvq Command) {
+	kvn.RunQuery(kqr.query, kvq)
 }
 
-type kvReflectRunner struct {
-	reflection APIReflectionType
+type coreReflectRunner struct {
+	reflection ReflectionType
 }
 
-func (krr kvReflectRunner) Run(kvn RemoteNamespace, kvq KvQuery) {
-	kvn.RunKvReflection(krr.reflection, kvq)
+func (krr coreReflectRunner) Run(kvn Core, kvq Command) {
+	kvn.Reflect(krr.reflection, kvq)
 }
 
-type KvQuery struct {
-	runner   kvRunner
-	Request  APIRequest
-	Response chan APIResponse
+type Command struct {
+	runner   coreCommand
+	Request  Request
+	Response chan Response
 }
 
-func makeApiQuery(request APIRequest, runner kvRunner) KvQuery {
-	return KvQuery{
+func makeApiQuery(request Request, runner coreCommand) Command {
+	return Command{
 		Request:  request,
 		runner:   runner,
-		Response: make(chan APIResponse),
+		Response: make(chan Response),
 	}
 }
 
-func MakeKvQuery(request APIRequest) KvQuery {
-	return makeApiQuery(request, kvQueryRunner{query: request.Query})
+func MakeQueryCommand(request Request) Command {
+	return makeApiQuery(request, coreQueryRunner{query: request.Query})
 }
 
-func MakeKvReflect(request APIRequest) KvQuery {
-	return makeApiQuery(request, kvReflectRunner{reflection: request.Reflection})
+func MakeReflectCommand(request Request) Command {
+	return makeApiQuery(request, coreReflectRunner{reflection: request.Reflection})
 }
 
-func MakeKvReplicate(request APIRequest) KvQuery {
-	return makeApiQuery(request, kvReplicator{links: request.Replicate})
+func MakeReplicateCommand(request Request) Command {
+	return makeApiQuery(request, coreReplicator{links: request.Replicate})
 }
 
-func (kvq KvQuery) WriteResponse(val APIResponse) {
+func (kvq Command) WriteResponse(val Response) {
 	kvq.Response <- val
 	close(kvq.Response)
 }
 
-func (kvq KvQuery) Error(err error) {
-	kvq.WriteResponse(APIResponse{Err: err})
+func (kvq Command) Error(err error) {
+	kvq.WriteResponse(Response{Err: err})
 }
 
-func (kvq KvQuery) Run(kvn RemoteNamespace) {
+func (kvq Command) Run(kvn Core) {
 	kvq.runner.Run(kvn, kvq)
 }
 
-type APIResponse struct {
+type Response struct {
 	Msg       string
 	Err       error
-	Type      APIMessageType
+	Type      MessageType
 	Path      crdt.IPFSPath
 	Namespace crdt.Namespace
 	Index     crdt.Index
 }
 
-func (resp APIResponse) IsEmpty() bool {
-	return resp.Equals(APIResponse{})
+func (resp Response) IsEmpty() bool {
+	return resp.Equals(Response{})
 }
 
-func (resp APIResponse) AsText() (string, error) {
+func (resp Response) AsText() (string, error) {
 	const failMsg = "AsText failed"
 
 	w := &bytes.Buffer{}
@@ -160,7 +160,7 @@ func (resp APIResponse) AsText() (string, error) {
 	return w.String(), nil
 }
 
-func (resp APIResponse) Equals(other APIResponse) bool {
+func (resp Response) Equals(other Response) bool {
 	ok := resp.Msg == other.Msg
 	ok = ok && resp.Type == other.Type
 	ok = ok && resp.Path == other.Path
@@ -190,8 +190,8 @@ func (resp APIResponse) Equals(other APIResponse) bool {
 
 var RESPONSE_FAIL_MSG = "error"
 var RESPONSE_OK_MSG = "ok"
-var RESPONSE_OK APIResponse = APIResponse{Msg: RESPONSE_OK_MSG}
-var RESPONSE_FAIL APIResponse = APIResponse{Msg: RESPONSE_FAIL_MSG}
-var RESPONSE_QUERY APIResponse = APIResponse{Msg: RESPONSE_OK_MSG, Type: API_QUERY}
-var RESPONSE_REPLICATE APIResponse = APIResponse{Msg: RESPONSE_OK_MSG, Type: API_REPLICATE}
-var RESPONSE_REFLECT APIResponse = APIResponse{Msg: RESPONSE_OK_MSG, Type: API_REFLECT}
+var RESPONSE_OK Response = Response{Msg: RESPONSE_OK_MSG}
+var RESPONSE_FAIL Response = Response{Msg: RESPONSE_FAIL_MSG}
+var RESPONSE_QUERY Response = Response{Msg: RESPONSE_OK_MSG, Type: API_QUERY}
+var RESPONSE_REPLICATE Response = Response{Msg: RESPONSE_OK_MSG, Type: API_REPLICATE}
+var RESPONSE_REFLECT Response = Response{Msg: RESPONSE_OK_MSG, Type: API_REFLECT}

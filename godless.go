@@ -76,8 +76,8 @@ type Godless struct {
 	errwg      sync.WaitGroup
 	stopch     chan struct{}
 	stoppers   []api.Closer
-	remote     api.RemoteNamespace
-	api        api.APIService
+	remote     api.Core
+	api        api.Service
 	webService *service.WebService
 }
 
@@ -112,7 +112,7 @@ func New(options Options) (*Godless, error) {
 	return godless, nil
 }
 
-func (godless *Godless) Call(request api.APIRequest) (<-chan api.APIResponse, error) {
+func (godless *Godless) Call(request api.Request) (<-chan api.Response, error) {
 	return godless.api.Call(request)
 }
 
@@ -204,7 +204,7 @@ func (godless *Godless) connectDataPeer() error {
 
 func (godless *Godless) connectRemoteStore() error {
 	if godless.RemoteStore == nil {
-		ipfs := &ipfs.IpfsRemoteStore{
+		ipfs := &service.ContentAddressableRemoteStore{
 			Shell: godless.DataPeer,
 		}
 
@@ -267,7 +267,7 @@ func (godless *Godless) setupNamespace() error {
 		MemoryImage:    godless.MemoryImage,
 	}
 
-	godless.remote = service.MakeRemoteNamespace(namespaceOptions)
+	godless.remote = service.MakeRemoteNamespaceCore(namespaceOptions)
 	return nil
 }
 
@@ -284,7 +284,13 @@ func (godless *Godless) launchAPI() error {
 		queue = cache.MakeResidentBufferQueue(__UNKNOWN_BUFFER_SIZE)
 	}
 
-	api, errch := service.LaunchKeyValueStore(godless.remote, queue, limit)
+	options := service.QueuedApiServiceOptions{
+		Core:       godless.remote,
+		Queue:      queue,
+		QueryLimit: limit,
+	}
+
+	api, errch := service.LaunchQueuedApiService(options)
 
 	godless.addErrors(errch)
 	godless.api = api

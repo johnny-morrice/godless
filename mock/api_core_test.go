@@ -20,7 +20,11 @@ func TestRemoteNamespaceReplicate(t *testing.T) {
 	t.FailNow()
 }
 
-func TestRemoteNamespaceRunKvReflection(t *testing.T) {
+func TestRemoteNamespaceRunQuery(t *testing.T) {
+	t.FailNow()
+}
+
+func TestRemoteNamespaceReflect(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	mockStore := NewMockRemoteStore(ctrl)
@@ -79,14 +83,14 @@ func TestRemoteNamespaceRunKvReflection(t *testing.T) {
 }
 
 // FIXME test error path
-func testReflectHead(t *testing.T, remote api.RemoteNamespace, expected crdt.IPFSPath) {
+func testReflectHead(t *testing.T, remote api.Core, expected crdt.IPFSPath) {
 	resp := reflectOnRemote(remote, api.REFLECT_HEAD_PATH)
 
 	testutil.AssertNil(t, resp.Err)
 	testutil.AssertEquals(t, "Unexpected HEAD path", expected, resp.Path)
 }
 
-func testReflectIndex(t *testing.T, remote api.RemoteNamespace, expected crdt.Index) {
+func testReflectIndex(t *testing.T, remote api.Core, expected crdt.Index) {
 	resp := reflectOnRemote(remote, api.REFLECT_INDEX)
 	actual := resp.Index
 
@@ -94,7 +98,7 @@ func testReflectIndex(t *testing.T, remote api.RemoteNamespace, expected crdt.In
 	testutil.Assert(t, "Unexpected index", expected.Equals(actual))
 }
 
-func testReflectNamespace(t *testing.T, remote api.RemoteNamespace, expected crdt.Namespace) {
+func testReflectNamespace(t *testing.T, remote api.Core, expected crdt.Namespace) {
 	resp := reflectOnRemote(remote, api.REFLECT_DUMP_NAMESPACE)
 	actual := resp.Namespace
 
@@ -102,8 +106,8 @@ func testReflectNamespace(t *testing.T, remote api.RemoteNamespace, expected crd
 	testutil.Assert(t, "Unexpected namespace", expected.Equals(actual))
 }
 
-func reflectOnRemote(remote api.RemoteNamespace, reflection api.APIReflectionType) api.APIResponse {
-	request := api.MakeKvReflect(api.APIRequest{Type: api.API_REFLECT, Reflection: reflection})
+func reflectOnRemote(remote api.Core, reflection api.ReflectionType) api.Response {
+	request := api.MakeReflectCommand(api.Request{Type: api.API_REFLECT, Reflection: reflection})
 	go request.Run(remote)
 
 	resp := readApiResponse(request)
@@ -111,11 +115,7 @@ func reflectOnRemote(remote api.RemoteNamespace, reflection api.APIReflectionTyp
 	return resp
 }
 
-func TestRunKvQuery(t *testing.T) {
-	t.FailNow()
-}
-
-func TestLoadTraverseSuccess(t *testing.T) {
+func TestRemoteNamespaceLoadTraverseSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -189,7 +189,7 @@ func TestLoadTraverseSuccess(t *testing.T) {
 	}
 }
 
-func TestLoadTraverseFailure(t *testing.T) {
+func TestRemoteNamespaceLoadTraverseFailure(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -236,7 +236,7 @@ func TestLoadTraverseFailure(t *testing.T) {
 	}
 }
 
-func TestLoadTraverseAbort(t *testing.T) {
+func TestRemoteNamespaceLoadTraverseAbort(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -283,7 +283,7 @@ func TestLoadTraverseAbort(t *testing.T) {
 	}
 }
 
-func TestJoinTableSuccess(t *testing.T) {
+func TestRemoteNamespaceJoinTableSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -332,7 +332,7 @@ func TestJoinTableSuccess(t *testing.T) {
 	testutil.AssertNil(t, err)
 }
 
-func TestJoinTableFailure(t *testing.T) {
+func TestRemoteNamespaceJoinTableFailure(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -434,7 +434,7 @@ func (matcher indexmatcher) String() string {
 	return fmt.Sprintf("matches Index: %v", matcher.index)
 }
 
-func readApiResponse(kvq api.KvQuery) api.APIResponse {
+func readApiResponse(kvq api.Command) api.Response {
 	const duration = time.Second * 1
 	timeout := time.NewTimer(duration)
 	select {
@@ -445,19 +445,19 @@ func readApiResponse(kvq api.KvQuery) api.APIResponse {
 	}
 }
 
-func makeRemote(store api.RemoteStore) api.RemoteNamespaceTree {
+func makeRemote(store api.RemoteStore) api.RemoteNamespaceCore {
 	headCache := cache.MakeResidentHeadCache()
 	options := remoteOptions(store, headCache)
-	return service.MakeRemoteNamespace(options)
+	return service.MakeRemoteNamespaceCore(options)
 }
 
-func loadRemote(store api.RemoteStore, addr crdt.IPFSPath) api.RemoteNamespaceTree {
+func loadRemote(store api.RemoteStore, addr crdt.IPFSPath) api.RemoteNamespaceCore {
 	headCache := cache.MakeResidentHeadCache()
 	err := headCache.SetHead(addr)
 	panicOnBadInit(err)
 
 	options := remoteOptions(store, headCache)
-	return service.MakeRemoteNamespace(options)
+	return service.MakeRemoteNamespaceCore(options)
 }
 
 func remoteOptions(store api.RemoteStore, headCache api.HeadCache) service.RemoteNamespaceOptions {

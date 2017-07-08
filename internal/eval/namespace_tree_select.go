@@ -15,7 +15,7 @@ type NamespaceTreeSelect struct {
 	query.NoJoinVisitor
 	query.NoDebugVisitor
 	query.ErrorCollectVisitor
-	Namespace          api.NamespaceTree
+	Namespace          api.RemoteNamespace
 	crit               *rowCriteria
 	keys               []crypto.PublicKey
 	keyStore           api.KeyStore
@@ -23,7 +23,7 @@ type NamespaceTreeSelect struct {
 	indexLoadError     bool
 }
 
-func MakeNamespaceTreeSelect(namespace api.NamespaceTree, keyStore api.KeyStore) *NamespaceTreeSelect {
+func MakeNamespaceTreeSelect(namespace api.RemoteNamespace, keyStore api.KeyStore) *NamespaceTreeSelect {
 	return &NamespaceTreeSelect{
 		Namespace: namespace,
 		crit: &rowCriteria{
@@ -34,7 +34,7 @@ func MakeNamespaceTreeSelect(namespace api.NamespaceTree, keyStore api.KeyStore)
 	}
 }
 
-func (visitor *NamespaceTreeSelect) RunQuery() api.APIResponse {
+func (visitor *NamespaceTreeSelect) RunQuery() api.Response {
 	const failMsg = "NamespaceTreeSelect.RunQuery failed"
 
 	fail := api.RESPONSE_FAIL
@@ -53,7 +53,7 @@ func (visitor *NamespaceTreeSelect) RunQuery() api.APIResponse {
 	log.Info("Searching namespaces...")
 
 	searcher := api.SignedTableSearcher{
-		Reader: api.NamespaceTreeLambda(visitor.ReadSearchResult),
+		Reader: api.SearchResultLambda(visitor.ReadSearchResult),
 		Tables: []crdt.TableName{visitor.crit.tableKey},
 	}
 	searchErr := visitor.Namespace.LoadTraverse(searcher)

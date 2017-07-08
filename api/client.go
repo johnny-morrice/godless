@@ -5,6 +5,6 @@ import (
 )
 
 type Client interface {
-	SendReflection(command APIReflectionType) (APIResponse, error)
-	SendQuery(q *query.Query) (APIResponse, error)
+	SendReflection(command ReflectionType) (Response, error)
+	SendQuery(q *query.Query) (Response, error)
 }

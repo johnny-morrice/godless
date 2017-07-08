@@ -13,21 +13,21 @@ type NamespaceTreeJoin struct {
 	query.NoSelectVisitor
 	query.NoDebugVisitor
 	query.ErrorCollectVisitor
-	Namespace   api.NamespaceTree
+	Namespace   api.RemoteNamespace
 	tableKey    crdt.TableName
 	table       crdt.Table
 	privateKeys []crypto.PrivateKey
 	keyStore    api.KeyStore
 }
 
-func MakeNamespaceTreeJoin(ns api.NamespaceTree, keyStore api.KeyStore) *NamespaceTreeJoin {
+func MakeNamespaceTreeJoin(ns api.RemoteNamespace, keyStore api.KeyStore) *NamespaceTreeJoin {
 	return &NamespaceTreeJoin{
 		Namespace: ns,
 		keyStore:  keyStore,
 	}
 }
 
-func (visitor *NamespaceTreeJoin) RunQuery() api.APIResponse {
+func (visitor *NamespaceTreeJoin) RunQuery() api.Response {
 	fail := api.RESPONSE_FAIL
 	fail.Type = api.API_QUERY
 
