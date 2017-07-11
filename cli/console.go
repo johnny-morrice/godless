@@ -152,7 +152,7 @@ func (console *Console) printNamespaceTables(namespace crdt.Namespace) {
 
 	table := makeNamespaceTable(namespace)
 	table.fprint(console.outputBuffer)
-	console.printf("Found %d Namespace Entries.\n", table.countrows())
+	console.printf("\nFound %d Namespace Entries.\n", table.countrows())
 }
 
 func (console *Console) printPath(path crdt.IPFSPath) {
@@ -180,9 +180,7 @@ func makeNamespaceTable(namespace crdt.Namespace) *monospaceTable {
 		// "Signatures",
 	}
 
-	for _, c := range columns {
-		table.addColumn(c)
-	}
+	table.addColumn(columns...)
 
 	namespace.ForeachEntry(func(t crdt.TableName, r crdt.RowName, e crdt.EntryName, entry crdt.Entry) {
 		for _, point := range entry.GetValues() {
@@ -195,7 +193,7 @@ func makeNamespaceTable(namespace crdt.Namespace) *monospaceTable {
 				// sigText,
 			}
 
-			table.addRow(row)
+			table.addRow(row...)
 		}
 	})
 
@@ -220,4 +218,4 @@ func makeSigText(signatures []crypto.Signature) string {
 }
 
 const __VALUE_PADDING_COUNT = 3
-const __ROW_PADDING_COUNT = 2
+const __ROW_PADDING_COUNT = 1

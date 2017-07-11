@@ -20,12 +20,15 @@ func (table *monospaceTable) countrows() int {
 
 func (table *monospaceTable) fprint(w io.Writer) {
 	table.printline(w)
+	table.newline(w)
 	table.fprintrow(w, table.columns)
 	table.printline(w)
+	table.newline(w)
 
 	for _, r := range table.rows {
 		table.fprintrow(w, r)
 	}
+
 	table.printline(w)
 }
 
@@ -45,8 +48,6 @@ func (table *monospaceTable) gettotalwidth() int {
 func (table *monospaceTable) printline(w io.Writer) {
 	total := table.gettotalwidth()
 	table.repeat(w, "-", total)
-
-	table.newline(w)
 }
 
 func (table *monospaceTable) repeat(w io.Writer, text string, count int) {
@@ -62,7 +63,7 @@ func (table *monospaceTable) fprintrow(w io.Writer, row []string) {
 		table.write(w, " ")
 	}
 
-	table.write(w, " |")
+	table.write(w, "|")
 	table.newline(w)
 }
 
@@ -85,15 +86,18 @@ func (table *monospaceTable) padsize(columnIndex int, text string) int {
 	return columnWidth - len(text)
 }
 
-func (table *monospaceTable) addColumn(column string) error {
+func (table *monospaceTable) addColumn(columns ...string) error {
 	if table.frozen {
 		return errors.New("don't addColumn after addRow")
 	}
 
-	table.columns = append(table.columns, column)
-	table.columnWidths = append(table.columnWidths, 0)
-	index := len(table.columns) - 1
-	table.recalcWidth(index, column)
+	for _, c := range columns {
+		table.columns = append(table.columns, c)
+		table.columnWidths = append(table.columnWidths, 0)
+		index := len(table.columns) - 1
+		table.recalcWidth(index, c)
+	}
+
 	return nil
 }
 
@@ -105,7 +109,7 @@ func (table *monospaceTable) recalcWidth(columnIndex int, addition string) {
 	}
 }
 
-func (table *monospaceTable) addRow(values []string) error {
+func (table *monospaceTable) addRow(values ...string) error {
 	if len(values) != len(table.columns) {
 		return errors.New("row length does not match column length")
 	}
