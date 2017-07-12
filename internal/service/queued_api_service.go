@@ -138,10 +138,15 @@ func (service *queuedApiService) enqueue(kvq api.Command) {
 
 func (service *queuedApiService) replicate(request api.Request) (<-chan api.Response, error) {
 	log.Info("api.APIService Replicating...")
-	kvq := api.MakeReplicateCommand(request)
-	service.enqueue(kvq)
+	command, err := request.MakeCommand()
 
-	return kvq.Response, nil
+	if err != nil {
+		return nil, err
+	}
+
+	service.enqueue(command)
+
+	return command.Response, nil
 }
 
 func (service *queuedApiService) runQuery(request api.Request) (<-chan api.Response, error) {
@@ -160,20 +165,29 @@ func (service *queuedApiService) runQuery(request api.Request) (<-chan api.Respo
 		log.Warn("Invalid query.Query")
 		return nil, err
 	}
-	kvq := api.MakeQueryCommand(request)
 
-	service.enqueue(kvq)
+	command, err := request.MakeCommand()
 
-	return kvq.Response, nil
+	if err != nil {
+		return nil, err
+	}
+
+	service.enqueue(command)
+
+	return command.Response, nil
 }
 
 func (service *queuedApiService) reflect(request api.Request) (<-chan api.Response, error) {
 	log.Info("api.APIService running reflect request...")
-	kvq := api.MakeReflectCommand(request)
+	command, err := request.MakeCommand()
 
-	service.enqueue(kvq)
+	if err != nil {
+		return nil, err
+	}
 
-	return kvq.Response, nil
+	service.enqueue(command)
+
+	return command.Response, nil
 }
 
 func (service *queuedApiService) CloseAPI() {

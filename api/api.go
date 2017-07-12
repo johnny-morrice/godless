@@ -4,6 +4,7 @@ package api
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/pkg/errors"
 
@@ -37,6 +38,19 @@ type Request struct {
 	Reflection ReflectionType
 	Query      *query.Query
 	Replicate  []crdt.Link
+}
+
+func (request Request) MakeCommand() (Command, error) {
+	switch request.Type {
+	case API_QUERY:
+		return makeApiQuery(request, coreQueryRunner{query: request.Query}), nil
+	case API_REFLECT:
+		return makeApiQuery(request, coreReflectRunner{reflection: request.Reflection}), nil
+	case API_REPLICATE:
+		return makeApiQuery(request, coreReplicator{links: request.Replicate}), nil
+	default:
+		return Command{}, fmt.Errorf("Invalid request.Type: %d", request.Type)
+	}
 }
 
 type Responder interface {
@@ -107,18 +121,6 @@ func makeApiQuery(request Request, runner coreCommand) Command {
 		runner:   runner,
 		Response: make(chan Response),
 	}
-}
-
-func MakeQueryCommand(request Request) Command {
-	return makeApiQuery(request, coreQueryRunner{query: request.Query})
-}
-
-func MakeReflectCommand(request Request) Command {
-	return makeApiQuery(request, coreReflectRunner{reflection: request.Reflection})
-}
-
-func MakeReplicateCommand(request Request) Command {
-	return makeApiQuery(request, coreReplicator{links: request.Replicate})
 }
 
 func (kvq Command) WriteResponse(val Response) {

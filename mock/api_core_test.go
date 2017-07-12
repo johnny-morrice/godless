@@ -13,18 +13,67 @@ import (
 	"github.com/johnny-morrice/godless/internal/service"
 	"github.com/johnny-morrice/godless/internal/testutil"
 	"github.com/johnny-morrice/godless/log"
+	"github.com/johnny-morrice/godless/query"
 	"github.com/pkg/errors"
 )
 
-func TestRemoteNamespaceReplicate(t *testing.T) {
+func TestRemoteNamespaceCoreReplicate(t *testing.T) {
 	t.FailNow()
 }
 
-func TestRemoteNamespaceRunQuery(t *testing.T) {
-	t.FailNow()
+func TestRemoteNamespaceCoreRunQuery(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockStore := NewMockRemoteStore(ctrl)
+
+	joinQuery, err := query.CompileQuery("join cars rows (@key=car10, driver=\"Mr Blogs\")")
+	testutil.AssertNil(t, err)
+	selectQuery, err := query.CompileQuery("select cars")
+	testutil.AssertNil(t, err)
+
+	// TODO would be nice to get a DSL for writing namespaces.  JSON?
+	namespace := crdt.MakeNamespace(map[crdt.TableName]crdt.Table{
+		"cars": crdt.MakeTable(map[crdt.RowName]crdt.Row{
+			"car10": crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
+				"driver": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Mr Blogs")}),
+			}),
+		}),
+	})
+
+	const namespaceAddr = crdt.IPFSPath("Namespace addr")
+	const indexAddr = crdt.IPFSPath("Index addr")
+
+	index := crdt.MakeIndex(map[crdt.TableName]crdt.Link{
+		"cars": crdt.UnsignedLink(namespaceAddr),
+	})
+
+	mockStore.EXPECT().AddNamespace(matchNamespace(namespace)).Return(namespaceAddr, nil)
+	mockStore.EXPECT().AddIndex(matchIndex(index)).Return(indexAddr, nil).AnyTimes()
+	mockStore.EXPECT().CatIndex(indexAddr).Return(index, nil).MinTimes(1)
+	mockStore.EXPECT().CatNamespace(namespaceAddr).Return(namespace, nil)
+
+	remote := loadRemote(mockStore, indexAddr)
+	defer remote.Close()
+
+	log.Debug("running join")
+	joinResponse := makeQueryRequest(remote, joinQuery)
+	testutil.AssertNil(t, joinResponse.Err)
+	log.Debug("running select")
+	selectResponse := makeQueryRequest(remote, selectQuery)
+	log.Debug("completed queries")
+	testutil.AssertNil(t, joinResponse.Err)
+	testutil.Assert(t, "Unexpected namespace", namespace.Equals(selectResponse.Namespace))
 }
 
-func TestRemoteNamespaceReflect(t *testing.T) {
+func makeQueryRequest(core api.Core, query *query.Query) api.Response {
+	request := api.Request{Type: api.API_QUERY, Query: query}
+	command, err := request.MakeCommand()
+	panicOnBadInit(err)
+	go core.RunQuery(query, command)
+	return readApiResponse(command)
+}
+
+func TestRemoteNamespaceCoreReflect(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	mockStore := NewMockRemoteStore(ctrl)
@@ -107,15 +156,17 @@ func testReflectNamespace(t *testing.T, remote api.Core, expected crdt.Namespace
 }
 
 func reflectOnRemote(remote api.Core, reflection api.ReflectionType) api.Response {
-	request := api.MakeReflectCommand(api.Request{Type: api.API_REFLECT, Reflection: reflection})
-	go request.Run(remote)
+	request := api.Request{Type: api.API_REFLECT, Reflection: reflection}
+	command, err := request.MakeCommand()
+	panicOnBadInit(err)
+	go command.Run(remote)
 
-	resp := readApiResponse(request)
+	resp := readApiResponse(command)
 
 	return resp
 }
 
-func TestRemoteNamespaceLoadTraverseSuccess(t *testing.T) {
+func TestRemoteNamespaceCoreLoadTraverseSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -189,7 +240,7 @@ func TestRemoteNamespaceLoadTraverseSuccess(t *testing.T) {
 	}
 }
 
-func TestRemoteNamespaceLoadTraverseFailure(t *testing.T) {
+func TestRemoteNamespaceCoreLoadTraverseFailure(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -236,7 +287,7 @@ func TestRemoteNamespaceLoadTraverseFailure(t *testing.T) {
 	}
 }
 
-func TestRemoteNamespaceLoadTraverseAbort(t *testing.T) {
+func TestRemoteNamespaceCoreLoadTraverseAbort(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -283,7 +334,7 @@ func TestRemoteNamespaceLoadTraverseAbort(t *testing.T) {
 	}
 }
 
-func TestRemoteNamespaceJoinTableSuccess(t *testing.T) {
+func TestRemoteNamespaceCoreJoinTableSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -332,7 +383,7 @@ func TestRemoteNamespaceJoinTableSuccess(t *testing.T) {
 	testutil.AssertNil(t, err)
 }
 
-func TestRemoteNamespaceJoinTableFailure(t *testing.T) {
+func TestRemoteNamespaceCoreJoinTableFailure(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -434,11 +485,11 @@ func (matcher indexmatcher) String() string {
 	return fmt.Sprintf("matches Index: %v", matcher.index)
 }
 
-func readApiResponse(kvq api.Command) api.Response {
+func readApiResponse(command api.Command) api.Response {
 	const duration = time.Second * 1
 	timeout := time.NewTimer(duration)
 	select {
-	case resp := <-kvq.Response:
+	case resp := <-command.Response:
 		return resp
 	case <-timeout.C:
 		panic("Timed out")
