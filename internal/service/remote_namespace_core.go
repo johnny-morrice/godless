@@ -14,7 +14,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type RemoteNamespaceOptions struct {
+type RemoteNamespaceCoreOptions struct {
 	Store          api.RemoteStore
 	HeadCache      api.HeadCache
 	MemoryImage    api.MemoryImage
@@ -26,7 +26,7 @@ type RemoteNamespaceOptions struct {
 	Debug          bool
 }
 
-func checkOptions(options RemoteNamespaceOptions) {
+func checkOptions(options RemoteNamespaceCoreOptions) {
 	requiredOptions := map[string]interface{}{
 		"Store":       options.Store,
 		"HeadCache":   options.HeadCache,
@@ -43,7 +43,7 @@ func checkOptions(options RemoteNamespaceOptions) {
 }
 
 type remoteNamespace struct {
-	RemoteNamespaceOptions
+	RemoteNamespaceCoreOptions
 	namespaceTube chan addNamespaceRequest
 	indexTube     chan addIndexRequest
 	pulser        *time.Ticker
@@ -52,7 +52,7 @@ type remoteNamespace struct {
 	memImgTracker dirtyTracker
 }
 
-func MakeRemoteNamespaceCore(options RemoteNamespaceOptions) api.RemoteNamespaceCore {
+func MakeRemoteNamespaceCore(options RemoteNamespaceCoreOptions) api.RemoteNamespaceCore {
 	pulseInterval := options.Pulse
 	if pulseInterval == 0 {
 		pulseInterval = __DEFAULT_PULSE
@@ -61,13 +61,13 @@ func MakeRemoteNamespaceCore(options RemoteNamespaceOptions) api.RemoteNamespace
 	checkOptions(options)
 
 	remote := &remoteNamespace{
-		RemoteNamespaceOptions: options,
-		namespaceTube:          make(chan addNamespaceRequest),
-		indexTube:              make(chan addIndexRequest),
-		pulser:                 time.NewTicker(pulseInterval),
-		stopch:                 make(chan struct{}),
-		wg:                     &sync.WaitGroup{},
-		memImgTracker:          makeDirtyTracker(),
+		RemoteNamespaceCoreOptions: options,
+		namespaceTube:              make(chan addNamespaceRequest),
+		indexTube:                  make(chan addIndexRequest),
+		pulser:                     time.NewTicker(pulseInterval),
+		stopch:                     make(chan struct{}),
+		wg:                         &sync.WaitGroup{},
+		memImgTracker:              makeDirtyTracker(),
 	}
 
 	remote.wg.Add(__REMOTE_NAMESPACE_PROCESS_COUNT)

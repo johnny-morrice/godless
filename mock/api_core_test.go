@@ -460,8 +460,8 @@ func loadRemote(store api.RemoteStore, addr crdt.IPFSPath) api.RemoteNamespaceCo
 	return service.MakeRemoteNamespaceCore(options)
 }
 
-func remoteOptions(store api.RemoteStore, headCache api.HeadCache) service.RemoteNamespaceOptions {
-	options := service.RemoteNamespaceOptions{
+func remoteOptions(store api.RemoteStore, headCache api.HeadCache) service.RemoteNamespaceCoreOptions {
+	options := service.RemoteNamespaceCoreOptions{
 		Store:          store,
 		HeadCache:      headCache,
 		IndexCache:     fakeIndexCache{},

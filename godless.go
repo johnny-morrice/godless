@@ -256,7 +256,7 @@ func (godless *Godless) setupNamespace() error {
 		}
 	}
 
-	namespaceOptions := service.RemoteNamespaceOptions{
+	namespaceOptions := service.RemoteNamespaceCoreOptions{
 		Pulse:          godless.Pulse,
 		Store:          godless.RemoteStore,
 		HeadCache:      godless.HeadCache,
