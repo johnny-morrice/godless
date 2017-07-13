@@ -9,6 +9,7 @@ import (
 	"github.com/johnny-morrice/godless/cache"
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/internal/service"
+	"github.com/johnny-morrice/godless/internal/testutil"
 	"github.com/johnny-morrice/godless/query"
 )
 
@@ -36,21 +37,8 @@ func TestApiQuerySuccess(t *testing.T) {
 	t.FailNow()
 
 	mock := NewMockCore(ctrl)
-	query := &query.Query{
-		OpCode:   query.SELECT,
-		TableKey: "Table Key",
-		Select: query.QuerySelect{
-			Limit: 1,
-			Where: query.QueryWhere{
-				OpCode: query.PREDICATE,
-				Predicate: query.QueryPredicate{
-					OpCode:   query.STR_EQ,
-					Literals: []string{"Hi"},
-					Keys:     []crdt.EntryName{"Entry A"},
-				},
-			},
-		},
-	}
+	query, err := query.Compile("select things where str_eq(stuff, \"Hello\")")
+	testutil.AssertNil(t, err)
 
 	mock.EXPECT().RunQuery(query, kvqmatcher{}).Do(writeStubResponse)
 	mock.EXPECT().Close()

@@ -94,7 +94,7 @@ func (console Console) readEvalPrint() error {
 
 	console.line.AppendHistory(queryText)
 
-	query, err := query.CompileQuery(queryText)
+	query, err := query.Compile(queryText)
 
 	if err != nil {
 		console.printf("Compiliation error: %v", err.Error())

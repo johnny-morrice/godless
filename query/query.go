@@ -243,7 +243,7 @@ func (pred QueryPredicate) equals(other QueryPredicate) bool {
 	return true
 }
 
-func CompileQuery(source string) (*Query, error) {
+func Compile(source string) (*Query, error) {
 	parser := &QueryParser{Buffer: source}
 	parser.Pretty = true
 	parser.Init()

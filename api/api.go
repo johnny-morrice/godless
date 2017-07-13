@@ -59,8 +59,8 @@ type Responder interface {
 
 type ResponderLambda func() Response
 
-func (arf ResponderLambda) RunQuery() Response {
-	return arf()
+func (lambda ResponderLambda) RunQuery() Response {
+	return lambda()
 }
 
 type ReflectionType uint16
@@ -97,16 +97,16 @@ type coreQueryRunner struct {
 	query *query.Query
 }
 
-func (kqr coreQueryRunner) Run(kvn Core, kvq Command) {
-	kvn.RunQuery(kqr.query, kvq)
+func (queryRunner coreQueryRunner) Run(core Core, command Command) {
+	core.RunQuery(queryRunner.query, command)
 }
 
 type coreReflectRunner struct {
 	reflection ReflectionType
 }
 
-func (krr coreReflectRunner) Run(kvn Core, kvq Command) {
-	kvn.Reflect(krr.reflection, kvq)
+func (reflectRunner coreReflectRunner) Run(core Core, command Command) {
+	core.Reflect(reflectRunner.reflection, command)
 }
 
 type Command struct {
@@ -123,17 +123,17 @@ func makeApiQuery(request Request, runner coreCommand) Command {
 	}
 }
 
-func (kvq Command) WriteResponse(val Response) {
-	kvq.Response <- val
-	close(kvq.Response)
+func (command Command) WriteResponse(val Response) {
+	command.Response <- val
+	close(command.Response)
 }
 
-func (kvq Command) Error(err error) {
-	kvq.WriteResponse(Response{Err: err})
+func (command Command) Error(err error) {
+	command.WriteResponse(Response{Err: err})
 }
 
-func (kvq Command) Run(kvn Core) {
-	kvq.runner.Run(kvn, kvq)
+func (command Command) Run(core Core) {
+	command.runner.Run(core, command)
 }
 
 type Response struct {

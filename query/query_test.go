@@ -65,7 +65,7 @@ func queryParseOk(expected *Query) bool {
 	source := prettyQuery(expected)
 	log.Debug("Pretty Printed input: \"%s\"", source)
 
-	actual, err := CompileQuery(source)
+	actual, err := Compile(source)
 
 	if err != nil {
 		panic(errors.Wrap(err, "Parse error"))

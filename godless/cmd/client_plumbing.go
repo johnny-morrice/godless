@@ -46,7 +46,7 @@ var clientPlumbingCmd = &cobra.Command{
 		validateClientPlumbingArgs(cmd)
 
 		if source != "" || analyse {
-			q, err = query.CompileQuery(source)
+			q, err = query.Compile(source)
 
 			if err != nil {
 				die(err)

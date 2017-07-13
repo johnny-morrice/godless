@@ -18,7 +18,49 @@ import (
 )
 
 func TestRemoteNamespaceCoreReplicate(t *testing.T) {
-	t.FailNow()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockStore := NewMockRemoteStore(ctrl)
+
+	namespace := crdt.MakeNamespace(map[crdt.TableName]crdt.Table{
+		"cars": crdt.MakeTable(map[crdt.RowName]crdt.Row{
+			"car10": crdt.MakeRow(map[crdt.EntryName]crdt.Entry{
+				"driver": crdt.MakeEntry([]crdt.Point{crdt.UnsignedPoint("Mr Blogs")}),
+			}),
+		}),
+	})
+
+	const namespaceAddr = crdt.IPFSPath("Namespace addr")
+	const indexAddr = crdt.IPFSPath("Index addr")
+
+	index := crdt.MakeIndex(map[crdt.TableName]crdt.Link{
+		"cars": crdt.UnsignedLink(namespaceAddr),
+	})
+
+	mockStore.EXPECT().AddIndex(matchIndex(index)).Return(indexAddr, nil).MinTimes(1)
+	mockStore.EXPECT().CatIndex(indexAddr).Return(index, nil).MinTimes(1)
+	mockStore.EXPECT().CatNamespace(namespaceAddr).Return(namespace, nil)
+
+	core := makeRemote(mockStore)
+	defer core.Close()
+
+	resp := makeReplicateRequest(core, indexAddr)
+	testutil.AssertNil(t, resp.Err)
+	err := core.WriteMemoryImage()
+	testutil.AssertNil(t, err)
+
+	testReflectHead(t, core, indexAddr)
+	testReflectIndex(t, core, index)
+	testReflectNamespace(t, core, namespace)
+}
+
+func makeReplicateRequest(core api.Core, path crdt.IPFSPath) api.Response {
+	links := []crdt.Link{crdt.UnsignedLink(path)}
+	request := api.Request{Type: api.API_REPLICATE, Replicate: links}
+	command, err := request.MakeCommand()
+	panicOnBadInit(err)
+	go command.Run(core)
+	return readApiResponse(command)
 }
 
 func TestRemoteNamespaceCoreRunQuery(t *testing.T) {
@@ -26,9 +68,9 @@ func TestRemoteNamespaceCoreRunQuery(t *testing.T) {
 	defer ctrl.Finish()
 	mockStore := NewMockRemoteStore(ctrl)
 
-	joinQuery, err := query.CompileQuery("join cars rows (@key=car10, driver=\"Mr Blogs\")")
+	joinQuery, err := query.Compile("join cars rows (@key=car10, driver=\"Mr Blogs\")")
 	testutil.AssertNil(t, err)
-	selectQuery, err := query.CompileQuery("select cars")
+	selectQuery, err := query.Compile("select cars")
 	testutil.AssertNil(t, err)
 
 	// TODO would be nice to get a DSL for writing namespaces.  JSON?
@@ -48,7 +90,7 @@ func TestRemoteNamespaceCoreRunQuery(t *testing.T) {
 	})
 
 	mockStore.EXPECT().AddNamespace(matchNamespace(namespace)).Return(namespaceAddr, nil)
-	mockStore.EXPECT().AddIndex(matchIndex(index)).Return(indexAddr, nil).AnyTimes()
+	mockStore.EXPECT().AddIndex(matchIndex(index)).Return(indexAddr, nil).MinTimes(1)
 	mockStore.EXPECT().CatIndex(indexAddr).Return(index, nil).MinTimes(1)
 	mockStore.EXPECT().CatNamespace(namespaceAddr).Return(namespace, nil)
 
@@ -58,6 +100,8 @@ func TestRemoteNamespaceCoreRunQuery(t *testing.T) {
 	log.Debug("running join")
 	joinResponse := makeQueryRequest(remote, joinQuery)
 	testutil.AssertNil(t, joinResponse.Err)
+	err = remote.WriteMemoryImage()
+	testutil.AssertNil(t, err)
 	log.Debug("running select")
 	selectResponse := makeQueryRequest(remote, selectQuery)
 	log.Debug("completed queries")
@@ -69,7 +113,7 @@ func makeQueryRequest(core api.Core, query *query.Query) api.Response {
 	request := api.Request{Type: api.API_QUERY, Query: query}
 	command, err := request.MakeCommand()
 	panicOnBadInit(err)
-	go core.RunQuery(query, command)
+	go command.Run(core)
 	return readApiResponse(command)
 }
 
