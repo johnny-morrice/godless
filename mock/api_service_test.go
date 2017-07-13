@@ -14,57 +14,68 @@ import (
 )
 
 func TestApiReplicate(t *testing.T) {
-	t.FailNow()
-}
-
-func TestApiReplicateFailure(t *testing.T) {
-	t.FailNow()
-}
-
-func TestApiReflect(t *testing.T) {
-	t.FailNow()
-}
-
-func TstApiReflectFailure(t *testing.T) {
-	t.FailNow()
-}
-
-func TestApiQuerySuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	// TODO test join query
-	t.FailNow()
-
 	mock := NewMockCore(ctrl)
-	query, err := query.Compile("select things where str_eq(stuff, \"Hello\")")
-	testutil.AssertNil(t, err)
 
-	mock.EXPECT().RunQuery(query, kvqmatcher{}).Do(writeStubResponse)
+	const path = "Hello"
+	links := []crdt.Link{crdt.UnsignedLink(path)}
+
+	mock.EXPECT().Replicate(links, commandMatcher{}).Do(replicateStub)
 	mock.EXPECT().Close()
 
 	api, errch := launchAPI(mock)
-	respch, err := runQuery(api, query)
+	defer tidyApi(t, api, errch)
 
-	if err != nil {
-		t.Error(err)
-	}
+	respch, err := runReplicate(api, links)
 
-	if respch == nil {
-		t.Error("Response channel was nil")
-	}
-
+	testutil.AssertNil(t, err)
+	testutil.AssertNonNil(t, respch)
 	validateResponseCh(t, respch)
-
-	api.CloseAPI()
-
-	for err := range errch {
-		t.Error(err)
-	}
 }
 
-func TestAPIQueryFailure(t *testing.T) {
-	t.FailNow()
+func TestApiReflect(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mock := NewMockCore(ctrl)
+
+	reflection := api.REFLECT_HEAD_PATH
+
+	mock.EXPECT().Reflect(reflection, commandMatcher{}).Do(reflectStub)
+	mock.EXPECT().Close()
+
+	api, errch := launchAPI(mock)
+	defer tidyApi(t, api, errch)
+
+	respch, err := runReflect(api, reflection)
+
+	testutil.AssertNil(t, err)
+	testutil.AssertNonNil(t, respch)
+	validateResponseCh(t, respch)
+}
+
+func TestApiQuery(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mock := NewMockCore(ctrl)
+
+	query, err := query.Compile("select things where str_eq(stuff, \"Hello\")")
+	testutil.AssertNil(t, err)
+
+	mock.EXPECT().RunQuery(query, commandMatcher{}).Do(runQueryStub)
+	mock.EXPECT().Close()
+
+	api, errch := launchAPI(mock)
+	defer tidyApi(t, api, errch)
+
+	respch, err := runQuery(api, query)
+
+	testutil.AssertNil(t, err)
+	testutil.AssertNonNil(t, respch)
+	validateResponseCh(t, respch)
 }
 
 func validateResponseCh(t *testing.T, respch <-chan api.Response) api.Response {
@@ -81,46 +92,65 @@ func validateResponseCh(t *testing.T, respch <-chan api.Response) api.Response {
 	}
 }
 
-func writeStubResponse(q *query.Query, kvq api.Command) {
-	kvq.Response <- api.RESPONSE_QUERY
+func replicateStub(links []crdt.Link, command api.Command) {
+	command.Response <- api.RESPONSE_QUERY
 }
 
-func TestApiQueryJoinSuccess(t *testing.T) {
+func reflectStub(reflection api.ReflectionType, command api.Command) {
+	command.Response <- api.RESPONSE_QUERY
+}
+
+func runQueryStub(q *query.Query, command api.Command) {
+	command.Response <- api.RESPONSE_QUERY
+}
+
+func TestApiInvalidRequest(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mock := NewMockCore(ctrl)
-	query := &query.Query{
-		OpCode:   query.JOIN,
-		TableKey: "Table Key",
-		Join: query.QueryJoin{
-			Rows: []query.QueryRowJoin{
-				query.QueryRowJoin{
-					RowKey: "Row thing",
-					Entries: map[crdt.EntryName]crdt.PointText{
-						"Hello": "world",
-					},
-				},
-			},
-		},
-	}
 
-	mock.EXPECT().RunQuery(query, kvqmatcher{}).Do(writeStubResponse)
 	mock.EXPECT().Close()
 
+	request := api.Request{}
+
 	api, errch := launchAPI(mock)
-	actualRespch, err := runQuery(api, query)
 
-	if err != nil {
-		t.Error(err)
+	defer tidyApi(t, api, errch)
+
+	resp, err := api.Call(request)
+
+	if resp != nil {
+		t.Error("Expected nil response")
 	}
 
-	if actualRespch == nil {
-		t.Error("Response channel was nil")
+	testutil.AssertNonNil(t, err)
+}
+
+// No EXPECT but still valid mock: verifies no calls.
+func TestApiInvalidQuery(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mock := NewMockCore(ctrl)
+	mock.EXPECT().Close()
+
+	query := &query.Query{}
+
+	api, errch := launchAPI(mock)
+
+	defer tidyApi(t, api, errch)
+
+	resp, err := runQuery(api, query)
+
+	if resp != nil {
+		t.Error("Expected nil response")
 	}
 
-	validateResponseCh(t, actualRespch)
+	testutil.AssertNonNil(t, err)
+}
 
+func tidyApi(t *testing.T, api api.Service, errch <-chan error) {
 	api.CloseAPI()
 
 	for err := range errch {
@@ -128,104 +158,41 @@ func TestApiQueryJoinSuccess(t *testing.T) {
 	}
 }
 
-func TestApiQueryJoinFailure(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mock := NewMockCore(ctrl)
-	query := &query.Query{
-		OpCode:   query.JOIN,
-		TableKey: "Table Key",
-		Join: query.QueryJoin{
-			Rows: []query.QueryRowJoin{
-				query.QueryRowJoin{
-					RowKey: "Row thing",
-					Entries: map[crdt.EntryName]crdt.PointText{
-						"Hello": "world",
-					},
-				},
-			},
-		},
-	}
-
-	mock.EXPECT().RunQuery(query, kvqmatcher{}).Do(writeStubResponse)
-	mock.EXPECT().Close()
-
-	api, errch := launchAPI(mock)
-	resp, qerr := runQuery(api, query)
-
-	if qerr != nil {
-		t.Error(qerr)
-	}
-
-	if resp == nil {
-		t.Error("Response channel was nil")
-	}
-
-	r := validateResponseCh(t, resp)
-
-	api.CloseAPI()
-
-	if err := <-errch; err != nil {
-		t.Error("err was not nil")
-	}
-
-	if r.Err != nil {
-		t.Error("Non failure APIResponse")
-	}
+func runReplicate(service api.RequestService, links []crdt.Link) (<-chan api.Response, error) {
+	return service.Call(api.Request{Type: api.API_REPLICATE, Replicate: links})
 }
 
-// No EXPECT but still valid mock: verifies no calls.
-func TestApiQueryInvalid(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mock := NewMockCore(ctrl)
-	query := &query.Query{}
-
-	mock.EXPECT().Close()
-
-	api, _ := launchAPI(mock)
-	resp, err := runQuery(api, query)
-
-	if err == nil {
-		t.Error("err was nil")
-	}
-
-	if resp != nil {
-		t.Error("Response channel was not nil")
-	}
-
-	api.CloseAPI()
+func runReflect(service api.RequestService, reflection api.ReflectionType) (<-chan api.Response, error) {
+	return service.Call(api.Request{Type: api.API_REFLECT, Reflection: reflection})
 }
 
 func runQuery(service api.RequestService, query *query.Query) (<-chan api.Response, error) {
 	return service.Call(api.Request{Type: api.API_QUERY, Query: query})
 }
 
-func launchAPI(remote api.Core) (api.Service, <-chan error) {
+func launchAPI(core api.Core) (api.Service, <-chan error) {
 	const queryLimit = 1
-	return launchConcurrentAPI(remote, queryLimit)
+	return launchConcurrentAPI(core, queryLimit)
 }
 
-func launchConcurrentAPI(remote api.Core, queryLimit int) (api.Service, <-chan error) {
+func launchConcurrentAPI(core api.Core, queryLimit int) (api.Service, <-chan error) {
 	queue := cache.MakeResidentBufferQueue(__UNKNOWN_CACHE_SIZE)
 	options := service.QueuedApiServiceOptions{
-		Core:       remote,
+		Core:       core,
 		Queue:      queue,
 		QueryLimit: queryLimit,
 	}
 	return service.LaunchQueuedApiService(options)
 }
 
-type kvqmatcher struct {
+type commandMatcher struct {
 }
 
-func (kvqmatcher) String() string {
+func (commandMatcher) String() string {
 	return "any KvQuery"
 }
 
-func (kvqmatcher) Matches(v interface{}) bool {
+func (commandMatcher) Matches(v interface{}) bool {
 	_, ok := v.(api.Command)
 
 	return ok
