@@ -28,6 +28,7 @@ type replicator struct {
 	keyStore api.KeyStore
 }
 
+// TODO support one-shot replication.
 func Replicate(options ReplicateOptions) (api.Closer, <-chan error) {
 	stopch := make(chan struct{})
 	errch := make(chan error, len(options.Topics))
@@ -61,6 +62,11 @@ func Replicate(options ReplicateOptions) (api.Closer, <-chan error) {
 
 	closer := api.MakeCloser(stopch, wg)
 
+	go func() {
+		wg.Wait()
+		close(errch)
+	}()
+
 	return closer, errch
 }
 
@@ -72,6 +78,9 @@ func (p2p replicator) publishAllTopics() {
 
 	ticker := time.NewTicker(p2p.interval)
 	defer ticker.Stop()
+
+	log.Debug("Publishing first index...")
+	p2p.publishIndex()
 
 	for {
 		select {
@@ -99,17 +108,24 @@ func (p2p replicator) publishIndex() {
 	// API should do this for its HEAD.
 	privKeys := p2p.keyStore.GetAllPrivateKeys()
 
-	link, signErr := crdt.SignedLink(head, privKeys)
+	var link crdt.Link
 
-	if signErr != nil {
-		log.Error("Failed to sign Index Link (%s): %s", head, signErr.Error())
-		return
+	var err error
+	if len(privKeys) > 0 {
+		link, err = crdt.SignedLink(head, privKeys)
+		if err != nil {
+			log.Error("Failed to sign Index Link (%s): %s", head, err.Error())
+			return
+		}
+	} else {
+		log.Warn("HEAD shared without signature (no keys available)")
+		link = crdt.UnsignedLink(head)
 	}
 
-	publishErr := p2p.store.PublishAddr(link, p2p.topics)
+	err = p2p.store.PublishAddr(link, p2p.topics)
 
-	if publishErr != nil {
-		log.Error("Failed to publish index to all topics: %s", publishErr.Error())
+	if err != nil {
+		log.Error("Failed to publish index to all topics: %s", err.Error())
 		return
 	}
 
@@ -150,8 +166,8 @@ func (p2p replicator) subscribeAllTopics() {
 		topic := t
 		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			p2p.subscribeTopic(topic)
-			wg.Done()
 		}()
 	}
 
@@ -159,28 +175,40 @@ func (p2p replicator) subscribeAllTopics() {
 }
 
 type subscriptionBatch struct {
-	batch  []crdt.Link
-	ticker *time.Ticker
-	p2p    replicator
+	batch     []crdt.Link
+	ticker    *time.Ticker
+	p2p       replicator
+	streaming bool
 }
 
 func (batch *subscriptionBatch) update(link crdt.Link) {
 	batch.batch = append(batch.batch, link)
 
+	if !batch.streaming {
+		log.Debug("Dispatching first subscription batch...")
+		batch.sendRequest()
+		batch.streaming = true
+		return
+	}
+
 	select {
 	case <-batch.ticker.C:
-		log.Debug("Dispatching subscription batch")
-		request := api.Request{Type: api.API_REPLICATE, Replicate: batch.batch}
-		batch.reset()
-		go func() {
-			batch.p2p.api.Call(request)
-		}()
+		log.Debug("Dispatching subscription batch...")
+		batch.sendRequest()
 		return
 	default:
 		break
 	}
 
 	log.Debug("Appended Link to subscriptionBatch")
+}
+
+func (batch *subscriptionBatch) sendRequest() {
+	request := api.Request{Type: api.API_REPLICATE, Replicate: batch.batch}
+	batch.reset()
+	go func() {
+		batch.p2p.api.Call(request)
+	}()
 }
 
 func (batch *subscriptionBatch) stop() {

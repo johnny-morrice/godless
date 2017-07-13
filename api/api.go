@@ -1,6 +1,6 @@
 package api
 
-//go:generate mockgen -package mock_godless -destination ../mock/mock_api.go -imports lib=github.com/johnny-morrice/api -self_package lib github.com/johnny-morrice/godless/api Core,RemoteStore,RemoteNamespace,NamespaceSearcher,DataPeer,PubSubSubscription,PubSubRecord
+//go:generate mockgen -package mock_godless -destination ../mock/mock_api.go -imports lib=github.com/johnny-morrice/api -self_package lib github.com/johnny-morrice/godless/api Core,RemoteStore,RemoteNamespace,NamespaceSearcher,DataPeer,PubSubSubscription,PubSubRecord,Service
 
 import (
 	"bytes"
@@ -119,7 +119,7 @@ func makeApiQuery(request Request, runner coreCommand) Command {
 	return Command{
 		Request:  request,
 		runner:   runner,
-		Response: make(chan Response),
+		Response: make(chan Response, 1),
 	}
 }
 

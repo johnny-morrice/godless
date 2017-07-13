@@ -59,7 +59,7 @@ func makeReplicateRequest(core api.Core, path crdt.IPFSPath) api.Response {
 	request := api.Request{Type: api.API_REPLICATE, Replicate: links}
 	command, err := request.MakeCommand()
 	panicOnBadInit(err)
-	go command.Run(core)
+	command.Run(core)
 	return readApiResponse(command)
 }
 
@@ -113,7 +113,7 @@ func makeQueryRequest(core api.Core, query *query.Query) api.Response {
 	request := api.Request{Type: api.API_QUERY, Query: query}
 	command, err := request.MakeCommand()
 	panicOnBadInit(err)
-	go command.Run(core)
+	command.Run(core)
 	return readApiResponse(command)
 }
 
@@ -203,7 +203,7 @@ func reflectOnRemote(remote api.Core, reflection api.ReflectionType) api.Respons
 	request := api.Request{Type: api.API_REFLECT, Reflection: reflection}
 	command, err := request.MakeCommand()
 	panicOnBadInit(err)
-	go command.Run(remote)
+	command.Run(remote)
 
 	resp := readApiResponse(command)
 
