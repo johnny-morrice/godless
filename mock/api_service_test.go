@@ -16,13 +16,24 @@ func TestApiReplicate(t *testing.T) {
 	t.FailNow()
 }
 
+func TestApiReplicateFailure(t *testing.T) {
+	t.FailNow()
+}
+
 func TestApiReflect(t *testing.T) {
 	t.FailNow()
 }
 
-func TestApiQueryRead(t *testing.T) {
+func TstApiReflectFailure(t *testing.T) {
+	t.FailNow()
+}
+
+func TestApiQuerySuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
+
+	// TODO test join query
+	t.FailNow()
 
 	mock := NewMockCore(ctrl)
 	query := &query.Query{
@@ -62,6 +73,10 @@ func TestApiQueryRead(t *testing.T) {
 	for err := range errch {
 		t.Error(err)
 	}
+}
+
+func TestAPIQueryFailure(t *testing.T) {
+	t.FailNow()
 }
 
 func validateResponseCh(t *testing.T, respch <-chan api.Response) api.Response {
