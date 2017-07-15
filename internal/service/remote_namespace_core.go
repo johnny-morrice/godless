@@ -634,7 +634,14 @@ func (rn *remoteNamespace) readAddResponse(respch chan addResponse) addResponse 
 func (rn *remoteNamespace) insertNamespace(namespace crdt.Namespace) (crdt.IPFSPath, error) {
 	const failMsg = "remoteNamespace.persistNamespace failed"
 	resultChan := make(chan addResponse)
-	rn.writeNamespaceTube(addNamespaceRequest{namespace: namespace, result: resultChan})
+	addRequest := addNamespaceRequest{
+		namespace: namespace,
+		addResponder: addResponder{
+			result: resultChan,
+			stopch: rn.stopch,
+		},
+	}
+	rn.writeNamespaceTube(addRequest)
 
 	result := rn.readAddResponse(resultChan)
 
@@ -655,7 +662,14 @@ func (rn *remoteNamespace) insertIndex(index crdt.Index) (crdt.IPFSPath, error) 
 	const failMsg = "remoteNamespace.persistIndex failed"
 
 	resultChan := make(chan addResponse)
-	rn.writeIndexTube(addIndexRequest{index: index, result: resultChan})
+	addRequest := addIndexRequest{
+		index: index,
+		addResponder: addResponder{
+			result: resultChan,
+			stopch: rn.stopch,
+		},
+	}
+	rn.writeIndexTube(addRequest)
 
 	result := rn.readAddResponse(resultChan)
 
@@ -704,30 +718,33 @@ type addResponse struct {
 	err  error
 }
 
+type addResponder struct {
+	result chan addResponse
+	stopch chan struct{}
+}
+
 type addNamespaceRequest struct {
 	namespace crdt.Namespace
-	result    chan addResponse
+	addResponder
 }
 
 // TODO leaks goroutine after shutdown.
-func (add addNamespaceRequest) reply(path crdt.IPFSPath, err error) {
+func (add addResponder) reply(path crdt.IPFSPath, err error) {
 	go func() {
 		defer close(add.result)
-		add.result <- addResponse{path: path, err: err}
+		select {
+		case add.result <- addResponse{path: path, err: err}:
+			return
+		case <-add.stopch:
+			return
+		}
+
 	}()
 }
 
 type addIndexRequest struct {
-	index  crdt.Index
-	result chan addResponse
-}
-
-// TODO leaks goroutine after shutdown.
-func (add addIndexRequest) reply(path crdt.IPFSPath, err error) {
-	go func() {
-		defer close(add.result)
-		add.result <- addResponse{path: path, err: err}
-	}()
+	index crdt.Index
+	addResponder
 }
 
 const __DEFAULT_PULSE = time.Second * 10
