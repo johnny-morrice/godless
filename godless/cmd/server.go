@@ -30,7 +30,7 @@ import (
 	lib "github.com/johnny-morrice/godless"
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/cache"
-	"github.com/johnny-morrice/godless/internal/http"
+	"github.com/johnny-morrice/godless/http"
 	"github.com/johnny-morrice/godless/log"
 	"github.com/spf13/cobra"
 )
@@ -49,8 +49,7 @@ var serveCmd = &cobra.Command{
 func serve(cmd *cobra.Command) {
 	log.SetLevel(log.LOG_DEBUG)
 
-	client := http.DefaultBackendClient()
-	client.Timeout = serverTimeout
+	client := http.MakeBackendHttpClient(serverTimeout)
 
 	queue := makePriorityQueue(cmd)
 	memimg, err := makeMemoryImage()

@@ -1,10 +1,7 @@
 package api
 
 import (
-	"io"
-
 	"github.com/johnny-morrice/godless/crdt"
-	"github.com/johnny-morrice/godless/internal/util"
 	"github.com/johnny-morrice/godless/log"
 	"github.com/johnny-morrice/godless/proto"
 	"github.com/pkg/errors"
@@ -55,62 +52,6 @@ func ReadAPIResponseMessage(message *proto.APIResponseMessage) Response {
 	logInvalidIndex(indexInvalid)
 
 	return resp
-}
-
-func EncodeAPIResponse(resp Response, w io.Writer) error {
-	const failMsg = "EncodeAPIResponse failed"
-
-	message := MakeAPIResponseMessage(resp)
-
-	err := util.Encode(message, w)
-
-	if err != nil {
-		return errors.Wrap(err, failMsg)
-	}
-
-	return nil
-}
-
-func DecodeAPIResponse(r io.Reader) (Response, error) {
-	const failMsg = "DecodeAPIResponse failed"
-
-	message := &proto.APIResponseMessage{}
-
-	err := util.Decode(message, r)
-
-	if err != nil {
-		return RESPONSE_FAIL, errors.Wrap(err, failMsg)
-	}
-
-	return ReadAPIResponseMessage(message), nil
-}
-
-func EncodeAPIResponseText(resp Response, w io.Writer) error {
-	const failMsg = "EncodeAPIResponseText failed"
-
-	message := MakeAPIResponseMessage(resp)
-
-	err := util.EncodeText(message, w)
-
-	if err != nil {
-		return errors.Wrap(err, failMsg)
-	}
-
-	return nil
-}
-
-func DecodeAPIResponseText(r io.Reader) (Response, error) {
-	const failMsg = "DecodeAPIResponseText failed"
-
-	message := &proto.APIResponseMessage{}
-
-	err := util.DecodeText(message, r)
-
-	if err != nil {
-		return RESPONSE_FAIL, errors.Wrap(err, failMsg)
-	}
-
-	return ReadAPIResponseMessage(message), nil
 }
 
 func logInvalidNamespace(invalid []crdt.InvalidNamespaceEntry) {

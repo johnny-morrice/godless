@@ -8,7 +8,7 @@ import (
 	ipfs "github.com/ipfs/go-ipfs-api"
 
 	"github.com/johnny-morrice/godless/api"
-	"github.com/johnny-morrice/godless/internal/http"
+	"github.com/johnny-morrice/godless/http"
 	"github.com/johnny-morrice/godless/log"
 )
 
@@ -27,12 +27,11 @@ func (client *WebServiceClient) Connect() error {
 
 	if client.Http == nil {
 		log.Info("Using default HTTP client")
-		client.Http = http.DefaultBackendClient()
+		client.Http = defaultBackendClient()
 	}
 
 	log.Info("Connecting to IPFS API...")
-	pingClient := http.DefaultBackendClient()
-	pingClient.Timeout = client.PingTimeout
+	pingClient := defaultPingClient()
 	client.Shell = ipfs.NewShellWithClient(client.Url, client.Http)
 	client.pinger = ipfs.NewShellWithClient(client.Url, pingClient)
 
@@ -102,5 +101,27 @@ func (client WebServiceClient) PubSubSubscribe(topic string) (api.PubSubSubscrip
 
 	return subscription{sub: sub}, nil
 }
+
+var __backendClient *gohttp.Client
+var __pingClient *gohttp.Client
+
+func defaultBackendClient() *gohttp.Client {
+	if __backendClient == nil {
+		__backendClient = http.MakeBackendHttpClient(__BACKEND_TIMEOUT)
+	}
+
+	return __backendClient
+}
+
+func defaultPingClient() *gohttp.Client {
+	if __pingClient == nil {
+		__pingClient = http.MakeBackendHttpClient(__PING_TIMEOUT)
+	}
+
+	return __pingClient
+}
+
+const __PING_TIMEOUT = 10 * time.Second
+const __BACKEND_TIMEOUT = 10 * time.Minute
 
 const __DEFAULT_PING_TIMEOUT = time.Second * 5

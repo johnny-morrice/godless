@@ -32,6 +32,17 @@ message LinkMessage {
 	repeated string signatures = 2;
 }
 
+message APIRequestMessage {
+	uint32 type = 1;
+	uint32 reflection = 2;
+	QueryMessage query = 3;
+	ReplicateMessage replicate = 4;
+}
+
+message ReplicateMessage {
+	repeated LinkMessage links = 1;
+}
+
 message APIResponseMessage {
 	string message = 1;
 	string error = 2;

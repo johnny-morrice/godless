@@ -1,4 +1,4 @@
-package service
+package http
 
 import (
 	"bytes"
@@ -6,73 +6,64 @@ import (
 	"io"
 	"io/ioutil"
 	gohttp "net/http"
+	"time"
 
 	"github.com/johnny-morrice/godless/api"
-	"github.com/johnny-morrice/godless/internal/http"
 	"github.com/johnny-morrice/godless/internal/util"
 	"github.com/johnny-morrice/godless/log"
-	"github.com/johnny-morrice/godless/query"
 	"github.com/pkg/errors"
 )
 
+type ClientOptions struct {
+	ServerAddr      string
+	CommandEndpoint string
+	Http            *gohttp.Client
+}
+
 type Client struct {
-	addr string
-	web  *gohttp.Client
+	ClientOptions
 }
 
-func MakeClient(addr string) *Client {
-	return &Client{
-		addr: addr,
-		web:  http.DefaultFrontentClient(),
-	}
-}
+func MakeClient(options ClientOptions) (*Client, error) {
+	client := &Client{ClientOptions: options}
 
-func MakeClientWithHttp(addr string, webClient *gohttp.Client) *Client {
-	return &Client{
-		addr: addr,
-		web:  webClient,
-	}
-}
-
-func (client *Client) SendReflection(command api.ReflectionType) (api.Response, error) {
-	var part string
-	switch command {
-	case api.REFLECT_HEAD_PATH:
-		part = "head"
-	case api.REFLECT_DUMP_NAMESPACE:
-		part = "namespace"
-	case api.REFLECT_INDEX:
-		part = "index"
-	default:
-		return api.RESPONSE_FAIL, fmt.Errorf("Unknown api.APIReflectionType: %v", command)
+	if client.ServerAddr == "" {
+		return nil, errors.New("Expected ServerAddr")
 	}
 
-	path := fmt.Sprintf("%s/%s", REFLECT_API_ROOT, part)
-	return client.Post(path, http.MIME_EMPTY, &bytes.Buffer{})
+	if client.CommandEndpoint == "" {
+		client.CommandEndpoint = API_ROOT
+	}
+
+	if client.Http == nil {
+		client.Http = defaultHttpClient()
+	}
+
+	return client, nil
 }
 
-func (client *Client) SendQuery(q *query.Query) (api.Response, error) {
-	validerr := q.Validate()
+func (client *Client) Send(request api.Request) (api.Response, error) {
+	err := request.Validate()
 
-	if validerr != nil {
-		return api.RESPONSE_FAIL, errors.Wrap(validerr, fmt.Sprintf("Cowardly refusing to send invalid query: %v", q))
+	if err != nil {
+		return api.RESPONSE_FAIL, errors.Wrap(err, fmt.Sprintf("Cowardly refusing to send invalid Request: %v", request))
 	}
 
 	buff := &bytes.Buffer{}
-	encerr := query.EncodeQuery(q, buff)
+	err = api.EncodeRequest(request, buff)
 
-	if encerr != nil {
-		return api.RESPONSE_FAIL, errors.Wrap(encerr, "SendQuery failed")
+	if err != nil {
+		return api.RESPONSE_FAIL, errors.Wrap(err, "SendQuery failed")
 	}
 
-	return client.Post(QUERY_API_ROOT, http.MIME_PROTO, buff)
+	return client.Post(client.CommandEndpoint, MIME_PROTO, buff)
 }
 
 func (client *Client) Post(path, bodyType string, body io.Reader) (api.Response, error) {
-	addr := fmt.Sprintf("http://%s%s%s", client.addr, API_ROOT, path)
+	addr := client.ServerAddr + path
 	log.Info("HTTP POST to %s", addr)
 
-	resp, err := client.web.Post(addr, bodyType, body)
+	resp, err := client.Http.Post(addr, bodyType, body)
 
 	if err != nil {
 		return api.RESPONSE_FAIL, errors.Wrap(err, "HTTP POST failed")
@@ -104,9 +95,9 @@ func (client *Client) decodeHttpResponse(resp *gohttp.Response) (api.Response, e
 }
 
 func (client *Client) decodeFailureResponse(resp *gohttp.Response) (api.Response, error) {
-	ct := resp.Header[http.CONTENT_TYPE]
+	ct := resp.Header[CONTENT_TYPE]
 
-	if util.LinearContains(ct, http.MIME_PROTO) {
+	if util.LinearContains(ct, MIME_PROTO) {
 		return api.DecodeAPIResponseText(resp.Body)
 	} else {
 		return api.RESPONSE_FAIL, incorrectContentType(resp.StatusCode, ct)
@@ -114,7 +105,7 @@ func (client *Client) decodeFailureResponse(resp *gohttp.Response) (api.Response
 }
 
 func (client *Client) decodeUnexpectedResponse(resp *gohttp.Response) (api.Response, error) {
-	ct := resp.Header[http.CONTENT_TYPE]
+	ct := resp.Header[CONTENT_TYPE]
 
 	if util.LinearContains(ct, "text/plain; charset=utf-8") {
 		all, err := ioutil.ReadAll(resp.Body)
@@ -131,8 +122,8 @@ func (client *Client) decodeUnexpectedResponse(resp *gohttp.Response) (api.Respo
 }
 
 func (client *Client) decodeSuccessResponse(resp *gohttp.Response) (api.Response, error) {
-	ct := resp.Header[http.CONTENT_TYPE]
-	if util.LinearContains(ct, http.MIME_PROTO) {
+	ct := resp.Header[CONTENT_TYPE]
+	if util.LinearContains(ct, MIME_PROTO) {
 		return api.DecodeAPIResponse(resp.Body)
 	} else {
 		return api.RESPONSE_FAIL, incorrectContentType(resp.StatusCode, ct)
@@ -142,3 +133,17 @@ func (client *Client) decodeSuccessResponse(resp *gohttp.Response) (api.Response
 func incorrectContentType(status int, ct []string) error {
 	return fmt.Errorf("%d response had incorrect content type, was: %v", status, ct)
 }
+
+var __frontendClient *gohttp.Client
+
+func defaultHttpClient() *gohttp.Client {
+	if __frontendClient == nil {
+		__frontendClient = &gohttp.Client{
+			Timeout: time.Duration(__FRONTEND_TIMEOUT),
+		}
+	}
+
+	return __frontendClient
+}
+
+const __FRONTEND_TIMEOUT = 1 * time.Minute

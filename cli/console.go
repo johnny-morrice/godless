@@ -102,7 +102,8 @@ func (console Console) readEvalPrint() error {
 	}
 
 	sendTime := time.Now()
-	resp, err := console.Client.SendQuery(query)
+	request := api.MakeQueryRequest(query)
+	resp, err := console.Client.Send(request)
 	receiveTime := time.Now()
 	waitTime := receiveTime.Sub(sendTime)
 

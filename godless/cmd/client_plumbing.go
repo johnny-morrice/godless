@@ -22,13 +22,13 @@ package cmd
 
 import (
 	"fmt"
-	"net/http"
+	gohttp "net/http"
 	"os"
 
 	"github.com/spf13/cobra"
 
-	"github.com/johnny-morrice/godless"
 	"github.com/johnny-morrice/godless/api"
+	"github.com/johnny-morrice/godless/http"
 	"github.com/johnny-morrice/godless/query"
 )
 
@@ -66,7 +66,7 @@ var clientPlumbingCmd = &cobra.Command{
 		}
 
 		var response api.Response
-		response, err = sendQuery(client, q)
+		response, err = sendRequest(client, q)
 
 		if err != nil {
 			die(err)
@@ -83,11 +83,20 @@ var queryBinary bool
 var reflect string
 
 func makeClient() api.Client {
-	webClient := &http.Client{
+	webClient := &gohttp.Client{
 		Timeout: queryTimeout,
 	}
 
-	client := godless.MakeClientWithHttp(serverAddr, webClient)
+	options := http.ClientOptions{
+		Http:       webClient,
+		ServerAddr: serverAddr,
+	}
+
+	client, err := http.MakeClient(options)
+
+	if err != nil {
+		die(err)
+	}
 
 	return client
 }
@@ -130,9 +139,10 @@ func analyseQuery(query *query.Query) error {
 	return query.PrettyPrint(os.Stdout)
 }
 
-func sendQuery(client api.Client, query *query.Query) (api.Response, error) {
+func sendRequest(client api.Client, query *query.Query) (api.Response, error) {
 	if query != nil {
-		return client.SendQuery(query)
+		request := api.MakeQueryRequest(query)
+		return client.Send(request)
 	} else if reflect != "" {
 		reflectType, err := parseReflect()
 
@@ -140,7 +150,8 @@ func sendQuery(client api.Client, query *query.Query) (api.Response, error) {
 			return api.RESPONSE_FAIL, err
 		}
 
-		return client.SendReflection(reflectType)
+		request := api.MakeReflectRequest(reflectType)
+		return client.Send(request)
 	} else {
 		panic("Validation should prevent this contingency")
 	}

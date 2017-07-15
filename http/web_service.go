@@ -1,4 +1,4 @@
-package service
+package http
 
 import (
 	"bytes"
@@ -7,7 +7,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/johnny-morrice/godless/api"
-	"github.com/johnny-morrice/godless/internal/http"
 	"github.com/johnny-morrice/godless/log"
 	"github.com/johnny-morrice/godless/query"
 	"github.com/pkg/errors"
@@ -132,7 +131,7 @@ func sendErr(rw gohttp.ResponseWriter, err error) error {
 
 	log.Info("Sending error APIResponse (%v bytes) to HTTP client...", buff.Len())
 	rw.WriteHeader(WEB_API_ERROR)
-	rw.Header()[http.CONTENT_TYPE] = []string{http.MIME_PROTO_TEXT}
+	rw.Header()[CONTENT_TYPE] = []string{MIME_PROTO_TEXT}
 	_, senderr := rw.Write(buff.Bytes())
 
 	if senderr != nil {
@@ -155,7 +154,7 @@ func sendMessage(rw gohttp.ResponseWriter, resp api.Response) error {
 	}
 
 	log.Info("Sending APIResponse (%d bytes) to HTTP client...", buff.Len())
-	rw.Header()[http.CONTENT_TYPE] = []string{http.MIME_PROTO}
+	rw.Header()[CONTENT_TYPE] = []string{MIME_PROTO}
 	_, senderr := rw.Write(buff.Bytes())
 
 	if senderr != nil {

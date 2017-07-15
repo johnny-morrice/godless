@@ -12,15 +12,16 @@ import (
 
 	gohttp "net/http"
 
+	"github.com/pkg/errors"
+
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/cache"
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/crypto"
-	"github.com/johnny-morrice/godless/internal/http"
+	"github.com/johnny-morrice/godless/http"
 	"github.com/johnny-morrice/godless/internal/ipfs"
 	"github.com/johnny-morrice/godless/internal/service"
 	"github.com/johnny-morrice/godless/log"
-	"github.com/pkg/errors"
 )
 
 // Godless options.
@@ -78,7 +79,7 @@ type Godless struct {
 	stoppers   []api.Closer
 	remote     api.Core
 	api        api.Service
-	webService *service.WebService
+	webService *http.WebService
 }
 
 // New creates a godless instance, connecting to any services, and providing any services, specified in the options.
@@ -306,7 +307,7 @@ func (godless *Godless) serveWeb() error {
 		return nil
 	}
 
-	godless.webService = service.MakeWebService(godless.api)
+	godless.webService = http.MakeWebService(godless.api)
 	closer, err := http.Serve(addr, godless.webService.Handler())
 
 	if err != nil {
@@ -370,15 +371,6 @@ func (godless *Godless) addErrors(errch <-chan error) {
 		}
 		godless.errwg.Done()
 	}()
-}
-
-// MakeClient creates a Godless HTTP Client.
-func MakeClient(serviceAddr string) api.Client {
-	return service.MakeClient(serviceAddr)
-}
-
-func MakeClientWithHttp(serviceAddr string, webClient *gohttp.Client) api.Client {
-	return service.MakeClientWithHttp(serviceAddr, webClient)
 }
 
 func MakeKeyStore() api.KeyStore {
