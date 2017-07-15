@@ -27,7 +27,7 @@ func GenResponse(rand *rand.Rand, size int) Response {
 			genReflectResponse(rand, size, &gen)
 		}
 	} else {
-		errText := testutil.RandPoint(rand, size)
+		errText := testutil.RandLettersRange(rand, 1, size)
 		gen.Err = errors.New(errText)
 	}
 

@@ -14,12 +14,11 @@ func GenNamespace(rand *rand.Rand, size int) Namespace {
 
 	gen := EmptyNamespace()
 
-	// FIXME This looks horrific.
-	tableCount := testutil.GenCount(rand, size, tableFudge)
+	tableCount := testutil.GenCountRange(rand, 1, size, tableFudge)
 	for i := 0; i < tableCount; i++ {
 		tableName := TableName(testutil.RandLettersRange(rand, 1, maxStr))
 		table := EmptyTable()
-		rowCount := testutil.GenCount(rand, size, rowFudge)
+		rowCount := testutil.GenCountRange(rand, 1, size, rowFudge)
 		for j := 0; j < rowCount; j++ {
 			rowName := RowName(testutil.RandLetters(rand, maxStr))
 			row := genRow(rand, size)
