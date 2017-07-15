@@ -31,16 +31,16 @@ import (
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/http"
 	"github.com/johnny-morrice/godless/query"
+
+	"github.com/pkg/errors"
 )
 
-// clientPlumbingCmd represents the query command
 var clientPlumbingCmd = &cobra.Command{
 	Use:   "plumbing",
 	Short: "Query a godless server",
 	Long:  `Send a query to a godless server over HTTP.  User must specify either --reflect or --query.`,
 	// TODO tidy method.
 	Run: func(cmd *cobra.Command, args []string) {
-		var q *query.Query
 		var err error
 		client := makeClient()
 
@@ -48,28 +48,14 @@ var clientPlumbingCmd = &cobra.Command{
 
 		readKeysFromViper()
 
-		if source != "" || analyse {
-			q, err = query.Compile(source)
-
-			if err != nil {
-				die(err)
-			}
-		}
-
-		if analyse {
-			err = analyseQuery(q)
-
-			if err != nil {
-				die(err)
-			}
-		}
+		query := parseQuery()
 
 		if dryrun {
 			return
 		}
 
 		var response api.Response
-		response, err = sendRequest(client, q)
+		response, err = sendRequest(client, query)
 
 		if err != nil {
 			die(err)
@@ -85,6 +71,32 @@ var dryrun bool
 var queryBinary bool
 var reflect string
 var replicate string
+
+func parseQuery() *query.Query {
+	var q *query.Query
+	var err error
+	if source != "" {
+		q, err = query.Compile(source)
+
+		if err != nil {
+			die(err)
+		}
+	}
+
+	if analyse && q == nil {
+		die(errors.New("Cannot analyse without query"))
+	}
+
+	if analyse {
+		err = analyseQuery(q)
+
+		if err != nil {
+			die(err)
+		}
+	}
+
+	return q
+}
 
 func makeClient() api.Client {
 	webClient := &gohttp.Client{
@@ -126,7 +138,7 @@ func outputResponse(response api.Response) {
 }
 
 func validateClientPlumbingArgs(cmd *cobra.Command) {
-	if source == "" && reflect == "" {
+	if source == "" && reflect == "" && replicate == "" {
 		err := cmd.Help()
 
 		if err != nil {
@@ -151,7 +163,7 @@ func sendRequest(client api.Client, query *query.Query) (api.Response, error) {
 		reflectType, err := parseReflect()
 
 		if err != nil {
-			return api.RESPONSE_FAIL, err
+			die(err)
 		}
 
 		request := api.MakeReflectRequest(reflectType)
@@ -168,7 +180,7 @@ func sendRequest(client api.Client, query *query.Query) (api.Response, error) {
 		request := api.MakeReplicateRequest([]crdt.Link{link})
 		return client.Send(request)
 	} else {
-		panic("Validation should prevent this contingency")
+		panic("BUG validation should prevent this contingency")
 	}
 }
 
