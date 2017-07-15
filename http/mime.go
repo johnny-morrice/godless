@@ -7,7 +7,7 @@ import (
 	"github.com/johnny-morrice/godless/internal/util"
 )
 
-const MIME_PROTO_TEXT = "application/json"
+const MIME_PROTO_TEXT = "text/plain"
 const MIME_PROTO = "application/octet-stream"
 
 // TODO That we have a MIME_EMPTY indicates design flaw.

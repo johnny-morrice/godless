@@ -50,7 +50,7 @@ func (service *WebService) handleApiRequest(rw gohttp.ResponseWriter, req *gohtt
 		return
 	}
 
-	log.Info("WebService runQuery at: %v", req.RequestURI)
+	log.Info("WebService api.Request at: %v", req.RequestURI)
 	request, err := api.DecodeRequest(req.Body)
 
 	if err != nil {
@@ -98,7 +98,6 @@ func (service *WebService) respond(rw gohttp.ResponseWriter, respch <-chan api.R
 	}
 }
 
-// TODO why are we sending errors in plaintext again?
 func sendErr(rw gohttp.ResponseWriter, err error) error {
 	message := api.Response{
 		Err: err,
@@ -111,9 +110,9 @@ func sendErr(rw gohttp.ResponseWriter, err error) error {
 		panic(fmt.Sprintf("Bug encoding json error message: '%v'; ", encerr.Error()))
 	}
 
-	log.Info("Sending error APIResponse (%v bytes) to HTTP client...", buff.Len())
-	rw.WriteHeader(WEB_API_ERROR)
+	log.Info("Sending error APIResponse (%d bytes) to HTTP client...", buff.Len())
 	rw.Header()[CONTENT_TYPE] = []string{MIME_PROTO_TEXT}
+	rw.WriteHeader(WEB_API_ERROR)
 	_, senderr := rw.Write(buff.Bytes())
 
 	if senderr != nil {
@@ -151,5 +150,5 @@ func sendMessage(rw gohttp.ResponseWriter, resp api.Response) error {
 const (
 	NOT_FOUND       = 404
 	WEB_API_SUCCESS = 200
-	WEB_API_ERROR   = 500
+	WEB_API_ERROR   = 400
 )

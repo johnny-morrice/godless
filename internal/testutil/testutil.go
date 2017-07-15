@@ -2,7 +2,6 @@ package testutil
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"math/rand"
 	"reflect"
@@ -114,13 +113,17 @@ func Trim(err error) string {
 }
 
 func DebugLine(t *testing.T) {
-	_, _, line, ok := runtime.Caller(__CALLER_DEPTH)
+	debugLineFor(t, 2)
+}
+
+func debugLineFor(t *testing.T, callerDepth int) {
+	_, file, line, ok := runtime.Caller(callerDepth)
 
 	if !ok {
-		panic("DebugLine failed")
+		panic("debugLineFor failed")
 	}
 
-	t.Log("Test failed at line", line)
+	t.Logf("Test failed at %s:%d", file, line)
 }
 
 func WaitGroupTimeout(t *testing.T, wg *sync.WaitGroup, timeout time.Duration) {
@@ -143,11 +146,17 @@ func WaitGroupTimeout(t *testing.T, wg *sync.WaitGroup, timeout time.Duration) {
 }
 
 func AssertNil(t *testing.T, x interface{}) {
-	Assert(t, fmt.Sprintf("Expected nil value but received: %v", x), x == nil)
+	if x != nil {
+		t.Errorf("Expected nil value but received: %v", x)
+		debugLineFor(t, 2)
+	}
 }
 
 func AssertNonNil(t *testing.T, x interface{}) {
-	Assert(t, fmt.Sprintf("Expected non nil value"), x != nil)
+	if x == nil {
+		t.Error("Expected non nil value")
+		debugLineFor(t, 2)
+	}
 }
 
 func AssertBytesEqual(t *testing.T, expected, actual []byte) {
@@ -179,6 +188,7 @@ func AssertEncodingStable(t *testing.T, expected []byte, encoder func(io.Writer)
 func Assert(t *testing.T, message string, isOk bool) {
 	if !isOk {
 		t.Error(message)
+		debugLineFor(t, 2)
 	}
 }
 
@@ -189,12 +199,14 @@ func AssertEquals(t *testing.T, message string, expected, actual interface{}) {
 		expectedType := reflect.TypeOf(expected)
 		actualType := reflect.TypeOf(actual)
 		t.Errorf("%s: expected '%v' (%v) but received '%v' (%v)", message, expected, expectedType, actual, actualType)
+		DebugLine(t)
 	}
 }
 
 func AssertVerboseErrorIsNil(t *testing.T, err error) {
 	if err != nil {
 		t.Error("Unexpected error:", Trim(err))
+		debugLineFor(t, 2)
 	}
 }
 
@@ -204,6 +216,7 @@ func AssertLenEquals(t *testing.T, expected int, hasLen interface{}) {
 
 	if expected != actual {
 		t.Errorf("Expected len %d but received %d", expected, actual)
+		debugLineFor(t, 2)
 	}
 }
 
@@ -249,7 +262,6 @@ func LogDiff(old, new string) bool {
 	return false
 }
 
-const __CALLER_DEPTH = 2
 const __TRIM_LENGTH = 500
 const ENCODE_REPEAT_COUNT = 20
 

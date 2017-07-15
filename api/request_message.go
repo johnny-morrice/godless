@@ -38,16 +38,18 @@ func ReadRequestMessage(message *proto.APIRequestMessage) Request {
 	request.Type = MessageType(message.Type)
 	request.Reflection = ReflectionType(message.Reflection)
 
-	request.Replicate = make([]crdt.Link, 0, len(message.Replicate.Links))
-	for _, lmsg := range message.Replicate.Links {
-		link, err := crdt.ReadLinkMessage(lmsg)
+	if message.Replicate != nil {
+		request.Replicate = make([]crdt.Link, 0, len(message.Replicate.Links))
+		for _, lmsg := range message.Replicate.Links {
+			link, err := crdt.ReadLinkMessage(lmsg)
 
-		if err != nil {
-			log.Error("Invalid LinkMessage: %s", err.Error())
-			continue
+			if err != nil {
+				log.Error("Invalid LinkMessage: %s", err.Error())
+				continue
+			}
+
+			request.Replicate = append(request.Replicate, link)
 		}
-
-		request.Replicate = append(request.Replicate, link)
 	}
 
 	if message.Query != nil {
