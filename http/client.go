@@ -96,7 +96,7 @@ func (client *client) decodeFailureResponse(resp *gohttp.Response) (api.Response
 	ct := resp.Header[CONTENT_TYPE]
 
 	if util.LinearContains(ct, MIME_PROTO) {
-		return api.DecodeAPIResponseText(resp.Body)
+		return api.DecodeResponseText(resp.Body)
 	} else {
 		return api.RESPONSE_FAIL, incorrectContentType(resp.StatusCode, ct)
 	}
@@ -122,7 +122,7 @@ func (client *client) decodeUnexpectedResponse(resp *gohttp.Response) (api.Respo
 func (client *client) decodeSuccessResponse(resp *gohttp.Response) (api.Response, error) {
 	ct := resp.Header[CONTENT_TYPE]
 	if util.LinearContains(ct, MIME_PROTO) {
-		return api.DecodeAPIResponse(resp.Body)
+		return api.DecodeResponse(resp.Body)
 	} else {
 		return api.RESPONSE_FAIL, incorrectContentType(resp.StatusCode, ct)
 	}

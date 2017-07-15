@@ -122,14 +122,14 @@ func apiResponseTestWithSerializer(expected Response, pass func(Response) Respon
 
 func apiResponseSerializationPass(resp Response) Response {
 	buff := &bytes.Buffer{}
-	err := EncodeAPIResponse(resp, buff)
+	err := EncodeResponse(resp, buff)
 
 	if err != nil {
 		panic(err)
 	}
 
 	var decoded Response
-	decoded, err = DecodeAPIResponse(buff)
+	decoded, err = DecodeResponse(buff)
 
 	if err != nil {
 		panic(err)
@@ -140,14 +140,14 @@ func apiResponseSerializationPass(resp Response) Response {
 
 func apiResponseSerializationTextPass(resp Response) Response {
 	buff := &bytes.Buffer{}
-	err := EncodeAPIResponseText(resp, buff)
+	err := EncodeResponseText(resp, buff)
 
 	if err != nil {
 		panic(err)
 	}
 
 	var decoded Response
-	decoded, err = DecodeAPIResponseText(buff)
+	decoded, err = DecodeResponseText(buff)
 
 	if err != nil {
 		panic(err)

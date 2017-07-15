@@ -28,7 +28,7 @@ func (resp Response) AsText() (string, error) {
 	const failMsg = "AsText failed"
 
 	w := &bytes.Buffer{}
-	err := EncodeAPIResponseText(resp, w)
+	err := EncodeResponseText(resp, w)
 
 	if err != nil {
 		return "", errors.Wrap(err, failMsg)
@@ -65,7 +65,7 @@ func (resp Response) Equals(other Response) bool {
 	return true
 }
 
-func EncodeAPIResponse(resp Response, w io.Writer) error {
+func EncodeResponse(resp Response, w io.Writer) error {
 	const failMsg = "EncodeAPIResponse failed"
 
 	message := MakeAPIResponseMessage(resp)
@@ -79,7 +79,7 @@ func EncodeAPIResponse(resp Response, w io.Writer) error {
 	return nil
 }
 
-func DecodeAPIResponse(r io.Reader) (Response, error) {
+func DecodeResponse(r io.Reader) (Response, error) {
 	const failMsg = "DecodeAPIResponse failed"
 
 	message := &proto.APIResponseMessage{}
@@ -93,7 +93,7 @@ func DecodeAPIResponse(r io.Reader) (Response, error) {
 	return ReadAPIResponseMessage(message), nil
 }
 
-func EncodeAPIResponseText(resp Response, w io.Writer) error {
+func EncodeResponseText(resp Response, w io.Writer) error {
 	const failMsg = "EncodeAPIResponseText failed"
 
 	message := MakeAPIResponseMessage(resp)
@@ -107,7 +107,7 @@ func EncodeAPIResponseText(resp Response, w io.Writer) error {
 	return nil
 }
 
-func DecodeAPIResponseText(r io.Reader) (Response, error) {
+func DecodeResponseText(r io.Reader) (Response, error) {
 	const failMsg = "DecodeAPIResponseText failed"
 
 	message := &proto.APIResponseMessage{}

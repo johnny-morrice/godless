@@ -105,7 +105,7 @@ func sendErr(rw gohttp.ResponseWriter, err error) error {
 	}
 
 	buff := bytes.Buffer{}
-	encerr := api.EncodeAPIResponseText(message, &buff)
+	encerr := api.EncodeResponseText(message, &buff)
 
 	if encerr != nil {
 		panic(fmt.Sprintf("Bug encoding json error message: '%v'; ", encerr.Error()))
@@ -129,7 +129,7 @@ func sendMessage(rw gohttp.ResponseWriter, resp api.Response) error {
 	// Encode gob into buffer first to check for encoding errors.
 	// TODO is that actually a good idea?
 	buff := &bytes.Buffer{}
-	encerr := api.EncodeAPIResponse(resp, buff)
+	encerr := api.EncodeResponse(resp, buff)
 
 	if encerr != nil {
 		panic(fmt.Sprintf("BUG encoding resp: %v", encerr))

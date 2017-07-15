@@ -120,7 +120,7 @@ func makeClient() api.Client {
 func outputResponse(response api.Response) {
 	var err error
 	if queryBinary {
-		err = api.EncodeAPIResponse(response, os.Stdout)
+		err = api.EncodeResponse(response, os.Stdout)
 
 		if err != nil {
 			die(err)
