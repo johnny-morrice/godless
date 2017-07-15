@@ -4,11 +4,7 @@ import (
 	"testing"
 )
 
-func TestClientSendQuery(t *testing.T) {
-	t.FailNow()
-}
-
-func TestClientSendReflection(t *testing.T) {
+func TestClientSend(t *testing.T) {
 	t.FailNow()
 }
 
