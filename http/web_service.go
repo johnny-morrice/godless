@@ -5,10 +5,8 @@ import (
 	"fmt"
 	gohttp "net/http"
 
-	"github.com/gorilla/mux"
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/log"
-	"github.com/johnny-morrice/godless/query"
 	"github.com/pkg/errors"
 )
 
@@ -16,67 +14,51 @@ const API_ROOT = "/api"
 const QUERY_API_ROOT = "/query"
 const REFLECT_API_ROOT = "/reflect"
 
-// TODO WebService could support replication.
-type WebService struct {
-	apiService api.RequestService
-	stopch     chan struct{}
+type WebServiceOptions struct {
+	Endpoints
+	Api api.RequestService
 }
 
-func MakeWebService(apiService api.RequestService) *WebService {
-	return &WebService{
-		apiService: apiService,
-		stopch:     make(chan struct{}),
+type WebService struct {
+	WebServiceOptions
+	stopch chan struct{}
+}
+
+func MakeWebService(options WebServiceOptions) api.WebService {
+	service := &WebService{
+		WebServiceOptions: options,
+		stopch:            make(chan struct{}),
 	}
+
+	service.UseDefaultEndpoints()
+
+	return service
 }
 
 func (service *WebService) Close() {
 	close(service.stopch)
 }
 
-func (service *WebService) Handler() gohttp.Handler {
-	root := mux.NewRouter()
-	topLevel := root.PathPrefix(API_ROOT).Subrouter()
-
-	reflectMux := topLevel.PathPrefix(REFLECT_API_ROOT).Subrouter()
-	reflectMux.HandleFunc("/head", service.HandleReflectHead)
-	reflectMux.HandleFunc("/index", service.HandleReflectIndex)
-	reflectMux.HandleFunc("/namespace", service.HandleReflectNamespace)
-
-	topLevel.HandleFunc(QUERY_API_ROOT, service.HandleQuery)
-
-	return root
+func (service *WebService) GetApiRequestHandler() gohttp.Handler {
+	return gohttp.HandlerFunc(service.handleApiRequest)
 }
 
-func (service *WebService) HandleReflectHead(rw gohttp.ResponseWriter, req *gohttp.Request) {
-	log.Info("WebService reflectHead at: %v", req.RequestURI)
-	service.reflect(rw, api.REFLECT_HEAD_PATH)
-}
+func (service *WebService) handleApiRequest(rw gohttp.ResponseWriter, req *gohttp.Request) {
+	if !service.IsCommandEndpoint(req.RequestURI) {
+		log.Info("Bad URL for ApiRequestHandler")
+		rw.WriteHeader(NOT_FOUND)
+		return
+	}
 
-func (service *WebService) HandleReflectIndex(rw gohttp.ResponseWriter, req *gohttp.Request) {
-	log.Info("WebService reflectIndex at: %v", req.RequestURI)
-	service.reflect(rw, api.REFLECT_INDEX)
-}
-
-func (service *WebService) HandleReflectNamespace(rw gohttp.ResponseWriter, req *gohttp.Request) {
-	log.Info("WebService reflectDumpNamespace at: %v", req.RequestURI)
-	service.reflect(rw, api.REFLECT_DUMP_NAMESPACE)
-}
-
-func (service *WebService) reflect(rw gohttp.ResponseWriter, reflection api.ReflectionType) {
-	respch, err := service.apiService.Call(api.Request{Type: api.API_REFLECT, Reflection: reflection})
-	service.respond(rw, respch, err)
-}
-
-func (service *WebService) HandleQuery(rw gohttp.ResponseWriter, req *gohttp.Request) {
 	log.Info("WebService runQuery at: %v", req.RequestURI)
-	q, err := query.DecodeQuery(req.Body)
+	request, err := api.DecodeRequest(req.Body)
 
 	if err != nil {
 		invalidRequest(rw, err)
 		return
 	}
 
-	respch, err := service.apiService.Call(api.Request{Type: api.API_QUERY, Query: q})
+	respch, err := service.Api.Call(request)
 	service.respond(rw, respch, err)
 }
 
@@ -167,6 +149,7 @@ func sendMessage(rw gohttp.ResponseWriter, resp api.Response) error {
 }
 
 const (
+	NOT_FOUND       = 404
 	WEB_API_SUCCESS = 200
 	WEB_API_ERROR   = 500
 )

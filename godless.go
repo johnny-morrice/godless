@@ -67,19 +67,20 @@ type Options struct {
 	APIQueryLimit int
 	// PublicServer is optional.  If false, the index will only be updated from peers who are in your public key list.
 	PublicServer bool
+	// WebService is optional.
+	WebService api.WebService
 }
 
 // Godless is a peer-to-peer database.  It shares structured data between peers, using IPFS as a backing store.
 // The core datastructure is a CRDT namespace which resembles a relational scheme in that it has tables, rows, and entries.
 type Godless struct {
 	Options
-	errch      chan error
-	errwg      sync.WaitGroup
-	stopch     chan struct{}
-	stoppers   []api.Closer
-	remote     api.Core
-	api        api.Service
-	webService *http.WebService
+	errch    chan error
+	errwg    sync.WaitGroup
+	stopch   chan struct{}
+	stoppers []api.Closer
+	remote   api.Core
+	api      api.Service
 }
 
 // New creates a godless instance, connecting to any services, and providing any services, specified in the options.
@@ -98,6 +99,7 @@ func New(options Options) (*Godless, error) {
 		godless.connectCache,
 		godless.setupNamespace,
 		godless.launchAPI,
+		godless.setupWebService,
 		godless.serveWeb,
 		godless.replicate,
 	}
@@ -167,8 +169,8 @@ func (godless *Godless) Errors() <-chan error {
 func (godless *Godless) Shutdown() {
 	godless.api.CloseAPI()
 
-	if godless.webService != nil {
-		godless.webService.Close()
+	if godless.WebService != nil {
+		godless.WebService.Close()
 	}
 
 	if godless.Cache != nil {
@@ -299,6 +301,19 @@ func (godless *Godless) launchAPI() error {
 	return nil
 }
 
+func (godless *Godless) setupWebService() error {
+	if godless.WebService != nil {
+		return nil
+	}
+
+	options := http.WebServiceOptions{
+		Api: godless.api,
+	}
+
+	godless.WebService = http.MakeWebService(options)
+	return nil
+}
+
 // Serve serves the Godless webservice.
 func (godless *Godless) serveWeb() error {
 	addr := godless.WebServiceAddr
@@ -307,8 +322,8 @@ func (godless *Godless) serveWeb() error {
 		return nil
 	}
 
-	godless.webService = http.MakeWebService(godless.api)
-	closer, err := http.Serve(addr, godless.webService.Handler())
+	handler := godless.WebService.GetApiRequestHandler()
+	closer, err := http.Serve(addr, handler)
 
 	if err != nil {
 		return err

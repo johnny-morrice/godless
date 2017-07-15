@@ -61,7 +61,7 @@ func EncodeRequest(request Request, w io.Writer) error {
 	panic("not implemented")
 }
 
-func DecodeRequest(request Request, r io.Reader) error {
+func DecodeRequest(r io.Reader) (Request, error) {
 	panic("not implemented")
 }
 

@@ -15,25 +15,23 @@ import (
 )
 
 type ClientOptions struct {
-	ServerAddr      string
-	CommandEndpoint string
-	Http            *gohttp.Client
+	Endpoints
+	ServerAddr string
+	Http       *gohttp.Client
 }
 
-type Client struct {
+type client struct {
 	ClientOptions
 }
 
-func MakeClient(options ClientOptions) (*Client, error) {
-	client := &Client{ClientOptions: options}
+func MakeClient(options ClientOptions) (api.Client, error) {
+	client := &client{ClientOptions: options}
 
 	if client.ServerAddr == "" {
 		return nil, errors.New("Expected ServerAddr")
 	}
 
-	if client.CommandEndpoint == "" {
-		client.CommandEndpoint = API_ROOT
-	}
+	client.UseDefaultEndpoints()
 
 	if client.Http == nil {
 		client.Http = defaultHttpClient()
@@ -42,7 +40,7 @@ func MakeClient(options ClientOptions) (*Client, error) {
 	return client, nil
 }
 
-func (client *Client) Send(request api.Request) (api.Response, error) {
+func (client *client) Send(request api.Request) (api.Response, error) {
 	err := request.Validate()
 
 	if err != nil {
@@ -59,7 +57,7 @@ func (client *Client) Send(request api.Request) (api.Response, error) {
 	return client.Post(client.CommandEndpoint, MIME_PROTO, buff)
 }
 
-func (client *Client) Post(path, bodyType string, body io.Reader) (api.Response, error) {
+func (client *client) Post(path, bodyType string, body io.Reader) (api.Response, error) {
 	addr := client.ServerAddr + path
 	log.Info("HTTP POST to %s", addr)
 
@@ -84,7 +82,7 @@ func (client *Client) Post(path, bodyType string, body io.Reader) (api.Response,
 	}
 }
 
-func (client *Client) decodeHttpResponse(resp *gohttp.Response) (api.Response, error) {
+func (client *client) decodeHttpResponse(resp *gohttp.Response) (api.Response, error) {
 	if resp.StatusCode == WEB_API_SUCCESS {
 		return client.decodeSuccessResponse(resp)
 	} else if resp.StatusCode == WEB_API_ERROR {
@@ -94,7 +92,7 @@ func (client *Client) decodeHttpResponse(resp *gohttp.Response) (api.Response, e
 	}
 }
 
-func (client *Client) decodeFailureResponse(resp *gohttp.Response) (api.Response, error) {
+func (client *client) decodeFailureResponse(resp *gohttp.Response) (api.Response, error) {
 	ct := resp.Header[CONTENT_TYPE]
 
 	if util.LinearContains(ct, MIME_PROTO) {
@@ -104,7 +102,7 @@ func (client *Client) decodeFailureResponse(resp *gohttp.Response) (api.Response
 	}
 }
 
-func (client *Client) decodeUnexpectedResponse(resp *gohttp.Response) (api.Response, error) {
+func (client *client) decodeUnexpectedResponse(resp *gohttp.Response) (api.Response, error) {
 	ct := resp.Header[CONTENT_TYPE]
 
 	if util.LinearContains(ct, "text/plain; charset=utf-8") {
@@ -121,7 +119,7 @@ func (client *Client) decodeUnexpectedResponse(resp *gohttp.Response) (api.Respo
 	}
 }
 
-func (client *Client) decodeSuccessResponse(resp *gohttp.Response) (api.Response, error) {
+func (client *client) decodeSuccessResponse(resp *gohttp.Response) (api.Response, error) {
 	ct := resp.Header[CONTENT_TYPE]
 	if util.LinearContains(ct, MIME_PROTO) {
 		return api.DecodeAPIResponse(resp.Body)
