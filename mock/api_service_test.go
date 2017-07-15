@@ -159,15 +159,15 @@ func tidyApi(t *testing.T, api api.Service, errch <-chan error) {
 }
 
 func runReplicate(service api.RequestService, links []crdt.Link) (<-chan api.Response, error) {
-	return service.Call(api.Request{Type: api.API_REPLICATE, Replicate: links})
+	return service.Call(api.MakeReplicateRequest(links))
 }
 
 func runReflect(service api.RequestService, reflection api.ReflectionType) (<-chan api.Response, error) {
-	return service.Call(api.Request{Type: api.API_REFLECT, Reflection: reflection})
+	return service.Call(api.MakeReflectRequest(reflection))
 }
 
 func runQuery(service api.RequestService, query *query.Query) (<-chan api.Response, error) {
-	return service.Call(api.Request{Type: api.API_QUERY, Query: query})
+	return service.Call(api.MakeQueryRequest(query))
 }
 
 func launchAPI(core api.Core) (api.Service, <-chan error) {

@@ -96,11 +96,15 @@ func (request Request) Validate() error {
 }
 
 func (request Request) validateQuery() error {
+	const failMsg = "Request.validateQuery failed"
+
 	if request.Query == nil {
 		return fmt.Errorf("Query was nil")
 	}
 
-	return nil
+	err := request.Query.Validate()
+
+	return errors.Wrap(err, failMsg)
 }
 
 func (request Request) validateReflect() error {
