@@ -102,6 +102,12 @@ func (service *queuedApiService) unlockResource() {
 }
 
 func (service *queuedApiService) Call(request api.Request) (<-chan api.Response, error) {
+	err := request.Validate()
+	if err != nil {
+		log.Warn("API received invalid request")
+		return nil, err
+	}
+
 	switch request.Type {
 	case api.API_QUERY:
 		return service.runQuery(request)
@@ -159,11 +165,6 @@ func (service *queuedApiService) runQuery(request api.Request) (<-chan api.Respo
 			log.Debug("Failed to pretty print query: %s", err.Error())
 		}
 
-	}
-
-	if err := query.Validate(); err != nil {
-		log.Warn("Invalid query.Query")
-		return nil, err
 	}
 
 	command, err := request.MakeCommand()

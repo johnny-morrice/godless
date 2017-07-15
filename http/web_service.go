@@ -44,7 +44,7 @@ func (service *WebService) GetApiRequestHandler() gohttp.Handler {
 }
 
 func (service *WebService) handleApiRequest(rw gohttp.ResponseWriter, req *gohttp.Request) {
-	if !service.IsCommandEndpoint(req.RequestURI) {
+	if !service.IsCommandEndpoint(req.URL) {
 		log.Info("Bad URL for ApiRequestHandler")
 		rw.WriteHeader(NOT_FOUND)
 		return

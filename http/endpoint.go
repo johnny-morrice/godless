@@ -1,11 +1,15 @@
 package http
 
+import (
+	"net/url"
+)
+
 type Endpoints struct {
 	CommandEndpoint string
 }
 
-func (endpoint *Endpoints) IsCommandEndpoint(url string) bool {
-	panic("not implemented")
+func (endpoint *Endpoints) IsCommandEndpoint(url *url.URL) bool {
+	return endpoint.CommandEndpoint == url.Path
 }
 
 // UseDefaultEndpoints overwrites empty endpoints with Defaults.
