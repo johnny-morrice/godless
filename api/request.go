@@ -4,7 +4,11 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/pkg/errors"
+
 	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/internal/util"
+	"github.com/johnny-morrice/godless/proto"
 	"github.com/johnny-morrice/godless/query"
 )
 
@@ -50,19 +54,99 @@ func (request Request) MakeCommand() (Command, error) {
 }
 
 func (request Request) Equals(other Request) bool {
-	panic("not implemented")
+	ok := request.Type == other.Type
+	ok = ok && request.Reflection == other.Reflection
+	ok = ok && len(request.Replicate) == len(other.Replicate)
+	ok = ok && (request.Query == nil) == (other.Query == nil)
+
+	if !ok {
+		return false
+	}
+
+	for i, myLink := range request.Replicate {
+		otherLink := other.Replicate[i]
+
+		if !myLink.Equals(otherLink) {
+			return false
+		}
+	}
+
+	if request.Query != nil {
+		return request.Query.Equals(other.Query)
+	}
+
+	return true
 }
 
 func (request Request) Validate() error {
-	panic("not implemented")
+	switch request.Type {
+	case API_QUERY:
+		return request.validateQuery()
+	case API_REFLECT:
+		return request.validateReflect()
+	case API_REPLICATE:
+		return request.validateReplicate()
+	default:
+		return fmt.Errorf("Invalid MessageType: %v", request.Type)
+	}
+
+	return nil
+}
+
+func (request Request) validateQuery() error {
+	if request.Query == nil {
+		return fmt.Errorf("Query was nil")
+	}
+
+	return nil
+}
+
+func (request Request) validateReflect() error {
+	switch request.Reflection {
+	case REFLECT_HEAD_PATH:
+	case REFLECT_DUMP_NAMESPACE:
+	case REFLECT_INDEX:
+	default:
+		return fmt.Errorf("Invalid ReflectionType: %v", request.Reflection)
+	}
+
+	return nil
+}
+
+func (request Request) validateReplicate() error {
+	if len(request.Replicate) == 0 {
+		return fmt.Errorf("No replication links")
+	}
+
+	return nil
 }
 
 func EncodeRequest(request Request, w io.Writer) error {
-	panic("not implemented")
+	const failMsg = "EncodeRequest failed"
+
+	message := MakeRequestMessage(request)
+
+	err := util.Encode(message, w)
+
+	if err != nil {
+		return errors.Wrap(err, failMsg)
+	}
+
+	return nil
 }
 
 func DecodeRequest(r io.Reader) (Request, error) {
-	panic("not implemented")
+	const failMsg = "DecodeRequest failed"
+
+	message := &proto.APIRequestMessage{}
+
+	err := util.Decode(message, r)
+
+	if err != nil {
+		return Request{}, errors.Wrap(err, failMsg)
+	}
+
+	return ReadRequestMessage(message), nil
 }
 
 type ReflectionType uint16

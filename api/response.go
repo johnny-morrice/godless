@@ -66,7 +66,7 @@ func (resp Response) Equals(other Response) bool {
 }
 
 func EncodeResponse(resp Response, w io.Writer) error {
-	const failMsg = "EncodeAPIResponse failed"
+	const failMsg = "EncodeResponse failed"
 
 	message := MakeAPIResponseMessage(resp)
 
@@ -80,7 +80,7 @@ func EncodeResponse(resp Response, w io.Writer) error {
 }
 
 func DecodeResponse(r io.Reader) (Response, error) {
-	const failMsg = "DecodeAPIResponse failed"
+	const failMsg = "DecodeResponse failed"
 
 	message := &proto.APIResponseMessage{}
 
@@ -94,7 +94,7 @@ func DecodeResponse(r io.Reader) (Response, error) {
 }
 
 func EncodeResponseText(resp Response, w io.Writer) error {
-	const failMsg = "EncodeAPIResponseText failed"
+	const failMsg = "EncodeResponseText failed"
 
 	message := MakeAPIResponseMessage(resp)
 
@@ -108,7 +108,7 @@ func EncodeResponseText(resp Response, w io.Writer) error {
 }
 
 func DecodeResponseText(r io.Reader) (Response, error) {
-	const failMsg = "DecodeAPIResponseText failed"
+	const failMsg = "DecodeResponseText failed"
 
 	message := &proto.APIResponseMessage{}
 

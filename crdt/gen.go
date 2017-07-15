@@ -1,6 +1,7 @@
 package crdt
 
 import (
+	"math"
 	"math/rand"
 
 	"github.com/johnny-morrice/godless/internal/testutil"
@@ -76,4 +77,11 @@ func GenIndex(rand *rand.Rand, size int) Index {
 	}
 
 	return index
+}
+
+func GenLink(rand *rand.Rand, size int) Link {
+	const PATH_SCALE = 0.5
+	maxLen := int(math.Floor(float64(size) / PATH_SCALE))
+	addr := testutil.RandLettersRange(rand, 1, maxLen)
+	return UnsignedLink(IPFSPath(addr))
 }
