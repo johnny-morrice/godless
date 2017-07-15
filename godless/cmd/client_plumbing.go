@@ -28,6 +28,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/johnny-morrice/godless/api"
+	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/http"
 	"github.com/johnny-morrice/godless/query"
 )
@@ -44,6 +45,8 @@ var clientPlumbingCmd = &cobra.Command{
 		client := makeClient()
 
 		validateClientPlumbingArgs(cmd)
+
+		readKeysFromViper()
 
 		if source != "" || analyse {
 			q, err = query.Compile(source)
@@ -81,6 +84,7 @@ var analyse bool
 var dryrun bool
 var queryBinary bool
 var reflect string
+var replicate string
 
 func makeClient() api.Client {
 	webClient := &gohttp.Client{
@@ -152,6 +156,17 @@ func sendRequest(client api.Client, query *query.Query) (api.Response, error) {
 
 		request := api.MakeReflectRequest(reflectType)
 		return client.Send(request)
+	} else if replicate != "" {
+		replicatePath := crdt.IPFSPath(replicate)
+		keys := keyStore.GetAllPrivateKeys()
+		link, err := crdt.SignedLink(replicatePath, keys)
+
+		if err != nil {
+			die(err)
+		}
+
+		request := api.MakeReplicateRequest([]crdt.Link{link})
+		return client.Send(request)
 	} else {
 		panic("Validation should prevent this contingency")
 	}
@@ -173,6 +188,7 @@ func parseReflect() (api.ReflectionType, error) {
 func init() {
 	queryCmd.AddCommand(clientPlumbingCmd)
 
+	clientPlumbingCmd.Flags().StringVar(&replicate, "replicate", "", "Replicate index from hash")
 	clientPlumbingCmd.Flags().StringVar(&reflect, "reflect", "", "Reflect on server state. (index|head|namespace)")
 	clientPlumbingCmd.Flags().BoolVar(&queryBinary, "binary", false, "Output protocol buffer binary")
 	clientPlumbingCmd.Flags().BoolVar(&dryrun, "dryrun", false, "Don't send query to server")

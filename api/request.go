@@ -29,7 +29,7 @@ func MakeReflectRequest(reflection ReflectionType) Request {
 	}
 }
 
-func MakeReflicateRequest(replicate []crdt.Link) Request {
+func MakeReplicateRequest(replicate []crdt.Link) Request {
 	return Request{
 		Type:      API_REPLICATE,
 		Replicate: replicate,
