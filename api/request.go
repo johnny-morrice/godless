@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 
+	"math/rand"
+
 	"github.com/pkg/errors"
 
 	"github.com/johnny-morrice/godless/crdt"
@@ -147,6 +149,51 @@ func DecodeRequest(r io.Reader) (Request, error) {
 	}
 
 	return ReadRequestMessage(message), nil
+}
+
+func GenRequest(rand *rand.Rand, size int) Request {
+	gen := Request{}
+
+	chooseType := rand.Float32()
+
+	if chooseType < 0.3 {
+		generateQueryRequest(rand, size, &gen)
+	} else if chooseType < 0.6 {
+		generateReflectRequest(rand, size, &gen)
+	} else {
+		generateReplicateRequest(rand, size, &gen)
+	}
+
+	return gen
+}
+
+func generateQueryRequest(rand *rand.Rand, size int, gen *Request) {
+	gen.Type = API_QUERY
+	gen.Query = query.GenQuery(rand, size)
+}
+
+func generateReflectRequest(rand *rand.Rand, size int, gen *Request) {
+	gen.Type = API_REFLECT
+
+	chooseType := rand.Float32()
+
+	if chooseType < 0.3 {
+		gen.Reflection = REFLECT_HEAD_PATH
+	} else if chooseType < 0.6 {
+		gen.Reflection = REFLECT_INDEX
+	} else {
+		gen.Reflection = REFLECT_DUMP_NAMESPACE
+	}
+}
+
+func generateReplicateRequest(rand *rand.Rand, size int, gen *Request) {
+	gen.Type = API_REPLICATE
+
+	gen.Replicate = make([]crdt.Link, size)
+
+	for i := 0; i < size; i++ {
+		gen.Replicate[i] = crdt.GenLink(rand, size)
+	}
 }
 
 type ReflectionType uint16

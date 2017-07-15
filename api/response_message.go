@@ -43,13 +43,17 @@ func ReadAPIResponseMessage(message *proto.APIResponseMessage) Response {
 		return resp
 	}
 
-	ns, nsInvalid := crdt.ReadNamespaceMessage(message.Namespace)
-	resp.Namespace = ns
-	logInvalidNamespace(nsInvalid)
+	if message.Namespace != nil {
+		ns, nsInvalid := crdt.ReadNamespaceMessage(message.Namespace)
+		resp.Namespace = ns
+		logInvalidNamespace(nsInvalid)
+	}
 
-	index, indexInvalid := crdt.ReadIndexMessage(message.Index)
-	resp.Index = index
-	logInvalidIndex(indexInvalid)
+	if message.Index != nil {
+		index, indexInvalid := crdt.ReadIndexMessage(message.Index)
+		resp.Index = index
+		logInvalidIndex(indexInvalid)
+	}
 
 	return resp
 }
