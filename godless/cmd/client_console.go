@@ -59,13 +59,7 @@ var clientConsoleCmd = &cobra.Command{
 var consoleHistoryFilePath string
 
 func openOrCreate(filePath string) (*os.File, error) {
-	_, err := os.Stat(filePath)
-
-	if err != nil {
-		return os.Create(filePath)
-	}
-
-	return os.Open(filePath)
+	return os.OpenFile(filePath, os.O_RDWR|os.O_CREATE, 0600)
 }
 
 func openConsoleHistory(options *cli.TerminalOptions) *os.File {
@@ -79,6 +73,8 @@ func openConsoleHistory(options *cli.TerminalOptions) *os.File {
 
 		return historyFile
 	}
+
+	log.Warn("Not using history file")
 
 	return nil
 }

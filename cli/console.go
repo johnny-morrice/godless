@@ -51,9 +51,14 @@ func (console *Console) ReadEvalPrintLoop() error {
 	}
 
 	for {
-		err := console.readEvalPrint()
+		stop, err := console.readEvalPrint()
+
 		if err != nil {
 			return err
+		}
+
+		if stop {
+			return nil
 		}
 	}
 
@@ -75,25 +80,27 @@ func (console *Console) setupLiner() error {
 func (console *Console) shutdownLiner() {
 	defer console.outputBuffer.Flush()
 
-	_, err := console.line.WriteHistory(console.History)
+	if console.History != nil {
+		_, err := console.line.WriteHistory(console.History)
 
-	if err != nil {
-		console.printf("Failed to write history\n")
+		if err != nil {
+			console.printf("Failed to write history: %v\n", err)
+		}
 	}
 
 	console.line.Close()
 }
 
-func (console Console) readEvalPrint() error {
+func (console Console) readEvalPrint() (bool, error) {
 	defer console.outputBuffer.Flush()
 	command, err := console.line.Prompt("> ")
 
 	if err != nil {
-		return err
+		return true, err
 	}
 
 	if command == ":exit" {
-		return nil
+		return true, nil
 	}
 
 	console.line.AppendHistory(command)
@@ -102,7 +109,7 @@ func (console Console) readEvalPrint() error {
 
 	if err != nil {
 		console.printf("Compiliation error: %v", err.Error())
-		return nil
+		return false, nil
 	}
 
 	sendTime := time.Now()
@@ -129,7 +136,7 @@ func (console Console) readEvalPrint() error {
 
 	console.printf("Waited %v for response from server.\n", waitTime)
 
-	return nil
+	return false, nil
 }
 
 func (console *Console) printResponseTables(resp api.Response, q *query.Query) {
