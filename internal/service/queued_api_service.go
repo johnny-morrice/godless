@@ -29,6 +29,7 @@ func LaunchQueuedApiService(options QueuedApiServiceOptions) (api.Service, <-cha
 	}
 
 	if service.QueryLimit > 0 {
+		log.Info("API running %d concurrent queries", service.QueryLimit)
 		service.semaphore = make(chan struct{}, service.QueryLimit)
 	}
 

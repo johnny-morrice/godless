@@ -63,8 +63,8 @@ type Options struct {
 	NamespaceCache api.NamespaceCache
 	// PriorityQueue is optional. Build a 12-factor app by supplying your own remote cache.
 	PriorityQueue api.RequestPriorityQueue
-	// APIQueryLimit is optional.  Tune performance by setting the number of simultaneous queries.
-	APIQueryLimit int
+	// ApiConcurrency is optional.  Tune performance by setting the number of simultaneous queries.
+	ApiConcurrency int
 	// PublicServer is optional.  If false, the index will only be updated from peers who are in your public key list.
 	PublicServer bool
 	// WebService is optional.
@@ -276,7 +276,7 @@ func (godless *Godless) setupNamespace() error {
 }
 
 func (godless *Godless) launchAPI() error {
-	limit := godless.APIQueryLimit
+	limit := godless.ApiConcurrency
 
 	if limit == 0 {
 		limit = 1

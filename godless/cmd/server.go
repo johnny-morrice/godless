@@ -66,7 +66,7 @@ func serve(cmd *cobra.Command) {
 		FailEarly:         earlyConnect,
 		ReplicateInterval: interval,
 		Topics:            topics,
-		APIQueryLimit:     apiQueryLimit,
+		ApiConcurrency:    apiQueryLimit,
 		KeyStore:          keyStore,
 		PublicServer:      publicServer,
 		IpfsClient:        client,
@@ -183,7 +183,7 @@ func init() {
 	serveCmd.PersistentFlags().DurationVar(&interval, "synctime", __DEFAULT_REPLICATION_INTERVAL, "Interval between peer replications")
 	serveCmd.PersistentFlags().DurationVar(&pulse, "pulse", __DEFAULT_PULSE, "Interval between writes to IPFS")
 	serveCmd.PersistentFlags().BoolVar(&earlyConnect, "early", __DEFAULT_EARLY_CONNECTION, "Early check on IPFS API access")
-	serveCmd.PersistentFlags().IntVar(&apiQueryLimit, "limit", defaultLimit, "Number of simulataneous queries run by the API. limit < 0 for no restrictions.")
+	serveCmd.PersistentFlags().IntVar(&apiQueryLimit, "concurrent", defaultLimit, "Number of simulataneous queries run by the API. limit < 0 for no restrictions.")
 	serveCmd.PersistentFlags().BoolVar(&publicServer, "public", __DEFAULT_SERVER_PUBLIC_STATUS, "Don't limit pubsub updates to the public key list")
 	serveCmd.PersistentFlags().DurationVar(&serverTimeout, "timeout", __DEFAULT_SERVER_TIMEOUT, "Timeout for serverside HTTP queries")
 	serveCmd.PersistentFlags().IntVar(&apiQueueLength, "qlength", __DEFAULT_QUEUE_LENGTH, "API Priority queue length")

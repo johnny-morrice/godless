@@ -11,9 +11,9 @@ import (
 	"github.com/johnny-morrice/godless/query"
 )
 
-func RunRequestResultTests(t *testing.T, client api.Client) {
-	commands := makeJoins()
-	queries := makeSelectReflects()
+func RunRequestResultTests(t *testing.T, client api.Client, size int) {
+	commands := makeJoins(size)
+	queries := makeSelectReflects(size)
 
 	commandWg := &sync.WaitGroup{}
 	for _, c := range commands {
@@ -48,10 +48,10 @@ func RunRequestResultTests(t *testing.T, client api.Client) {
 	queryWg.Wait()
 }
 
-func makeJoins() []api.Request {
-	joins := make([]api.Request, __DATA_ITEM_COUNT)
+func makeJoins(size int) []api.Request {
+	joins := make([]api.Request, size)
 
-	for i := 0; i < __DATA_ITEM_COUNT; i++ {
+	for i := 0; i < size; i++ {
 		query := genJoinQuery(i)
 		joins[i] = api.MakeQueryRequest(query)
 	}
@@ -59,10 +59,10 @@ func makeJoins() []api.Request {
 	return joins
 }
 
-func makeSelectReflects() []api.Request {
-	selects := make([]api.Request, __DATA_ITEM_COUNT)
+func makeSelectReflects(size int) []api.Request {
+	selects := make([]api.Request, size)
 
-	for i := 0; i < __DATA_ITEM_COUNT; i++ {
+	for i := 0; i < size; i++ {
 		query := genSelectQuery(i)
 		selects[i] = api.MakeQueryRequest(query)
 	}
@@ -91,5 +91,3 @@ func forceCompile(source string) *query.Query {
 
 	return query
 }
-
-const __DATA_ITEM_COUNT = 1000
