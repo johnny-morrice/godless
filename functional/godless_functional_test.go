@@ -116,7 +116,7 @@ func BenchmarkGodlessRequestFunctionalWithoutCache(b *testing.B) {
 
 	defer godless.Shutdown()
 
-	joinThenQuery(godless, b.N, nil)
+	joinThenQueryLoop(godless, LOCAL_DATA_SIZE, b.N)
 }
 
 func assertFindNamespaceWithin(t *testing.T, godless *godless.Godless, peerNumber int, duration time.Duration) {

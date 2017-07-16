@@ -11,6 +11,12 @@ import (
 	"github.com/johnny-morrice/godless/query"
 )
 
+func joinThenQueryLoop(client api.Client, size int, iterations int) {
+	for i := 0; i < iterations; i++ {
+		joinThenQuery(client, size, nil)
+	}
+}
+
 func joinThenQuery(client api.Client, size int, t *testing.T) {
 	commands := makeJoins(size)
 	queries := makeSelectReflects(size)
