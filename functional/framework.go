@@ -37,10 +37,10 @@ func RunRequestResultTests(t *testing.T, client api.Client, size int) {
 			resp, err := client.Send(query)
 
 			testutil.AssertNil(t, err)
-			testutil.Assert(t, "Unexpected empty response", !resp.IsEmpty())
 			hasResult := !resp.Namespace.IsEmpty()
 			hasResult = hasResult || !resp.Index.IsEmpty()
 			hasResult = hasResult || !crdt.IsNilPath(resp.Path)
+			testutil.Assert(t, "Expected result", hasResult)
 			queryWg.Done()
 		}()
 	}
