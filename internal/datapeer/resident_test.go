@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/internal/testutil"
 )
 
@@ -66,4 +67,25 @@ func TestResidentMemoryPubSub(t *testing.T) {
 	testutil.AssertBytesEqual(t, expectA, recordA1.Data())
 	testutil.AssertBytesEqual(t, expectA, recordA2.Data())
 	testutil.AssertBytesEqual(t, expectB, recordB.Data())
+}
+
+func BenchmarkResidentMemoryStorageAdd(b *testing.B) {
+	options := ResidentMemoryStorageOptions{
+		Hash: crypto.MD5,
+	}
+
+	storage := MakeResidentMemoryStorage(options)
+	for i := 0; i < b.N; i++ {
+		addRandomData(storage)
+	}
+}
+
+func addRandomData(storage api.ContentAddressableStorage) {
+	const min = 100
+	const max = 1000
+	dataText := testutil.RandLettersRange(testutil.Rand(), min, max)
+	_, err := storage.Add(strings.NewReader(dataText))
+	if err != nil {
+		panic(err)
+	}
 }
