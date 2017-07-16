@@ -31,7 +31,7 @@ type DisconnectablePeer interface {
 }
 
 type ContentAddressableStorage interface {
-	Cat(path string) (io.ReadCloser, error)
+	Cat(hash string) (io.ReadCloser, error)
 	Add(r io.Reader) (string, error)
 }
 
