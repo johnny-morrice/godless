@@ -78,7 +78,7 @@ func genSelectQuery(seq int) *query.Query {
 
 func genJoinQuery(seq int) *query.Query {
 	// TODO use parametrised query.. once they exist :)
-	queryText := fmt.Sprintf("join factory rows (@key=factory%d, foreman=\"Foreman %d\")", seq)
+	queryText := fmt.Sprintf("join factory rows (@key=factory%d, foreman=\"Foreman %d\")", seq, seq)
 	return forceCompile(queryText)
 }
 

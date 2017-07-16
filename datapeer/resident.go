@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"sync"
 
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/internal/util"
@@ -27,6 +28,7 @@ type ResidentMemoryStorageOptions struct {
 }
 
 type residentMemoryStorage struct {
+	sync.RWMutex
 	ResidentMemoryStorageOptions
 	hashes map[string][]byte
 }
@@ -39,6 +41,8 @@ func MakeResidentMemoryStorage(options ResidentMemoryStorageOptions) api.Content
 }
 
 func (storage *residentMemoryStorage) Cat(hash string) (io.ReadCloser, error) {
+	storage.RLock()
+	defer storage.RUnlock()
 	data, ok := storage.hashes[hash]
 
 	if !ok {
@@ -56,6 +60,8 @@ func (storage *residentMemoryStorage) Cat(hash string) (io.ReadCloser, error) {
 }
 
 func (storage *residentMemoryStorage) Add(r io.Reader) (string, error) {
+	storage.Lock()
+	defer storage.Unlock()
 	data, err := ioutil.ReadAll(r)
 
 	if err != nil {
@@ -75,6 +81,7 @@ func (storage *residentMemoryStorage) Add(r io.Reader) (string, error) {
 }
 
 type residentMemoryPubSubBus struct {
+	sync.RWMutex
 	bus []residentSubscription
 }
 
@@ -83,6 +90,9 @@ func MakeResidentMemoryPubSubBus() api.PubSubber {
 }
 
 func (pubsubber *residentMemoryPubSubBus) PubSubPublish(topic, data string) error {
+	pubsubber.RLock()
+	defer pubsubber.RUnlock()
+
 	for _, sub := range pubsubber.bus {
 		subscription := sub
 		if subscription.topic == topic {
@@ -94,6 +104,9 @@ func (pubsubber *residentMemoryPubSubBus) PubSubPublish(topic, data string) erro
 }
 
 func (pubsubber *residentMemoryPubSubBus) PubSubSubscribe(topic string) (api.PubSubSubscription, error) {
+	pubsubber.Lock()
+	defer pubsubber.Unlock()
+
 	subscription := residentSubscription{
 		topic:  topic,
 		nextch: make(chan api.PubSubRecord),
