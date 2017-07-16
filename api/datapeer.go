@@ -13,6 +13,11 @@ type DataPeer interface {
 	PingablePeer
 }
 
+type PubSubber interface {
+	PubSubPublisher
+	PubSubSubscriber
+}
+
 type PingablePeer interface {
 	IsUp() bool
 }
