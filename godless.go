@@ -19,7 +19,7 @@ import (
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/crypto"
 	"github.com/johnny-morrice/godless/http"
-	"github.com/johnny-morrice/godless/internal/ipfs"
+	"github.com/johnny-morrice/godless/internal/datapeer"
 	"github.com/johnny-morrice/godless/internal/service"
 	"github.com/johnny-morrice/godless/log"
 )
@@ -193,7 +193,7 @@ func (godless *Godless) connectDataPeer() error {
 			return errors.New(msg)
 		}
 
-		peer := &ipfs.WebServiceClient{
+		peer := &datapeer.IpfsWebService{
 			Url:         godless.IpfsServiceUrl,
 			PingTimeout: godless.IpfsPingTimeout,
 			Http:        godless.IpfsClient,
