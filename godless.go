@@ -193,11 +193,12 @@ func (godless *Godless) connectDataPeer() error {
 			return errors.New(msg)
 		}
 
-		peer := &datapeer.IpfsWebService{
+		options := datapeer.IpfsWebServiceOptions{
 			Url:         godless.IpfsServiceUrl,
 			PingTimeout: godless.IpfsPingTimeout,
 			Http:        godless.IpfsClient,
 		}
+		peer := datapeer.MakeIpfsWebService(options)
 
 		godless.DataPeer = peer
 	}

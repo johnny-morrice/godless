@@ -12,15 +12,23 @@ import (
 	"github.com/johnny-morrice/godless/log"
 )
 
-type IpfsWebService struct {
+type IpfsWebServiceOptions struct {
 	Url         string
 	Http        *gohttp.Client
 	PingTimeout time.Duration
 	Shell       *ipfs.Shell
-	pinger      *ipfs.Shell
 }
 
-func (client *IpfsWebService) Connect() error {
+type ipfsWebService struct {
+	IpfsWebServiceOptions
+	pinger *ipfs.Shell
+}
+
+func MakeIpfsWebService(options IpfsWebServiceOptions) api.DataPeer {
+	return &ipfsWebService{IpfsWebServiceOptions: options}
+}
+
+func (client *ipfsWebService) Connect() error {
 	if client.PingTimeout == 0 {
 		client.PingTimeout = __DEFAULT_PING_TIMEOUT
 	}
@@ -38,23 +46,23 @@ func (client *IpfsWebService) Connect() error {
 	return nil
 }
 
-func (client *IpfsWebService) IsUp() bool {
+func (client *ipfsWebService) IsUp() bool {
 	return client.pinger.IsUp()
 }
 
-func (client *IpfsWebService) Disconnect() error {
+func (client *ipfsWebService) Disconnect() error {
 	return nil
 }
 
-func (client IpfsWebService) Cat(path string) (io.ReadCloser, error) {
+func (client ipfsWebService) Cat(path string) (io.ReadCloser, error) {
 	return client.Shell.Cat(path)
 }
 
-func (client IpfsWebService) Add(r io.Reader) (string, error) {
+func (client ipfsWebService) Add(r io.Reader) (string, error) {
 	return client.Shell.Add(r)
 }
 
-func (client IpfsWebService) PubSubPublish(topic, data string) error {
+func (client ipfsWebService) PubSubPublish(topic, data string) error {
 	return client.Shell.PubSubPublish(topic, data)
 }
 
@@ -92,7 +100,7 @@ func (rec record) TopicIDs() []string {
 	return rec.rec.TopicIDs()
 }
 
-func (client IpfsWebService) PubSubSubscribe(topic string) (api.PubSubSubscription, error) {
+func (client ipfsWebService) PubSubSubscribe(topic string) (api.PubSubSubscription, error) {
 	sub, err := client.Shell.PubSubSubscribe(topic)
 
 	if err != nil {
