@@ -65,7 +65,8 @@ func (storage *residentMemoryStorage) Add(r io.Reader) (string, error) {
 	}
 
 	hash := storage.Hash.New()
-	addressBytes := hash.Sum(data)
+	hash.Write(data)
+	addressBytes := hash.Sum(nil)
 	address := util.EncodeBase58(addressBytes)
 
 	_, present := storage.hashes[address]
