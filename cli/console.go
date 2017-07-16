@@ -86,15 +86,19 @@ func (console *Console) shutdownLiner() {
 
 func (console Console) readEvalPrint() error {
 	defer console.outputBuffer.Flush()
-	queryText, err := console.line.Prompt("> ")
+	command, err := console.line.Prompt("> ")
 
 	if err != nil {
 		return err
 	}
 
-	console.line.AppendHistory(queryText)
+	if command == ":exit" {
+		return nil
+	}
 
-	query, err := query.Compile(queryText)
+	console.line.AppendHistory(command)
+
+	query, err := query.Compile(command)
 
 	if err != nil {
 		console.printf("Compiliation error: %v", err.Error())
