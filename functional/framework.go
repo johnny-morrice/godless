@@ -11,7 +11,7 @@ import (
 	"github.com/johnny-morrice/godless/query"
 )
 
-func RunRequestResultTests(t *testing.T, client api.Client, size int) {
+func joinThenQuery(client api.Client, size int, t *testing.T) {
 	commands := makeJoins(size)
 	queries := makeSelectReflects(size)
 
@@ -21,8 +21,12 @@ func RunRequestResultTests(t *testing.T, client api.Client, size int) {
 		command := c
 		go func() {
 			resp, err := client.Send(command)
-			testutil.AssertNil(t, err)
-			testutil.Assert(t, "Unexpected empty response", !resp.IsEmpty())
+
+			if t != nil {
+				testutil.AssertNil(t, err)
+				testutil.Assert(t, "Unexpected empty response", !resp.IsEmpty())
+			}
+
 			commandWg.Done()
 		}()
 	}
@@ -36,11 +40,14 @@ func RunRequestResultTests(t *testing.T, client api.Client, size int) {
 		go func() {
 			resp, err := client.Send(query)
 
-			testutil.AssertNil(t, err)
-			hasResult := !resp.Namespace.IsEmpty()
-			hasResult = hasResult || !resp.Index.IsEmpty()
-			hasResult = hasResult || !crdt.IsNilPath(resp.Path)
-			testutil.Assert(t, "Expected result", hasResult)
+			if t != nil {
+				testutil.AssertNil(t, err)
+				hasResult := !resp.Namespace.IsEmpty()
+				hasResult = hasResult || !resp.Index.IsEmpty()
+				hasResult = hasResult || !crdt.IsNilPath(resp.Path)
+				testutil.Assert(t, "Expected result", hasResult)
+			}
+
 			queryWg.Done()
 		}()
 	}
