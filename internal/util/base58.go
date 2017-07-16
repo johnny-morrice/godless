@@ -1,4 +1,4 @@
-package crypto
+package util
 
 import (
 	"math/big"
@@ -7,11 +7,11 @@ import (
 
 // Borrowed from jbenet/go-base58.
 
-func encodeBase58(b []byte) string {
+func EncodeBase58(b []byte) string {
 	return encodeAlphabet(b, __BTCAlphabet)
 }
 
-func decodeBase58(b string) []byte {
+func DecodeBase58(b string) []byte {
 	return decodeAlphabet(b, __BTCAlphabet)
 }
 

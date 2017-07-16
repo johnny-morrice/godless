@@ -5,9 +5,11 @@ import (
 	"crypto/rand"
 	"strings"
 
-	"github.com/johnny-morrice/godless/log"
 	crypto "github.com/libp2p/go-libp2p-crypto"
 	"github.com/pkg/errors"
+
+	"github.com/johnny-morrice/godless/internal/util"
+	"github.com/johnny-morrice/godless/log"
 )
 
 type PublicKeyText []byte
@@ -91,7 +93,7 @@ func (hash PublicKeyHash) Equals(other PublicKeyHash) bool {
 }
 
 func ParsePublicKey(text PublicKeyText) (PublicKey, error) {
-	unBased := decodeBase58(string(text))
+	unBased := util.DecodeBase58(string(text))
 	p2pKey, err := crypto.UnmarshalPublicKey(unBased)
 	if err != nil {
 		return PublicKey{}, nil
@@ -101,7 +103,7 @@ func ParsePublicKey(text PublicKeyText) (PublicKey, error) {
 }
 
 func ParsePrivateKey(text PrivateKeyText) (PrivateKey, error) {
-	unBased := decodeBase58(string(text))
+	unBased := util.DecodeBase58(string(text))
 	p2pKey, err := crypto.UnmarshalPrivateKey(unBased)
 	if err != nil {
 		return PrivateKey{}, nil
@@ -117,7 +119,7 @@ func SerializePublicKey(pub PublicKey) (PublicKeyText, error) {
 		return NIL_PUBLIC_KEY_TEXT, err
 	}
 
-	return PublicKeyText(encodeBase58(key)), nil
+	return PublicKeyText(util.EncodeBase58(key)), nil
 }
 
 func SerializePrivateKey(priv PrivateKey) (PrivateKeyText, error) {
@@ -127,7 +129,7 @@ func SerializePrivateKey(priv PrivateKey) (PrivateKeyText, error) {
 		return NIL_PRIVATE_KEY_TEXT, err
 	}
 
-	return PrivateKeyText(encodeBase58(key)), nil
+	return PrivateKeyText(util.EncodeBase58(key)), nil
 }
 
 func GenerateKey() (PrivateKey, PublicKey, error) {
@@ -218,7 +220,7 @@ func (pub PublicKey) Hash() (PublicKeyHash, error) {
 		return nil, errors.Wrap(err, failMsg)
 	}
 
-	return PublicKeyHash(encodeBase58(bs)), nil
+	return PublicKeyHash(util.EncodeBase58(bs)), nil
 }
 
 var NIL_PUBLIC_KEY_TEXT = PublicKeyText([]byte(""))

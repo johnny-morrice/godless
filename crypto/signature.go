@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"sort"
+
+	"github.com/johnny-morrice/godless/internal/util"
 )
 
 type SignatureText string
@@ -14,17 +16,17 @@ func IsNilSignature(sigText SignatureText) bool {
 
 func ParseSignature(text SignatureText) (Signature, error) {
 	sigStr := string(text)
-	if !IsBase58(sigStr) {
+	if !util.IsBase58(sigStr) {
 		return Signature{}, errors.New("Signature was not base58 encoded")
 	}
 
-	bs := decodeBase58(sigStr)
+	bs := util.DecodeBase58(sigStr)
 
 	return Signature{sig: bs}, nil
 }
 
 func PrintSignature(sig Signature) (SignatureText, error) {
-	text := encodeBase58(sig.sig)
+	text := util.EncodeBase58(sig.sig)
 	return SignatureText(text), nil
 }
 

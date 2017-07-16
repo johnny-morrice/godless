@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 
 	"github.com/johnny-morrice/godless/api"
+	"github.com/johnny-morrice/godless/internal/util"
 )
 
 func MakeResidentMemoryDataPeer(options ResidentMemoryStorageOptions) api.DataPeer {
@@ -63,7 +64,7 @@ func (storage *residentMemoryStorage) Add(r io.Reader) (string, error) {
 
 	hash := storage.Hash.New()
 	addressBytes := hash.Sum(data)
-	address := string(addressBytes)
+	address := util.EncodeBase58(addressBytes)
 
 	_, present := storage.hashes[address]
 	if !present {
