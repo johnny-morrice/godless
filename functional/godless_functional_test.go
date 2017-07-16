@@ -2,11 +2,15 @@ package functional_godless
 
 import (
 	"testing"
+
+	"github.com/johnny-morrice/godless"
 )
 
 func TestGodlessRequestFunctional(t *testing.T) {
-	// This test includes Replicate requests.
-	t.FailNow()
+	options := godless.Options{
+		RemoteStore: nil,
+	}
+	godless.New(options)
 }
 
 func TestGodlessReplicateFunctional(t *testing.T) {
