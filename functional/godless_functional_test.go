@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/johnny-morrice/godless"
-	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/cache"
 	"github.com/johnny-morrice/godless/datapeer"
 	"github.com/johnny-morrice/godless/http"
@@ -37,8 +36,7 @@ func TestGodlessRequestFunctionalWithoutCache(t *testing.T) {
 	defer godless.Shutdown()
 
 	testutil.AssertNil(t, err)
-	client := localClient{godless: godless}
-	RunRequestResultTests(t, client, LOCAL_DATA_SIZE)
+	RunRequestResultTests(t, godless, LOCAL_DATA_SIZE)
 }
 
 func TestGodlessRequestFunctionalWithCache(t *testing.T) {
@@ -67,8 +65,7 @@ func TestGodlessRequestFunctionalWithCache(t *testing.T) {
 	defer godless.Shutdown()
 	testutil.AssertNil(t, err)
 
-	client := localClient{godless: godless}
-	RunRequestResultTests(t, client, LOCAL_DATA_SIZE)
+	RunRequestResultTests(t, godless, LOCAL_DATA_SIZE)
 }
 
 func TestGodlessRequestFunctionalWithHttp(t *testing.T) {
@@ -108,27 +105,6 @@ func TestGodlessRequestFunctionalWithHttp(t *testing.T) {
 func TestGodlessReplicateFunctional(t *testing.T) {
 	// This test checks online replication service.
 	t.FailNow()
-}
-
-// FIXME should be provided by main lib - needs API change.
-type localClient struct {
-	godless *godless.Godless
-}
-
-func (client localClient) Send(request api.Request) (api.Response, error) {
-	respch, err := client.godless.Call(request)
-
-	if err != nil {
-		return api.RESPONSE_FAIL, err
-	}
-
-	resp := <-respch
-
-	if resp.Err != nil {
-		return resp, resp.Err
-	}
-
-	return resp, nil
 }
 
 const BUFFER_SIZE = 10000

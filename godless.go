@@ -75,12 +75,12 @@ type Options struct {
 // The core datastructure is a CRDT namespace which resembles a relational scheme in that it has tables, rows, and entries.
 type Godless struct {
 	Options
+	api      api.Service
 	errch    chan error
 	errwg    sync.WaitGroup
 	stopch   chan struct{}
 	stoppers []api.Closer
 	remote   api.Core
-	api      api.Service
 }
 
 // New creates a godless instance, connecting to any services, and providing any services, specified in the options.
@@ -115,8 +115,20 @@ func New(options Options) (*Godless, error) {
 	return godless, nil
 }
 
-func (godless *Godless) Call(request api.Request) (<-chan api.Response, error) {
-	return godless.api.Call(request)
+func (godless *Godless) Send(request api.Request) (api.Response, error) {
+	respch, err := godless.api.Call(request)
+
+	if err != nil {
+		return api.RESPONSE_FAIL, err
+	}
+
+	resp := <-respch
+
+	if resp.Err != nil {
+		return resp, resp.Err
+	}
+
+	return resp, nil
 }
 
 func (godless *Godless) report() {
