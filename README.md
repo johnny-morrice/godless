@@ -13,17 +13,15 @@ Check [the wiki](https://github.com/johnny-morrice/godless/wiki) for a tutorial.
 Run IPFS:
 
 ```
-$ ipfs daemon --enable-pubsub-experiment
+$ ipfs daemon
 ```
 
 Run server:
 
 ```
 $ godless init
-$ godless store server --early --public --topics=godless
+$ godless store server --early
 ```
-
-Any other godless server that uses the same topic will replicate all data.
 
 The `--early` flag indicates that the server should fail if it can find no running IPFS daemon.
 
