@@ -3,6 +3,7 @@ package log
 import (
 	"fmt"
 	"log"
+	"strconv"
 
 	"github.com/davecgh/go-spew/spew"
 )
@@ -10,6 +11,23 @@ import (
 // Really basic logging helpers follow.
 
 type LogLevel uint8
+
+func (level LogLevel) String() string {
+	switch level {
+	case LOG_NOTHING:
+		return "NOTHING"
+	case LOG_DEBUG:
+		return "DEBUG"
+	case LOG_WARN:
+		return "WARN"
+	case LOG_ERROR:
+		return "ERROR"
+	case LOG_INFO:
+		return "INFO"
+	default:
+		return strconv.Itoa(int(level))
+	}
+}
 
 const (
 	LOG_NOTHING = LogLevel(iota)
@@ -23,6 +41,7 @@ var __LOG_LEVEL LogLevel
 
 func SetLevel(level LogLevel) {
 	__LOG_LEVEL = level
+	Info("Log level set to %v", __LOG_LEVEL)
 }
 
 func CanLog(level LogLevel) bool {
@@ -31,25 +50,25 @@ func CanLog(level LogLevel) bool {
 
 func Debug(msg string, args ...interface{}) {
 	if CanLog(LOG_DEBUG) {
-		logMsg("DEBUG", msg, args...)
+		logMsg(LOG_DEBUG.String(), msg, args...)
 	}
 }
 
 func Info(msg string, args ...interface{}) {
 	if CanLog(LOG_INFO) {
-		logMsg("INFO", msg, args...)
+		logMsg(LOG_INFO.String(), msg, args...)
 	}
 }
 
 func Warn(msg string, args ...interface{}) {
 	if CanLog(LOG_WARN) {
-		logMsg("WARN", msg, args...)
+		logMsg(LOG_WARN.String(), msg, args...)
 	}
 }
 
 func Error(msg string, args ...interface{}) {
 	if CanLog(LOG_ERROR) {
-		logMsg("ERROR", msg, args...)
+		logMsg(LOG_ERROR.String(), msg, args...)
 	}
 }
 

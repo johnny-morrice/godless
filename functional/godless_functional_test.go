@@ -107,6 +107,18 @@ func TestGodlessReplicateFunctional(t *testing.T) {
 	}
 }
 
+func BenchmarkGodlessRequestFunctionalWithoutCache(b *testing.B) {
+	log.SetLevel(log.LOG_ERROR)
+	godless, err := godlessWithoutCache()
+	if err != nil {
+		panic(err)
+	}
+
+	defer godless.Shutdown()
+
+	joinThenQuery(godless, b.N, nil)
+}
+
 func assertFindNamespaceWithin(t *testing.T, godless *godless.Godless, peerNumber int, duration time.Duration) {
 	timeout := time.NewTimer(duration)
 	defer timeout.Stop()
