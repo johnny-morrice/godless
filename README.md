@@ -27,41 +27,26 @@ Any other godless server that uses the same topic will replicate all data.
 
 The `--early` flag indicates that the server should fail if it can find no running IPFS daemon.
 
-Run plumbing query command:
+Now send queries to the server using `godless query console`:
 
 ```
-$ godless query plumbing --query 'join books rows (@key=book50, authorName="EL James", publisher="Don'\''t wanna know")'
-2017/06/07 21:07:35 DEBUG HTTP POST to http://localhost:8085/api/query
-message: "ok"
-error: ""
-type: 1
-queryResponse: <
-  namespace: <
-  >
->
+> join books rows (@key=book50, authorName="EL James", publisher="Don't wanna know")
 
-$ godless query plumbing --query 'select books where str_eq(@key, "book50") limit 10'     
-2017/06/07 21:07:46 DEBUG HTTP POST to http://localhost:8085/api/query
-message: "ok"
-error: ""
-type: 1
-queryResponse: <
-  namespace: <
-    entries: <
-      table: "books"
-      row: "book50"
-      entry: "authorName"
-      points: "EL James"
-    >
-    entries: <
-      table: "books"
-      row: "book50"
-      entry: "publisher"
-      points: "Don't wanna know"
-    >
-  >
->
+QmPbufdDocGLc1jxmyLwMXdNpnj4Gsgs5Ve5ky4at5DFYx
+Waited 278.572562ms for response from server.
+
+> select books where str_eq(@key, "book50")
+
+--------------------------------------------------
+| Table | Row    | Entry      | Point            |
+--------------------------------------------------
+| books | book50 | authorName | EL James         |
+| books | book50 | publisher  | Don't wanna know |
+--------------------------------------------------
+Found 2 Namespace Entries.
+Waited 29.798089ms for response from server.
 ```
+
 
 ## How does it work?
 
