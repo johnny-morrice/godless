@@ -38,9 +38,12 @@ var queryCmd = &cobra.Command{
 func init() {
 	RootCmd.AddCommand(queryCmd)
 
-	queryCmd.PersistentFlags().StringVar(&serverAddr, "server", "localhost:8085", "Server address")
-	queryCmd.PersistentFlags().DurationVar(&queryTimeout, "timeout", time.Minute, "Query timeout")
+	queryCmd.PersistentFlags().StringVar(&serverAddr, "server", __DEFAULT_QUERY_SERVER, "Server address")
+	queryCmd.PersistentFlags().DurationVar(&queryTimeout, "timeout", __DEFAULT_QUERY_TIMEOUT, "Query timeout")
 }
 
 var serverAddr string
 var queryTimeout time.Duration
+
+const __DEFAULT_QUERY_TIMEOUT = time.Minute
+const __DEFAULT_QUERY_SERVER = "http://localhost:8085"
