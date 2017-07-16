@@ -18,8 +18,8 @@ import (
 	"github.com/johnny-morrice/godless/cache"
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/crypto"
+	"github.com/johnny-morrice/godless/datapeer"
 	"github.com/johnny-morrice/godless/http"
-	"github.com/johnny-morrice/godless/internal/datapeer"
 	"github.com/johnny-morrice/godless/internal/service"
 	"github.com/johnny-morrice/godless/log"
 )
