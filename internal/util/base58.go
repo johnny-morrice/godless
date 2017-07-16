@@ -1,6 +1,7 @@
 package util
 
 import (
+	"bytes"
 	"math/big"
 	"strings"
 )
@@ -8,17 +9,17 @@ import (
 // Borrowed from jbenet/go-base58.
 
 func EncodeBase58(b []byte) string {
-	return encodeAlphabet(b, __BTCAlphabet)
+	return encodeAlphabet(b, __BTC_ALPHABET)
 }
 
 func DecodeBase58(b string) []byte {
-	return decodeAlphabet(b, __BTCAlphabet)
+	return decodeAlphabet(b, __BTC_ALPHABET)
 }
 
 func IsBase58(b string) bool {
 	parts := strings.Split(b, "")
 	for _, p := range parts {
-		partOk := strings.Contains(__BTCAlphabet, p)
+		partOk := strings.Contains(__BTC_ALPHABET_TEXT, p)
 		if !partOk {
 			return false
 		}
@@ -28,20 +29,20 @@ func IsBase58(b string) bool {
 }
 
 // decodeAlphabet decodes a modified base58 string to a byte slice, using alphabet.
-func decodeAlphabet(b, alphabet string) []byte {
+func decodeAlphabet(b string, alphabet []byte) []byte {
 	answer := big.NewInt(0)
 	j := big.NewInt(1)
+	idx := big.NewInt(0)
 
 	for i := len(b) - 1; i >= 0; i-- {
-		tmp := strings.IndexAny(alphabet, string(b[i]))
+		tmp := bytes.IndexByte(alphabet, b[i])
 		if tmp == -1 {
 			return []byte("")
 		}
-		idx := big.NewInt(int64(tmp))
-		tmp1 := big.NewInt(0)
-		tmp1.Mul(j, idx)
+		idx.SetInt64(int64(tmp))
+		idx.Mul(idx, j)
 
-		answer.Add(answer, tmp1)
+		answer.Add(answer, idx)
 		j.Mul(j, bigRadix)
 	}
 
@@ -61,13 +62,13 @@ func decodeAlphabet(b, alphabet string) []byte {
 }
 
 // encodeAlphabet encodes a byte slice to a modified base58 string, using alphabet
-func encodeAlphabet(b []byte, alphabet string) string {
+func encodeAlphabet(b []byte, alphabet []byte) string {
 	x := new(big.Int)
 	x.SetBytes(b)
 
+	mod := new(big.Int)
 	answer := make([]byte, 0, len(b)*136/100)
 	for x.Cmp(bigZero) > 0 {
-		mod := new(big.Int)
 		x.DivMod(x, bigRadix, mod)
 		answer = append(answer, alphabet[mod.Int64()])
 	}
@@ -90,7 +91,9 @@ func encodeAlphabet(b []byte, alphabet string) string {
 }
 
 // alphabet is the modified base58 alphabet used by Bitcoin.
-const __BTCAlphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+const __BTC_ALPHABET_TEXT = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+
+var __BTC_ALPHABET = []byte(__BTC_ALPHABET_TEXT)
 
 var bigRadix = big.NewInt(58)
 var bigZero = big.NewInt(0)
