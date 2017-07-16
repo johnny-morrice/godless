@@ -271,7 +271,7 @@ func (rn *remoteNamespace) joinPeerIndex(links []crdt.Link) api.Response {
 				someFailed = true
 				continue
 			}
-			log.Info("Verified link: %s", link.Path)
+			log.Info("Verified link: %s", link.Path())
 		}
 
 		peerAddr := link.Path()
