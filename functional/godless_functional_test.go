@@ -8,9 +8,11 @@ import (
 	"github.com/johnny-morrice/godless"
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/cache"
+	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/datapeer"
 	"github.com/johnny-morrice/godless/http"
 	"github.com/johnny-morrice/godless/internal/testutil"
+	"github.com/johnny-morrice/godless/log"
 )
 
 func TestGodlessRequestFunctionalWithoutCache(t *testing.T) {
@@ -73,6 +75,8 @@ func TestGodlessReplicateFunctional(t *testing.T) {
 	peers := make([]*godless.Godless, REPLICATING_PEER_COUNT)
 	for i := 0; i < REPLICATING_PEER_COUNT; i++ {
 		peer, err := godlessWithPeer(dataPeer, topic)
+		defer peer.Shutdown()
+
 		if err != nil {
 			t.Error(err)
 			t.FailNow()
@@ -113,13 +117,30 @@ func assertFindNamespaceWithin(t *testing.T, godless *godless.Godless, peerNumbe
 			t.Errorf("Timeout expired without finding namespace on peer %d", peerNumber)
 			return
 		default:
-			request := api.MakeReflectRequest(api.REFLECT_DUMP_NAMESPACE)
-			resp, _ := godless.Send(request)
+			headRequest := api.MakeReflectRequest(api.REFLECT_HEAD_PATH)
+			headResponse, _ := godless.Send(headRequest)
 
-			if !resp.Namespace.IsEmpty() {
+			if !crdt.IsNilPath(headResponse.Path) {
+				log.Debug("Found replicated head at %d: %v", peerNumber, headResponse.Path)
+			}
+
+			indexRequest := api.MakeReflectRequest(api.REFLECT_INDEX)
+			indexResponse, _ := godless.Send(indexRequest)
+
+			if !indexResponse.Index.IsEmpty() {
+				log.Debug("Found replicated index at %d", peerNumber)
+			}
+
+			namespaceRequest := api.MakeReflectRequest(api.REFLECT_DUMP_NAMESPACE)
+			namespaceResponse, _ := godless.Send(namespaceRequest)
+
+			if !namespaceResponse.Namespace.IsEmpty() {
+				log.Debug("Found replicated namespace at %d", peerNumber)
 				timeout.Stop()
 				return
 			}
+
+			log.Debug("Could not reflect to reflected items in the remote store: %v", godless.RemoteStore)
 		}
 	}
 

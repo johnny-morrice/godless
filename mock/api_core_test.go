@@ -564,6 +564,7 @@ func remoteOptions(store api.RemoteStore, headCache api.HeadCache) service.Remot
 		KeyStore:       &crypto.KeyStore{},
 		MemoryImage:    cache.MakeResidentMemoryImage(),
 		Debug:          true,
+		IsPublicIndex:  true,
 	}
 
 	return options

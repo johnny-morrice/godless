@@ -263,7 +263,7 @@ func (rn *remoteNamespace) joinPeerIndex(links []crdt.Link) api.Response {
 
 	someFailed := false
 	for _, link := range links {
-		if rn.IsPublicIndex {
+		if !rn.IsPublicIndex {
 			log.Info("Verifying link...")
 			isVerified := link.IsVerifiedByAny(keys)
 			if !isVerified {

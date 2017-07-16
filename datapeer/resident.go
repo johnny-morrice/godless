@@ -10,6 +10,7 @@ import (
 
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/internal/util"
+	"github.com/johnny-morrice/godless/log"
 )
 
 func MakeResidentMemoryDataPeer(options ResidentMemoryStorageOptions) api.DataPeer {
@@ -41,6 +42,7 @@ func MakeResidentMemoryStorage(options ResidentMemoryStorageOptions) api.Content
 }
 
 func (storage *residentMemoryStorage) Cat(hash string) (io.ReadCloser, error) {
+	log.Info("Catting '%s' from residentMemoryStorage", hash)
 	storage.RLock()
 	defer storage.RUnlock()
 	data, ok := storage.hashes[hash]
@@ -49,17 +51,11 @@ func (storage *residentMemoryStorage) Cat(hash string) (io.ReadCloser, error) {
 		return nil, fmt.Errorf("Data not found for '%s'", hash)
 	}
 
-	buff := &bytes.Buffer{}
-	_, err := buff.Write(data)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return ioutil.NopCloser(buff), nil
+	return ioutil.NopCloser(bytes.NewReader(data)), nil
 }
 
 func (storage *residentMemoryStorage) Add(r io.Reader) (string, error) {
+	log.Info("Adding to residentMemoryStorage...")
 	storage.Lock()
 	defer storage.Unlock()
 	data, err := ioutil.ReadAll(r)
@@ -77,6 +73,8 @@ func (storage *residentMemoryStorage) Add(r io.Reader) (string, error) {
 		storage.hashes[address] = data
 	}
 
+	log.Info("Added '%s' to residentMemoryStorage", address)
+
 	return address, nil
 }
 
@@ -90,6 +88,8 @@ func MakeResidentMemoryPubSubBus() api.PubSubber {
 }
 
 func (pubsubber *residentMemoryPubSubBus) PubSubPublish(topic, data string) error {
+	log.Debug("Publishing '%s' to '%s'...", topic, data)
+
 	pubsubber.RLock()
 	defer pubsubber.RUnlock()
 
@@ -104,6 +104,7 @@ func (pubsubber *residentMemoryPubSubBus) PubSubPublish(topic, data string) erro
 }
 
 func (pubsubber *residentMemoryPubSubBus) PubSubSubscribe(topic string) (api.PubSubSubscription, error) {
+	log.Debug("Subscribing to '%s'...", topic)
 	pubsubber.Lock()
 	defer pubsubber.Unlock()
 
