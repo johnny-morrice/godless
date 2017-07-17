@@ -93,7 +93,9 @@ func (visitor *NamespaceTreeSelect) ReadSearchResult(result api.SearchResult) ap
 		return api.TraversalUpdate{}
 	}
 
-	return visitor.crit.selectMatching(result.Namespace)
+	verified := visitor.filterVerified(result.Namespace)
+
+	return visitor.crit.selectMatching(verified)
 }
 
 func (visitor *NamespaceTreeSelect) getSelectResults() crdt.Namespace {
@@ -103,13 +105,17 @@ func (visitor *NamespaceTreeSelect) getSelectResults() crdt.Namespace {
 	namespace, invalid := crdt.ReadNamespaceStream(stream)
 	visitor.logInvalid(invalid)
 
+	return namespace
+}
+
+func (visitor *NamespaceTreeSelect) filterVerified(namespace crdt.Namespace) crdt.Namespace {
 	if visitor.needsSignature() {
 		log.Info("Filtering results by public key...")
 		namespace = namespace.FilterVerified(visitor.keys)
 		log.Info("Filtering complete")
 	}
 
-	namespace, invalid = namespace.Strip()
+	namespace, invalid := namespace.Strip()
 
 	visitor.logInvalid(invalid)
 
