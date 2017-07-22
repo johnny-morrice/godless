@@ -243,11 +243,17 @@ func (ns Namespace) Equals(other Namespace) bool {
 
 // Iterate through all entries
 func (ns Namespace) ForeachEntry(f func(t TableName, r RowName, e EntryName, entry Entry)) {
+	ns.ForeachRow(func(t TableName, r RowName, row Row) {
+		for e, entry := range row.Entries {
+			f(t, r, e, entry)
+		}
+	})
+}
+
+func (ns Namespace) ForeachRow(f func(t TableName, r RowName, row Row)) {
 	for tableName, table := range ns.Tables {
 		for rowName, row := range table.Rows {
-			for entryName, entry := range row.Entries {
-				f(tableName, rowName, entryName, entry)
-			}
+			f(tableName, rowName, row)
 		}
 	}
 }
