@@ -2,10 +2,17 @@ package function
 
 func StandardFunctions() FunctionNamespace {
 	functions := MakeFunctionNamespace()
-	err := functions.PutFunction(StrEq{})
 
-	if err != nil {
-		panic(err)
+	funcs := []NamedMatchFunction{
+		StrEq{},
+	}
+
+	for _, f := range funcs {
+		err := functions.PutFunction(f)
+
+		if err != nil {
+			panic("BUG: " + err.Error())
+		}
 	}
 
 	return functions

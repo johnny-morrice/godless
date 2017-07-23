@@ -6,28 +6,58 @@ import (
 
 type StrEq struct{}
 
-func (streq StrEq) Match(literals []string, entries []crdt.Entry) bool {
-	m, err := firstValue(literals, entries)
+func (streq StrEq) FuncName() string {
+	return "str_eq"
+}
+
+func (StrEq) Match(literals []string, entries []crdt.Entry) bool {
+	first, err := firstValue(literals, entries)
 
 	if err != nil {
 		return false
 	}
 
-	for _, pfx := range literals {
-		if pfx != m {
+	m := eqMatch{text: first}
+
+	return isMatch(m, literals, entries)
+}
+
+type StrWildcard struct{}
+
+func (StrWildcard) FuncName() string {
+	return "str_wildcard"
+}
+
+func (StrWildcard) Match(literals []string, entries []crdt.Entry) bool {
+	panic("not implemented")
+}
+
+type match interface {
+	matchLiteral(literal string) bool
+	matchPoint(point crdt.Point) bool
+}
+
+type eqMatch struct {
+	text string
+}
+
+func (eq eqMatch) matchLiteral(literal string) bool {
+	return eq.text == literal
+}
+
+func (eq eqMatch) matchPoint(point crdt.Point) bool {
+	return point.HasText(eq.text)
+}
+
+func isMatch(m match, literals []string, entries []crdt.Entry) bool {
+	for _, lit := range literals {
+		if !m.matchLiteral(lit) {
 			return false
 		}
 	}
 
 	for _, entry := range entries {
-		found := false
-		for _, val := range entry.GetValues() {
-			if val.HasText(m) {
-				found = true
-				break
-			}
-		}
-		if !found {
+		if !matchEntry(m, entry) {
 			return false
 		}
 	}
@@ -35,6 +65,12 @@ func (streq StrEq) Match(literals []string, entries []crdt.Entry) bool {
 	return true
 }
 
-func (streq StrEq) FuncName() string {
-	return "str_eq"
+func matchEntry(m match, entry crdt.Entry) bool {
+	for _, point := range entry.GetValues() {
+		if m.matchPoint(point) {
+			return true
+		}
+	}
+
+	return false
 }
