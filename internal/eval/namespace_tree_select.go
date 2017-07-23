@@ -372,7 +372,7 @@ func (eval *selectEvalTree) evalPred(where *query.QueryWhere) *expr {
 	var isMatch bool
 	switch pred.OpCode {
 	case query.STR_EQ:
-		isMatch = StrEq(literals, entries)
+		isMatch = StrEq{}.Match(literals, entries)
 	default:
 		panic(fmt.Sprintf("Unsupported query.QueryPredicate OpCode: %v", pred.OpCode))
 	}

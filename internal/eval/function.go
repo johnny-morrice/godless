@@ -6,8 +6,22 @@ import (
 	"github.com/johnny-morrice/godless/crdt"
 )
 
+type NamedFunction interface {
+	FuncName() string
+}
+
 type MatchFunction interface {
 	Match(literals []string, entries []crdt.Entry) bool
+}
+
+type NamedMatchFunction interface {
+	NamedFunction
+	MatchFunction
+}
+
+type NamedMatchFunctionLambda struct {
+	Function MatchFunction
+	Name     string
 }
 
 type MatchFunctionLambda func(literals []string, entries []crdt.Entry) bool
@@ -16,9 +30,17 @@ func (lambda MatchFunctionLambda) Match(literals []string, entries []crdt.Entry)
 	return lambda(literals, entries)
 }
 
-var _ MatchFunction = MatchFunctionLambda(StrEq)
+func (lambda NamedMatchFunctionLambda) Match(literals []string, entries []crdt.Entry) bool {
+	return lambda.Function.Match(literals, entries)
+}
 
-func StrEq(literals []string, entries []crdt.Entry) bool {
+func (lambda NamedMatchFunctionLambda) FuncName() string {
+	return lambda.Name
+}
+
+type StrEq struct{}
+
+func (streq StrEq) Match(literals []string, entries []crdt.Entry) bool {
 	m, err := firstValue(literals, entries)
 
 	if err != nil {
@@ -45,6 +67,10 @@ func StrEq(literals []string, entries []crdt.Entry) bool {
 	}
 
 	return true
+}
+
+func (streq StrEq) FuncName() string {
+	return "str_eq"
 }
 
 func firstValue(literals []string, entries []crdt.Entry) (string, error) {
