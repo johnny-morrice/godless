@@ -308,11 +308,15 @@ func (godless *Godless) launchAPI() error {
 		queue = cache.MakeResidentBufferQueue(__UNKNOWN_BUFFER_SIZE)
 	}
 
+	validator := api.StaticRequestValidator{
+		FunctionNamespace: godless.Functions,
+	}
+
 	options := service.QueuedApiServiceOptions{
 		Core:       godless.remote,
 		Queue:      queue,
 		QueryLimit: limit,
-		Functions:  godless.Functions,
+		Validator:  validator,
 	}
 
 	api, errch := service.LaunchQueuedApiService(options)

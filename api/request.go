@@ -81,24 +81,30 @@ func (request Request) Equals(other Request) bool {
 	return true
 }
 
-type RequestValidator struct {
-	Functions function.FunctionNamespace
+type RequestValidator interface {
+	QueryValidationContext() query.ValidationContext
 }
 
 func StandardRequestValidator() RequestValidator {
-	return RequestValidator{
-		Functions: function.StandardFunctions(),
+	return StaticRequestValidator{
+		FunctionNamespace: function.StandardFunctions(),
+	}
+}
+
+type StaticRequestValidator struct {
+	FunctionNamespace function.FunctionNamespace
+}
+
+func (validator StaticRequestValidator) QueryValidationContext() query.ValidationContext {
+	return query.ValidationContext{
+		Functions: validator.FunctionNamespace,
 	}
 }
 
 func (request Request) Validate(validator RequestValidator) error {
 	switch request.Type {
 	case API_QUERY:
-		if validator.Functions == nil {
-			return errors.New("Validator provided no FunctionNamespace")
-		}
-
-		return request.validateQuery(validator.Functions)
+		return request.validateQuery(validator)
 	case API_REFLECT:
 		return request.validateReflect()
 	case API_REPLICATE:
@@ -110,14 +116,14 @@ func (request Request) Validate(validator RequestValidator) error {
 	return nil
 }
 
-func (request Request) validateQuery(functions function.FunctionNamespace) error {
+func (request Request) validateQuery(validator RequestValidator) error {
 	const failMsg = "Request.validateQuery failed"
 
 	if request.Query == nil {
 		return fmt.Errorf("Query was nil")
 	}
 
-	err := request.Query.Validate(functions)
+	err := request.Query.Validate(validator.QueryValidationContext())
 
 	return errors.Wrap(err, failMsg)
 }

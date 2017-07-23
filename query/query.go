@@ -315,9 +315,13 @@ func (query *Query) Analyse() string {
 	return fmt.Sprintf("Compiled:\n\n%s\n\nAST:\n\n%s", jsonQuery, jsonAST)
 }
 
-func (query *Query) Validate(functions function.FunctionNamespace) error {
+type ValidationContext struct {
+	Functions function.FunctionNamespace
+}
+
+func (query *Query) Validate(context ValidationContext) error {
 	validator := &queryValidator{
-		Functions: functions,
+		Functions: context.Functions,
 	}
 
 	query.Visit(validator)

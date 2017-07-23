@@ -7,7 +7,6 @@ import (
 	"testing"
 	"testing/quick"
 
-	"github.com/johnny-morrice/godless/function"
 	"github.com/johnny-morrice/godless/internal/testutil"
 )
 
@@ -64,10 +63,7 @@ func TestRequestValidateSuccess(t *testing.T) {
 }
 
 func requestIsValid(request Request) bool {
-	validator := RequestValidator{
-		Functions: function.StandardFunctions(),
-	}
-	return request.Validate(validator) == nil
+	return request.Validate(StandardRequestValidator()) == nil
 }
 
 func TestRequestValidateFailure(t *testing.T) {

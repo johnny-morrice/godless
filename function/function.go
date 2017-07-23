@@ -59,7 +59,7 @@ func (set sliceFunctionSet) GetFunction(functionName string) (NamedMatchFunction
 		}
 	}
 
-	return nil, fmt.Errorf("No function for '%s", functionName)
+	return nil, fmt.Errorf("No function for '%s'", functionName)
 }
 
 func (set sliceFunctionSet) PutFunction(function NamedMatchFunction) error {

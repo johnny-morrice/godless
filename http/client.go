@@ -16,6 +16,7 @@ type ClientOptions struct {
 	Endpoints
 	ServerAddr string
 	Http       *gohttp.Client
+	Validator  api.RequestValidator
 }
 
 type client struct {
@@ -24,6 +25,10 @@ type client struct {
 
 func MakeClient(options ClientOptions) (api.Client, error) {
 	client := &client{ClientOptions: options}
+
+	if client.Validator == nil {
+		client.Validator = api.StandardRequestValidator()
+	}
 
 	if client.ServerAddr == "" {
 		return nil, errors.New("Expected ServerAddr")
@@ -39,7 +44,7 @@ func MakeClient(options ClientOptions) (api.Client, error) {
 }
 
 func (client *client) Send(request api.Request) (api.Response, error) {
-	err := request.Validate(api.StandardRequestValidator())
+	err := request.Validate(client.Validator)
 
 	if err != nil {
 		return api.RESPONSE_FAIL, errors.Wrap(err, fmt.Sprintf("Cowardly refusing to send invalid Request: %v", request))
