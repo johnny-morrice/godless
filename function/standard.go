@@ -1,7 +1,7 @@
 package function
 
 func StandardFunctions() FunctionNamespace {
-	functions := MakeFunctionSet()
+	functions := MakeFunctionNamespace()
 	err := functions.PutFunction(StrEq{})
 
 	if err != nil {

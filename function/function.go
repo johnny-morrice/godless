@@ -44,7 +44,7 @@ type FunctionNamespace interface {
 	PutFunction(function NamedMatchFunction) error
 }
 
-func MakeFunctionSet() FunctionNamespace {
+func MakeFunctionNamespace() FunctionNamespace {
 	return sliceFunctionSet{}
 }
 
