@@ -2,6 +2,7 @@ package eval
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/johnny-morrice/godless/crdt"
 )
@@ -38,39 +39,38 @@ func (lambda NamedMatchFunctionLambda) FuncName() string {
 	return lambda.Name
 }
 
-type StrEq struct{}
-
-func (streq StrEq) Match(literals []string, entries []crdt.Entry) bool {
-	m, err := firstValue(literals, entries)
-
-	if err != nil {
-		return false
-	}
-
-	for _, pfx := range literals {
-		if pfx != m {
-			return false
-		}
-	}
-
-	for _, entry := range entries {
-		found := false
-		for _, val := range entry.GetValues() {
-			if val.HasText(m) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false
-		}
-	}
-
-	return true
+type FunctionSet interface {
+	GetFunction(functionName string) (NamedMatchFunction, error)
+	PutFunction(function NamedMatchFunction) error
 }
 
-func (streq StrEq) FuncName() string {
-	return "str_eq"
+func MakeFunctionSet() FunctionSet {
+	return sliceFunctionSet{}
+}
+
+type sliceFunctionSet struct {
+	functions []NamedMatchFunction
+}
+
+func (set sliceFunctionSet) GetFunction(functionName string) (NamedMatchFunction, error) {
+	for _, f := range set.functions {
+		if f.FuncName() == functionName {
+			return f, nil
+		}
+	}
+
+	return nil, fmt.Errorf("No function for '%s", functionName)
+}
+
+func (set sliceFunctionSet) PutFunction(function NamedMatchFunction) error {
+	_, err := set.GetFunction(function.FuncName())
+
+	if err == nil {
+		return fmt.Errorf("Duplicate function name: %s", function.FuncName())
+	}
+
+	set.functions = append(set.functions, function)
+	return nil
 }
 
 func firstValue(literals []string, entries []crdt.Entry) (string, error) {

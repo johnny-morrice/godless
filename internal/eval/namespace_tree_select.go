@@ -12,25 +12,30 @@ import (
 )
 
 type NamespaceTreeSelect struct {
+	SelectOptions
 	query.NoJoinVisitor
 	query.NoDebugVisitor
 	query.ErrorCollectVisitor
-	Namespace          api.RemoteNamespace
 	crit               *rowCriteria
 	keys               []crypto.PublicKey
-	keyStore           api.KeyStore
 	namespaceLoadError bool
 	indexLoadError     bool
 }
 
-func MakeNamespaceTreeSelect(namespace api.RemoteNamespace, keyStore api.KeyStore) *NamespaceTreeSelect {
+type SelectOptions struct {
+	Namespace api.RemoteNamespace
+	KeyStore  api.KeyStore
+	Functions FunctionSet
+}
+
+func MakeNamespaceTreeSelect(options SelectOptions) *NamespaceTreeSelect {
 	return &NamespaceTreeSelect{
-		Namespace: namespace,
+		SelectOptions: options,
 		crit: &rowCriteria{
-			result: []crdt.NamespaceStreamEntry{},
+			result:    []crdt.NamespaceStreamEntry{},
+			functions: options.Functions,
 		},
-		keys:     []crypto.PublicKey{},
-		keyStore: keyStore,
+		keys: []crypto.PublicKey{},
 	}
 }
 
@@ -134,7 +139,7 @@ func (visitor *NamespaceTreeSelect) needsSignature() bool {
 }
 
 func (visitor *NamespaceTreeSelect) VisitPublicKeyHash(hash crypto.PublicKeyHash) {
-	pub, err := visitor.keyStore.GetPublicKey(hash)
+	pub, err := visitor.KeyStore.GetPublicKey(hash)
 
 	if err != nil {
 		log.Warn("Public key lookup failed with: %s", err.Error())
@@ -187,6 +192,7 @@ func (visitor *NamespaceTreeSelect) VisitPredicate(predicate *query.QueryPredica
 }
 
 type rowCriteria struct {
+	functions FunctionSet
 	tableKey  crdt.TableName
 	count     int
 	limit     int
@@ -252,7 +258,7 @@ func (crit *rowCriteria) findRows(namespace crdt.Namespace) []crdt.NamespaceStre
 	}
 
 	table.ForeachRow(func(rowKey crdt.RowName, r crdt.Row) {
-		eval := makeSelectEvalTree(rowKey, r)
+		eval := makeSelectEvalTree(rowKey, r, crit.functions)
 		where := query.MakeWhereStack(crit.rootWhere)
 
 		if eval.evaluate(where) {
@@ -280,10 +286,11 @@ func (crit *rowCriteria) isReady() bool {
 }
 
 type selectEvalTree struct {
-	rowKey crdt.RowName
-	row    crdt.Row
-	root   *expr
-	stk    []*expr
+	functions FunctionSet
+	rowKey    crdt.RowName
+	row       crdt.Row
+	root      *expr
+	stk       []*expr
 }
 
 type exprOpCode uint8
@@ -301,10 +308,11 @@ type expr struct {
 	source   *query.QueryWhere
 }
 
-func makeSelectEvalTree(rowKey crdt.RowName, row crdt.Row) *selectEvalTree {
+func makeSelectEvalTree(rowKey crdt.RowName, row crdt.Row, functions FunctionSet) *selectEvalTree {
 	return &selectEvalTree{
-		rowKey: rowKey,
-		row:    row,
+		functions: functions,
+		rowKey:    rowKey,
+		row:       row,
 	}
 }
 
@@ -369,19 +377,27 @@ func (eval *selectEvalTree) evalPred(where *query.QueryWhere) *expr {
 		}
 	}
 
-	var isMatch bool
-	switch pred.OpCode {
-	case query.STR_EQ:
-		isMatch = StrEq{}.Match(literals, entries)
-	default:
-		panic(fmt.Sprintf("Unsupported query.QueryPredicate OpCode: %v", pred.OpCode))
-	}
+	function := eval.findMatchFunction(pred)
+	isMatch := function.Match(literals, entries)
 
 	if isMatch {
 		return &expr{source: where, state: EXPR_TRUE}
 	}
 
 	return &expr{source: where, state: EXPR_FALSE}
+}
+
+func (eval *selectEvalTree) findMatchFunction(pred query.QueryPredicate) MatchFunction {
+	functionName := pred.FunctionName
+
+	function, err := eval.functions.GetFunction(functionName)
+
+	// TODO query validator ought to guard against this.
+	if err != nil {
+		panic(err)
+	}
+
+	return function
 }
 
 func (eval *selectEvalTree) VisitWhere(position int, where *query.QueryWhere) {

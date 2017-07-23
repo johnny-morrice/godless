@@ -206,9 +206,10 @@ const (
 
 type QueryPredicate struct {
 	OpCode        QueryPredicateOpCode `json:",omitempty"`
-	Keys          []crdt.EntryName     `json:",omitempty"`
-	Literals      []string             `json:",omitempty"`
-	IncludeRowKey bool                 `json:",omitempty"`
+	FunctionName  string
+	Keys          []crdt.EntryName `json:",omitempty"`
+	Literals      []string         `json:",omitempty"`
+	IncludeRowKey bool             `json:",omitempty"`
 }
 
 func (pred QueryPredicate) IsEmpty() bool {
