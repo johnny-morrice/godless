@@ -345,7 +345,8 @@ type queryValidator struct {
 	NoDebugVisitor
 	ErrorCollectVisitor
 	NoJoinVisitor
-	Functions function.FunctionNamespace
+	Functions  function.FunctionNamespace
+	whereStack []*QueryWhere
 }
 
 func (visitor *queryValidator) VisitPublicKeyHash(hash crypto.PublicKeyHash) {
@@ -385,9 +386,40 @@ func (visitor *queryValidator) VisitWhere(position int, where *QueryWhere) {
 	default:
 		visitor.BadWhereOpCode(position, where)
 	}
+
+	visitor.pushWhere(where)
 }
 
-func (visitor *queryValidator) LeaveWhere(*QueryWhere) {
+func (visitor *queryValidator) LeaveWhere(where *QueryWhere) {
+	tip := visitor.popWhere()
+	if tip != where {
+		visitor.panicOnBadStack()
+	}
+}
+
+func (visitor *queryValidator) pushWhere(where *QueryWhere) {
+	visitor.whereStack = append(visitor.whereStack, where)
+}
+
+func (visitor *queryValidator) popWhere() *QueryWhere {
+	tipIndex := visitor.getTipIndex()
+	tip := visitor.whereStack[tipIndex]
+	visitor.whereStack = visitor.whereStack[:tipIndex]
+	return tip
+}
+
+func (visitor *queryValidator) getTipIndex() int {
+	count := len(visitor.whereStack)
+
+	if count == 0 {
+		visitor.panicOnBadStack()
+	}
+
+	return count - 1
+}
+
+func (visitor *queryValidator) panicOnBadStack() {
+	panic("where clause stack corruption in validator")
 }
 
 func (visitor *queryValidator) VisitPredicate(predicate *QueryPredicate) {
@@ -396,9 +428,14 @@ func (visitor *queryValidator) VisitPredicate(predicate *QueryPredicate) {
 		return
 	}
 
-	_, err := visitor.Functions.GetFunction(predicate.FunctionName)
+	tip := visitor.whereStack[visitor.getTipIndex()]
 
-	if err != nil {
-		visitor.CollectError(err)
+	if tip.OpCode == PREDICATE {
+		_, err := visitor.Functions.GetFunction(predicate.FunctionName)
+
+		if err != nil {
+			visitor.CollectError(err)
+		}
 	}
+
 }

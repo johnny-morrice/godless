@@ -73,3 +73,7 @@ func testClientSendOnce(t *testing.T, rand *rand.Rand, size int) {
 
 const TEST_SERVER_ADDR = "https://example.org"
 const TEST_COMMAND_ENDPOINT = "/api"
+
+func init() {
+	log.SetLevel(log.LOG_DEBUG)
+}

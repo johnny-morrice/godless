@@ -45,14 +45,14 @@ type FunctionNamespace interface {
 }
 
 func MakeFunctionNamespace() FunctionNamespace {
-	return sliceFunctionSet{}
+	return &sliceFunctionSet{}
 }
 
 type sliceFunctionSet struct {
 	functions []NamedMatchFunction
 }
 
-func (set sliceFunctionSet) GetFunction(functionName string) (NamedMatchFunction, error) {
+func (set *sliceFunctionSet) GetFunction(functionName string) (NamedMatchFunction, error) {
 	for _, f := range set.functions {
 		if f.FuncName() == functionName {
 			return f, nil
@@ -62,7 +62,7 @@ func (set sliceFunctionSet) GetFunction(functionName string) (NamedMatchFunction
 	return nil, fmt.Errorf("No function for '%s'", functionName)
 }
 
-func (set sliceFunctionSet) PutFunction(function NamedMatchFunction) error {
+func (set *sliceFunctionSet) PutFunction(function NamedMatchFunction) error {
 	_, err := set.GetFunction(function.FuncName())
 
 	if err == nil {

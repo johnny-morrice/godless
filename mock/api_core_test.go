@@ -10,6 +10,7 @@ import (
 	"github.com/johnny-morrice/godless/cache"
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/crypto"
+	"github.com/johnny-morrice/godless/function"
 	"github.com/johnny-morrice/godless/internal/service"
 	"github.com/johnny-morrice/godless/internal/testutil"
 	"github.com/johnny-morrice/godless/log"
@@ -565,6 +566,7 @@ func remoteOptions(store api.RemoteStore, headCache api.HeadCache) service.Remot
 		MemoryImage:    cache.MakeResidentMemoryImage(),
 		Debug:          true,
 		IsPublicIndex:  true,
+		Functions:      function.StandardFunctions(),
 	}
 
 	return options

@@ -10,6 +10,7 @@ import (
 	"github.com/johnny-morrice/godless/cache"
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/datapeer"
+	"github.com/johnny-morrice/godless/function"
 	"github.com/johnny-morrice/godless/http"
 	"github.com/johnny-morrice/godless/internal/testutil"
 	"github.com/johnny-morrice/godless/log"
@@ -177,6 +178,7 @@ func godlessWithPeer(dataPeer api.DataPeer, topics ...string) (*godless.Godless,
 		Topics:            topics,
 		ReplicateInterval: REPLICATE_INTERVAL,
 		PublicServer:      true,
+		Functions:         function.StandardFunctions(),
 	}
 
 	return godless.New(options)
@@ -197,6 +199,7 @@ func godlessWithoutCache() (*godless.Godless, error) {
 		MemoryImage:    memoryImage,
 		ApiConcurrency: 8,
 		Pulse:          PULSE,
+		Functions:      function.StandardFunctions(),
 	}
 	return godless.New(options)
 }
@@ -217,6 +220,7 @@ func godlessWithCache() (*godless.Godless, error) {
 		ApiConcurrency: 8,
 		Cache:          cache,
 		Pulse:          PULSE,
+		Functions:      function.StandardFunctions(),
 	}
 	return godless.New(options)
 }
@@ -236,6 +240,7 @@ func godlessWithHttp() (*godless.Godless, error) {
 		ApiConcurrency: 8,
 		Pulse:          PULSE,
 		WebServiceAddr: BIND_ADDR,
+		Functions:      function.StandardFunctions(),
 	}
 	return godless.New(options)
 }

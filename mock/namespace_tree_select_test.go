@@ -8,8 +8,10 @@ import (
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/crypto"
+	"github.com/johnny-morrice/godless/function"
 	"github.com/johnny-morrice/godless/internal/eval"
 	"github.com/johnny-morrice/godless/internal/testutil"
+	"github.com/johnny-morrice/godless/log"
 	"github.com/johnny-morrice/godless/query"
 	"github.com/pkg/errors"
 )
@@ -241,10 +243,11 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 	options := eval.SelectOptions{
 		Namespace: mock,
 		KeyStore:  keyStore,
-		Functions: nil,
+		Functions: function.StandardFunctions(),
 	}
 
-	panic("not implemented")
+	log.Debug("Functions: %v", options.Functions)
+
 	for i, q := range queries {
 		selector := eval.MakeNamespaceTreeSelect(options)
 		q.Visit(selector)
@@ -655,10 +658,8 @@ func makeNamespaceTreeSelect(namespace api.RemoteNamespace) *eval.NamespaceTreeS
 	options := eval.SelectOptions{
 		Namespace: namespace,
 		KeyStore:  keyStore,
-		Functions: nil,
+		Functions: function.StandardFunctions(),
 	}
-	// TODO implement functions
-	panic("not implemented")
 	return eval.MakeNamespaceTreeSelect(options)
 }
 

@@ -47,6 +47,7 @@ func (client *client) Send(request api.Request) (api.Response, error) {
 	err := request.Validate(client.Validator)
 
 	if err != nil {
+		log.Debug("Query validation error: %v", err)
 		return api.RESPONSE_FAIL, errors.Wrap(err, fmt.Sprintf("Cowardly refusing to send invalid Request: %v", request))
 	}
 

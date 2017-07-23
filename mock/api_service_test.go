@@ -181,6 +181,7 @@ func launchConcurrentAPI(core api.Core, queryLimit int) (api.Service, <-chan err
 		Core:       core,
 		Queue:      queue,
 		QueryLimit: queryLimit,
+		Validator:  api.StandardRequestValidator(),
 	}
 	return service.LaunchQueuedApiService(options)
 }
