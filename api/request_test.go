@@ -75,6 +75,6 @@ func TestRequestValidateFailure(t *testing.T) {
 	}
 
 	for _, request := range badRequests {
-		testutil.Assert(t, "Invalid request", requestIsValid(request))
+		testutil.Assert(t, "Invalid request", !requestIsValid(request))
 	}
 }
