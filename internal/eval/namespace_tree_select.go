@@ -25,10 +25,14 @@ type NamespaceTreeSelect struct {
 type SelectOptions struct {
 	Namespace api.RemoteNamespace
 	KeyStore  api.KeyStore
-	Functions FunctionSet
+	Functions FunctionNamespace
 }
 
 func MakeNamespaceTreeSelect(options SelectOptions) *NamespaceTreeSelect {
+	if options.Functions == nil {
+		options.Functions = StandardFunctions()
+	}
+
 	return &NamespaceTreeSelect{
 		SelectOptions: options,
 		crit: &rowCriteria{
@@ -192,7 +196,7 @@ func (visitor *NamespaceTreeSelect) VisitPredicate(predicate *query.QueryPredica
 }
 
 type rowCriteria struct {
-	functions FunctionSet
+	functions FunctionNamespace
 	tableKey  crdt.TableName
 	count     int
 	limit     int
@@ -286,7 +290,7 @@ func (crit *rowCriteria) isReady() bool {
 }
 
 type selectEvalTree struct {
-	functions FunctionSet
+	functions FunctionNamespace
 	rowKey    crdt.RowName
 	row       crdt.Row
 	root      *expr
@@ -308,7 +312,7 @@ type expr struct {
 	source   *query.QueryWhere
 }
 
-func makeSelectEvalTree(rowKey crdt.RowName, row crdt.Row, functions FunctionSet) *selectEvalTree {
+func makeSelectEvalTree(rowKey crdt.RowName, row crdt.Row, functions FunctionNamespace) *selectEvalTree {
 	return &selectEvalTree{
 		functions: functions,
 		rowKey:    rowKey,

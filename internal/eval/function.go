@@ -39,12 +39,12 @@ func (lambda NamedMatchFunctionLambda) FuncName() string {
 	return lambda.Name
 }
 
-type FunctionSet interface {
+type FunctionNamespace interface {
 	GetFunction(functionName string) (NamedMatchFunction, error)
 	PutFunction(function NamedMatchFunction) error
 }
 
-func MakeFunctionSet() FunctionSet {
+func MakeFunctionSet() FunctionNamespace {
 	return sliceFunctionSet{}
 }
 
