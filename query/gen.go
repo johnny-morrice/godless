@@ -68,7 +68,7 @@ func genQueryPredicate(rand *rand.Rand, size int) QueryPredicate {
 		gen.IncludeRowKey = true
 	}
 
-	gen.OpCode = STR_EQ
+	gen.FunctionName = "str_eq"
 
 	keyCount := testutil.GenCount(rand, size, SCALE)
 	litCount := testutil.GenCount(rand, size, SCALE)

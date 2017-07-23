@@ -72,7 +72,7 @@ func TestRowCriteria_findRows(t *testing.T) {
 		query.QueryWhere{
 			OpCode: query.PREDICATE,
 			Predicate: query.QueryPredicate{
-				OpCode:        query.STR_EQ,
+				FunctionName:  "str_eq",
 				Literals:      []string{"a"},
 				IncludeRowKey: true,
 			},
@@ -80,9 +80,9 @@ func TestRowCriteria_findRows(t *testing.T) {
 		query.QueryWhere{
 			OpCode: query.PREDICATE,
 			Predicate: query.QueryPredicate{
-				OpCode:   query.STR_EQ,
-				Literals: []string{"world"},
-				Keys:     []crdt.EntryName{"bar"},
+				FunctionName: "str_eq",
+				Literals:     []string{"world"},
+				Keys:         []crdt.EntryName{"bar"},
 			},
 		},
 	}

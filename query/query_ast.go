@@ -306,13 +306,7 @@ type QueryPredicateAST struct {
 func (ast *QueryPredicateAST) Compile() (QueryPredicate, error) {
 	predicate := QueryPredicate{}
 
-	// TODO flesh out
-	switch ast.Command {
-	case "str_eq":
-		predicate.OpCode = STR_EQ
-	default:
-		return QueryPredicate{}, fmt.Errorf("BUG unsupported predicate '%v'", ast.Command)
-	}
+	predicate.FunctionName = ast.Command
 
 	literals, err := unquoteAll(ast.Literals)
 

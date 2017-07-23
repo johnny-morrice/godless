@@ -168,12 +168,8 @@ func (printer *queryPrinter) VisitPredicate(pred *QueryPredicate) {
 		return
 	}
 
-	switch pred.OpCode {
-	case STR_EQ:
-		printer.write("str_eq(")
-	default:
-		printer.BadPredicateOpCode(pred)
-	}
+	printer.write(pred.FunctionName)
+	printer.write("(")
 
 	printer.indent(1)
 
@@ -391,11 +387,6 @@ func (visitor *queryValidator) LeaveWhere(*QueryWhere) {
 }
 
 func (visitor *queryValidator) VisitPredicate(predicate *QueryPredicate) {
-	switch predicate.OpCode {
-	case PREDICATE_NOP:
-	case STR_EQ:
-		// Okay!
-	default:
-		visitor.BadPredicateOpCode(predicate)
-	}
+	// TODO the validator needs a FunctionSet to check any functions are defined.
+	panic("not implemented")
 }

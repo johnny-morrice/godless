@@ -458,7 +458,14 @@ func (rn *remoteNamespace) RunQuery(q *query.Query, kvq api.Command) {
 		runner = visitor
 	case query.SELECT:
 		log.Info("Running select...")
-		visitor := eval.MakeNamespaceTreeSelect(rn, rn.KeyStore)
+		panic("not implemented")
+		options := eval.SelectOptions{
+			Namespace: rn,
+			KeyStore:  rn.KeyStore,
+			// TODO implement functions
+			Functions: nil,
+		}
+		visitor := eval.MakeNamespaceTreeSelect(options)
 		q.Visit(visitor)
 		runner = visitor
 	default:

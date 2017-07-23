@@ -32,18 +32,18 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 	whereA := query.QueryWhere{
 		OpCode: query.PREDICATE,
 		Predicate: query.QueryPredicate{
-			OpCode:   query.STR_EQ,
-			Literals: []string{"Hi"},
-			Keys:     []crdt.EntryName{"Entry A"},
+			FunctionName: "str_eq",
+			Literals:     []string{"Hi"},
+			Keys:         []crdt.EntryName{"Entry A"},
 		},
 	}
 
 	whereB := query.QueryWhere{
 		OpCode: query.PREDICATE,
 		Predicate: query.QueryPredicate{
-			OpCode:   query.STR_EQ,
-			Literals: []string{"Hi"},
-			Keys:     []crdt.EntryName{"Entry B"},
+			FunctionName: "str_eq",
+			Literals:     []string{"Hi"},
+			Keys:         []crdt.EntryName{"Entry B"},
 		},
 	}
 
@@ -59,52 +59,52 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 	whereD := query.QueryWhere{
 		OpCode: query.PREDICATE,
 		Predicate: query.QueryPredicate{
-			OpCode:   query.STR_EQ,
-			Literals: []string{"Apple"},
-			Keys:     []crdt.EntryName{"Entry C"},
+			FunctionName: "str_eq",
+			Literals:     []string{"Apple"},
+			Keys:         []crdt.EntryName{"Entry C"},
 		},
 	}
 
 	whereE := query.QueryWhere{
 		OpCode: query.PREDICATE,
 		Predicate: query.QueryPredicate{
-			OpCode:   query.STR_EQ,
-			Literals: []string{"Orange"},
-			Keys:     []crdt.EntryName{"Entry D"},
+			FunctionName: "str_eq",
+			Literals:     []string{"Orange"},
+			Keys:         []crdt.EntryName{"Entry D"},
 		},
 	}
 
 	whereF := query.QueryWhere{
 		OpCode: query.PREDICATE,
 		Predicate: query.QueryPredicate{
-			OpCode:   query.STR_EQ,
-			Literals: []string{"Train"},
-			Keys:     []crdt.EntryName{"Entry E"},
+			FunctionName: "str_eq",
+			Literals:     []string{"Train"},
+			Keys:         []crdt.EntryName{"Entry E"},
 		},
 	}
 
 	whereG := query.QueryWhere{
 		OpCode: query.PREDICATE,
 		Predicate: query.QueryPredicate{
-			OpCode:   query.STR_EQ,
-			Literals: []string{"Bus"},
-			Keys:     []crdt.EntryName{"Entry E"},
+			FunctionName: "str_eq",
+			Literals:     []string{"Bus"},
+			Keys:         []crdt.EntryName{"Entry E"},
 		},
 	}
 
 	whereH := query.QueryWhere{
 		OpCode: query.PREDICATE,
 		Predicate: query.QueryPredicate{
-			OpCode:   query.STR_EQ,
-			Literals: []string{"Boat"},
-			Keys:     []crdt.EntryName{"Entry E"},
+			FunctionName: "str_eq",
+			Literals:     []string{"Boat"},
+			Keys:         []crdt.EntryName{"Entry E"},
 		},
 	}
 
 	whereI := query.QueryWhere{
 		OpCode: query.PREDICATE,
 		Predicate: query.QueryPredicate{
-			OpCode:        query.STR_EQ,
+			FunctionName:  "str_eq",
 			IncludeRowKey: true,
 			Literals:      []string{"Row F0"},
 		},
@@ -237,8 +237,16 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 
 	mock.EXPECT().LoadTraverse(gomock.Any()).Return(nil).Do(feedNamespace).Times(len(queries))
 
+	// TODO implement functions
+	options := eval.SelectOptions{
+		Namespace: mock,
+		KeyStore:  keyStore,
+		Functions: nil,
+	}
+
+	panic("not implemented")
 	for i, q := range queries {
-		selector := eval.MakeNamespaceTreeSelect(mock, keyStore)
+		selector := eval.MakeNamespaceTreeSelect(options)
 		q.Visit(selector)
 		actual := selector.RunQuery()
 		expected := expect[i]
@@ -272,9 +280,9 @@ func TestRunQuerySelectFailure(t *testing.T) {
 			Where: query.QueryWhere{
 				OpCode: query.PREDICATE,
 				Predicate: query.QueryPredicate{
-					OpCode:   query.STR_EQ,
-					Literals: []string{"Hi"},
-					Keys:     []crdt.EntryName{"Entry A"},
+					FunctionName: "str_eq",
+					Literals:     []string{"Hi"},
+					Keys:         []crdt.EntryName{"Entry A"},
 				},
 			},
 		},
@@ -309,9 +317,9 @@ func TestRunQuerySelectInvalid(t *testing.T) {
 				Where: query.QueryWhere{
 					OpCode: query.PREDICATE,
 					Predicate: query.QueryPredicate{
-						OpCode:   query.STR_EQ,
-						Literals: []string{"Hi"},
-						Keys:     []crdt.EntryName{"Entry A"},
+						FunctionName: "str_eq",
+						Literals:     []string{"Hi"},
+						Keys:         []crdt.EntryName{"Entry A"},
 					},
 				},
 			},
@@ -322,9 +330,9 @@ func TestRunQuerySelectInvalid(t *testing.T) {
 				Limit: 1,
 				Where: query.QueryWhere{
 					Predicate: query.QueryPredicate{
-						OpCode:   query.STR_EQ,
-						Literals: []string{"Hi"},
-						Keys:     []crdt.EntryName{"Entry A"},
+						FunctionName: "str_eq",
+						Literals:     []string{"Hi"},
+						Keys:         []crdt.EntryName{"Entry A"},
 					},
 				},
 			},
@@ -644,7 +652,14 @@ func makeTableStream(name crdt.TableName, table crdt.Table) []crdt.NamespaceStre
 
 func makeNamespaceTreeSelect(namespace api.RemoteNamespace) *eval.NamespaceTreeSelect {
 	keyStore := &crypto.KeyStore{}
-	return eval.MakeNamespaceTreeSelect(namespace, keyStore)
+	options := eval.SelectOptions{
+		Namespace: namespace,
+		KeyStore:  keyStore,
+		Functions: nil,
+	}
+	// TODO implement functions
+	panic("not implemented")
+	return eval.MakeNamespaceTreeSelect(options)
 }
 
 func init() {

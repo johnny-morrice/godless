@@ -86,7 +86,7 @@ message QueryWhereMessage {
 }
 
 message QueryPredicateMessage {
-	uint32 opCode = 1;
+	string functionName = 1;
 	repeated string keys = 2;
 	repeated string literals = 3;
 	bool userow = 4;

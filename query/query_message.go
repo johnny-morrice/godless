@@ -153,10 +153,10 @@ func ReadQueryMessage(message *proto.QueryMessage) (*Query, error) {
 
 func MakeQueryPredicateMessage(predicate QueryPredicate) *proto.QueryPredicateMessage {
 	message := &proto.QueryPredicateMessage{
-		OpCode:   uint32(predicate.OpCode),
-		Userow:   predicate.IncludeRowKey,
-		Literals: make([]string, len(predicate.Literals)),
-		Keys:     make([]string, len(predicate.Keys)),
+		FunctionName: predicate.FunctionName,
+		Userow:       predicate.IncludeRowKey,
+		Literals:     make([]string, len(predicate.Literals)),
+		Keys:         make([]string, len(predicate.Keys)),
 	}
 
 	for i, l := range predicate.Literals {
@@ -314,16 +314,7 @@ func (decoder *queryMessageDecoder) decodeRowJoin(row *QueryRowJoin, message *pr
 }
 
 func (decoder *queryMessageDecoder) decodePredicate(pred *QueryPredicate, message *proto.QueryPredicateMessage) {
-	switch message.OpCode {
-	case MESSAGE_STR_EQ:
-		fallthrough
-	case MESSAGE_STR_NEQ:
-		fallthrough
-	case MESSAGE_PREDICATE_NOOP:
-		pred.OpCode = QueryPredicateOpCode(message.OpCode)
-	default:
-		decoder.badPredicateMessageOpCode(message)
-	}
+	pred.FunctionName = message.FunctionName
 
 	pred.Literals = make([]string, len(message.Literals))
 	for i, lit := range message.Literals {

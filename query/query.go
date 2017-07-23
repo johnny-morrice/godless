@@ -205,7 +205,6 @@ const (
 )
 
 type QueryPredicate struct {
-	OpCode        QueryPredicateOpCode `json:",omitempty"`
 	FunctionName  string
 	Keys          []crdt.EntryName `json:",omitempty"`
 	Literals      []string         `json:",omitempty"`
@@ -217,7 +216,7 @@ func (pred QueryPredicate) IsEmpty() bool {
 }
 
 func (pred QueryPredicate) equals(other QueryPredicate) bool {
-	ok := pred.OpCode == other.OpCode
+	ok := pred.FunctionName == other.FunctionName
 	ok = ok && pred.IncludeRowKey == other.IncludeRowKey
 	ok = ok && len(pred.Keys) == len(other.Keys)
 	ok = ok && len(pred.Literals) == len(other.Literals)
