@@ -38,7 +38,7 @@ const (
 	ruleLiteral
 	rulePositiveInteger
 	ruleKey
-	ruleAlphanumeric
+	ruleKeySymbols
 	ruleEscape
 	ruleMustSpacing
 	ruleSpacing
@@ -90,7 +90,7 @@ var rul3s = [...]string{
 	"Literal",
 	"PositiveInteger",
 	"Key",
-	"Alphanumeric",
+	"KeySymbols",
 	"Escape",
 	"MustSpacing",
 	"Spacing",
@@ -924,7 +924,7 @@ func (p *QueryParser) Init() {
 		nil,
 		/* 9 Limit <- <('l' 'i' 'm' 'i' 't' MustSpacing <PositiveInteger> Action8)> */
 		nil,
-		/* 10 CryptoKey <- <('s' 'i' 'g' 'n' 'e' 'd' MustSpacing '"' <Alphanumeric> '"' Action9)> */
+		/* 10 CryptoKey <- <('s' 'i' 'g' 'n' 'e' 'd' MustSpacing '"' <KeySymbols> '"' Action9)> */
 		func() bool {
 			position57, tokenIndex57 := position, tokenIndex
 			{
@@ -962,7 +962,7 @@ func (p *QueryParser) Init() {
 				position++
 				{
 					position59 := position
-					if !_rules[ruleAlphanumeric]() {
+					if !_rules[ruleKeySymbols]() {
 						goto l57
 					}
 					add(rulePegText, position59)
@@ -1465,12 +1465,12 @@ func (p *QueryParser) Init() {
 		},
 		/* 22 PositiveInteger <- <([1-9] [0-9]*)> */
 		nil,
-		/* 23 Key <- <Alphanumeric> */
+		/* 23 Key <- <KeySymbols> */
 		func() bool {
 			position117, tokenIndex117 := position, tokenIndex
 			{
 				position118 := position
-				if !_rules[ruleAlphanumeric]() {
+				if !_rules[ruleKeySymbols]() {
 					goto l117
 				}
 				add(ruleKey, position118)
@@ -1480,13 +1480,19 @@ func (p *QueryParser) Init() {
 			position, tokenIndex = position117, tokenIndex117
 			return false
 		},
-		/* 24 Alphanumeric <- <((&('0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9') [0-9]) | (&('A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z') [A-Z]) | (&('a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z') [a-z]))+> */
+		/* 24 KeySymbols <- <((&('_') '_') | (&('0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9') [0-9]) | (&('A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z') [A-Z]) | (&('a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z') [a-z]))+> */
 		func() bool {
 			position119, tokenIndex119 := position, tokenIndex
 			{
 				position120 := position
 				{
 					switch buffer[position] {
+					case '_':
+						if buffer[position] != rune('_') {
+							goto l119
+						}
+						position++
+						break
 					case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 						if c := buffer[position]; c < rune('0') || c > rune('9') {
 							goto l119
@@ -1513,6 +1519,12 @@ func (p *QueryParser) Init() {
 					position122, tokenIndex122 := position, tokenIndex
 					{
 						switch buffer[position] {
+						case '_':
+							if buffer[position] != rune('_') {
+								goto l122
+							}
+							position++
+							break
 						case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 							if c := buffer[position]; c < rune('0') || c > rune('9') {
 								goto l122
@@ -1538,7 +1550,7 @@ func (p *QueryParser) Init() {
 				l122:
 					position, tokenIndex = position122, tokenIndex122
 				}
-				add(ruleAlphanumeric, position120)
+				add(ruleKeySymbols, position120)
 			}
 			return true
 		l119:

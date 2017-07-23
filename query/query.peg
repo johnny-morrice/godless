@@ -17,7 +17,7 @@ WherePart <- (Where / Limit / CryptoKey)
 SelectKey <- < Key > { p.SetTableName(buffer[begin:end]) }
 Limit <- 'limit' MustSpacing < PositiveInteger > { p.SetLimit(buffer[begin:end])}
 
-CryptoKey <- 'signed' MustSpacing '"' < Alphanumeric > '"' { p.AddCryptoKey(buffer[begin:end]) }
+CryptoKey <- 'signed' MustSpacing '"' < KeySymbols > '"' { p.AddCryptoKey(buffer[begin:end]) }
 
 Where <- 'where' MustSpacing WhereClause
 WhereClause <- { p.PushWhere() } ( AndClause / OrClause / PredicateClause ) { p.PopWhere() }
@@ -32,8 +32,8 @@ PredicateLiteralValue <- ["] < Literal > ["] { p.AddPredicateLiteral(buffer[begi
 
 Literal <- (Escape / [^"])*
 PositiveInteger <- [1-9] [0-9]*
-Key <- Alphanumeric
-Alphanumeric <- [a-zA-Z0-9]+
+Key <- KeySymbols
+KeySymbols <- [a-zA-Z0-9_]+
 Escape <- '\\' ["\\abfnrtv]
 MustSpacing <- ( ' ' / '\t' / '\n' )+
 Spacing <- ( ' ' / '\t' / '\n' )*
