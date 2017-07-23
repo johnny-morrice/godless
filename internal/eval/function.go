@@ -6,20 +6,26 @@ import (
 	"github.com/johnny-morrice/godless/crdt"
 )
 
-type MatchFunction func(first string, prefix []string, entries []crdt.Entry) bool
+type MatchFunction interface {
+	Match(literals []string, entries []crdt.Entry) bool
+}
 
-var _ MatchFunction = MatchFunction(StrEq)
-var _ MatchFunction = MatchFunction(StrNeq)
+type MatchFunctionLambda func(literals []string, entries []crdt.Entry) bool
 
-func StrEq(first string, prefix []string, entries []crdt.Entry) bool {
-	prefix = append(prefix, first)
-	m, err := match(prefix, entries)
+func (lambda MatchFunctionLambda) Match(literals []string, entries []crdt.Entry) bool {
+	return lambda(literals, entries)
+}
+
+var _ MatchFunction = MatchFunctionLambda(StrEq)
+
+func StrEq(literals []string, entries []crdt.Entry) bool {
+	m, err := firstValue(literals, entries)
 
 	if err != nil {
 		return false
 	}
 
-	for _, pfx := range prefix {
+	for _, pfx := range literals {
 		if pfx != m {
 			return false
 		}
@@ -41,40 +47,12 @@ func StrEq(first string, prefix []string, entries []crdt.Entry) bool {
 	return true
 }
 
-func StrNeq(first string, prefix []string, entries []crdt.Entry) bool {
-	prefix = append(prefix, first)
-	m, err := match(prefix, entries)
-
-	if err != nil {
-		return false
-	}
-
-	pfxmatch := 0
-	for _, pfx := range prefix {
-		if pfx == m {
-			pfxmatch++
-		}
-	}
-
-	entrymatch := 0
-	for _, entry := range entries {
-		for _, val := range entry.GetValues() {
-			if val.HasText(m) {
-				entrymatch++
-			}
-		}
-	}
-
-	return !((pfxmatch > 0 && entrymatch > 0) || pfxmatch > 1 || entrymatch > 1)
-}
-
-// TODO need user concepts + crypto to narrow row match down.
-func match(prefix []string, entries []crdt.Entry) (string, error) {
+func firstValue(literals []string, entries []crdt.Entry) (string, error) {
 	var first string
 	var found bool
 
-	if len(prefix) > 0 {
-		first = prefix[0]
+	if len(literals) > 0 {
+		first = literals[0]
 		found = true
 	} else {
 		for _, entry := range entries {
@@ -88,9 +66,9 @@ func match(prefix []string, entries []crdt.Entry) (string, error) {
 		}
 	}
 
-	// No values: no match.
+	// No values: no firstValue.
 	if !found {
-		return "", errors.New("no match")
+		return "", errors.New("no firstValue")
 	}
 
 	return first, nil

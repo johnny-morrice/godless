@@ -183,7 +183,6 @@ type QueryPredicateOpCode uint16
 const (
 	PREDICATE_NOP = QueryPredicateOpCode(iota)
 	STR_EQ
-	STR_NEQ
 	// TODO flesh these out
 	// STR_EMPTY
 	// STR_NEMPTY

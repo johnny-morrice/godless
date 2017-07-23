@@ -171,8 +171,6 @@ func (printer *queryPrinter) VisitPredicate(pred *QueryPredicate) {
 	switch pred.OpCode {
 	case STR_EQ:
 		printer.write("str_eq(")
-	case STR_NEQ:
-		printer.write("str_neq(")
 	default:
 		printer.BadPredicateOpCode(pred)
 	}
@@ -396,7 +394,6 @@ func (visitor *queryValidator) VisitPredicate(predicate *QueryPredicate) {
 	switch predicate.OpCode {
 	case PREDICATE_NOP:
 	case STR_EQ:
-	case STR_NEQ:
 		// Okay!
 	default:
 		visitor.BadPredicateOpCode(predicate)

@@ -68,11 +68,7 @@ func genQueryPredicate(rand *rand.Rand, size int) QueryPredicate {
 		gen.IncludeRowKey = true
 	}
 
-	if rand.Float32() > 0.5 {
-		gen.OpCode = STR_EQ
-	} else {
-		gen.OpCode = STR_NEQ
-	}
+	gen.OpCode = STR_EQ
 
 	keyCount := testutil.GenCount(rand, size, SCALE)
 	litCount := testutil.GenCount(rand, size, SCALE)

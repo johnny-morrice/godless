@@ -310,8 +310,6 @@ func (ast *QueryPredicateAST) Compile() (QueryPredicate, error) {
 	switch ast.Command {
 	case "str_eq":
 		predicate.OpCode = STR_EQ
-	case "str_neq":
-		predicate.OpCode = STR_NEQ
 	default:
 		return QueryPredicate{}, fmt.Errorf("BUG unsupported predicate '%v'", ast.Command)
 	}

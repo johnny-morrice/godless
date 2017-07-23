@@ -348,15 +348,10 @@ func (eval *selectEvalTree) evalWhere(where *query.QueryWhere) *expr {
 func (eval *selectEvalTree) evalPred(where *query.QueryWhere) *expr {
 	pred := where.Predicate
 
-	var first string
-	prefix := []string{}
-	if len(pred.Literals) > 0 {
-		first = pred.Literals[0]
-		prefix = append(prefix, pred.Literals[1:]...)
-	}
+	literals := pred.Literals
 
 	if pred.IncludeRowKey {
-		prefix = append(prefix, string(eval.rowKey))
+		literals = append(literals, string(eval.rowKey))
 	}
 
 	entries := []crdt.Entry{}
@@ -377,9 +372,7 @@ func (eval *selectEvalTree) evalPred(where *query.QueryWhere) *expr {
 	var isMatch bool
 	switch pred.OpCode {
 	case query.STR_EQ:
-		isMatch = StrEq(first, prefix, entries)
-	case query.STR_NEQ:
-		isMatch = StrNeq(first, prefix, entries)
+		isMatch = StrEq(literals, entries)
 	default:
 		panic(fmt.Sprintf("Unsupported query.QueryPredicate OpCode: %v", pred.OpCode))
 	}

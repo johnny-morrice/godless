@@ -47,14 +47,14 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		},
 	}
 
-	whereC := query.QueryWhere{
-		OpCode: query.PREDICATE,
-		Predicate: query.QueryPredicate{
-			OpCode:   query.STR_NEQ,
-			Literals: []string{"Hello World"},
-			Keys:     []crdt.EntryName{"Entry B"},
-		},
-	}
+	// whereC := query.QueryWhere{
+	// 	OpCode: query.PREDICATE,
+	// 	Predicate: query.QueryPredicate{
+	// 		OpCode:   query.STR_NEQ,
+	// 		Literals: []string{"Hello World"},
+	// 		Keys:     []crdt.EntryName{"Entry B"},
+	// 	},
+	// }
 
 	whereD := query.QueryWhere{
 		OpCode: query.PREDICATE,
@@ -129,15 +129,15 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 				Where: whereB,
 			},
 		},
-		// STR_NEQ
-		&query.Query{
-			OpCode:   query.SELECT,
-			TableKey: MAIN_TABLE_KEY,
-			Select: query.QuerySelect{
-				Limit: 2,
-				Where: whereC,
-			},
-		},
+		// // STR_NEQ
+		// &query.Query{
+		// 	OpCode:   query.SELECT,
+		// 	TableKey: MAIN_TABLE_KEY,
+		// 	Select: query.QuerySelect{
+		// 		Limit: 2,
+		// 		Where: whereC,
+		// 	},
+		// },
 		// AND
 		&query.Query{
 			OpCode:   query.SELECT,
@@ -222,7 +222,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 	expect := []api.Response{
 		responseA,
 		responseB,
-		responseC,
+		// responseC,
 		responseD,
 		responseE,
 		responseF,

@@ -52,7 +52,7 @@ func TestVisitSelect(t *testing.T) {
 	innerWhereA := query.QueryWhere{}
 	innerWhereA.OpCode = query.PREDICATE
 	innerWhereA.Predicate = query.QueryPredicate{
-		OpCode: query.STR_NEQ,
+		OpCode: query.STR_EQ,
 		Keys:   []crdt.EntryName{"Index this", "Index that"},
 	}
 
