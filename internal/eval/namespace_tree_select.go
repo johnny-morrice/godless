@@ -6,6 +6,7 @@ import (
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/crypto"
+	"github.com/johnny-morrice/godless/function"
 	"github.com/johnny-morrice/godless/log"
 	"github.com/johnny-morrice/godless/query"
 	"github.com/pkg/errors"
@@ -25,14 +26,10 @@ type NamespaceTreeSelect struct {
 type SelectOptions struct {
 	Namespace api.RemoteNamespace
 	KeyStore  api.KeyStore
-	Functions FunctionNamespace
+	Functions function.FunctionNamespace
 }
 
 func MakeNamespaceTreeSelect(options SelectOptions) *NamespaceTreeSelect {
-	if options.Functions == nil {
-		options.Functions = StandardFunctions()
-	}
-
 	return &NamespaceTreeSelect{
 		SelectOptions: options,
 		crit: &rowCriteria{
@@ -196,7 +193,7 @@ func (visitor *NamespaceTreeSelect) VisitPredicate(predicate *query.QueryPredica
 }
 
 type rowCriteria struct {
-	functions FunctionNamespace
+	functions function.FunctionNamespace
 	tableKey  crdt.TableName
 	count     int
 	limit     int
@@ -290,7 +287,7 @@ func (crit *rowCriteria) isReady() bool {
 }
 
 type selectEvalTree struct {
-	functions FunctionNamespace
+	functions function.FunctionNamespace
 	rowKey    crdt.RowName
 	row       crdt.Row
 	root      *expr
@@ -312,7 +309,7 @@ type expr struct {
 	source   *query.QueryWhere
 }
 
-func makeSelectEvalTree(rowKey crdt.RowName, row crdt.Row, functions FunctionNamespace) *selectEvalTree {
+func makeSelectEvalTree(rowKey crdt.RowName, row crdt.Row, functions function.FunctionNamespace) *selectEvalTree {
 	return &selectEvalTree{
 		functions: functions,
 		rowKey:    rowKey,
@@ -391,7 +388,7 @@ func (eval *selectEvalTree) evalPred(where *query.QueryWhere) *expr {
 	return &expr{source: where, state: EXPR_FALSE}
 }
 
-func (eval *selectEvalTree) findMatchFunction(pred query.QueryPredicate) MatchFunction {
+func (eval *selectEvalTree) findMatchFunction(pred query.QueryPredicate) function.MatchFunction {
 	functionName := pred.FunctionName
 
 	function, err := eval.functions.GetFunction(functionName)

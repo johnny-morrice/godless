@@ -1,4 +1,4 @@
-package eval
+package function
 
 import (
 	"github.com/johnny-morrice/godless/crdt"

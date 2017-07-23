@@ -6,8 +6,11 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/crypto"
+	"github.com/johnny-morrice/godless/function"
 )
 
 // Visitor outline to help with editor macros.
@@ -342,6 +345,7 @@ type queryValidator struct {
 	NoDebugVisitor
 	ErrorCollectVisitor
 	NoJoinVisitor
+	Functions function.FunctionNamespace
 }
 
 func (visitor *queryValidator) VisitPublicKeyHash(hash crypto.PublicKeyHash) {
@@ -387,6 +391,14 @@ func (visitor *queryValidator) LeaveWhere(*QueryWhere) {
 }
 
 func (visitor *queryValidator) VisitPredicate(predicate *QueryPredicate) {
-	// TODO the validator needs a FunctionSet to check any functions are defined.
-	panic("not implemented")
+	if visitor.Functions == nil {
+		visitor.CollectError(errors.New("No FunctionNamespace for validator"))
+		return
+	}
+
+	_, err := visitor.Functions.GetFunction(predicate.FunctionName)
+
+	if err != nil {
+		visitor.CollectError(err)
+	}
 }
