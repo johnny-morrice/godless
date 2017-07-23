@@ -6,6 +6,7 @@ import (
 
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/crypto"
+	"github.com/johnny-morrice/godless/function"
 	"github.com/johnny-morrice/godless/query"
 )
 
@@ -93,6 +94,7 @@ func TestRowCriteria_findRows(t *testing.T) {
 			tableKey:  TABLE_KEY,
 			limit:     10,
 			rootWhere: &w,
+			functions: function.StandardFunctions(),
 		}
 
 		actual := rc.findRows(namespace)
