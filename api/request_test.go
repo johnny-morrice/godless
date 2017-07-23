@@ -7,6 +7,7 @@ import (
 	"testing"
 	"testing/quick"
 
+	"github.com/johnny-morrice/godless/function"
 	"github.com/johnny-morrice/godless/internal/testutil"
 )
 
@@ -63,7 +64,10 @@ func TestRequestValidateSuccess(t *testing.T) {
 }
 
 func requestIsValid(request Request) bool {
-	return request.Validate() == nil
+	validator := RequestValidator{
+		Functions: function.StandardFunctions(),
+	}
+	return request.Validate(validator) == nil
 }
 
 func TestRequestValidateFailure(t *testing.T) {
@@ -75,7 +79,6 @@ func TestRequestValidateFailure(t *testing.T) {
 	}
 
 	for _, request := range badRequests {
-		err := request.Validate()
-		testutil.AssertNonNil(t, err)
+		testutil.Assert(t, "Invalid request", requestIsValid(request))
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/function"
 	"github.com/johnny-morrice/godless/internal/util"
 	"github.com/johnny-morrice/godless/proto"
 	"github.com/johnny-morrice/godless/query"
@@ -80,10 +81,24 @@ func (request Request) Equals(other Request) bool {
 	return true
 }
 
-func (request Request) Validate() error {
+type RequestValidator struct {
+	Functions function.FunctionNamespace
+}
+
+func StandardRequestValidator() RequestValidator {
+	return RequestValidator{
+		Functions: function.StandardFunctions(),
+	}
+}
+
+func (request Request) Validate(validator RequestValidator) error {
 	switch request.Type {
 	case API_QUERY:
-		return request.validateQuery()
+		if validator.Functions == nil {
+			return errors.New("Validator provided no FunctionNamespace")
+		}
+
+		return request.validateQuery(validator.Functions)
 	case API_REFLECT:
 		return request.validateReflect()
 	case API_REPLICATE:
@@ -95,14 +110,14 @@ func (request Request) Validate() error {
 	return nil
 }
 
-func (request Request) validateQuery() error {
+func (request Request) validateQuery(functions function.FunctionNamespace) error {
 	const failMsg = "Request.validateQuery failed"
 
 	if request.Query == nil {
 		return fmt.Errorf("Query was nil")
 	}
 
-	err := request.Query.Validate()
+	err := request.Query.Validate(functions)
 
 	return errors.Wrap(err, failMsg)
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/johnny-morrice/godless/api"
+	"github.com/johnny-morrice/godless/function"
 	"github.com/johnny-morrice/godless/log"
 )
 
@@ -11,6 +12,7 @@ type QueuedApiServiceOptions struct {
 	Core       api.Core
 	Queue      api.RequestPriorityQueue
 	QueryLimit int
+	Functions  function.FunctionNamespace
 }
 
 type queuedApiService struct {
@@ -102,8 +104,13 @@ func (service *queuedApiService) unlockResource() {
 	log.Debug("API released resource")
 }
 
+func (service *queuedApiService) validateRequest(request api.Request) error {
+	validator := api.RequestValidator{Functions: service.Functions}
+	return request.Validate(validator)
+}
+
 func (service *queuedApiService) Call(request api.Request) (<-chan api.Response, error) {
-	err := request.Validate()
+	err := service.validateRequest(request)
 	if err != nil {
 		log.Warn("API received invalid request")
 		return nil, err

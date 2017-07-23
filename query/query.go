@@ -12,6 +12,7 @@ import (
 
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/crypto"
+	"github.com/johnny-morrice/godless/function"
 	"github.com/johnny-morrice/godless/internal/util"
 	"github.com/johnny-morrice/godless/log"
 	"github.com/johnny-morrice/godless/proto"
@@ -314,8 +315,10 @@ func (query *Query) Analyse() string {
 	return fmt.Sprintf("Compiled:\n\n%s\n\nAST:\n\n%s", jsonQuery, jsonAST)
 }
 
-func (query *Query) Validate() error {
-	validator := &queryValidator{}
+func (query *Query) Validate(functions function.FunctionNamespace) error {
+	validator := &queryValidator{
+		Functions: functions,
+	}
 
 	query.Visit(validator)
 

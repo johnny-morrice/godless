@@ -19,6 +19,7 @@ import (
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/crypto"
 	"github.com/johnny-morrice/godless/datapeer"
+	"github.com/johnny-morrice/godless/function"
 	"github.com/johnny-morrice/godless/http"
 	"github.com/johnny-morrice/godless/internal/service"
 	"github.com/johnny-morrice/godless/log"
@@ -52,6 +53,8 @@ type Options struct {
 	IpfsClient *gohttp.Client
 	// IpfsPingTimeout is optional.  Specify a lower timeout for "Am I Connected?" checks.
 	IpfsPingTimeout time.Duration
+	// Functions is optional.
+	Functions function.FunctionNamespace
 	// Cache is optional. Build a 12-factor app by supplying your own remote cache.
 	// HeadCache, IndexCache and NamespaceCache can be used to specify different caches for different data types.
 	Cache api.Cache
@@ -272,6 +275,10 @@ func (godless *Godless) setupNamespace() error {
 		}
 	}
 
+	if godless.Functions == nil {
+		godless.Functions = function.StandardFunctions()
+	}
+
 	namespaceOptions := service.RemoteNamespaceCoreOptions{
 		Pulse:          godless.Pulse,
 		Store:          godless.RemoteStore,
@@ -281,6 +288,7 @@ func (godless *Godless) setupNamespace() error {
 		KeyStore:       godless.KeyStore,
 		IsPublicIndex:  godless.PublicServer,
 		MemoryImage:    godless.MemoryImage,
+		Functions:      godless.Functions,
 	}
 
 	godless.remote = service.MakeRemoteNamespaceCore(namespaceOptions)
@@ -304,6 +312,7 @@ func (godless *Godless) launchAPI() error {
 		Core:       godless.remote,
 		Queue:      queue,
 		QueryLimit: limit,
+		Functions:  godless.Functions,
 	}
 
 	api, errch := service.LaunchQueuedApiService(options)

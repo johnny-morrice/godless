@@ -39,7 +39,7 @@ func MakeClient(options ClientOptions) (api.Client, error) {
 }
 
 func (client *client) Send(request api.Request) (api.Response, error) {
-	err := request.Validate()
+	err := request.Validate(api.StandardRequestValidator())
 
 	if err != nil {
 		return api.RESPONSE_FAIL, errors.Wrap(err, fmt.Sprintf("Cowardly refusing to send invalid Request: %v", request))

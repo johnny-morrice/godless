@@ -8,6 +8,7 @@ import (
 
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/function"
 	"github.com/johnny-morrice/godless/internal/eval"
 	"github.com/johnny-morrice/godless/log"
 	"github.com/johnny-morrice/godless/query"
@@ -24,6 +25,7 @@ type RemoteNamespaceCoreOptions struct {
 	IsPublicIndex  bool
 	Pulse          time.Duration
 	Debug          bool
+	Functions      function.FunctionNamespace
 }
 
 func checkOptions(options RemoteNamespaceCoreOptions) {
@@ -458,12 +460,10 @@ func (rn *remoteNamespace) RunQuery(q *query.Query, kvq api.Command) {
 		runner = visitor
 	case query.SELECT:
 		log.Info("Running select...")
-		panic("not implemented")
 		options := eval.SelectOptions{
 			Namespace: rn,
 			KeyStore:  rn.KeyStore,
-			// TODO implement functions
-			Functions: nil,
+			Functions: rn.Functions,
 		}
 		visitor := eval.MakeNamespaceTreeSelect(options)
 		q.Visit(visitor)
