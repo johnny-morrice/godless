@@ -285,8 +285,3 @@ func Rand() *rand.Rand {
 
 	return __rand.rand
 }
-
-// Logging on in test mode!
-func init() {
-	log.SetLevel(log.LOG_DEBUG)
-}
