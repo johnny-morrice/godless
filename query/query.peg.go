@@ -1480,13 +1480,31 @@ func (p *QueryParser) Init() {
 			position, tokenIndex = position117, tokenIndex117
 			return false
 		},
-		/* 24 KeySymbols <- <((&('_') '_') | (&('0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9') [0-9]) | (&('A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z') [A-Z]) | (&('a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z') [a-z]))+> */
+		/* 24 KeySymbols <- <((&('-') '-') | (&('+') '+') | (&('.') '.') | (&('_') '_') | (&('0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9') [0-9]) | (&('A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z') [A-Z]) | (&('a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z') [a-z]))+> */
 		func() bool {
 			position119, tokenIndex119 := position, tokenIndex
 			{
 				position120 := position
 				{
 					switch buffer[position] {
+					case '-':
+						if buffer[position] != rune('-') {
+							goto l119
+						}
+						position++
+						break
+					case '+':
+						if buffer[position] != rune('+') {
+							goto l119
+						}
+						position++
+						break
+					case '.':
+						if buffer[position] != rune('.') {
+							goto l119
+						}
+						position++
+						break
 					case '_':
 						if buffer[position] != rune('_') {
 							goto l119
@@ -1519,6 +1537,24 @@ func (p *QueryParser) Init() {
 					position122, tokenIndex122 := position, tokenIndex
 					{
 						switch buffer[position] {
+						case '-':
+							if buffer[position] != rune('-') {
+								goto l122
+							}
+							position++
+							break
+						case '+':
+							if buffer[position] != rune('+') {
+								goto l122
+							}
+							position++
+							break
+						case '.':
+							if buffer[position] != rune('.') {
+								goto l122
+							}
+							position++
+							break
 						case '_':
 							if buffer[position] != rune('_') {
 								goto l122

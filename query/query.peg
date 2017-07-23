@@ -33,7 +33,7 @@ PredicateLiteralValue <- ["] < Literal > ["] { p.AddPredicateLiteral(buffer[begi
 Literal <- (Escape / [^"])*
 PositiveInteger <- [1-9] [0-9]*
 Key <- KeySymbols
-KeySymbols <- [a-zA-Z0-9_]+
+KeySymbols <- ( [a-zA-Z0-9_] / '.' / '+' / '-' )+
 Escape <- '\\' ["\\abfnrtv]
 MustSpacing <- ( ' ' / '\t' / '\n' )+
 Spacing <- ( ' ' / '\t' / '\n' )*
