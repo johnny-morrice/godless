@@ -33,22 +33,27 @@ func GenNamespace(rand *rand.Rand, size int) Namespace {
 func genRow(rand *rand.Rand, size int) Row {
 	const maxStr = 100
 	const entryFudge = 0.65
-	const pointFudge = 0.85
 	row := EmptyRow()
 	entryCount := testutil.GenCountRange(rand, 1, size, entryFudge)
 	for k := 0; k < entryCount; k++ {
 		entryName := EntryName(testutil.RandLetters(rand, maxStr))
-		pointCount := testutil.GenCountRange(rand, 1, size, pointFudge)
-		points := make([]Point, pointCount)
-
-		for m := 0; m < pointCount; m++ {
-			points[m] = genPoint(rand, maxStr)
-		}
-
-		entry := MakeEntry(points)
+		entry := GenEntry(rand, size)
 		row.addEntry(entryName, entry)
 	}
 	return row
+}
+
+func GenEntry(rand *rand.Rand, size int) Entry {
+	const maxStr = 100
+	const pointFudge = 0.85
+	pointCount := testutil.GenCountRange(rand, 1, size, pointFudge)
+	points := make([]Point, pointCount)
+
+	for m := 0; m < pointCount; m++ {
+		points[m] = genPoint(rand, maxStr)
+	}
+
+	return MakeEntry(points)
 }
 
 func genPoint(rand *rand.Rand, size int) Point {

@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/johnny-morrice/godless/crdt"
+	"github.com/johnny-morrice/godless/log"
 )
 
 type StrEq struct{}
@@ -157,6 +158,7 @@ type regexpMatch struct {
 
 func (match *regexpMatch) matchLiteral(literal string) bool {
 	if err := match.init(); err != nil {
+		log.Debug("Compile error for regexp: %s", err.Error())
 		return false
 	}
 
@@ -165,6 +167,7 @@ func (match *regexpMatch) matchLiteral(literal string) bool {
 
 func (match *regexpMatch) matchPoint(point crdt.Point) bool {
 	if err := match.init(); err != nil {
+		log.Debug("Compile error for regexp: %s", err.Error())
 		return false
 	}
 
@@ -196,6 +199,7 @@ type globMatch struct {
 
 func (match *globMatch) matchLiteral(literal string) bool {
 	if err := match.init(); err != nil {
+		log.Debug("Compile error for glob: %s", err.Error())
 		return false
 	}
 
@@ -204,6 +208,7 @@ func (match *globMatch) matchLiteral(literal string) bool {
 
 func (match *globMatch) matchPoint(point crdt.Point) bool {
 	if err := match.init(); err != nil {
+		log.Debug("Compile error for glob: %s", err.Error())
 		return false
 	}
 
