@@ -5,6 +5,7 @@ func StandardFunctions() FunctionNamespace {
 
 	funcs := []NamedMatchFunction{
 		StrEq{},
+		&StrGlob{},
 	}
 
 	for _, f := range funcs {

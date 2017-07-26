@@ -24,7 +24,7 @@ WhereClause <- { p.PushWhere() } ( AndClause / OrClause / PredicateClause ) { p.
 AndClause <- 'and' { p.SetWhereCommand("and") } Spacing '(' Spacing WhereClause Spacing (',' Spacing WhereClause Spacing )* ')'
 OrClause <- 'or' { p.SetWhereCommand("or") } Spacing '(' Spacing WhereClause Spacing (',' Spacing WhereClause Spacing)* ')'
 PredicateClause <- { p.InitPredicate() } Predicate Spacing '(' Spacing PredicateValue (',' Spacing PredicateValue Spacing)* ')'
-Predicate <- < 'str_eq' > { p.SetPredicateCommand(buffer[begin:end]) }
+Predicate <- < KeySymbols > { p.SetPredicateCommand(buffer[begin:end]) }
 PredicateValue <- (PredicateRowKey / PredicateKey / PredicateLiteralValue)
 PredicateRowKey <- '@key' { p.UsePredicateRowKey() }
 PredicateKey <- (< Key > / '@' ["] < Literal > ["] ) { p.AddPredicateKey(buffer[begin:end]) }
