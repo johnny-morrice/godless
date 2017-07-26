@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path"
 	"runtime"
 	"time"
 
@@ -177,8 +178,11 @@ func shutdown(godless *lib.Godless) {
 
 func init() {
 	storeCmd.AddCommand(serveCmd)
+	home := os.Getenv("HOME")
 
 	defaultLimit := runtime.NumCPU()
+	defaultBoltDb := path.Join(home, __DEFAULT_BOLT_DB_PATH_NAME)
+
 	serveCmd.PersistentFlags().StringVar(&addr, "address", __DEFAULT_LISTEN_ADDR, "Listen address for server")
 	serveCmd.PersistentFlags().DurationVar(&interval, "synctime", __DEFAULT_REPLICATION_INTERVAL, "Interval between peer replications")
 	serveCmd.PersistentFlags().DurationVar(&pulse, "pulse", __DEFAULT_PULSE, "Interval between writes to IPFS")
@@ -189,13 +193,13 @@ func init() {
 	serveCmd.PersistentFlags().IntVar(&apiQueueLength, "qlength", __DEFAULT_QUEUE_LENGTH, "API Priority queue length")
 	serveCmd.PersistentFlags().StringVar(&cacheType, "cache", __DEFAULT_CACHE_TYPE, "Cache type (disk|memory)")
 	serveCmd.PersistentFlags().IntVar(&memoryBufferLength, "buffer", __DEFAULT_MEMORY_BUFFER_LENGTH, "Buffer length if using memory cache")
-	serveCmd.PersistentFlags().StringVar(&databaseFilePath, "dbpath", __DEFAULT_BOLT_DB_PATH, "Embedded database file path")
+	serveCmd.PersistentFlags().StringVar(&databaseFilePath, "dbpath", defaultBoltDb, "Embedded database file path")
 }
 
 const __MEMORY_CACHE_TYPE = "memory"
 const __BOLT_CACHE_TYPE = "disk"
 
-const __DEFAULT_BOLT_DB_PATH = "godless.bolt"
+const __DEFAULT_BOLT_DB_PATH_NAME = ".godless.bolt"
 const __DEFAULT_EARLY_CONNECTION = false
 const __DEFAULT_SERVER_PUBLIC_STATUS = false
 const __DEFAULT_CACHE_TYPE = __BOLT_CACHE_TYPE
