@@ -141,7 +141,7 @@ func getBoltFactoryInstance() *cache.BoltFactory {
 			FilePath: databaseFilePath,
 			Mode:     0600,
 		}
-		factory, err := cache.MakeBoltCacheFactory(options)
+		factory, err := cache.MakeBoltFactory(options)
 
 		if err != nil {
 			die(err)

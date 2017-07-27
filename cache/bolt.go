@@ -53,7 +53,7 @@ func (factory BoltFactory) MakeMemoryImage() (api.MemoryImage, error) {
 	return memImg, nil
 }
 
-func MakeBoltCacheFactory(options BoltOptions) (BoltFactory, error) {
+func MakeBoltFactory(options BoltOptions) (BoltFactory, error) {
 	const failMsg = "MakeBoltCacheFactory"
 
 	db, err := connectBolt(options)
