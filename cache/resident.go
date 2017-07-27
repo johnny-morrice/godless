@@ -19,6 +19,11 @@ type residentMemoryImage struct {
 	sync.Mutex
 }
 
+// MakeResidentMemoryImage makes an non-ACID api.MemoryImage implementation that is only suitable for tests.
+func MakeResidentMemoryImage() api.MemoryImage {
+	return &residentMemoryImage{joined: crdt.EmptyIndex()}
+}
+
 func (memimg *residentMemoryImage) JoinIndex(index crdt.Index) error {
 	memimg.Lock()
 	defer memimg.Unlock()
@@ -39,16 +44,11 @@ func (memimg *residentMemoryImage) CloseMemoryImage() error {
 }
 
 func MakeResidentMemoryCache(indexBufferSize, namespaceBufferSize int) api.Cache {
-	return cacheUnion{
-		headCache:      MakeResidentHeadCache(),
-		indexCache:     MakeResidentIndexCache(indexBufferSize),
-		namespaceCache: MakeResidentNamespaceCache(namespaceBufferSize),
+	return Union{
+		HeadCache:      MakeResidentHeadCache(),
+		IndexCache:     MakeResidentIndexCache(indexBufferSize),
+		NamespaceCache: MakeResidentNamespaceCache(namespaceBufferSize),
 	}
-}
-
-// MakeResidentMemoryImage makes an non-ACID api.MemoryImage implementation that is only suitable for tests.
-func MakeResidentMemoryImage() api.MemoryImage {
-	return &residentMemoryImage{joined: crdt.EmptyIndex()}
 }
 
 type residentNamespaceCache struct {

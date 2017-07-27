@@ -16,24 +16,21 @@ import (
 )
 
 type RemoteNamespaceCoreOptions struct {
-	Store          api.RemoteStore
-	HeadCache      api.HeadCache
-	MemoryImage    api.MemoryImage
-	IndexCache     api.IndexCache
-	NamespaceCache api.NamespaceCache
-	KeyStore       api.KeyStore
-	IsPublicIndex  bool
-	Pulse          time.Duration
-	Debug          bool
-	Functions      function.FunctionNamespace
+	Store         api.RemoteStore
+	Cache         api.Cache
+	MemoryImage   api.MemoryImage
+	KeyStore      api.KeyStore
+	IsPublicIndex bool
+	Pulse         time.Duration
+	Debug         bool
+	Functions     function.FunctionNamespace
 }
 
 func checkOptions(options RemoteNamespaceCoreOptions) {
 	requiredOptions := map[string]interface{}{
 		"Store":       options.Store,
-		"HeadCache":   options.HeadCache,
+		"Cache":       options.Cache,
 		"MemoryImage": options.MemoryImage,
-		"IndexCache":  options.IndexCache,
 		"KeyStore":    options.KeyStore,
 	}
 
@@ -232,7 +229,7 @@ func (rn *remoteNamespace) persistIndex(index crdt.Index) (crdt.IPFSPath, error)
 		return crdt.NIL_PATH, errors.Wrap(addErr, failMsg)
 	}
 
-	cacheErr := rn.IndexCache.SetIndex(indexAddr, index)
+	cacheErr := rn.Cache.SetIndex(indexAddr, index)
 
 	if cacheErr != nil {
 		log.Error("Failed to write index cache for: %s (%s)", indexAddr, cacheErr.Error())
@@ -310,7 +307,7 @@ func (rn *remoteNamespace) joinPeerIndex(links []crdt.Link) api.Response {
 
 func (rn *remoteNamespace) loadIndex(indexAddr crdt.IPFSPath) (crdt.Index, error) {
 	const failMsg = "remoteNamespace.loadIndex failed"
-	cached, cacheErr := rn.IndexCache.GetIndex(indexAddr)
+	cached, cacheErr := rn.Cache.GetIndex(indexAddr)
 
 	if cacheErr == nil {
 		return cached, nil
@@ -576,7 +573,7 @@ func (rn *remoteNamespace) namespaceLoader(addrs []crdt.Link) (<-chan api.Search
 func (rn *remoteNamespace) loadNamespace(namespaceAddr crdt.IPFSPath) (crdt.Namespace, error) {
 	const failMsg = "remoteNamespace.loadNamespace failed"
 
-	ns, cacheErr := rn.NamespaceCache.GetNamespace(namespaceAddr)
+	ns, cacheErr := rn.Cache.GetNamespace(namespaceAddr)
 
 	if cacheErr == nil {
 		return ns, nil
@@ -656,7 +653,7 @@ func (rn *remoteNamespace) insertNamespace(namespace crdt.Namespace) (crdt.IPFSP
 		return crdt.NIL_PATH, errors.Wrap(result.err, failMsg)
 	}
 
-	cacheErr := rn.NamespaceCache.SetNamespace(result.path, namespace)
+	cacheErr := rn.Cache.SetNamespace(result.path, namespace)
 
 	if cacheErr != nil {
 		log.Error("Failed to write to namespace cache at: %s (%s)", result.path, cacheErr.Error())
@@ -688,18 +685,18 @@ func (rn *remoteNamespace) insertIndex(index crdt.Index) (crdt.IPFSPath, error) 
 }
 
 func (rn *remoteNamespace) updateIndexCache(addr crdt.IPFSPath, index crdt.Index) {
-	err := rn.IndexCache.SetIndex(addr, index)
+	err := rn.Cache.SetIndex(addr, index)
 	if err != nil {
 		log.Error("Failed to update index cache: %s", err.Error())
 	}
 }
 
 func (rn *remoteNamespace) getHead() (crdt.IPFSPath, error) {
-	return rn.HeadCache.GetHead()
+	return rn.Cache.GetHead()
 }
 
 func (rn *remoteNamespace) setHead(head crdt.IPFSPath) error {
-	return rn.HeadCache.SetHead(head)
+	return rn.Cache.SetHead(head)
 }
 
 type dirtyTracker struct {

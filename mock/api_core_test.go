@@ -542,64 +542,38 @@ func readApiResponse(command api.Command) api.Response {
 }
 
 func makeRemote(store api.RemoteStore) api.RemoteNamespaceCore {
-	headCache := cache.MakeResidentHeadCache()
-	options := remoteOptions(store, headCache)
+	cache := makeTestCache()
+	options := remoteOptions(store, cache)
 	return service.MakeRemoteNamespaceCore(options)
 }
 
 func loadRemote(store api.RemoteStore, addr crdt.IPFSPath) api.RemoteNamespaceCore {
-	headCache := cache.MakeResidentHeadCache()
-	err := headCache.SetHead(addr)
+	cache := makeTestCache()
+	err := cache.SetHead(addr)
 	panicOnBadInit(err)
 
-	options := remoteOptions(store, headCache)
+	options := remoteOptions(store, cache)
 	return service.MakeRemoteNamespaceCore(options)
 }
 
-func remoteOptions(store api.RemoteStore, headCache api.HeadCache) service.RemoteNamespaceCoreOptions {
+func remoteOptions(store api.RemoteStore, dataCache api.Cache) service.RemoteNamespaceCoreOptions {
 	options := service.RemoteNamespaceCoreOptions{
-		Store:          store,
-		HeadCache:      headCache,
-		IndexCache:     fakeIndexCache{},
-		NamespaceCache: fakeNamespaceCache{},
-		KeyStore:       &crypto.KeyStore{},
-		MemoryImage:    cache.MakeResidentMemoryImage(),
-		Debug:          true,
-		IsPublicIndex:  true,
-		Functions:      function.StandardFunctions(),
+		Store:         store,
+		Cache:         dataCache,
+		KeyStore:      &crypto.KeyStore{},
+		MemoryImage:   cache.MakeResidentMemoryImage(),
+		Debug:         true,
+		IsPublicIndex: true,
+		Functions:     function.StandardFunctions(),
 	}
 
 	return options
 }
 
-type fakeNamespaceCache struct {
-}
-
-func (cache fakeNamespaceCache) GetNamespace(crdt.IPFSPath) (crdt.Namespace, error) {
-	return crdt.EmptyNamespace(), cache.err()
-}
-
-func (cache fakeNamespaceCache) SetNamespace(crdt.IPFSPath, crdt.Namespace) error {
-	return cache.err()
-}
-
-func (cache fakeNamespaceCache) err() error {
-	return errors.New("Not a real namespace cache")
-}
-
-type fakeIndexCache struct {
-}
-
-func (cache fakeIndexCache) GetIndex(crdt.IPFSPath) (crdt.Index, error) {
-	return crdt.EmptyIndex(), cache.err()
-}
-
-func (cache fakeIndexCache) SetIndex(crdt.IPFSPath, crdt.Index) error {
-	return cache.err()
-}
-
-func (cache fakeIndexCache) err() error {
-	return errors.New("Not a real index cache")
+func makeTestCache() api.Cache {
+	return cache.Union{
+		HeadCache: cache.MakeResidentHeadCache(),
+	}
 }
 
 func panicOnBadInit(err error) {

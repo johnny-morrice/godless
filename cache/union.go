@@ -1,40 +1,70 @@
 package cache
 
 import (
+	"github.com/pkg/errors"
+
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
 )
 
-type cacheUnion struct {
-	headCache      api.HeadCache
-	indexCache     api.IndexCache
-	namespaceCache api.NamespaceCache
+type Union struct {
+	HeadCache      api.HeadCache
+	IndexCache     api.IndexCache
+	NamespaceCache api.NamespaceCache
 }
 
-func (cache cacheUnion) GetHead() (crdt.IPFSPath, error) {
-	return cache.headCache.GetHead()
+func (cache Union) GetHead() (crdt.IPFSPath, error) {
+	if cache.HeadCache == nil {
+		return crdt.NIL_PATH, noSuchCache()
+	}
+
+	return cache.HeadCache.GetHead()
 }
 
-func (cache cacheUnion) SetHead(head crdt.IPFSPath) error {
-	return cache.headCache.SetHead(head)
+func (cache Union) SetHead(head crdt.IPFSPath) error {
+	if cache.HeadCache == nil {
+		return noSuchCache()
+	}
+
+	return cache.HeadCache.SetHead(head)
 }
 
-func (cache cacheUnion) GetIndex(indexAddr crdt.IPFSPath) (crdt.Index, error) {
-	return cache.indexCache.GetIndex(indexAddr)
+func (cache Union) GetIndex(indexAddr crdt.IPFSPath) (crdt.Index, error) {
+	if cache.IndexCache == nil {
+		return crdt.EmptyIndex(), noSuchCache()
+	}
+
+	return cache.IndexCache.GetIndex(indexAddr)
 }
 
-func (cache cacheUnion) SetIndex(indexAddr crdt.IPFSPath, index crdt.Index) error {
-	return cache.indexCache.SetIndex(indexAddr, index)
+func (cache Union) SetIndex(indexAddr crdt.IPFSPath, index crdt.Index) error {
+	if cache.IndexCache == nil {
+		return noSuchCache()
+	}
+
+	return cache.IndexCache.SetIndex(indexAddr, index)
 }
 
-func (cache cacheUnion) GetNamespace(namespaceAddr crdt.IPFSPath) (crdt.Namespace, error) {
-	return cache.namespaceCache.GetNamespace(namespaceAddr)
+func (cache Union) GetNamespace(namespaceAddr crdt.IPFSPath) (crdt.Namespace, error) {
+	if cache.NamespaceCache == nil {
+		return crdt.EmptyNamespace(), noSuchCache()
+	}
+
+	return cache.NamespaceCache.GetNamespace(namespaceAddr)
 }
 
-func (cache cacheUnion) SetNamespace(namespaceAddr crdt.IPFSPath, namespace crdt.Namespace) error {
-	return cache.namespaceCache.SetNamespace(namespaceAddr, namespace)
+func (cache Union) SetNamespace(namespaceAddr crdt.IPFSPath, namespace crdt.Namespace) error {
+	if cache.NamespaceCache == nil {
+		return noSuchCache()
+	}
+
+	return cache.NamespaceCache.SetNamespace(namespaceAddr, namespace)
 }
 
-func (cache cacheUnion) CloseCache() error {
+func (cache Union) CloseCache() error {
 	return nil
+}
+
+func noSuchCache() error {
+	return errors.New("No cache available")
 }

@@ -58,12 +58,6 @@ type Options struct {
 	// Cache is optional. Build a 12-factor app by supplying your own remote cache.
 	// HeadCache, IndexCache and NamespaceCache can be used to specify different caches for different data types.
 	Cache api.Cache
-	// HeadCache is optional.  Build a 12-factor app by supplying your own remote cache.
-	HeadCache api.HeadCache
-	// IndexCache is optional.  Build a 12-factor app by supplying your own remote cache.
-	IndexCache api.IndexCache
-	// NamespaceCache is optional. Build a 12-factor app by supplying your own remote cache.
-	NamespaceCache api.NamespaceCache
 	// PriorityQueue is optional. Build a 12-factor app by supplying your own remote cache.
 	PriorityQueue api.RequestPriorityQueue
 	// ApiConcurrency is optional.  Tune performance by setting the number of simultaneous queries.
@@ -242,23 +236,8 @@ func (godless *Godless) connectRemoteStore() error {
 }
 
 func (godless *Godless) connectCache() error {
-	if godless.Cache != nil {
-		godless.HeadCache = godless.Cache
-		godless.IndexCache = godless.Cache
-		godless.NamespaceCache = godless.Cache
-		return nil
-	}
-
-	if godless.HeadCache == nil {
-		godless.HeadCache = cache.MakeResidentHeadCache()
-	}
-
-	if godless.IndexCache == nil {
-		godless.IndexCache = cache.MakeResidentIndexCache(__UNKNOWN_BUFFER_SIZE)
-	}
-
-	if godless.NamespaceCache == nil {
-		godless.NamespaceCache = cache.MakeResidentNamespaceCache(__UNKNOWN_BUFFER_SIZE)
+	if godless.Cache == nil {
+		godless.Cache = cache.MakeResidentMemoryCache(__UNKNOWN_BUFFER_SIZE, __UNKNOWN_BUFFER_SIZE)
 	}
 
 	return nil
@@ -268,7 +247,7 @@ func (godless *Godless) setupNamespace() error {
 	if godless.IndexHash != "" {
 		head := crdt.IPFSPath(godless.IndexHash)
 
-		err := godless.HeadCache.SetHead(head)
+		err := godless.Cache.SetHead(head)
 
 		if err != nil {
 			return err
@@ -280,15 +259,13 @@ func (godless *Godless) setupNamespace() error {
 	}
 
 	namespaceOptions := service.RemoteNamespaceCoreOptions{
-		Pulse:          godless.Pulse,
-		Store:          godless.RemoteStore,
-		HeadCache:      godless.HeadCache,
-		IndexCache:     godless.IndexCache,
-		NamespaceCache: godless.NamespaceCache,
-		KeyStore:       godless.KeyStore,
-		IsPublicIndex:  godless.PublicServer,
-		MemoryImage:    godless.MemoryImage,
-		Functions:      godless.Functions,
+		Pulse:         godless.Pulse,
+		Store:         godless.RemoteStore,
+		Cache:         godless.Cache,
+		KeyStore:      godless.KeyStore,
+		IsPublicIndex: godless.PublicServer,
+		MemoryImage:   godless.MemoryImage,
+		Functions:     godless.Functions,
 	}
 
 	godless.remote = service.MakeRemoteNamespaceCore(namespaceOptions)
