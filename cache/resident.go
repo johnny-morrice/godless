@@ -108,10 +108,9 @@ type kvCache struct {
 }
 
 type cacheItem struct {
-	key           crdt.IPFSPath
-	obj           unsafe.Pointer
-	timestamp     int64
-	nanoTimestamp int
+	timestamp
+	key crdt.IPFSPath
+	obj unsafe.Pointer
 }
 
 func makeKvCache(buffSize int) *kvCache {
@@ -130,9 +129,10 @@ func makeKvCache(buffSize int) *kvCache {
 }
 
 func (cache *kvCache) initBuff() {
+	timestamp := makeTimestamp()
 	for i := 0; i < len(cache.buff); i++ {
 		item := &cache.buff[i]
-		item.timestamp, item.nanoTimestamp = makeTimestamp()
+		item.timestamp = timestamp
 	}
 }
 
@@ -156,7 +156,7 @@ func (cache *kvCache) set(addr crdt.IPFSPath, pointer unsafe.Pointer) error {
 	item, present := cache.assoc[addr]
 
 	if present {
-		item.timestamp, item.nanoTimestamp = makeTimestamp()
+		item.timestamp = makeTimestamp()
 		return nil
 	}
 
@@ -169,7 +169,7 @@ func (cache *kvCache) addNewItem(addr crdt.IPFSPath, pointer unsafe.Pointer) err
 		obj: pointer,
 	}
 
-	newItem.timestamp, newItem.nanoTimestamp = makeTimestamp()
+	newItem.timestamp = makeTimestamp()
 
 	bufferedItem := cache.popOldest()
 	*bufferedItem = newItem
@@ -189,12 +189,7 @@ func (cache *kvCache) popOldest() *cacheItem {
 			continue
 		}
 
-		older := item.timestamp < oldest.timestamp
-		if !older && item.timestamp == oldest.timestamp {
-			older = item.nanoTimestamp < oldest.nanoTimestamp
-		}
-
-		if older {
+		if item.older(oldest.timestamp) {
 			oldest = item
 		}
 	}
@@ -208,9 +203,29 @@ func (cache *kvCache) popOldest() *cacheItem {
 	return oldest
 }
 
-func makeTimestamp() (int64, int) {
+type timestamp struct {
+	seconds     int64
+	nanoseconds int64
+}
+
+func makeTimestamp() timestamp {
 	t := time.Now()
-	return t.Unix(), t.Nanosecond()
+	return timestamp{
+		seconds:     t.Unix(),
+		nanoseconds: int64(t.Nanosecond()),
+	}
+}
+
+func (stamp timestamp) older(other timestamp) bool {
+	if stamp.seconds < other.seconds {
+		return true
+	}
+
+	if stamp.seconds == other.seconds && stamp.nanoseconds < other.nanoseconds {
+		return true
+	}
+
+	return false
 }
 
 type residentHeadCache struct {

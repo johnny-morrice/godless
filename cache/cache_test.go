@@ -10,7 +10,12 @@ import (
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/internal/testutil"
+	"github.com/johnny-morrice/godless/log"
 )
+
+func init() {
+	log.SetLevel(log.LOG_DEBUG)
+}
 
 func testMemoryImageConcurrency(t *testing.T, memimg api.MemoryImage, count int) {
 	indices := genIndices(count)
@@ -26,23 +31,22 @@ func testMemoryImageConcurrency(t *testing.T, memimg api.MemoryImage, count int)
 		index := idx
 		wg.Add(2)
 		go func() {
+			defer wg.Done()
 			err := memimg.JoinIndex(index)
 			testutil.AssertNil(t, err)
-			wg.Done()
 		}()
 
 		go func() {
+			defer wg.Done()
 			index, err := memimg.GetIndex()
 			if index.IsEmpty() {
 				t.Error("Unexpected empty index")
 			}
-
 			testutil.AssertNil(t, err)
-			wg.Done()
 		}()
 	}
 
-	const timeout = time.Second * 2
+	const timeout = time.Second * 120
 	testutil.WaitGroupTimeout(t, wg, timeout)
 }
 

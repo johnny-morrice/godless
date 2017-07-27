@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"encoding/binary"
 	"fmt"
 	"os"
 
@@ -15,10 +16,11 @@ import (
 )
 
 type BoltOptions struct {
-	DBOptions *bolt.Options
-	FilePath  string
-	Mode      os.FileMode
-	Db        *bolt.DB
+	DBOptions    *bolt.Options
+	FilePath     string
+	Mode         os.FileMode
+	Db           *bolt.DB
+	MaxCacheSize int
 }
 
 type BoltFactory struct {
@@ -28,7 +30,10 @@ type BoltFactory struct {
 func (factory BoltFactory) MakeCache() (api.Cache, error) {
 	const failMsg = "BoltFactory.MakeCache failed"
 
-	cache := boltCache{db: factory.Db}
+	cache := boltCache{
+		db:      factory.Db,
+		maxSize: factory.MaxCacheSize,
+	}
 
 	err := cache.initBuckets()
 
@@ -56,6 +61,10 @@ func (factory BoltFactory) MakeMemoryImage() (api.MemoryImage, error) {
 func MakeBoltFactory(options BoltOptions) (BoltFactory, error) {
 	const failMsg = "MakeBoltCacheFactory"
 
+	if options.MaxCacheSize <= 0 {
+		options.MaxCacheSize = __DEFAULT_BUFFER_SIZE
+	}
+
 	db, err := connectBolt(options)
 
 	if err != nil {
@@ -71,7 +80,8 @@ func MakeBoltFactory(options BoltOptions) (BoltFactory, error) {
 }
 
 type boltCache struct {
-	db *bolt.DB
+	db      *bolt.DB
+	maxSize int
 }
 
 func (cache boltCache) initBuckets() error {
@@ -123,7 +133,7 @@ func (cache boltCache) GetIndex(indexAddr crdt.IPFSPath) (crdt.Index, error) {
 	indexMessage := &proto.IndexMessage{}
 	key := []byte(indexAddr)
 	err := cache.viewIndex(func(bucket *bolt.Bucket) error {
-		return getMessage(bucket, key, indexMessage)
+		return getCacheItemValue(bucket, key, indexMessage)
 	})
 
 	if err != nil {
@@ -146,7 +156,7 @@ func (cache boltCache) SetIndex(indexAddr crdt.IPFSPath, index crdt.Index) error
 	key := []byte(indexAddr)
 
 	err := cache.updateIndex(func(bucket *bolt.Bucket) error {
-		return putMessage(bucket, key, indexMessage)
+		return putCacheItem(bucket, key, indexMessage)
 	})
 
 	if err != nil {
@@ -164,7 +174,7 @@ func (cache boltCache) GetNamespace(namespaceAddr crdt.IPFSPath) (crdt.Namespace
 	namespaceMessage := &proto.NamespaceMessage{}
 	key := []byte(namespaceAddr)
 	err := cache.viewNamespace(func(bucket *bolt.Bucket) error {
-		return getMessage(bucket, key, namespaceMessage)
+		return getCacheItemValue(bucket, key, namespaceMessage)
 	})
 
 	if err != nil {
@@ -190,7 +200,7 @@ func (cache boltCache) SetNamespace(namespaceAddr crdt.IPFSPath, namespace crdt.
 	key := []byte(namespaceAddr)
 
 	err := cache.updateNamespace(func(bucket *bolt.Bucket) error {
-		return putMessage(bucket, key, namespaceMessage)
+		return putCacheItem(bucket, key, namespaceMessage)
 	})
 
 	if err != nil {
@@ -222,6 +232,12 @@ func (cache boltCache) updateNamespace(updater func(bucket *bolt.Bucket) error) 
 			return err
 		}
 
+		err = cache.evictOldest(bucket)
+
+		if err != nil {
+			return err
+		}
+
 		return updater(bucket)
 	})
 }
@@ -241,6 +257,12 @@ func (cache boltCache) viewIndex(viewer func(bucket *bolt.Bucket) error) error {
 func (cache boltCache) updateIndex(updater func(bucket *bolt.Bucket) error) error {
 	return cache.db.Update(func(transaction *bolt.Tx) error {
 		bucket, err := getBucket(transaction, BOLT_INDEX_CACHE_BUCKET)
+
+		if err != nil {
+			return err
+		}
+
+		err = cache.evictOldest(bucket)
 
 		if err != nil {
 			return err
@@ -278,6 +300,56 @@ func (cache boltCache) CloseCache() error {
 	err := cache.db.Close()
 	log.Info("Closed boltCache")
 	return err
+}
+
+func (cache boltCache) evictOldest(bucket *bolt.Bucket) error {
+	const failMsg = "evictOldest failed"
+
+	stats := bucket.Stats()
+
+	if stats.KeyN <= cache.maxSize {
+		return nil
+	}
+
+	var oldest boltCacheItem
+
+	err := bucket.ForEach(func(k []byte, v []byte) error {
+		inner := bucket.Bucket(k)
+
+		if inner == nil {
+			return nil
+		}
+
+		item := boltCacheItem{key: k}
+		err := item.getTimestamp(inner)
+
+		if err != nil {
+			return err
+		}
+
+		if oldest.key == nil {
+			oldest = item
+			return nil
+		}
+
+		if item.older(oldest.timestamp) {
+			oldest = item
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return errors.Wrap(err, failMsg)
+	}
+
+	if oldest.key == nil {
+		return errors.New("Corrupt cache")
+	}
+
+	err = bucket.DeleteBucket(oldest.key)
+
+	return errors.Wrap(err, failMsg)
 }
 
 type boltMemoryImage struct {
@@ -411,6 +483,48 @@ func createAllBucketsIfNotExists(db *bolt.DB, bucketName ...[]byte) error {
 	return nil
 }
 
+type boltCacheItem struct {
+	timestamp
+	key []byte
+}
+
+func (item *boltCacheItem) putTimestamp(bucket *bolt.Bucket) error {
+	err := bucket.Put(TIMESTAMP_KEY, slice64(item.timestamp.seconds))
+
+	if err != nil {
+		msg := fmt.Sprintf("Failed to add timestamp at Bolt key: %s", string(item.key))
+		return errors.Wrap(err, msg)
+	}
+
+	err = bucket.Put(NANO_TIMESTAMP_KEY, slice64(item.timestamp.nanoseconds))
+
+	if err != nil {
+		msg := fmt.Sprintf("Failed to add nanosecond timestamp at Bolt key: %s", string(item.key))
+		return errors.Wrap(err, msg)
+	}
+
+	return nil
+}
+
+func (item *boltCacheItem) getTimestamp(bucket *bolt.Bucket) error {
+	timestamp := bucket.Get(TIMESTAMP_KEY)
+
+	if timestamp == nil {
+		return fmt.Errorf("Failed to Get timestamp at Bolt key: %s", string(item.key))
+	}
+
+	nano := bucket.Get(NANO_TIMESTAMP_KEY)
+
+	if nano == nil {
+		return fmt.Errorf("Failed to Get nano timestamp at Bolt key: %s", string(item.key))
+	}
+
+	item.timestamp.seconds = deslice64(timestamp)
+	item.timestamp.nanoseconds = deslice64(nano)
+
+	return nil
+}
+
 func putMessage(bucket *bolt.Bucket, key []byte, value pb.Message) error {
 	keyText := string(key)
 	valueBytes, err := pb.Marshal(value)
@@ -430,9 +544,52 @@ func putMessage(bucket *bolt.Bucket, key []byte, value pb.Message) error {
 	return nil
 }
 
-func getMessage(bucket *bolt.Bucket, key []byte, value pb.Message) error {
+func putCacheItem(bucket *bolt.Bucket, key []byte, value pb.Message) error {
 	keyText := string(key)
-	valueBytes := bucket.Get(key)
+	valueBytes, err := pb.Marshal(value)
+
+	if err != nil {
+		msg := fmt.Sprintf("Failed to Marshal protobuf message for Bolt key: %s", keyText)
+		return errors.Wrap(err, msg)
+	}
+
+	innerBucket, err := bucket.CreateBucket(key)
+
+	if err != nil {
+		msg := fmt.Sprintf("Failed to create inner bucket for Bolt key: %s", keyText)
+		return errors.Wrap(err, msg)
+	}
+
+	item := boltCacheItem{
+		key:       key,
+		timestamp: makeTimestamp(),
+	}
+
+	err = item.putTimestamp(innerBucket)
+
+	if err != nil {
+		return err
+	}
+
+	err = innerBucket.Put(DATA_KEY, valueBytes)
+
+	if err != nil {
+		msg := fmt.Sprintf("Failed to Put value at Bolt key: %s", keyText)
+		return errors.Wrap(err, msg)
+	}
+
+	return nil
+}
+
+func getCacheItemValue(bucket *bolt.Bucket, key []byte, value pb.Message) error {
+	keyText := string(key)
+	innerBucket := bucket.Bucket(key)
+
+	if innerBucket == nil {
+		return fmt.Errorf("Failed to get inner Bucket at Bolt key: %s", keyText)
+	}
+
+	valueBytes := innerBucket.Get(DATA_KEY)
 
 	if valueBytes == nil {
 		return fmt.Errorf("Failed to Get value at Bolt key: %s", keyText)
@@ -448,6 +605,21 @@ func getMessage(bucket *bolt.Bucket, key []byte, value pb.Message) error {
 	return nil
 }
 
+func deslice64(bs []byte) int64 {
+	return int64(__BYTE_ORDER.Uint64(bs))
+}
+
+func slice64(n int64) []byte {
+	bs := make([]byte, 8)
+	__BYTE_ORDER.PutUint64(bs, uint64(n))
+	return bs
+}
+
+var __BYTE_ORDER = binary.LittleEndian
+
+var TIMESTAMP_KEY = []byte("timestamp")
+var NANO_TIMESTAMP_KEY = []byte("nano_timestamp")
+var DATA_KEY = []byte("data")
 var BOLT_HEAD_CACHE_KEY = []byte("head")
 var BOLT_HEAD_CACHE_BUCKET = []byte("head_cache")
 var BOLT_NAMESPACE_CACHE_BUCKET = []byte("namespace_cache")

@@ -1,7 +1,6 @@
 package crdt
 
 import (
-	"math"
 	"math/rand"
 
 	"github.com/johnny-morrice/godless/internal/testutil"
@@ -31,6 +30,10 @@ func GenNamespace(rand *rand.Rand, size int) Namespace {
 }
 
 func genRow(rand *rand.Rand, size int) Row {
+	if size < 10 {
+		size = 10
+	}
+
 	const maxStr = 100
 	const entryFudge = 0.65
 	row := EmptyRow()
@@ -44,6 +47,10 @@ func genRow(rand *rand.Rand, size int) Row {
 }
 
 func GenEntry(rand *rand.Rand, size int) Entry {
+	if size < 10 {
+		size = 10
+	}
+
 	const maxStr = 100
 	const pointFudge = 0.85
 	pointCount := testutil.GenCountRange(rand, 1, size, pointFudge)
@@ -61,6 +68,10 @@ func genPoint(rand *rand.Rand, size int) Point {
 }
 
 func GenIndex(rand *rand.Rand, size int) Index {
+	if size < 20 {
+		size = 20
+	}
+
 	index := EmptyIndex()
 	const ADDR_SCALE = 1
 	const KEY_SCALE = 0.5
@@ -84,8 +95,14 @@ func GenIndex(rand *rand.Rand, size int) Index {
 }
 
 func GenLink(rand *rand.Rand, size int) Link {
-	const PATH_SCALE = 0.5
-	maxLen := int(math.Floor(float64(size) / PATH_SCALE))
-	addr := testutil.RandLettersRange(rand, 1, maxLen)
+	if size < 1 {
+		size = 2
+	}
+
+	if size > 10 {
+		size = 10
+	}
+
+	addr := testutil.RandLettersRange(rand, 1, size)
 	return UnsignedLink(IPFSPath(addr))
 }
