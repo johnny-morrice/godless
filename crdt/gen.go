@@ -7,17 +7,20 @@ import (
 )
 
 func GenNamespace(rand *rand.Rand, size int) Namespace {
-	const maxStr = 100
-	const tableFudge = 0.125
-	const rowFudge = 0.25
+	if size > 30 {
+		size = 30
+	}
+
+	const tableMax = 10
+	const maxStr = 20
 
 	gen := EmptyNamespace()
 
-	tableCount := testutil.GenCountRange(rand, 1, size, tableFudge)
+	tableCount := testutil.GenCountRange(rand, 1, tableMax)
 	for i := 0; i < tableCount; i++ {
 		tableName := TableName(testutil.RandLettersRange(rand, 1, maxStr))
 		table := EmptyTable()
-		rowCount := testutil.GenCountRange(rand, 1, size, rowFudge)
+		rowCount := testutil.GenCountRange(rand, 1, size)
 		for j := 0; j < rowCount; j++ {
 			rowName := RowName(testutil.RandLetters(rand, maxStr))
 			row := genRow(rand, size)
@@ -30,14 +33,17 @@ func GenNamespace(rand *rand.Rand, size int) Namespace {
 }
 
 func genRow(rand *rand.Rand, size int) Row {
-	if size < 10 {
+	if size > 10 {
 		size = 10
 	}
 
-	const maxStr = 100
-	const entryFudge = 0.65
+	if size < 5 {
+		size = 5
+	}
+
+	const maxStr = 20
 	row := EmptyRow()
-	entryCount := testutil.GenCountRange(rand, 1, size, entryFudge)
+	entryCount := testutil.GenCountRange(rand, 1, size)
 	for k := 0; k < entryCount; k++ {
 		entryName := EntryName(testutil.RandLetters(rand, maxStr))
 		entry := GenEntry(rand, size)
@@ -47,13 +53,16 @@ func genRow(rand *rand.Rand, size int) Row {
 }
 
 func GenEntry(rand *rand.Rand, size int) Entry {
-	if size < 10 {
-		size = 10
+	if size > 5 {
+		size = 5
 	}
 
-	const maxStr = 100
-	const pointFudge = 0.85
-	pointCount := testutil.GenCountRange(rand, 1, size, pointFudge)
+	if size < 2 {
+		size = 2
+	}
+
+	const maxStr = 20
+	pointCount := testutil.GenCountRange(rand, 1, size)
 	points := make([]Point, pointCount)
 
 	for m := 0; m < pointCount; m++ {
@@ -68,22 +77,23 @@ func genPoint(rand *rand.Rand, size int) Point {
 }
 
 func GenIndex(rand *rand.Rand, size int) Index {
-	if size < 20 {
+	if size > 20 {
 		size = 20
 	}
 
+	if size < 10 {
+		size = 10
+	}
+
 	index := EmptyIndex()
-	const ADDR_SCALE = 1
-	const KEY_SCALE = 0.5
-	const PATH_SCALE = 0.5
 
 	for i := 0; i < size; i++ {
-		keyCount := testutil.GenCountRange(rand, 2, size, KEY_SCALE)
+		keyCount := testutil.GenCountRange(rand, 2, size)
 		indexKey := TableName(testutil.RandLettersRange(rand, 1, keyCount))
-		addrCount := testutil.GenCountRange(rand, 1, size, ADDR_SCALE)
+		addrCount := testutil.GenCountRange(rand, 1, size)
 		addrs := make([]Link, addrCount)
 		for j := 0; j < addrCount; j++ {
-			pathCount := testutil.GenCountRange(rand, 2, size, PATH_SCALE)
+			pathCount := testutil.GenCountRange(rand, 2, size)
 			a := testutil.RandLettersRange(rand, 1, pathCount)
 			addrs[j] = UnsignedLink(IPFSPath(a))
 		}
@@ -95,12 +105,12 @@ func GenIndex(rand *rand.Rand, size int) Index {
 }
 
 func GenLink(rand *rand.Rand, size int) Link {
-	if size < 1 {
-		size = 2
-	}
-
 	if size > 10 {
 		size = 10
+	}
+
+	if size < 2 {
+		size = 2
 	}
 
 	addr := testutil.RandLettersRange(rand, 1, size)

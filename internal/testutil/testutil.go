@@ -53,29 +53,14 @@ func RandEscape(rand *rand.Rand) string {
 }
 
 // Fudge to generate count of sample data.
-func GenCount(rand *rand.Rand, size int, scale float32) int {
-	return GenCountRange(rand, 0, size, scale)
+func GenCount(rand *rand.Rand, size int) int {
+	return GenCountRange(rand, 0, size)
 }
 
-// Fudge to generate count of sample data.
-func GenCountRange(rand *rand.Rand, min, max int, scale float32) int {
-	fudge := float32(1.0)
-	mark := rand.Float32()
-	if mark < 0.01 {
-		fudge = 0
-	} else if mark < 0.3 {
-		fudge = 0.3
-	} else if mark < 0.7 {
-		fudge = 0.5
-	} else if mark < 0.9 {
-		fudge = 0.8
-	}
-
-	gen := int(fudge * float32(max) * scale)
-	if gen < min {
-		gen = min
-	}
-	return gen
+// Generate count of sample data.
+func GenCountRange(rand *rand.Rand, min, max int) int {
+	gen := rand.Intn(max - min)
+	return gen + min
 }
 
 func RandLetters(rand *rand.Rand, max int) string {

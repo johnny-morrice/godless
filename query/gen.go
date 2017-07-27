@@ -34,8 +34,6 @@ func genQuerySelect(rand *rand.Rand, size int) QuerySelect {
 }
 
 func genQueryWhere(rand *rand.Rand, size int, depth int) QueryWhere {
-	const CLAUSE_SCALE = 0.8
-
 	gen := QueryWhere{}
 	if rand.Float32()/float32(depth) > 0.4 {
 		if rand.Float32() > 0.5 {
@@ -44,7 +42,7 @@ func genQueryWhere(rand *rand.Rand, size int, depth int) QueryWhere {
 			gen.OpCode = OR
 		}
 
-		clauseCount := testutil.GenCount(rand, size, CLAUSE_SCALE)
+		clauseCount := testutil.GenCount(rand, size)
 		gen.Clauses = make([]QueryWhere, clauseCount)
 
 		nextDepth := depth + 1
@@ -60,7 +58,6 @@ func genQueryWhere(rand *rand.Rand, size int, depth int) QueryWhere {
 }
 
 func genQueryPredicate(rand *rand.Rand, size int) QueryPredicate {
-	const SCALE = 0.5
 	const MAX_POINT = 10
 
 	gen := QueryPredicate{}
@@ -70,8 +67,8 @@ func genQueryPredicate(rand *rand.Rand, size int) QueryPredicate {
 
 	gen.FunctionName = "str_eq"
 
-	keyCount := testutil.GenCount(rand, size, SCALE)
-	litCount := testutil.GenCount(rand, size, SCALE)
+	keyCount := testutil.GenCount(rand, size)
+	litCount := testutil.GenCount(rand, size)
 	gen.Keys = make([]crdt.EntryName, keyCount)
 	gen.Literals = make([]string, litCount)
 
@@ -89,10 +86,8 @@ func genQueryPredicate(rand *rand.Rand, size int) QueryPredicate {
 }
 
 func genQueryJoin(rand *rand.Rand, size int) QueryJoin {
-	const ROW_SCALE = 1.0
-	const ENTRY_SCALE = 0.2
 	const MAX_STR_LEN = 10
-	rowCount := testutil.GenCountRange(rand, 1, size, ROW_SCALE)
+	rowCount := testutil.GenCountRange(rand, 1, size)
 
 	gen := QueryJoin{Rows: make([]QueryRowJoin, rowCount)}
 
@@ -101,7 +96,7 @@ func genQueryJoin(rand *rand.Rand, size int) QueryJoin {
 		row := &gen.Rows[i]
 		row.RowKey = crdt.RowName(testutil.RandKey(rand, MAX_STR_LEN))
 
-		entryCount := testutil.GenCount(rand, size, ENTRY_SCALE)
+		entryCount := testutil.GenCount(rand, size)
 		for i := 0; i < entryCount; i++ {
 			entry := testutil.RandKey(rand, MAX_STR_LEN)
 			point := testutil.RandPoint(rand, MAX_STR_LEN)
