@@ -1,181 +1,61 @@
 package cache
 
 import (
-	"fmt"
-	"strconv"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/johnny-morrice/godless/api"
-	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/internal/testutil"
 	"github.com/pkg/errors"
 )
 
 func TestResidentMemoryImageConcurrency(t *testing.T) {
 	const count = __CONCURRENCY_LEVEL / 10
-
 	memimg := MakeResidentMemoryImage()
-	indices := genIndices(count)
-
-	wg := &sync.WaitGroup{}
-
-	initialIndex := crdt.MakeIndex(map[crdt.TableName]crdt.Link{
-		"hi": crdt.UnsignedLink("world"),
-	})
-	memimg.JoinIndex(initialIndex)
-
-	for _, idx := range indices {
-		index := idx
-		wg.Add(2)
-		go func() {
-			err := memimg.JoinIndex(index)
-			testutil.AssertNil(t, err)
-			wg.Done()
-		}()
-
-		go func() {
-			index, err := memimg.GetIndex()
-			if index.IsEmpty() {
-				t.Error("Unexpected empty index")
-			}
-
-			testutil.AssertNil(t, err)
-			wg.Done()
-		}()
-	}
-
-	const timeout = time.Second * 2
-	testutil.WaitGroupTimeout(t, wg, timeout)
+	testMemoryImageConcurrency(t, memimg, count)
 }
 
 func TestResidentMemoryImageGetAndJoinIndex(t *testing.T) {
-	indexA := crdt.MakeIndex(map[crdt.TableName]crdt.Link{
-		"hi": crdt.UnsignedLink("world"),
-	})
-	indexB := crdt.MakeIndex(map[crdt.TableName]crdt.Link{
-		"dude": crdt.UnsignedLink("yes"),
-	})
-
-	expected := indexA.JoinIndex(indexB)
-
 	memimg := MakeResidentMemoryImage()
-	memimg.JoinIndex(indexA)
-	memimg.JoinIndex(indexB)
-	actual, err := memimg.GetIndex()
-
-	testutil.AssertNil(t, err)
-	testutil.Assert(t, "Unexpected index", expected.Equals(actual))
+	testMemoryImage(t, memimg)
 }
 
 func TestResidentHeadCacheConcurrency(t *testing.T) {
-	const headCount = __CONCURRENCY_LEVEL
-	heads := genHeads(headCount)
-
+	const count = __CONCURRENCY_LEVEL
 	cache := MakeResidentHeadCache()
-
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for _, h := range heads {
-			head := h
-			err := cache.SetHead(head)
-			testutil.AssertNil(t, err)
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				found, err := cache.GetHead()
-				testutil.AssertNil(t, err)
-				message := fmt.Sprintf("Head too low, expected at least %s but got %s", found, head)
-				testutil.Assert(t, message, headLessEqual(head, found))
-			}()
-		}
-	}()
-
-	const timeout = time.Second * 10
-	testutil.WaitGroupTimeout(t, wg, timeout)
+	testHeadConcurrency(t, cache, count)
 }
 
-func TestResidentHeadCacheGetSet(t *testing.T) {
-	cache := MakeResidentHeadCache()
-	head, err := cache.GetHead()
-	testutil.AssertNil(t, err)
-	testutil.AssertEquals(t, "Expected empty head", crdt.NIL_PATH, head)
-	err = cache.SetHead("Howdy")
-	testutil.AssertNil(t, err)
-	head, err = cache.GetHead()
-	testutil.AssertEquals(t, "Unexpected head", crdt.IPFSPath("Howdy"), head)
+func TestResidentCache(t *testing.T) {
+	cache := MakeResidentMemoryCache(0, 0)
+	testCacheGetSet(t, cache)
 }
 
 func TestResidentIndexCacheConcurrency(t *testing.T) {
 	const count = __CONCURRENCY_LEVEL / 2
-
-	heads := genHeads(count)
-	indices := genIndices(count)
-
 	cache := MakeResidentIndexCache(__CONCURRENCY_LEVEL / 4)
-
-	wg := &sync.WaitGroup{}
-	wg.Add(count)
-	for i := 0; i < count; i++ {
-		indexAddr := heads[i]
-		index := indices[i]
-		go func() {
-			defer wg.Done()
-			err := cache.SetIndex(indexAddr, index)
-			testutil.AssertNil(t, err)
-
-			if err == nil {
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
-					actual, err := cache.GetIndex(indexAddr)
-					if err == nil && !index.Equals(actual) {
-						t.Error("Unexpected Index")
-					}
-				}()
-			}
-		}()
-	}
-
-	const timeout = time.Second * 10
-	testutil.WaitGroupTimeout(t, wg, timeout)
+	testIndexConcurrency(t, cache, count)
 }
 
 func TestResidentIndexCacheExpire(t *testing.T) {
-	const buffSize = 10
-	const dataLength = buffSize * 2
+	const buffsize = 10
+	const count = buffsize * 2
+	cache := MakeResidentIndexCache(buffsize)
+	testIndexExpire(t, cache, count, buffsize)
+}
 
-	heads := genHeads(dataLength)
-	indices := genIndices(dataLength)
+func TestResidentNamespaceCacheConcurrency(t *testing.T) {
+	const count = __CONCURRENCY_LEVEL / 2
+	cache := MakeResidentNamespaceCache(__CONCURRENCY_LEVEL / 4)
+	testNamespaceConcurrency(t, cache, count)
+}
 
-	cache := MakeResidentIndexCache(buffSize)
-
-	for i := 0; i < dataLength; i++ {
-		indexAddr := heads[i]
-		index := indices[i]
-		err := cache.SetIndex(indexAddr, index)
-		testutil.AssertNil(t, err)
-		// wait()
-		actual, getErr := cache.GetIndex(indexAddr)
-		testutil.AssertNil(t, getErr)
-		if !index.Equals(actual) {
-			t.Error("Unexpected Index")
-		}
-	}
-
-	for i := 0; i < buffSize; i++ {
-		indexAddr := heads[i]
-		index := indices[i]
-		index, err := cache.GetIndex(indexAddr)
-		if !index.IsEmpty() {
-			t.Error("Expected empty Index")
-		}
-
-		testutil.AssertNonNil(t, err)
-	}
+func TestResidentNamespaceCacheExpire(t *testing.T) {
+	const buffsize = 10
+	const count = buffsize * 2
+	cache := MakeResidentNamespaceCache(buffsize)
+	testNamespaceExpire(t, cache, count, buffsize)
 }
 
 func TestResidentPriorityQueueDrain(t *testing.T) {
@@ -236,44 +116,6 @@ func TestResidentPriorityQueueLen(t *testing.T) {
 
 	const expected = 1
 	testutil.AssertEquals(t, "Unexpected length", expected, queue.Len())
-}
-
-func genIndices(count int) []crdt.Index {
-	const indexSize = 10
-
-	indices := make([]crdt.Index, count)
-
-	for i := 0; i < count; i++ {
-		indices[i] = crdt.GenIndex(testutil.Rand(), indexSize)
-	}
-
-	return indices
-}
-
-func genHeads(count int) []crdt.IPFSPath {
-	heads := make([]crdt.IPFSPath, count)
-	for i := 0; i < count; i++ {
-		heads[i] = crdt.IPFSPath(strconv.Itoa(i))
-	}
-	return heads
-}
-
-func headLessEqual(x, y crdt.IPFSPath) bool {
-	numX, errX := strconv.Atoi(string(x))
-	numY, errY := strconv.Atoi(string(y))
-
-	if errX != nil || errY != nil {
-		panic("Bad numeric head")
-	}
-
-	return numX <= numY
-}
-
-const __CONCURRENCY_LEVEL = 1000
-
-func wait() {
-	timer := time.NewTimer(time.Millisecond * 10)
-	<-timer.C
 }
 
 var __REFLECT_REQUEST api.Request = api.Request{Type: api.API_REFLECT}
