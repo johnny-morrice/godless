@@ -41,14 +41,6 @@ func (ast *QueryAST) SetLimitPlaceholder(begin int) {
 	panic("not implemented")
 }
 
-func (ast *QueryAST) SetPredicatePlaceholder(begin int) {
-	panic("not implemented")
-}
-
-func (ast *QueryAST) UsePredicateRowKeyPlaceholder(begin int) {
-	panic("not implemented")
-}
-
 func (ast *QueryAST) AddPredicateKeyPlaceholder(begin int) {
 	panic("not implemented")
 }

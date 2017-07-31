@@ -34,13 +34,9 @@ WhereClause <- { p.PushWhere() } ( AndClause / OrClause / PredicateClause ) { p.
 AndClause <- 'and' { p.SetWhereCommand("and") } Spacing '(' Spacing WhereClause Spacing (',' Spacing WhereClause Spacing )* ')'
 OrClause <- 'or' { p.SetWhereCommand("or") } Spacing '(' Spacing WhereClause Spacing (',' Spacing WhereClause Spacing)* ')'
 PredicateClause <- { p.InitPredicate() } Predicate Spacing '(' Spacing PredicateValue (',' Spacing PredicateValue Spacing)* ')'
-Predicate <- ( PredicateText / PredicatePlaceholder )
-PredicateText <- < Key > { p.SetPredicateCommand(buffer[begin:end]) }
-PredicatePlaceholder <- < KeyPlaceholder > { p.SetPredicatePlaceholder(begin) }
+Predicate <- < Key > { p.SetPredicateCommand(buffer[begin:end]) }
 PredicateValue <- (PredicateRowKey / PredicateKey / PredicateLiteral)
-PredicateRowKey <- ( PredicateRowKeyText / PredicateRowKeyLiteral )
-PredicateRowKeyText <- '@key' { p.UsePredicateRowKey() }
-PredicateRowKeyLiteral <- < RowKeyPlaceholder > { p.UsePredicateRowKeyPlaceholder(begin) }
+PredicateRowKey <- '@key' { p.UsePredicateRowKey() }
 PredicateKey <- ( PredicateKeyText / PredicateKeyLiteral )
 PredicateKeyText <- (< Key > / '@' ["] < Literal > ["] ) { p.AddPredicateKey(buffer[begin:end]) }
 PredicateKeyLiteral <- < KeyPlaceholder > { p.AddPredicateKeyPlaceholder(begin) }
@@ -48,7 +44,6 @@ PredicateLiteral <- ( PredicateLiteralText / PredicateLiteralPlaceholder)
 PredicateLiteralText <- ["] < Literal > ["] { p.AddPredicateLiteral(buffer[begin:end])}
 PredicateLiteralPlaceholder <- < LiteralPlaceholder > { p.AddPredicateLiteralPlaceholder(begin) }
 
-RowKeyPlaceholder <- '@??'
 KeyPlaceholder <- '??'
 LiteralPlaceholder <- '?'
 Literal <- (Escape / [^"])*
