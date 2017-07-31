@@ -6,34 +6,54 @@ type QueryParser Peg {
 
 Query <- Spacing (Select { p.AddSelect() } / Join { p.AddJoin() }) Spacing !.
 
-Join <- 'join' MustSpacing JoinKey (MustSpacing CryptoKey)* MustSpacing 'rows' MustSpacing JoinRow (Spacing ',' Spacing JoinRow)* Spacing
-JoinKey <- < Key > { p.SetTableName(buffer[begin:end]) }
-JoinRow <- { p.AddJoinRow() } '(' Spacing KeyJoin Spacing ( ',' Spacing ValueJoin Spacing ) * ')'
-KeyJoin <- '@key' Spacing '=' Spacing ('@' ["] < Literal > ["] / < Key > ) { p.SetJoinRowKey(buffer[begin:end]) }
-ValueJoin <- (< Key > / '@' ["] < Literal > ["] ) { p.SetJoinKey(buffer[begin:end]) } Spacing '=' Spacing ["] < Literal > ["] { p.SetJoinValue(buffer[begin:end]) }
+TableName <- ( TableNameText / TableNamePlaceholder )
+TableNameText <- < Key > { p.SetTableName(buffer[begin:end]) }
+TableNamePlaceholder <- < KeyPlaceholder > { p.SetTableNamePlaceholder(begin) }
 
-Select <- 'select' MustSpacing SelectKey (MustSpacing WherePart)*
+Join <- 'join' MustSpacing TableName (MustSpacing CryptoKey)* MustSpacing 'rows' MustSpacing JoinRow (Spacing ',' Spacing JoinRow)* Spacing
+JoinRow <- { p.AddJoinRow() } '(' Spacing JoinRowKey Spacing ( ',' Spacing JoinPoint Spacing ) * ')'
+JoinRowKey <- '@key' Spacing '=' Spacing ( JoinRowKeyValueText / JoinRowKeyValuePlaceholder )
+JoinRowKeyValuePlaceholder <- < LiteralPlaceholder > { p.SetJoinRowKeyPlaceholder(begin) }
+JoinRowKeyValueText <- ('@' ["] < Literal > ["] / < Key > ) { p.SetJoinRowKey(buffer[begin:end]) }
+JoinPoint <- ( JoinPointKeyText / JoinPointKeyPlaceholder ) Spacing '=' Spacing ( JoinPointValueText / JoinPointValuePlaceholder )
+JoinPointValuePlaceholder <- < LiteralPlaceholder > { p.SetJoinValuePlaceholder(begin) }
+JoinPointValueText <- ["] < Literal > ["] { p.SetJoinValue(buffer[begin:end]) }
+JoinPointKeyText <- (< Key > / '@' ["] < Literal > ["] ) { p.SetJoinKey(buffer[begin:end]) }
+JoinPointKeyPlaceholder <- < KeyPlaceholder > { p.SetJoinKeyPlaceholder(begin) }
+
+Select <- 'select' MustSpacing TableName (MustSpacing WherePart)*
 WherePart <- (Where / Limit / CryptoKey)
-SelectKey <- < Key > { p.SetTableName(buffer[begin:end]) }
-Limit <- 'limit' MustSpacing < PositiveInteger > { p.SetLimit(buffer[begin:end])}
+Limit <- 'limit' ( LimitText / LimitPlaceholder)
+LimitText <- MustSpacing < PositiveInteger > { p.SetLimit(buffer[begin:end])}
+LimitPlaceholder <- < LiteralPlaceholder > { p.SetLimitPlaceholder(begin) }
 
-CryptoKey <- 'signed' MustSpacing '"' < KeySymbols > '"' { p.AddCryptoKey(buffer[begin:end]) }
+CryptoKey <- 'signed' MustSpacing '"' < Key > '"' { p.AddCryptoKey(buffer[begin:end]) }
 
 Where <- 'where' MustSpacing WhereClause
 WhereClause <- { p.PushWhere() } ( AndClause / OrClause / PredicateClause ) { p.PopWhere() }
 AndClause <- 'and' { p.SetWhereCommand("and") } Spacing '(' Spacing WhereClause Spacing (',' Spacing WhereClause Spacing )* ')'
 OrClause <- 'or' { p.SetWhereCommand("or") } Spacing '(' Spacing WhereClause Spacing (',' Spacing WhereClause Spacing)* ')'
 PredicateClause <- { p.InitPredicate() } Predicate Spacing '(' Spacing PredicateValue (',' Spacing PredicateValue Spacing)* ')'
-Predicate <- < KeySymbols > { p.SetPredicateCommand(buffer[begin:end]) }
-PredicateValue <- (PredicateRowKey / PredicateKey / PredicateLiteralValue)
-PredicateRowKey <- '@key' { p.UsePredicateRowKey() }
-PredicateKey <- (< Key > / '@' ["] < Literal > ["] ) { p.AddPredicateKey(buffer[begin:end]) }
-PredicateLiteralValue <- ["] < Literal > ["] { p.AddPredicateLiteral(buffer[begin:end])}
+Predicate <- ( PredicateText / PredicatePlaceholder )
+PredicateText <- < Key > { p.SetPredicateCommand(buffer[begin:end]) }
+PredicatePlaceholder <- < KeyPlaceholder > { p.SetPredicatePlaceholder(begin) }
+PredicateValue <- (PredicateRowKey / PredicateKey / PredicateLiteral)
+PredicateRowKey <- ( PredicateRowKeyText / PredicateRowKeyLiteral )
+PredicateRowKeyText <- '@key' { p.UsePredicateRowKey() }
+PredicateRowKeyLiteral <- < RowKeyPlaceholder > { p.UsePredicateRowKeyPlaceholder(begin) }
+PredicateKey <- ( PredicateKeyText / PredicateKeyLiteral )
+PredicateKeyText <- (< Key > / '@' ["] < Literal > ["] ) { p.AddPredicateKey(buffer[begin:end]) }
+PredicateKeyLiteral <- < KeyPlaceholder > { p.AddPredicateKeyPlaceholder(begin) }
+PredicateLiteral <- ( PredicateLiteralText / PredicateLiteralPlaceholder)
+PredicateLiteralText <- ["] < Literal > ["] { p.AddPredicateLiteral(buffer[begin:end])}
+PredicateLiteralPlaceholder <- < LiteralPlaceholder > { p.AddPredicateLiteralPlaceholder(begin) }
 
+RowKeyPlaceholder <- '@??'
+KeyPlaceholder <- '??'
+LiteralPlaceholder <- '?'
 Literal <- (Escape / [^"])*
 PositiveInteger <- [1-9] [0-9]*
-Key <- KeySymbols
-KeySymbols <- ( [a-zA-Z0-9_] / '.' / '+' / '-' )+
+Key <- ( [a-zA-Z0-9_] / '.' / '+' / '-' )+
 Escape <- '\\' ["\\abfnrtv]
 MustSpacing <- ( ' ' / '\t' / '\n' )+
 Spacing <- ( ' ' / '\t' / '\n' )*

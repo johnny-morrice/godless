@@ -21,6 +21,42 @@ type QueryAST struct {
 	lastRowJoin    *QueryRowJoinAST
 }
 
+func (ast *QueryAST) SetTableNamePlaceholder(begin int) {
+	panic("not implemented")
+}
+
+func (ast *QueryAST) SetJoinRowKeyPlaceholder(begin int) {
+	panic("not implemented")
+}
+
+func (ast *QueryAST) SetJoinValuePlaceholder(begin int) {
+	panic("not implemented")
+}
+
+func (ast *QueryAST) SetJoinKeyPlaceholder(begin int) {
+	panic("not implemented")
+}
+
+func (ast *QueryAST) SetLimitPlaceholder(begin int) {
+	panic("not implemented")
+}
+
+func (ast *QueryAST) SetPredicatePlaceholder(begin int) {
+	panic("not implemented")
+}
+
+func (ast *QueryAST) UsePredicateRowKeyPlaceholder(begin int) {
+	panic("not implemented")
+}
+
+func (ast *QueryAST) AddPredicateKeyPlaceholder(begin int) {
+	panic("not implemented")
+}
+
+func (ast *QueryAST) AddPredicateLiteralPlaceholder(begin int) {
+	panic("not implemented")
+}
+
 func (ast *QueryAST) AddCryptoKey(publicKey string) {
 	ast.PublicKeys = append(ast.PublicKeys, publicKey)
 }

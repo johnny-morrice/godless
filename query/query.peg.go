@@ -15,15 +15,24 @@ type pegRule uint8
 const (
 	ruleUnknown pegRule = iota
 	ruleQuery
+	ruleTableName
+	ruleTableNameText
+	ruleTableNamePlaceholder
 	ruleJoin
-	ruleJoinKey
 	ruleJoinRow
-	ruleKeyJoin
-	ruleValueJoin
+	ruleJoinRowKey
+	ruleJoinRowKeyValuePlaceholder
+	ruleJoinRowKeyValueText
+	ruleJoinPoint
+	ruleJoinPointValuePlaceholder
+	ruleJoinPointValueText
+	ruleJoinPointKeyText
+	ruleJoinPointKeyPlaceholder
 	ruleSelect
 	ruleWherePart
-	ruleSelectKey
 	ruleLimit
+	ruleLimitText
+	ruleLimitPlaceholder
 	ruleCryptoKey
 	ruleWhere
 	ruleWhereClause
@@ -31,14 +40,24 @@ const (
 	ruleOrClause
 	rulePredicateClause
 	rulePredicate
+	rulePredicateText
+	rulePredicatePlaceholder
 	rulePredicateValue
 	rulePredicateRowKey
+	rulePredicateRowKeyText
+	rulePredicateRowKeyLiteral
 	rulePredicateKey
-	rulePredicateLiteralValue
+	rulePredicateKeyText
+	rulePredicateKeyLiteral
+	rulePredicateLiteral
+	rulePredicateLiteralText
+	rulePredicateLiteralPlaceholder
+	ruleRowKeyPlaceholder
+	ruleKeyPlaceholder
+	ruleLiteralPlaceholder
 	ruleLiteral
 	rulePositiveInteger
 	ruleKey
-	ruleKeySymbols
 	ruleEscape
 	ruleMustSpacing
 	ruleSpacing
@@ -62,20 +81,37 @@ const (
 	ruleAction16
 	ruleAction17
 	ruleAction18
+	ruleAction19
+	ruleAction20
+	ruleAction21
+	ruleAction22
+	ruleAction23
+	ruleAction24
+	ruleAction25
+	ruleAction26
 )
 
 var rul3s = [...]string{
 	"Unknown",
 	"Query",
+	"TableName",
+	"TableNameText",
+	"TableNamePlaceholder",
 	"Join",
-	"JoinKey",
 	"JoinRow",
-	"KeyJoin",
-	"ValueJoin",
+	"JoinRowKey",
+	"JoinRowKeyValuePlaceholder",
+	"JoinRowKeyValueText",
+	"JoinPoint",
+	"JoinPointValuePlaceholder",
+	"JoinPointValueText",
+	"JoinPointKeyText",
+	"JoinPointKeyPlaceholder",
 	"Select",
 	"WherePart",
-	"SelectKey",
 	"Limit",
+	"LimitText",
+	"LimitPlaceholder",
 	"CryptoKey",
 	"Where",
 	"WhereClause",
@@ -83,14 +119,24 @@ var rul3s = [...]string{
 	"OrClause",
 	"PredicateClause",
 	"Predicate",
+	"PredicateText",
+	"PredicatePlaceholder",
 	"PredicateValue",
 	"PredicateRowKey",
+	"PredicateRowKeyText",
+	"PredicateRowKeyLiteral",
 	"PredicateKey",
-	"PredicateLiteralValue",
+	"PredicateKeyText",
+	"PredicateKeyLiteral",
+	"PredicateLiteral",
+	"PredicateLiteralText",
+	"PredicateLiteralPlaceholder",
+	"RowKeyPlaceholder",
+	"KeyPlaceholder",
+	"LiteralPlaceholder",
 	"Literal",
 	"PositiveInteger",
 	"Key",
-	"KeySymbols",
 	"Escape",
 	"MustSpacing",
 	"Spacing",
@@ -114,6 +160,14 @@ var rul3s = [...]string{
 	"Action16",
 	"Action17",
 	"Action18",
+	"Action19",
+	"Action20",
+	"Action21",
+	"Action22",
+	"Action23",
+	"Action24",
+	"Action25",
+	"Action26",
 }
 
 type token32 struct {
@@ -230,7 +284,7 @@ type QueryParser struct {
 
 	Buffer string
 	buffer []rune
-	rules  [49]func() bool
+	rules  [76]func() bool
 	parse  func(rule ...int) error
 	reset  func()
 	Pretty bool
@@ -329,37 +383,53 @@ func (p *QueryParser) Execute() {
 		case ruleAction2:
 			p.SetTableName(buffer[begin:end])
 		case ruleAction3:
-			p.AddJoinRow()
+			p.SetTableNamePlaceholder(begin)
 		case ruleAction4:
-			p.SetJoinRowKey(buffer[begin:end])
+			p.AddJoinRow()
 		case ruleAction5:
-			p.SetJoinKey(buffer[begin:end])
+			p.SetJoinRowKeyPlaceholder(begin)
 		case ruleAction6:
-			p.SetJoinValue(buffer[begin:end])
+			p.SetJoinRowKey(buffer[begin:end])
 		case ruleAction7:
-			p.SetTableName(buffer[begin:end])
+			p.SetJoinValuePlaceholder(begin)
 		case ruleAction8:
-			p.SetLimit(buffer[begin:end])
+			p.SetJoinValue(buffer[begin:end])
 		case ruleAction9:
-			p.AddCryptoKey(buffer[begin:end])
+			p.SetJoinKey(buffer[begin:end])
 		case ruleAction10:
-			p.PushWhere()
+			p.SetJoinKeyPlaceholder(begin)
 		case ruleAction11:
-			p.PopWhere()
+			p.SetLimit(buffer[begin:end])
 		case ruleAction12:
-			p.SetWhereCommand("and")
+			p.SetLimitPlaceholder(begin)
 		case ruleAction13:
-			p.SetWhereCommand("or")
+			p.AddCryptoKey(buffer[begin:end])
 		case ruleAction14:
-			p.InitPredicate()
+			p.PushWhere()
 		case ruleAction15:
-			p.SetPredicateCommand(buffer[begin:end])
+			p.PopWhere()
 		case ruleAction16:
-			p.UsePredicateRowKey()
+			p.SetWhereCommand("and")
 		case ruleAction17:
-			p.AddPredicateKey(buffer[begin:end])
+			p.SetWhereCommand("or")
 		case ruleAction18:
+			p.InitPredicate()
+		case ruleAction19:
+			p.SetPredicateCommand(buffer[begin:end])
+		case ruleAction20:
+			p.SetPredicatePlaceholder(begin)
+		case ruleAction21:
+			p.UsePredicateRowKey()
+		case ruleAction22:
+			p.UsePredicateRowKeyPlaceholder(begin)
+		case ruleAction23:
+			p.AddPredicateKey(buffer[begin:end])
+		case ruleAction24:
+			p.AddPredicateKeyPlaceholder(begin)
+		case ruleAction25:
 			p.AddPredicateLiteral(buffer[begin:end])
+		case ruleAction26:
+			p.AddPredicateLiteralPlaceholder(begin)
 
 		}
 	}
@@ -473,130 +543,144 @@ func (p *QueryParser) Init() {
 						if !_rules[ruleMustSpacing]() {
 							goto l3
 						}
-						{
-							position5 := position
-							{
-								position6 := position
-								if !_rules[ruleKey]() {
-									goto l3
-								}
-								add(rulePegText, position6)
-							}
-							{
-								add(ruleAction7, position)
-							}
-							add(ruleSelectKey, position5)
+						if !_rules[ruleTableName]() {
+							goto l3
 						}
-					l8:
+					l5:
 						{
-							position9, tokenIndex9 := position, tokenIndex
+							position6, tokenIndex6 := position, tokenIndex
 							if !_rules[ruleMustSpacing]() {
-								goto l9
+								goto l6
 							}
 							{
-								position10 := position
+								position7 := position
 								{
 									switch buffer[position] {
 									case 's':
 										if !_rules[ruleCryptoKey]() {
-											goto l9
+											goto l6
 										}
 										break
 									case 'l':
 										{
-											position12 := position
+											position9 := position
 											if buffer[position] != rune('l') {
-												goto l9
+												goto l6
 											}
 											position++
 											if buffer[position] != rune('i') {
-												goto l9
+												goto l6
 											}
 											position++
 											if buffer[position] != rune('m') {
-												goto l9
+												goto l6
 											}
 											position++
 											if buffer[position] != rune('i') {
-												goto l9
+												goto l6
 											}
 											position++
 											if buffer[position] != rune('t') {
-												goto l9
+												goto l6
 											}
 											position++
-											if !_rules[ruleMustSpacing]() {
-												goto l9
-											}
 											{
-												position13 := position
+												position10, tokenIndex10 := position, tokenIndex
 												{
-													position14 := position
-													if c := buffer[position]; c < rune('1') || c > rune('9') {
-														goto l9
+													position12 := position
+													if !_rules[ruleMustSpacing]() {
+														goto l11
 													}
-													position++
-												l15:
 													{
-														position16, tokenIndex16 := position, tokenIndex
-														if c := buffer[position]; c < rune('0') || c > rune('9') {
-															goto l16
+														position13 := position
+														{
+															position14 := position
+															if c := buffer[position]; c < rune('1') || c > rune('9') {
+																goto l11
+															}
+															position++
+														l15:
+															{
+																position16, tokenIndex16 := position, tokenIndex
+																if c := buffer[position]; c < rune('0') || c > rune('9') {
+																	goto l16
+																}
+																position++
+																goto l15
+															l16:
+																position, tokenIndex = position16, tokenIndex16
+															}
+															add(rulePositiveInteger, position14)
 														}
-														position++
-														goto l15
-													l16:
-														position, tokenIndex = position16, tokenIndex16
+														add(rulePegText, position13)
 													}
-													add(rulePositiveInteger, position14)
+													{
+														add(ruleAction11, position)
+													}
+													add(ruleLimitText, position12)
 												}
-												add(rulePegText, position13)
+												goto l10
+											l11:
+												position, tokenIndex = position10, tokenIndex10
+												{
+													position18 := position
+													{
+														position19 := position
+														if !_rules[ruleLiteralPlaceholder]() {
+															goto l6
+														}
+														add(rulePegText, position19)
+													}
+													{
+														add(ruleAction12, position)
+													}
+													add(ruleLimitPlaceholder, position18)
+												}
 											}
-											{
-												add(ruleAction8, position)
-											}
-											add(ruleLimit, position12)
+										l10:
+											add(ruleLimit, position9)
 										}
 										break
 									default:
 										{
-											position18 := position
+											position21 := position
 											if buffer[position] != rune('w') {
-												goto l9
+												goto l6
 											}
 											position++
 											if buffer[position] != rune('h') {
-												goto l9
+												goto l6
 											}
 											position++
 											if buffer[position] != rune('e') {
-												goto l9
+												goto l6
 											}
 											position++
 											if buffer[position] != rune('r') {
-												goto l9
+												goto l6
 											}
 											position++
 											if buffer[position] != rune('e') {
-												goto l9
+												goto l6
 											}
 											position++
 											if !_rules[ruleMustSpacing]() {
-												goto l9
+												goto l6
 											}
 											if !_rules[ruleWhereClause]() {
-												goto l9
+												goto l6
 											}
-											add(ruleWhere, position18)
+											add(ruleWhere, position21)
 										}
 										break
 									}
 								}
 
-								add(ruleWherePart, position10)
+								add(ruleWherePart, position7)
 							}
-							goto l8
-						l9:
-							position, tokenIndex = position9, tokenIndex9
+							goto l5
+						l6:
+							position, tokenIndex = position6, tokenIndex6
 						}
 						add(ruleSelect, position4)
 					}
@@ -607,7 +691,7 @@ func (p *QueryParser) Init() {
 				l3:
 					position, tokenIndex = position2, tokenIndex2
 					{
-						position20 := position
+						position23 := position
 						if buffer[position] != rune('j') {
 							goto l0
 						}
@@ -627,19 +711,8 @@ func (p *QueryParser) Init() {
 						if !_rules[ruleMustSpacing]() {
 							goto l0
 						}
-						{
-							position21 := position
-							{
-								position22 := position
-								if !_rules[ruleKey]() {
-									goto l0
-								}
-								add(rulePegText, position22)
-							}
-							{
-								add(ruleAction2, position)
-							}
-							add(ruleJoinKey, position21)
+						if !_rules[ruleTableName]() {
+							goto l0
 						}
 					l24:
 						{
@@ -702,7 +775,7 @@ func (p *QueryParser) Init() {
 						if !_rules[ruleSpacing]() {
 							goto l0
 						}
-						add(ruleJoin, position20)
+						add(ruleJoin, position23)
 					}
 					{
 						add(ruleAction1, position)
@@ -728,957 +801,1263 @@ func (p *QueryParser) Init() {
 			position, tokenIndex = position0, tokenIndex0
 			return false
 		},
-		/* 1 Join <- <('j' 'o' 'i' 'n' MustSpacing JoinKey (MustSpacing CryptoKey)* MustSpacing ('r' 'o' 'w' 's') MustSpacing JoinRow (Spacing ',' Spacing JoinRow)* Spacing)> */
-		nil,
-		/* 2 JoinKey <- <(<Key> Action2)> */
-		nil,
-		/* 3 JoinRow <- <(Action3 '(' Spacing KeyJoin Spacing (',' Spacing ValueJoin Spacing)* ')')> */
+		/* 1 TableName <- <(TableNameText / TableNamePlaceholder)> */
 		func() bool {
-			position32, tokenIndex32 := position, tokenIndex
+			position30, tokenIndex30 := position, tokenIndex
 			{
-				position33 := position
+				position31 := position
 				{
-					add(ruleAction3, position)
-				}
-				if buffer[position] != rune('(') {
-					goto l32
-				}
-				position++
-				if !_rules[ruleSpacing]() {
-					goto l32
-				}
-				{
-					position35 := position
-					if buffer[position] != rune('@') {
-						goto l32
-					}
-					position++
-					if buffer[position] != rune('k') {
-						goto l32
-					}
-					position++
-					if buffer[position] != rune('e') {
-						goto l32
-					}
-					position++
-					if buffer[position] != rune('y') {
-						goto l32
-					}
-					position++
-					if !_rules[ruleSpacing]() {
-						goto l32
-					}
-					if buffer[position] != rune('=') {
-						goto l32
-					}
-					position++
-					if !_rules[ruleSpacing]() {
-						goto l32
-					}
+					position32, tokenIndex32 := position, tokenIndex
 					{
-						position36, tokenIndex36 := position, tokenIndex
-						if buffer[position] != rune('@') {
-							goto l37
+						position34 := position
+						{
+							position35 := position
+							if !_rules[ruleKey]() {
+								goto l33
+							}
+							add(rulePegText, position35)
 						}
-						position++
-						if buffer[position] != rune('"') {
-							goto l37
+						{
+							add(ruleAction2, position)
 						}
-						position++
+						add(ruleTableNameText, position34)
+					}
+					goto l32
+				l33:
+					position, tokenIndex = position32, tokenIndex32
+					{
+						position37 := position
 						{
 							position38 := position
-							if !_rules[ruleLiteral]() {
-								goto l37
+							if !_rules[ruleKeyPlaceholder]() {
+								goto l30
 							}
 							add(rulePegText, position38)
 						}
-						if buffer[position] != rune('"') {
-							goto l37
-						}
-						position++
-						goto l36
-					l37:
-						position, tokenIndex = position36, tokenIndex36
 						{
-							position39 := position
-							if !_rules[ruleKey]() {
-								goto l32
-							}
-							add(rulePegText, position39)
+							add(ruleAction3, position)
 						}
+						add(ruleTableNamePlaceholder, position37)
 					}
-				l36:
-					{
-						add(ruleAction4, position)
-					}
-					add(ruleKeyJoin, position35)
 				}
-				if !_rules[ruleSpacing]() {
-					goto l32
-				}
-			l41:
+			l32:
+				add(ruleTableName, position31)
+			}
+			return true
+		l30:
+			position, tokenIndex = position30, tokenIndex30
+			return false
+		},
+		/* 2 TableNameText <- <(<Key> Action2)> */
+		nil,
+		/* 3 TableNamePlaceholder <- <(<KeyPlaceholder> Action3)> */
+		nil,
+		/* 4 Join <- <('j' 'o' 'i' 'n' MustSpacing TableName (MustSpacing CryptoKey)* MustSpacing ('r' 'o' 'w' 's') MustSpacing JoinRow (Spacing ',' Spacing JoinRow)* Spacing)> */
+		nil,
+		/* 5 JoinRow <- <(Action4 '(' Spacing JoinRowKey Spacing (',' Spacing JoinPoint Spacing)* ')')> */
+		func() bool {
+			position43, tokenIndex43 := position, tokenIndex
+			{
+				position44 := position
 				{
-					position42, tokenIndex42 := position, tokenIndex
-					if buffer[position] != rune(',') {
-						goto l42
+					add(ruleAction4, position)
+				}
+				if buffer[position] != rune('(') {
+					goto l43
+				}
+				position++
+				if !_rules[ruleSpacing]() {
+					goto l43
+				}
+				{
+					position46 := position
+					if buffer[position] != rune('@') {
+						goto l43
+					}
+					position++
+					if buffer[position] != rune('k') {
+						goto l43
+					}
+					position++
+					if buffer[position] != rune('e') {
+						goto l43
+					}
+					position++
+					if buffer[position] != rune('y') {
+						goto l43
 					}
 					position++
 					if !_rules[ruleSpacing]() {
-						goto l42
+						goto l43
+					}
+					if buffer[position] != rune('=') {
+						goto l43
+					}
+					position++
+					if !_rules[ruleSpacing]() {
+						goto l43
 					}
 					{
-						position43 := position
-						{
-							position44, tokenIndex44 := position, tokenIndex
-							{
-								position46 := position
-								if !_rules[ruleKey]() {
-									goto l45
-								}
-								add(rulePegText, position46)
-							}
-							goto l44
-						l45:
-							position, tokenIndex = position44, tokenIndex44
-							if buffer[position] != rune('@') {
-								goto l42
-							}
-							position++
-							if buffer[position] != rune('"') {
-								goto l42
-							}
-							position++
-							{
-								position47 := position
-								if !_rules[ruleLiteral]() {
-									goto l42
-								}
-								add(rulePegText, position47)
-							}
-							if buffer[position] != rune('"') {
-								goto l42
-							}
-							position++
-						}
-					l44:
-						{
-							add(ruleAction5, position)
-						}
-						if !_rules[ruleSpacing]() {
-							goto l42
-						}
-						if buffer[position] != rune('=') {
-							goto l42
-						}
-						position++
-						if !_rules[ruleSpacing]() {
-							goto l42
-						}
-						if buffer[position] != rune('"') {
-							goto l42
-						}
-						position++
+						position47, tokenIndex47 := position, tokenIndex
 						{
 							position49 := position
-							if !_rules[ruleLiteral]() {
-								goto l42
+							{
+								position50, tokenIndex50 := position, tokenIndex
+								if buffer[position] != rune('@') {
+									goto l51
+								}
+								position++
+								if buffer[position] != rune('"') {
+									goto l51
+								}
+								position++
+								{
+									position52 := position
+									if !_rules[ruleLiteral]() {
+										goto l51
+									}
+									add(rulePegText, position52)
+								}
+								if buffer[position] != rune('"') {
+									goto l51
+								}
+								position++
+								goto l50
+							l51:
+								position, tokenIndex = position50, tokenIndex50
+								{
+									position53 := position
+									if !_rules[ruleKey]() {
+										goto l48
+									}
+									add(rulePegText, position53)
+								}
 							}
-							add(rulePegText, position49)
+						l50:
+							{
+								add(ruleAction6, position)
+							}
+							add(ruleJoinRowKeyValueText, position49)
 						}
-						if buffer[position] != rune('"') {
-							goto l42
+						goto l47
+					l48:
+						position, tokenIndex = position47, tokenIndex47
+						{
+							position55 := position
+							{
+								position56 := position
+								if !_rules[ruleLiteralPlaceholder]() {
+									goto l43
+								}
+								add(rulePegText, position56)
+							}
+							{
+								add(ruleAction5, position)
+							}
+							add(ruleJoinRowKeyValuePlaceholder, position55)
+						}
+					}
+				l47:
+					add(ruleJoinRowKey, position46)
+				}
+				if !_rules[ruleSpacing]() {
+					goto l43
+				}
+			l58:
+				{
+					position59, tokenIndex59 := position, tokenIndex
+					if buffer[position] != rune(',') {
+						goto l59
+					}
+					position++
+					if !_rules[ruleSpacing]() {
+						goto l59
+					}
+					{
+						position60 := position
+						{
+							position61, tokenIndex61 := position, tokenIndex
+							{
+								position63 := position
+								{
+									position64, tokenIndex64 := position, tokenIndex
+									{
+										position66 := position
+										if !_rules[ruleKey]() {
+											goto l65
+										}
+										add(rulePegText, position66)
+									}
+									goto l64
+								l65:
+									position, tokenIndex = position64, tokenIndex64
+									if buffer[position] != rune('@') {
+										goto l62
+									}
+									position++
+									if buffer[position] != rune('"') {
+										goto l62
+									}
+									position++
+									{
+										position67 := position
+										if !_rules[ruleLiteral]() {
+											goto l62
+										}
+										add(rulePegText, position67)
+									}
+									if buffer[position] != rune('"') {
+										goto l62
+									}
+									position++
+								}
+							l64:
+								{
+									add(ruleAction9, position)
+								}
+								add(ruleJoinPointKeyText, position63)
+							}
+							goto l61
+						l62:
+							position, tokenIndex = position61, tokenIndex61
+							{
+								position69 := position
+								{
+									position70 := position
+									if !_rules[ruleKeyPlaceholder]() {
+										goto l59
+									}
+									add(rulePegText, position70)
+								}
+								{
+									add(ruleAction10, position)
+								}
+								add(ruleJoinPointKeyPlaceholder, position69)
+							}
+						}
+					l61:
+						if !_rules[ruleSpacing]() {
+							goto l59
+						}
+						if buffer[position] != rune('=') {
+							goto l59
 						}
 						position++
-						{
-							add(ruleAction6, position)
+						if !_rules[ruleSpacing]() {
+							goto l59
 						}
-						add(ruleValueJoin, position43)
+						{
+							position72, tokenIndex72 := position, tokenIndex
+							{
+								position74 := position
+								if buffer[position] != rune('"') {
+									goto l73
+								}
+								position++
+								{
+									position75 := position
+									if !_rules[ruleLiteral]() {
+										goto l73
+									}
+									add(rulePegText, position75)
+								}
+								if buffer[position] != rune('"') {
+									goto l73
+								}
+								position++
+								{
+									add(ruleAction8, position)
+								}
+								add(ruleJoinPointValueText, position74)
+							}
+							goto l72
+						l73:
+							position, tokenIndex = position72, tokenIndex72
+							{
+								position77 := position
+								{
+									position78 := position
+									if !_rules[ruleLiteralPlaceholder]() {
+										goto l59
+									}
+									add(rulePegText, position78)
+								}
+								{
+									add(ruleAction7, position)
+								}
+								add(ruleJoinPointValuePlaceholder, position77)
+							}
+						}
+					l72:
+						add(ruleJoinPoint, position60)
 					}
 					if !_rules[ruleSpacing]() {
-						goto l42
+						goto l59
 					}
-					goto l41
-				l42:
-					position, tokenIndex = position42, tokenIndex42
+					goto l58
+				l59:
+					position, tokenIndex = position59, tokenIndex59
 				}
 				if buffer[position] != rune(')') {
-					goto l32
+					goto l43
 				}
 				position++
-				add(ruleJoinRow, position33)
+				add(ruleJoinRow, position44)
 			}
 			return true
-		l32:
-			position, tokenIndex = position32, tokenIndex32
+		l43:
+			position, tokenIndex = position43, tokenIndex43
 			return false
 		},
-		/* 4 KeyJoin <- <('@' 'k' 'e' 'y' Spacing '=' Spacing (('@' '"' <Literal> '"') / <Key>) Action4)> */
+		/* 6 JoinRowKey <- <('@' 'k' 'e' 'y' Spacing '=' Spacing (JoinRowKeyValueText / JoinRowKeyValuePlaceholder))> */
 		nil,
-		/* 5 ValueJoin <- <((<Key> / ('@' '"' <Literal> '"')) Action5 Spacing '=' Spacing '"' <Literal> '"' Action6)> */
+		/* 7 JoinRowKeyValuePlaceholder <- <(<LiteralPlaceholder> Action5)> */
 		nil,
-		/* 6 Select <- <('s' 'e' 'l' 'e' 'c' 't' MustSpacing SelectKey (MustSpacing WherePart)*)> */
+		/* 8 JoinRowKeyValueText <- <((('@' '"' <Literal> '"') / <Key>) Action6)> */
 		nil,
-		/* 7 WherePart <- <((&('s') CryptoKey) | (&('l') Limit) | (&('w') Where))> */
+		/* 9 JoinPoint <- <((JoinPointKeyText / JoinPointKeyPlaceholder) Spacing '=' Spacing (JoinPointValueText / JoinPointValuePlaceholder))> */
 		nil,
-		/* 8 SelectKey <- <(<Key> Action7)> */
+		/* 10 JoinPointValuePlaceholder <- <(<LiteralPlaceholder> Action7)> */
 		nil,
-		/* 9 Limit <- <('l' 'i' 'm' 'i' 't' MustSpacing <PositiveInteger> Action8)> */
+		/* 11 JoinPointValueText <- <('"' <Literal> '"' Action8)> */
 		nil,
-		/* 10 CryptoKey <- <('s' 'i' 'g' 'n' 'e' 'd' MustSpacing '"' <KeySymbols> '"' Action9)> */
+		/* 12 JoinPointKeyText <- <((<Key> / ('@' '"' <Literal> '"')) Action9)> */
+		nil,
+		/* 13 JoinPointKeyPlaceholder <- <(<KeyPlaceholder> Action10)> */
+		nil,
+		/* 14 Select <- <('s' 'e' 'l' 'e' 'c' 't' MustSpacing TableName (MustSpacing WherePart)*)> */
+		nil,
+		/* 15 WherePart <- <((&('s') CryptoKey) | (&('l') Limit) | (&('w') Where))> */
+		nil,
+		/* 16 Limit <- <('l' 'i' 'm' 'i' 't' (LimitText / LimitPlaceholder))> */
+		nil,
+		/* 17 LimitText <- <(MustSpacing <PositiveInteger> Action11)> */
+		nil,
+		/* 18 LimitPlaceholder <- <(<LiteralPlaceholder> Action12)> */
+		nil,
+		/* 19 CryptoKey <- <('s' 'i' 'g' 'n' 'e' 'd' MustSpacing '"' <Key> '"' Action13)> */
 		func() bool {
-			position57, tokenIndex57 := position, tokenIndex
+			position93, tokenIndex93 := position, tokenIndex
 			{
-				position58 := position
+				position94 := position
 				if buffer[position] != rune('s') {
-					goto l57
+					goto l93
 				}
 				position++
 				if buffer[position] != rune('i') {
-					goto l57
+					goto l93
 				}
 				position++
 				if buffer[position] != rune('g') {
-					goto l57
+					goto l93
 				}
 				position++
 				if buffer[position] != rune('n') {
-					goto l57
+					goto l93
 				}
 				position++
 				if buffer[position] != rune('e') {
-					goto l57
+					goto l93
 				}
 				position++
 				if buffer[position] != rune('d') {
-					goto l57
+					goto l93
 				}
 				position++
 				if !_rules[ruleMustSpacing]() {
-					goto l57
+					goto l93
 				}
 				if buffer[position] != rune('"') {
-					goto l57
+					goto l93
 				}
 				position++
 				{
-					position59 := position
-					if !_rules[ruleKeySymbols]() {
-						goto l57
+					position95 := position
+					if !_rules[ruleKey]() {
+						goto l93
 					}
-					add(rulePegText, position59)
+					add(rulePegText, position95)
 				}
 				if buffer[position] != rune('"') {
-					goto l57
+					goto l93
 				}
 				position++
 				{
-					add(ruleAction9, position)
+					add(ruleAction13, position)
 				}
-				add(ruleCryptoKey, position58)
+				add(ruleCryptoKey, position94)
 			}
 			return true
-		l57:
-			position, tokenIndex = position57, tokenIndex57
+		l93:
+			position, tokenIndex = position93, tokenIndex93
 			return false
 		},
-		/* 11 Where <- <('w' 'h' 'e' 'r' 'e' MustSpacing WhereClause)> */
+		/* 20 Where <- <('w' 'h' 'e' 'r' 'e' MustSpacing WhereClause)> */
 		nil,
-		/* 12 WhereClause <- <(Action10 (AndClause / OrClause / PredicateClause) Action11)> */
+		/* 21 WhereClause <- <(Action14 (AndClause / OrClause / PredicateClause) Action15)> */
 		func() bool {
-			position62, tokenIndex62 := position, tokenIndex
+			position98, tokenIndex98 := position, tokenIndex
 			{
-				position63 := position
+				position99 := position
 				{
-					add(ruleAction10, position)
+					add(ruleAction14, position)
 				}
 				{
-					position65, tokenIndex65 := position, tokenIndex
+					position101, tokenIndex101 := position, tokenIndex
 					{
-						position67 := position
+						position103 := position
 						if buffer[position] != rune('a') {
-							goto l66
+							goto l102
 						}
 						position++
 						if buffer[position] != rune('n') {
-							goto l66
+							goto l102
 						}
 						position++
 						if buffer[position] != rune('d') {
-							goto l66
-						}
-						position++
-						{
-							add(ruleAction12, position)
-						}
-						if !_rules[ruleSpacing]() {
-							goto l66
-						}
-						if buffer[position] != rune('(') {
-							goto l66
-						}
-						position++
-						if !_rules[ruleSpacing]() {
-							goto l66
-						}
-						if !_rules[ruleWhereClause]() {
-							goto l66
-						}
-						if !_rules[ruleSpacing]() {
-							goto l66
-						}
-					l69:
-						{
-							position70, tokenIndex70 := position, tokenIndex
-							if buffer[position] != rune(',') {
-								goto l70
-							}
-							position++
-							if !_rules[ruleSpacing]() {
-								goto l70
-							}
-							if !_rules[ruleWhereClause]() {
-								goto l70
-							}
-							if !_rules[ruleSpacing]() {
-								goto l70
-							}
-							goto l69
-						l70:
-							position, tokenIndex = position70, tokenIndex70
-						}
-						if buffer[position] != rune(')') {
-							goto l66
-						}
-						position++
-						add(ruleAndClause, position67)
-					}
-					goto l65
-				l66:
-					position, tokenIndex = position65, tokenIndex65
-					{
-						position72 := position
-						if buffer[position] != rune('o') {
-							goto l71
-						}
-						position++
-						if buffer[position] != rune('r') {
-							goto l71
-						}
-						position++
-						{
-							add(ruleAction13, position)
-						}
-						if !_rules[ruleSpacing]() {
-							goto l71
-						}
-						if buffer[position] != rune('(') {
-							goto l71
-						}
-						position++
-						if !_rules[ruleSpacing]() {
-							goto l71
-						}
-						if !_rules[ruleWhereClause]() {
-							goto l71
-						}
-						if !_rules[ruleSpacing]() {
-							goto l71
-						}
-					l74:
-						{
-							position75, tokenIndex75 := position, tokenIndex
-							if buffer[position] != rune(',') {
-								goto l75
-							}
-							position++
-							if !_rules[ruleSpacing]() {
-								goto l75
-							}
-							if !_rules[ruleWhereClause]() {
-								goto l75
-							}
-							if !_rules[ruleSpacing]() {
-								goto l75
-							}
-							goto l74
-						l75:
-							position, tokenIndex = position75, tokenIndex75
-						}
-						if buffer[position] != rune(')') {
-							goto l71
-						}
-						position++
-						add(ruleOrClause, position72)
-					}
-					goto l65
-				l71:
-					position, tokenIndex = position65, tokenIndex65
-					{
-						position76 := position
-						{
-							add(ruleAction14, position)
-						}
-						{
-							position78 := position
-							{
-								position79 := position
-								if !_rules[ruleKeySymbols]() {
-									goto l62
-								}
-								add(rulePegText, position79)
-							}
-							{
-								add(ruleAction15, position)
-							}
-							add(rulePredicate, position78)
-						}
-						if !_rules[ruleSpacing]() {
-							goto l62
-						}
-						if buffer[position] != rune('(') {
-							goto l62
-						}
-						position++
-						if !_rules[ruleSpacing]() {
-							goto l62
-						}
-						if !_rules[rulePredicateValue]() {
-							goto l62
-						}
-					l81:
-						{
-							position82, tokenIndex82 := position, tokenIndex
-							if buffer[position] != rune(',') {
-								goto l82
-							}
-							position++
-							if !_rules[ruleSpacing]() {
-								goto l82
-							}
-							if !_rules[rulePredicateValue]() {
-								goto l82
-							}
-							if !_rules[ruleSpacing]() {
-								goto l82
-							}
-							goto l81
-						l82:
-							position, tokenIndex = position82, tokenIndex82
-						}
-						if buffer[position] != rune(')') {
-							goto l62
-						}
-						position++
-						add(rulePredicateClause, position76)
-					}
-				}
-			l65:
-				{
-					add(ruleAction11, position)
-				}
-				add(ruleWhereClause, position63)
-			}
-			return true
-		l62:
-			position, tokenIndex = position62, tokenIndex62
-			return false
-		},
-		/* 13 AndClause <- <('a' 'n' 'd' Action12 Spacing '(' Spacing WhereClause Spacing (',' Spacing WhereClause Spacing)* ')')> */
-		nil,
-		/* 14 OrClause <- <('o' 'r' Action13 Spacing '(' Spacing WhereClause Spacing (',' Spacing WhereClause Spacing)* ')')> */
-		nil,
-		/* 15 PredicateClause <- <(Action14 Predicate Spacing '(' Spacing PredicateValue (',' Spacing PredicateValue Spacing)* ')')> */
-		nil,
-		/* 16 Predicate <- <(<KeySymbols> Action15)> */
-		nil,
-		/* 17 PredicateValue <- <(PredicateRowKey / PredicateKey / PredicateLiteralValue)> */
-		func() bool {
-			position88, tokenIndex88 := position, tokenIndex
-			{
-				position89 := position
-				{
-					position90, tokenIndex90 := position, tokenIndex
-					{
-						position92 := position
-						if buffer[position] != rune('@') {
-							goto l91
-						}
-						position++
-						if buffer[position] != rune('k') {
-							goto l91
-						}
-						position++
-						if buffer[position] != rune('e') {
-							goto l91
-						}
-						position++
-						if buffer[position] != rune('y') {
-							goto l91
+							goto l102
 						}
 						position++
 						{
 							add(ruleAction16, position)
 						}
-						add(rulePredicateRowKey, position92)
-					}
-					goto l90
-				l91:
-					position, tokenIndex = position90, tokenIndex90
-					{
-						position95 := position
-						{
-							position96, tokenIndex96 := position, tokenIndex
-							{
-								position98 := position
-								if !_rules[ruleKey]() {
-									goto l97
-								}
-								add(rulePegText, position98)
-							}
-							goto l96
-						l97:
-							position, tokenIndex = position96, tokenIndex96
-							if buffer[position] != rune('@') {
-								goto l94
-							}
-							position++
-							if buffer[position] != rune('"') {
-								goto l94
-							}
-							position++
-							{
-								position99 := position
-								if !_rules[ruleLiteral]() {
-									goto l94
-								}
-								add(rulePegText, position99)
-							}
-							if buffer[position] != rune('"') {
-								goto l94
-							}
-							position++
+						if !_rules[ruleSpacing]() {
+							goto l102
 						}
-					l96:
+						if buffer[position] != rune('(') {
+							goto l102
+						}
+						position++
+						if !_rules[ruleSpacing]() {
+							goto l102
+						}
+						if !_rules[ruleWhereClause]() {
+							goto l102
+						}
+						if !_rules[ruleSpacing]() {
+							goto l102
+						}
+					l105:
+						{
+							position106, tokenIndex106 := position, tokenIndex
+							if buffer[position] != rune(',') {
+								goto l106
+							}
+							position++
+							if !_rules[ruleSpacing]() {
+								goto l106
+							}
+							if !_rules[ruleWhereClause]() {
+								goto l106
+							}
+							if !_rules[ruleSpacing]() {
+								goto l106
+							}
+							goto l105
+						l106:
+							position, tokenIndex = position106, tokenIndex106
+						}
+						if buffer[position] != rune(')') {
+							goto l102
+						}
+						position++
+						add(ruleAndClause, position103)
+					}
+					goto l101
+				l102:
+					position, tokenIndex = position101, tokenIndex101
+					{
+						position108 := position
+						if buffer[position] != rune('o') {
+							goto l107
+						}
+						position++
+						if buffer[position] != rune('r') {
+							goto l107
+						}
+						position++
 						{
 							add(ruleAction17, position)
 						}
-						add(rulePredicateKey, position95)
-					}
-					goto l90
-				l94:
-					position, tokenIndex = position90, tokenIndex90
-					{
-						position101 := position
-						if buffer[position] != rune('"') {
-							goto l88
+						if !_rules[ruleSpacing]() {
+							goto l107
+						}
+						if buffer[position] != rune('(') {
+							goto l107
 						}
 						position++
+						if !_rules[ruleSpacing]() {
+							goto l107
+						}
+						if !_rules[ruleWhereClause]() {
+							goto l107
+						}
+						if !_rules[ruleSpacing]() {
+							goto l107
+						}
+					l110:
 						{
-							position102 := position
-							if !_rules[ruleLiteral]() {
-								goto l88
+							position111, tokenIndex111 := position, tokenIndex
+							if buffer[position] != rune(',') {
+								goto l111
 							}
-							add(rulePegText, position102)
+							position++
+							if !_rules[ruleSpacing]() {
+								goto l111
+							}
+							if !_rules[ruleWhereClause]() {
+								goto l111
+							}
+							if !_rules[ruleSpacing]() {
+								goto l111
+							}
+							goto l110
+						l111:
+							position, tokenIndex = position111, tokenIndex111
 						}
-						if buffer[position] != rune('"') {
-							goto l88
+						if buffer[position] != rune(')') {
+							goto l107
 						}
 						position++
+						add(ruleOrClause, position108)
+					}
+					goto l101
+				l107:
+					position, tokenIndex = position101, tokenIndex101
+					{
+						position112 := position
 						{
 							add(ruleAction18, position)
 						}
-						add(rulePredicateLiteralValue, position101)
+						{
+							position114 := position
+							{
+								position115, tokenIndex115 := position, tokenIndex
+								{
+									position117 := position
+									{
+										position118 := position
+										if !_rules[ruleKey]() {
+											goto l116
+										}
+										add(rulePegText, position118)
+									}
+									{
+										add(ruleAction19, position)
+									}
+									add(rulePredicateText, position117)
+								}
+								goto l115
+							l116:
+								position, tokenIndex = position115, tokenIndex115
+								{
+									position120 := position
+									{
+										position121 := position
+										if !_rules[ruleKeyPlaceholder]() {
+											goto l98
+										}
+										add(rulePegText, position121)
+									}
+									{
+										add(ruleAction20, position)
+									}
+									add(rulePredicatePlaceholder, position120)
+								}
+							}
+						l115:
+							add(rulePredicate, position114)
+						}
+						if !_rules[ruleSpacing]() {
+							goto l98
+						}
+						if buffer[position] != rune('(') {
+							goto l98
+						}
+						position++
+						if !_rules[ruleSpacing]() {
+							goto l98
+						}
+						if !_rules[rulePredicateValue]() {
+							goto l98
+						}
+					l123:
+						{
+							position124, tokenIndex124 := position, tokenIndex
+							if buffer[position] != rune(',') {
+								goto l124
+							}
+							position++
+							if !_rules[ruleSpacing]() {
+								goto l124
+							}
+							if !_rules[rulePredicateValue]() {
+								goto l124
+							}
+							if !_rules[ruleSpacing]() {
+								goto l124
+							}
+							goto l123
+						l124:
+							position, tokenIndex = position124, tokenIndex124
+						}
+						if buffer[position] != rune(')') {
+							goto l98
+						}
+						position++
+						add(rulePredicateClause, position112)
 					}
 				}
-			l90:
-				add(rulePredicateValue, position89)
+			l101:
+				{
+					add(ruleAction15, position)
+				}
+				add(ruleWhereClause, position99)
 			}
 			return true
-		l88:
-			position, tokenIndex = position88, tokenIndex88
+		l98:
+			position, tokenIndex = position98, tokenIndex98
 			return false
 		},
-		/* 18 PredicateRowKey <- <('@' 'k' 'e' 'y' Action16)> */
+		/* 22 AndClause <- <('a' 'n' 'd' Action16 Spacing '(' Spacing WhereClause Spacing (',' Spacing WhereClause Spacing)* ')')> */
 		nil,
-		/* 19 PredicateKey <- <((<Key> / ('@' '"' <Literal> '"')) Action17)> */
+		/* 23 OrClause <- <('o' 'r' Action17 Spacing '(' Spacing WhereClause Spacing (',' Spacing WhereClause Spacing)* ')')> */
 		nil,
-		/* 20 PredicateLiteralValue <- <('"' <Literal> '"' Action18)> */
+		/* 24 PredicateClause <- <(Action18 Predicate Spacing '(' Spacing PredicateValue (',' Spacing PredicateValue Spacing)* ')')> */
 		nil,
-		/* 21 Literal <- <(Escape / (!'"' .))*> */
+		/* 25 Predicate <- <(PredicateText / PredicatePlaceholder)> */
+		nil,
+		/* 26 PredicateText <- <(<Key> Action19)> */
+		nil,
+		/* 27 PredicatePlaceholder <- <(<KeyPlaceholder> Action20)> */
+		nil,
+		/* 28 PredicateValue <- <(PredicateRowKey / PredicateKey / PredicateLiteral)> */
+		func() bool {
+			position132, tokenIndex132 := position, tokenIndex
+			{
+				position133 := position
+				{
+					position134, tokenIndex134 := position, tokenIndex
+					{
+						position136 := position
+						{
+							position137, tokenIndex137 := position, tokenIndex
+							{
+								position139 := position
+								if buffer[position] != rune('@') {
+									goto l138
+								}
+								position++
+								if buffer[position] != rune('k') {
+									goto l138
+								}
+								position++
+								if buffer[position] != rune('e') {
+									goto l138
+								}
+								position++
+								if buffer[position] != rune('y') {
+									goto l138
+								}
+								position++
+								{
+									add(ruleAction21, position)
+								}
+								add(rulePredicateRowKeyText, position139)
+							}
+							goto l137
+						l138:
+							position, tokenIndex = position137, tokenIndex137
+							{
+								position141 := position
+								{
+									position142 := position
+									{
+										position143 := position
+										if buffer[position] != rune('@') {
+											goto l135
+										}
+										position++
+										if buffer[position] != rune('?') {
+											goto l135
+										}
+										position++
+										if buffer[position] != rune('?') {
+											goto l135
+										}
+										position++
+										add(ruleRowKeyPlaceholder, position143)
+									}
+									add(rulePegText, position142)
+								}
+								{
+									add(ruleAction22, position)
+								}
+								add(rulePredicateRowKeyLiteral, position141)
+							}
+						}
+					l137:
+						add(rulePredicateRowKey, position136)
+					}
+					goto l134
+				l135:
+					position, tokenIndex = position134, tokenIndex134
+					{
+						position146 := position
+						{
+							position147, tokenIndex147 := position, tokenIndex
+							{
+								position149 := position
+								{
+									position150, tokenIndex150 := position, tokenIndex
+									{
+										position152 := position
+										if !_rules[ruleKey]() {
+											goto l151
+										}
+										add(rulePegText, position152)
+									}
+									goto l150
+								l151:
+									position, tokenIndex = position150, tokenIndex150
+									if buffer[position] != rune('@') {
+										goto l148
+									}
+									position++
+									if buffer[position] != rune('"') {
+										goto l148
+									}
+									position++
+									{
+										position153 := position
+										if !_rules[ruleLiteral]() {
+											goto l148
+										}
+										add(rulePegText, position153)
+									}
+									if buffer[position] != rune('"') {
+										goto l148
+									}
+									position++
+								}
+							l150:
+								{
+									add(ruleAction23, position)
+								}
+								add(rulePredicateKeyText, position149)
+							}
+							goto l147
+						l148:
+							position, tokenIndex = position147, tokenIndex147
+							{
+								position155 := position
+								{
+									position156 := position
+									if !_rules[ruleKeyPlaceholder]() {
+										goto l145
+									}
+									add(rulePegText, position156)
+								}
+								{
+									add(ruleAction24, position)
+								}
+								add(rulePredicateKeyLiteral, position155)
+							}
+						}
+					l147:
+						add(rulePredicateKey, position146)
+					}
+					goto l134
+				l145:
+					position, tokenIndex = position134, tokenIndex134
+					{
+						position158 := position
+						{
+							position159, tokenIndex159 := position, tokenIndex
+							{
+								position161 := position
+								if buffer[position] != rune('"') {
+									goto l160
+								}
+								position++
+								{
+									position162 := position
+									if !_rules[ruleLiteral]() {
+										goto l160
+									}
+									add(rulePegText, position162)
+								}
+								if buffer[position] != rune('"') {
+									goto l160
+								}
+								position++
+								{
+									add(ruleAction25, position)
+								}
+								add(rulePredicateLiteralText, position161)
+							}
+							goto l159
+						l160:
+							position, tokenIndex = position159, tokenIndex159
+							{
+								position164 := position
+								{
+									position165 := position
+									if !_rules[ruleLiteralPlaceholder]() {
+										goto l132
+									}
+									add(rulePegText, position165)
+								}
+								{
+									add(ruleAction26, position)
+								}
+								add(rulePredicateLiteralPlaceholder, position164)
+							}
+						}
+					l159:
+						add(rulePredicateLiteral, position158)
+					}
+				}
+			l134:
+				add(rulePredicateValue, position133)
+			}
+			return true
+		l132:
+			position, tokenIndex = position132, tokenIndex132
+			return false
+		},
+		/* 29 PredicateRowKey <- <(PredicateRowKeyText / PredicateRowKeyLiteral)> */
+		nil,
+		/* 30 PredicateRowKeyText <- <('@' 'k' 'e' 'y' Action21)> */
+		nil,
+		/* 31 PredicateRowKeyLiteral <- <(<RowKeyPlaceholder> Action22)> */
+		nil,
+		/* 32 PredicateKey <- <(PredicateKeyText / PredicateKeyLiteral)> */
+		nil,
+		/* 33 PredicateKeyText <- <((<Key> / ('@' '"' <Literal> '"')) Action23)> */
+		nil,
+		/* 34 PredicateKeyLiteral <- <(<KeyPlaceholder> Action24)> */
+		nil,
+		/* 35 PredicateLiteral <- <(PredicateLiteralText / PredicateLiteralPlaceholder)> */
+		nil,
+		/* 36 PredicateLiteralText <- <('"' <Literal> '"' Action25)> */
+		nil,
+		/* 37 PredicateLiteralPlaceholder <- <(<LiteralPlaceholder> Action26)> */
+		nil,
+		/* 38 RowKeyPlaceholder <- <('@' '?' '?')> */
+		nil,
+		/* 39 KeyPlaceholder <- <('?' '?')> */
+		func() bool {
+			position177, tokenIndex177 := position, tokenIndex
+			{
+				position178 := position
+				if buffer[position] != rune('?') {
+					goto l177
+				}
+				position++
+				if buffer[position] != rune('?') {
+					goto l177
+				}
+				position++
+				add(ruleKeyPlaceholder, position178)
+			}
+			return true
+		l177:
+			position, tokenIndex = position177, tokenIndex177
+			return false
+		},
+		/* 40 LiteralPlaceholder <- <'?'> */
+		func() bool {
+			position179, tokenIndex179 := position, tokenIndex
+			{
+				position180 := position
+				if buffer[position] != rune('?') {
+					goto l179
+				}
+				position++
+				add(ruleLiteralPlaceholder, position180)
+			}
+			return true
+		l179:
+			position, tokenIndex = position179, tokenIndex179
+			return false
+		},
+		/* 41 Literal <- <(Escape / (!'"' .))*> */
 		func() bool {
 			{
-				position108 := position
-			l109:
+				position182 := position
+			l183:
 				{
-					position110, tokenIndex110 := position, tokenIndex
+					position184, tokenIndex184 := position, tokenIndex
 					{
-						position111, tokenIndex111 := position, tokenIndex
+						position185, tokenIndex185 := position, tokenIndex
 						{
-							position113 := position
+							position187 := position
 							if buffer[position] != rune('\\') {
-								goto l112
+								goto l186
 							}
 							position++
 							{
 								switch buffer[position] {
 								case 'v':
 									if buffer[position] != rune('v') {
-										goto l112
+										goto l186
 									}
 									position++
 									break
 								case 't':
 									if buffer[position] != rune('t') {
-										goto l112
+										goto l186
 									}
 									position++
 									break
 								case 'r':
 									if buffer[position] != rune('r') {
-										goto l112
+										goto l186
 									}
 									position++
 									break
 								case 'n':
 									if buffer[position] != rune('n') {
-										goto l112
+										goto l186
 									}
 									position++
 									break
 								case 'f':
 									if buffer[position] != rune('f') {
-										goto l112
+										goto l186
 									}
 									position++
 									break
 								case 'b':
 									if buffer[position] != rune('b') {
-										goto l112
+										goto l186
 									}
 									position++
 									break
 								case 'a':
 									if buffer[position] != rune('a') {
-										goto l112
+										goto l186
 									}
 									position++
 									break
 								case '\\':
 									if buffer[position] != rune('\\') {
-										goto l112
+										goto l186
 									}
 									position++
 									break
 								default:
 									if buffer[position] != rune('"') {
-										goto l112
+										goto l186
 									}
 									position++
 									break
 								}
 							}
 
-							add(ruleEscape, position113)
+							add(ruleEscape, position187)
 						}
-						goto l111
-					l112:
-						position, tokenIndex = position111, tokenIndex111
+						goto l185
+					l186:
+						position, tokenIndex = position185, tokenIndex185
 						{
-							position115, tokenIndex115 := position, tokenIndex
+							position189, tokenIndex189 := position, tokenIndex
 							if buffer[position] != rune('"') {
-								goto l115
+								goto l189
 							}
 							position++
-							goto l110
-						l115:
-							position, tokenIndex = position115, tokenIndex115
+							goto l184
+						l189:
+							position, tokenIndex = position189, tokenIndex189
 						}
 						if !matchDot() {
-							goto l110
+							goto l184
 						}
 					}
-				l111:
-					goto l109
-				l110:
-					position, tokenIndex = position110, tokenIndex110
+				l185:
+					goto l183
+				l184:
+					position, tokenIndex = position184, tokenIndex184
 				}
-				add(ruleLiteral, position108)
+				add(ruleLiteral, position182)
 			}
 			return true
 		},
-		/* 22 PositiveInteger <- <([1-9] [0-9]*)> */
+		/* 42 PositiveInteger <- <([1-9] [0-9]*)> */
 		nil,
-		/* 23 Key <- <KeySymbols> */
+		/* 43 Key <- <((&('-') '-') | (&('+') '+') | (&('.') '.') | (&('_') '_') | (&('0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9') [0-9]) | (&('A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z') [A-Z]) | (&('a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z') [a-z]))+> */
 		func() bool {
-			position117, tokenIndex117 := position, tokenIndex
+			position191, tokenIndex191 := position, tokenIndex
 			{
-				position118 := position
-				if !_rules[ruleKeySymbols]() {
-					goto l117
-				}
-				add(ruleKey, position118)
-			}
-			return true
-		l117:
-			position, tokenIndex = position117, tokenIndex117
-			return false
-		},
-		/* 24 KeySymbols <- <((&('-') '-') | (&('+') '+') | (&('.') '.') | (&('_') '_') | (&('0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9') [0-9]) | (&('A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z') [A-Z]) | (&('a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z') [a-z]))+> */
-		func() bool {
-			position119, tokenIndex119 := position, tokenIndex
-			{
-				position120 := position
+				position192 := position
 				{
 					switch buffer[position] {
 					case '-':
 						if buffer[position] != rune('-') {
-							goto l119
+							goto l191
 						}
 						position++
 						break
 					case '+':
 						if buffer[position] != rune('+') {
-							goto l119
+							goto l191
 						}
 						position++
 						break
 					case '.':
 						if buffer[position] != rune('.') {
-							goto l119
+							goto l191
 						}
 						position++
 						break
 					case '_':
 						if buffer[position] != rune('_') {
-							goto l119
+							goto l191
 						}
 						position++
 						break
 					case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 						if c := buffer[position]; c < rune('0') || c > rune('9') {
-							goto l119
+							goto l191
 						}
 						position++
 						break
 					case 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z':
 						if c := buffer[position]; c < rune('A') || c > rune('Z') {
-							goto l119
+							goto l191
 						}
 						position++
 						break
 					default:
 						if c := buffer[position]; c < rune('a') || c > rune('z') {
-							goto l119
+							goto l191
 						}
 						position++
 						break
 					}
 				}
 
-			l121:
+			l193:
 				{
-					position122, tokenIndex122 := position, tokenIndex
+					position194, tokenIndex194 := position, tokenIndex
 					{
 						switch buffer[position] {
 						case '-':
 							if buffer[position] != rune('-') {
-								goto l122
+								goto l194
 							}
 							position++
 							break
 						case '+':
 							if buffer[position] != rune('+') {
-								goto l122
+								goto l194
 							}
 							position++
 							break
 						case '.':
 							if buffer[position] != rune('.') {
-								goto l122
+								goto l194
 							}
 							position++
 							break
 						case '_':
 							if buffer[position] != rune('_') {
-								goto l122
+								goto l194
 							}
 							position++
 							break
 						case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 							if c := buffer[position]; c < rune('0') || c > rune('9') {
-								goto l122
+								goto l194
 							}
 							position++
 							break
 						case 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z':
 							if c := buffer[position]; c < rune('A') || c > rune('Z') {
-								goto l122
+								goto l194
 							}
 							position++
 							break
 						default:
 							if c := buffer[position]; c < rune('a') || c > rune('z') {
-								goto l122
+								goto l194
 							}
 							position++
 							break
 						}
 					}
 
-					goto l121
-				l122:
-					position, tokenIndex = position122, tokenIndex122
+					goto l193
+				l194:
+					position, tokenIndex = position194, tokenIndex194
 				}
-				add(ruleKeySymbols, position120)
+				add(ruleKey, position192)
 			}
 			return true
-		l119:
-			position, tokenIndex = position119, tokenIndex119
+		l191:
+			position, tokenIndex = position191, tokenIndex191
 			return false
 		},
-		/* 25 Escape <- <('\\' ((&('v') 'v') | (&('t') 't') | (&('r') 'r') | (&('n') 'n') | (&('f') 'f') | (&('b') 'b') | (&('a') 'a') | (&('\\') '\\') | (&('"') '"')))> */
+		/* 44 Escape <- <('\\' ((&('v') 'v') | (&('t') 't') | (&('r') 'r') | (&('n') 'n') | (&('f') 'f') | (&('b') 'b') | (&('a') 'a') | (&('\\') '\\') | (&('"') '"')))> */
 		nil,
-		/* 26 MustSpacing <- <((&('\n') '\n') | (&('\t') '\t') | (&(' ') ' '))+> */
+		/* 45 MustSpacing <- <((&('\n') '\n') | (&('\t') '\t') | (&(' ') ' '))+> */
 		func() bool {
-			position126, tokenIndex126 := position, tokenIndex
+			position198, tokenIndex198 := position, tokenIndex
 			{
-				position127 := position
+				position199 := position
 				{
 					switch buffer[position] {
 					case '\n':
 						if buffer[position] != rune('\n') {
-							goto l126
+							goto l198
 						}
 						position++
 						break
 					case '\t':
 						if buffer[position] != rune('\t') {
-							goto l126
+							goto l198
 						}
 						position++
 						break
 					default:
 						if buffer[position] != rune(' ') {
-							goto l126
+							goto l198
 						}
 						position++
 						break
 					}
 				}
 
-			l128:
+			l200:
 				{
-					position129, tokenIndex129 := position, tokenIndex
+					position201, tokenIndex201 := position, tokenIndex
 					{
 						switch buffer[position] {
 						case '\n':
 							if buffer[position] != rune('\n') {
-								goto l129
+								goto l201
 							}
 							position++
 							break
 						case '\t':
 							if buffer[position] != rune('\t') {
-								goto l129
+								goto l201
 							}
 							position++
 							break
 						default:
 							if buffer[position] != rune(' ') {
-								goto l129
+								goto l201
 							}
 							position++
 							break
 						}
 					}
 
-					goto l128
-				l129:
-					position, tokenIndex = position129, tokenIndex129
+					goto l200
+				l201:
+					position, tokenIndex = position201, tokenIndex201
 				}
-				add(ruleMustSpacing, position127)
+				add(ruleMustSpacing, position199)
 			}
 			return true
-		l126:
-			position, tokenIndex = position126, tokenIndex126
+		l198:
+			position, tokenIndex = position198, tokenIndex198
 			return false
 		},
-		/* 27 Spacing <- <((&('\n') '\n') | (&('\t') '\t') | (&(' ') ' '))*> */
+		/* 46 Spacing <- <((&('\n') '\n') | (&('\t') '\t') | (&(' ') ' '))*> */
 		func() bool {
 			{
-				position133 := position
-			l134:
+				position205 := position
+			l206:
 				{
-					position135, tokenIndex135 := position, tokenIndex
+					position207, tokenIndex207 := position, tokenIndex
 					{
 						switch buffer[position] {
 						case '\n':
 							if buffer[position] != rune('\n') {
-								goto l135
+								goto l207
 							}
 							position++
 							break
 						case '\t':
 							if buffer[position] != rune('\t') {
-								goto l135
+								goto l207
 							}
 							position++
 							break
 						default:
 							if buffer[position] != rune(' ') {
-								goto l135
+								goto l207
 							}
 							position++
 							break
 						}
 					}
 
-					goto l134
-				l135:
-					position, tokenIndex = position135, tokenIndex135
+					goto l206
+				l207:
+					position, tokenIndex = position207, tokenIndex207
 				}
-				add(ruleSpacing, position133)
+				add(ruleSpacing, position205)
 			}
 			return true
 		},
-		/* 29 Action0 <- <{ p.AddSelect() }> */
+		/* 48 Action0 <- <{ p.AddSelect() }> */
 		nil,
-		/* 30 Action1 <- <{ p.AddJoin() }> */
+		/* 49 Action1 <- <{ p.AddJoin() }> */
 		nil,
 		nil,
-		/* 32 Action2 <- <{ p.SetTableName(buffer[begin:end]) }> */
+		/* 51 Action2 <- <{ p.SetTableName(buffer[begin:end]) }> */
 		nil,
-		/* 33 Action3 <- <{ p.AddJoinRow() }> */
+		/* 52 Action3 <- <{ p.SetTableNamePlaceholder(begin) }> */
 		nil,
-		/* 34 Action4 <- <{ p.SetJoinRowKey(buffer[begin:end]) }> */
+		/* 53 Action4 <- <{ p.AddJoinRow() }> */
 		nil,
-		/* 35 Action5 <- <{ p.SetJoinKey(buffer[begin:end]) }> */
+		/* 54 Action5 <- <{ p.SetJoinRowKeyPlaceholder(begin) }> */
 		nil,
-		/* 36 Action6 <- <{ p.SetJoinValue(buffer[begin:end]) }> */
+		/* 55 Action6 <- <{ p.SetJoinRowKey(buffer[begin:end]) }> */
 		nil,
-		/* 37 Action7 <- <{ p.SetTableName(buffer[begin:end]) }> */
+		/* 56 Action7 <- <{ p.SetJoinValuePlaceholder(begin) }> */
 		nil,
-		/* 38 Action8 <- <{ p.SetLimit(buffer[begin:end])}> */
+		/* 57 Action8 <- <{ p.SetJoinValue(buffer[begin:end]) }> */
 		nil,
-		/* 39 Action9 <- <{ p.AddCryptoKey(buffer[begin:end]) }> */
+		/* 58 Action9 <- <{ p.SetJoinKey(buffer[begin:end]) }> */
 		nil,
-		/* 40 Action10 <- <{ p.PushWhere() }> */
+		/* 59 Action10 <- <{ p.SetJoinKeyPlaceholder(begin) }> */
 		nil,
-		/* 41 Action11 <- <{ p.PopWhere() }> */
+		/* 60 Action11 <- <{ p.SetLimit(buffer[begin:end])}> */
 		nil,
-		/* 42 Action12 <- <{ p.SetWhereCommand("and") }> */
+		/* 61 Action12 <- <{ p.SetLimitPlaceholder(begin) }> */
 		nil,
-		/* 43 Action13 <- <{ p.SetWhereCommand("or") }> */
+		/* 62 Action13 <- <{ p.AddCryptoKey(buffer[begin:end]) }> */
 		nil,
-		/* 44 Action14 <- <{ p.InitPredicate() }> */
+		/* 63 Action14 <- <{ p.PushWhere() }> */
 		nil,
-		/* 45 Action15 <- <{ p.SetPredicateCommand(buffer[begin:end]) }> */
+		/* 64 Action15 <- <{ p.PopWhere() }> */
 		nil,
-		/* 46 Action16 <- <{ p.UsePredicateRowKey() }> */
+		/* 65 Action16 <- <{ p.SetWhereCommand("and") }> */
 		nil,
-		/* 47 Action17 <- <{ p.AddPredicateKey(buffer[begin:end]) }> */
+		/* 66 Action17 <- <{ p.SetWhereCommand("or") }> */
 		nil,
-		/* 48 Action18 <- <{ p.AddPredicateLiteral(buffer[begin:end])}> */
+		/* 67 Action18 <- <{ p.InitPredicate() }> */
+		nil,
+		/* 68 Action19 <- <{ p.SetPredicateCommand(buffer[begin:end]) }> */
+		nil,
+		/* 69 Action20 <- <{ p.SetPredicatePlaceholder(begin) }> */
+		nil,
+		/* 70 Action21 <- <{ p.UsePredicateRowKey() }> */
+		nil,
+		/* 71 Action22 <- <{ p.UsePredicateRowKeyPlaceholder(begin) }> */
+		nil,
+		/* 72 Action23 <- <{ p.AddPredicateKey(buffer[begin:end]) }> */
+		nil,
+		/* 73 Action24 <- <{ p.AddPredicateKeyPlaceholder(begin) }> */
+		nil,
+		/* 74 Action25 <- <{ p.AddPredicateLiteral(buffer[begin:end])}> */
+		nil,
+		/* 75 Action26 <- <{ p.AddPredicateLiteralPlaceholder(begin) }> */
 		nil,
 	}
 	p.rules = _rules
