@@ -357,7 +357,11 @@ func (eval *selectEvalTree) evalWhere(where *query.QueryWhere) *expr {
 func (eval *selectEvalTree) evalPred(where *query.QueryWhere) *expr {
 	pred := where.Predicate
 
-	literals := pred.Literals
+	literals := make([]string, len(pred.Literals))
+
+	for i, lit := range pred.Literals {
+		literals[i] = string(lit)
+	}
 
 	if pred.IncludeRowKey {
 		literals = append(literals, string(eval.rowKey))

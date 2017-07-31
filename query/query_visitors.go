@@ -199,7 +199,7 @@ func (printer *queryPrinter) VisitPredicate(pred *QueryPredicate) {
 		}
 		printer.indentWhitespace()
 		printer.write("\"")
-		printer.writeText(l)
+		printer.writeText(string(l))
 		printer.write("\"")
 
 		first = false

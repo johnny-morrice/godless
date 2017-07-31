@@ -13,7 +13,7 @@ TableNamePlaceholder <- < KeyPlaceholder > { p.SetTableNamePlaceholder(begin) }
 Join <- 'join' MustSpacing TableName (MustSpacing CryptoKey)* MustSpacing 'rows' MustSpacing JoinRow (Spacing ',' Spacing JoinRow)* Spacing
 JoinRow <- { p.AddJoinRow() } '(' Spacing JoinRowKey Spacing ( ',' Spacing JoinPoint Spacing ) * ')'
 JoinRowKey <- '@key' Spacing '=' Spacing ( JoinRowKeyValueText / JoinRowKeyValuePlaceholder )
-JoinRowKeyValuePlaceholder <- < LiteralPlaceholder > { p.SetJoinRowKeyPlaceholder(begin) }
+JoinRowKeyValuePlaceholder <- < KeyPlaceholder > { p.SetJoinRowKeyPlaceholder(begin) }
 JoinRowKeyValueText <- ('@' ["] < Literal > ["] / < Key > ) { p.SetJoinRowKey(buffer[begin:end]) }
 JoinPoint <- ( JoinPointKeyText / JoinPointKeyPlaceholder ) Spacing '=' Spacing ( JoinPointValueText / JoinPointValuePlaceholder )
 JoinPointValuePlaceholder <- < LiteralPlaceholder > { p.SetJoinValuePlaceholder(begin) }

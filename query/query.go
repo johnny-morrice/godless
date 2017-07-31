@@ -208,7 +208,7 @@ const (
 type QueryPredicate struct {
 	FunctionName  string
 	Keys          []crdt.EntryName `json:",omitempty"`
-	Literals      []string         `json:",omitempty"`
+	Literals      []crdt.PointText `json:",omitempty"`
 	IncludeRowKey bool             `json:",omitempty"`
 }
 

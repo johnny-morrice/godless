@@ -316,9 +316,9 @@ func (decoder *queryMessageDecoder) decodeRowJoin(row *QueryRowJoin, message *pr
 func (decoder *queryMessageDecoder) decodePredicate(pred *QueryPredicate, message *proto.QueryPredicateMessage) {
 	pred.FunctionName = message.FunctionName
 
-	pred.Literals = make([]string, len(message.Literals))
+	pred.Literals = make([]crdt.PointText, len(message.Literals))
 	for i, lit := range message.Literals {
-		pred.Literals[i] = lit
+		pred.Literals[i] = crdt.PointText(lit)
 	}
 
 	pred.Keys = make([]crdt.EntryName, len(message.Keys))

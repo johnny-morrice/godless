@@ -60,7 +60,7 @@ func TestVisitSelect(t *testing.T) {
 	innerWhereB.OpCode = query.PREDICATE
 	innerWhereB.Predicate = query.QueryPredicate{
 		FunctionName:  "str_eq",
-		Literals:      []string{"Match this"},
+		Literals:      []crdt.PointText{"Match this"},
 		IncludeRowKey: true,
 	}
 

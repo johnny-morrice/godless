@@ -15,6 +15,16 @@ type placeholderTest struct {
 
 func TestPlaceholders(t *testing.T) {
 	const tableName = crdt.TableName("The table")
+	const rowName = crdt.RowName("The row")
+	const entryName = crdt.EntryName("The entry")
+	const literal = "The literal"
+	const carTable = crdt.TableName("cars")
+	const driverEntry = crdt.EntryName("driver")
+	const specialFeature = crdt.EntryName("special_feature")
+	const fourWheeler = crdt.PointText("4wd")
+	const driverName = crdt.PointText("Mr Fast")
+	const theLimit uint32 = 5
+
 	placeholderTable := []placeholderTest{
 		placeholderTest{
 			source: "join ?? rows (@key=test)",
@@ -39,6 +49,57 @@ func TestPlaceholders(t *testing.T) {
 				OpCode:   SELECT,
 			},
 		},
+		placeholderTest{
+			source: "join cars rows (@key=??, driver=?, ??=\"4wd\")",
+			values: []interface{}{rowName, driverName, specialFeature},
+			expected: &Query{
+				TableKey: carTable,
+				OpCode:   JOIN,
+				Join: QueryJoin{
+					Rows: []QueryRowJoin{
+						QueryRowJoin{
+							RowKey: rowName,
+							Entries: map[crdt.EntryName]crdt.PointText{
+								driverEntry:    driverName,
+								specialFeature: fourWheeler,
+							},
+						},
+					},
+				},
+			},
+		},
+		placeholderTest{
+			source: "select cars where and(str_eq(??, ?), str_glob(??, ?)) limit ?",
+			values: []interface{}{specialFeature, fourWheeler, driverEntry, driverName, theLimit},
+			expected: &Query{
+				TableKey: carTable,
+				OpCode:   SELECT,
+				Select: QuerySelect{
+					Limit: theLimit,
+					Where: QueryWhere{
+						OpCode: AND,
+						Clauses: []QueryWhere{
+							QueryWhere{
+								OpCode: PREDICATE,
+								Predicate: QueryPredicate{
+									FunctionName: "str_eq",
+									Keys:         []crdt.EntryName{specialFeature},
+									Literals:     []crdt.PointText{fourWheeler},
+								},
+							},
+							QueryWhere{
+								OpCode: PREDICATE,
+								Predicate: QueryPredicate{
+									FunctionName: "str_glob",
+									Keys:         []crdt.EntryName{driverEntry},
+									Literals:     []crdt.PointText{driverName},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, test := range placeholderTable {
@@ -49,17 +110,6 @@ func TestPlaceholders(t *testing.T) {
 	}
 }
 
-// func TestJoinRowKeyPlaceholder(t *testing.T) {
-// 	t.FailNow()
-// }
-//
-// func TestJoinValuePlaceholder(t *testing.T) {
-// 	t.FailNow()
-// }
-//
-// func TestJoinKeyPlaceholder(t *testing.T) {
-// 	t.FailNow()
-// }
 //
 // func TestLimitPlaceholder(t *testing.T) {
 // 	t.FailNow()

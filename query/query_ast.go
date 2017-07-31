@@ -342,8 +342,14 @@ func (ast *QueryPredicateAST) Compile() (QueryPredicate, error) {
 		return QueryPredicate{}, errors.Wrap(err, "Error compiling predicate")
 	}
 
+	pointLiterals := make([]crdt.PointText, len(literals))
+
+	for i, lit := range ast.Literals {
+		pointLiterals[i] = crdt.PointText(lit)
+	}
+
 	predicate.Keys = makeEntryNames(ast.Keys)
-	predicate.Literals = literals
+	predicate.Literals = pointLiterals
 	predicate.IncludeRowKey = ast.IncludeRowKey
 
 	return predicate, nil
