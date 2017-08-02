@@ -11,14 +11,80 @@ import (
 
 type QueryAST struct {
 	Command    string
-	TableKey   string
+	TableKey   astVariable
 	Select     QuerySelectAST `json:",omitempty"`
 	Join       QueryJoinAST   `json:",omitempty"`
-	PublicKeys []string
+	PublicKeys []astVariable
 
 	WhereStack     []*QueryWhereAST
-	lastRowJoinKey string
+	lastRowJoinKey astVariable
 	lastRowJoin    *QueryRowJoinAST
+}
+
+type placeholderValidator interface {
+	isValid(value interface{}) bool
+}
+
+type astVariable struct {
+	validator     placeholderValidator
+	position      int
+	isPlaceholder bool
+	isKey         bool
+	text          string
+}
+
+func astLiteral(text string) astVariable {
+	return astVariable{
+		text: text,
+	}
+}
+
+func astKey(text string) astVariable {
+	return astVariable{
+		text:  text,
+		isKey: true,
+	}
+}
+
+func astKeyPlaceholder(position int) astVariable {
+	return astVariable{
+		validator:     isAstString{},
+		isKey:         true,
+		isPlaceholder: true,
+		position:      position,
+	}
+}
+
+func astLiteralPlaceholder(position int) astVariable {
+	return astVariable{
+		validator:     isAstString{},
+		isPlaceholder: true,
+		position:      position,
+	}
+}
+
+func astIntegerPlaceholder(position int) astVariable {
+	return astVariable{
+		validator:     isAstInt{},
+		isPlaceholder: true,
+		position:      position,
+	}
+}
+
+type isAstString struct {
+}
+
+func (isAstString) isValid(val interface{}) bool {
+	_, ok := val.(string)
+	return ok
+}
+
+type isAstInt struct {
+}
+
+func (isAstInt) isValid(val interface{}) bool {
+	_, ok := val.(int)
+	return ok
 }
 
 func (ast *QueryAST) SetTableNamePlaceholder(begin int) {
@@ -50,7 +116,7 @@ func (ast *QueryAST) AddPredicateLiteralPlaceholder(begin int) {
 }
 
 func (ast *QueryAST) AddCryptoKey(publicKey string) {
-	ast.PublicKeys = append(ast.PublicKeys, publicKey)
+	ast.PublicKeys = append(ast.PublicKeys, astLiteral(publicKey))
 }
 
 func (ast *QueryAST) AddJoin() {
@@ -58,23 +124,25 @@ func (ast *QueryAST) AddJoin() {
 }
 
 func (ast *QueryAST) AddJoinRow() {
-	row := &QueryRowJoinAST{
-		Values: map[string]string{},
-	}
+	row := &QueryRowJoinAST{}
 	ast.Join.Rows = append(ast.Join.Rows, row)
 	ast.lastRowJoin = row
 }
 
 func (ast *QueryAST) SetJoinRowKey(key string) {
-	ast.lastRowJoin.RowKey = key
+	ast.lastRowJoin.RowKey = astKey(key)
 }
 
 func (ast *QueryAST) SetJoinKey(key string) {
-	ast.lastRowJoinKey = key
+	ast.lastRowJoinKey = astKey(key)
 }
 
 func (ast *QueryAST) SetJoinValue(value string) {
-	ast.lastRowJoin.Values[ast.lastRowJoinKey] = value
+	joinValue := QueryRowJoinValueAST{
+		Key:   ast.lastRowJoinKey,
+		Value: astLiteral(value),
+	}
+	ast.lastRowJoin.Values = append(ast.lastRowJoin.Values, joinValue)
 }
 
 func (ast *QueryAST) PushWhere() {
@@ -124,12 +192,14 @@ func (ast *QueryAST) UsePredicateRowKey() {
 
 func (ast *QueryAST) AddPredicateKey(key string) {
 	where := ast.peekWhere()
-	where.Predicate.Keys = append(where.Predicate.Keys, key)
+	variable := astKey(key)
+	where.Predicate.Values = append(where.Predicate.Values, variable)
 }
 
 func (ast *QueryAST) AddPredicateLiteral(literal string) {
 	where := ast.peekWhere()
-	where.Predicate.Literals = append(where.Predicate.Literals, literal)
+	variable := astLiteral(literal)
+	where.Predicate.Values = append(where.Predicate.Values, variable)
 }
 
 func (ast *QueryAST) SetPredicateCommand(command string) {
@@ -142,7 +212,7 @@ func (ast *QueryAST) AddSelect() {
 }
 
 func (ast *QueryAST) SetTableName(key string) {
-	ast.TableKey = key
+	ast.TableKey = astKey(key)
 }
 
 func (ast *QueryAST) SetLimit(limit string) {
@@ -176,11 +246,11 @@ func (ast *QueryAST) Compile() (*Query, error) {
 	}
 
 	query.AST = ast
-	query.TableKey = crdt.TableName(ast.TableKey)
+	query.TableKey = crdt.TableName(ast.TableKey.text)
 	query.PublicKeys = make([]crypto.PublicKeyHash, len(ast.PublicKeys))
 
 	for i, k := range ast.PublicKeys {
-		query.PublicKeys[i] = crypto.PublicKeyHash(k)
+		query.PublicKeys[i] = crypto.PublicKeyHash(k.text)
 	}
 
 	return query, nil
@@ -194,16 +264,24 @@ func (ast *QueryJoinAST) Compile() (QueryJoin, error) {
 	rows := make([]QueryRowJoin, len(ast.Rows))
 
 	for i, r := range ast.Rows {
-		unquoted, err := unquoteMap(r.Values)
-
-		if err != nil {
-			return QueryJoin{}, errors.Wrap(err, "Error compiling join")
+		rowJoin := QueryRowJoin{
+			RowKey:  crdt.RowName(r.RowKey.text),
+			Entries: map[crdt.EntryName]crdt.PointText{},
 		}
 
-		rows[i] = QueryRowJoin{
-			RowKey:  crdt.RowName(r.RowKey),
-			Entries: makeJoinEntries(unquoted),
+		for _, val := range r.Values {
+			plain, err := unquote(val.Value.text)
+
+			if err != nil {
+				return QueryJoin{}, errors.Wrap(err, "Error compiling join")
+			}
+
+			entry := crdt.EntryName(val.Key.text)
+			point := crdt.PointText(plain)
+			rowJoin.Entries[entry] = point
 		}
+
+		rows[i] = rowJoin
 	}
 
 	qjoin := QueryJoin{
@@ -214,8 +292,13 @@ func (ast *QueryJoinAST) Compile() (QueryJoin, error) {
 }
 
 type QueryRowJoinAST struct {
-	RowKey string
-	Values map[string]string `json:",omitempty"`
+	RowKey astVariable
+	Values []QueryRowJoinValueAST `json:",omitempty"`
+}
+
+type QueryRowJoinValueAST struct {
+	Key   astVariable
+	Value astVariable
 }
 
 type QuerySelectAST struct {
@@ -326,8 +409,7 @@ func (ast *QueryWhereAST) CompileClauses(out *QueryWhere) error {
 
 type QueryPredicateAST struct {
 	Command       string
-	Keys          []string
-	Literals      []string
+	Values        []astVariable
 	IncludeRowKey bool
 }
 
@@ -336,23 +418,34 @@ func (ast *QueryPredicateAST) Compile() (QueryPredicate, error) {
 
 	predicate.FunctionName = ast.Command
 
-	literals, err := unquoteAll(ast.Literals)
+	// FIXME implement.
+	// literals, err := unquoteAll(ast.Literals)
+	//
+	// if err != nil {
+	// 	return QueryPredicate{}, errors.Wrap(err, "Error compiling predicate")
+	// }
+	//
+	// pointLiterals := make([]crdt.PointText, len(literals))
+	//
+	// for i, lit := range ast.Literals {
+	// 	pointLiterals[i] = crdt.PointText(lit)
+	// }
 
-	if err != nil {
-		return QueryPredicate{}, errors.Wrap(err, "Error compiling predicate")
-	}
-
-	pointLiterals := make([]crdt.PointText, len(literals))
-
-	for i, lit := range ast.Literals {
-		pointLiterals[i] = crdt.PointText(lit)
-	}
-
-	predicate.Keys = makeEntryNames(ast.Keys)
-	predicate.Literals = pointLiterals
+	// predicate.Keys = makeEntryNames(ast.Keys)
+	// predicate.Literals = pointLiterals
 	predicate.IncludeRowKey = ast.IncludeRowKey
 
 	return predicate, nil
+}
+
+func unquoteAllVars(vars []astVariable) ([]string, error) {
+	text := make([]string, len(vars))
+
+	for i, x := range vars {
+		text[i] = x.text
+	}
+
+	return unquoteAll(text)
 }
 
 func unquoteAll(values []string) ([]string, error) {
@@ -401,16 +494,6 @@ func unquote(token string) (string, error) {
 func quote(token string) string {
 	token = strconv.Quote(token)
 	return token[1 : len(token)-1]
-}
-
-func makeJoinEntries(mess map[string]string) map[crdt.EntryName]crdt.PointText {
-	es := map[crdt.EntryName]crdt.PointText{}
-
-	for k, v := range mess {
-		es[crdt.EntryName(k)] = crdt.PointText(v)
-	}
-
-	return es
 }
 
 func makeEntryNames(mess []string) []crdt.EntryName {

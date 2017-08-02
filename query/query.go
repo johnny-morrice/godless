@@ -205,11 +205,53 @@ const (
 	// TIME_LTE
 )
 
+type PredicateValue struct {
+	IsKey   bool
+	Key     crdt.EntryName
+	Literal crdt.PointText
+}
+
+func PredicateLiteral(point crdt.PointText) PredicateValue {
+	return PredicateValue{
+		Literal: point,
+	}
+}
+
+func PredicateKey(entry crdt.EntryName) PredicateValue {
+	return PredicateValue{
+		IsKey: true,
+		Key:   entry,
+	}
+}
+
 type QueryPredicate struct {
 	FunctionName  string
-	Keys          []crdt.EntryName `json:",omitempty"`
-	Literals      []crdt.PointText `json:",omitempty"`
-	IncludeRowKey bool             `json:",omitempty"`
+	Values        []PredicateValue
+	IncludeRowKey bool `json:",omitempty"`
+}
+
+func (pred QueryPredicate) Literals() []crdt.PointText {
+	lits := make([]crdt.PointText, 0, len(pred.Values))
+
+	for _, val := range pred.Values {
+		if !val.IsKey {
+			lits = append(lits, val.Literal)
+		}
+	}
+
+	return lits
+}
+
+func (pred QueryPredicate) Keys() []crdt.EntryName {
+	keys := make([]crdt.EntryName, 0, len(pred.Values))
+
+	for _, val := range pred.Values {
+		if !val.IsKey {
+			keys = append(keys, val.Key)
+		}
+	}
+
+	return keys
 }
 
 func (pred QueryPredicate) IsEmpty() bool {
@@ -219,23 +261,15 @@ func (pred QueryPredicate) IsEmpty() bool {
 func (pred QueryPredicate) equals(other QueryPredicate) bool {
 	ok := pred.FunctionName == other.FunctionName
 	ok = ok && pred.IncludeRowKey == other.IncludeRowKey
-	ok = ok && len(pred.Keys) == len(other.Keys)
-	ok = ok && len(pred.Literals) == len(other.Literals)
+	ok = ok && len(pred.Values) == len(other.Values)
 
 	if !ok {
 		return false
 	}
 
-	for i, myKey := range pred.Keys {
-		theirKey := other.Keys[i]
-		if myKey != theirKey {
-			return false
-		}
-	}
-
-	for i, myLit := range pred.Literals {
-		theirLit := other.Literals[i]
-		if myLit != theirLit {
+	for i, myVal := range pred.Values {
+		theirVal := other.Values[i]
+		if myVal != theirVal {
 			return false
 		}
 	}
@@ -243,7 +277,7 @@ func (pred QueryPredicate) equals(other QueryPredicate) bool {
 	return true
 }
 
-func Compile(source string, placeholderValues ...interface{}) (*Query, error) {
+func Compile(source string, variables ...interface{}) (*Query, error) {
 	parser := &QueryParser{Buffer: source}
 	parser.Pretty = true
 	parser.Init()

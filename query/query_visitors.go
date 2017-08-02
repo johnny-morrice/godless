@@ -183,29 +183,33 @@ func (printer *queryPrinter) VisitPredicate(pred *QueryPredicate) {
 		first = false
 	}
 
-	for _, k := range pred.Keys {
+	for _, val := range pred.Values {
 		if !first {
 			printer.write(", ")
 		}
-		printer.indentWhitespace()
-		printer.writeKey(string(k))
 
-		first = false
-	}
-
-	for _, l := range pred.Literals {
-		if !first {
-			printer.write(", ")
+		if val.IsKey {
+			printer.predicateKey(val)
+		} else {
+			printer.predicateLiteral(val)
 		}
-		printer.indentWhitespace()
-		printer.write("\"")
-		printer.writeText(string(l))
-		printer.write("\"")
 
 		first = false
 	}
 
 	printer.indent(-1)
+}
+
+func (printer *queryPrinter) predicateKey(key PredicateValue) {
+	printer.indentWhitespace()
+	printer.writeKey(string(key.Key))
+}
+
+func (printer *queryPrinter) predicateLiteral(lit PredicateValue) {
+	printer.indentWhitespace()
+	printer.write("\"")
+	printer.writeText(string(lit.Literal))
+	printer.write("\"")
 }
 
 func (printer *queryPrinter) indentWhitespace() {

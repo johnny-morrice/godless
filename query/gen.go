@@ -74,17 +74,17 @@ func genQueryPredicate(rand *rand.Rand, size int) QueryPredicate {
 
 	keyCount := testutil.GenCountRange(rand, 1, size)
 	litCount := testutil.GenCountRange(rand, 1, size)
-	gen.Keys = make([]crdt.EntryName, keyCount)
-	gen.Literals = make([]crdt.PointText, litCount)
 
 	for i := 0; i < keyCount; i++ {
-		entry := testutil.RandKey(rand, MAX_POINT)
-		gen.Keys[i] = crdt.EntryName(entry)
+		entryText := testutil.RandKey(rand, MAX_POINT)
+		entry := crdt.EntryName(entryText)
+		gen.Values = append(gen.Values, PredicateKey(entry))
 	}
 
 	for i := 0; i < litCount; i++ {
-		lit := testutil.RandPoint(rand, MAX_POINT)
-		gen.Literals[i] = crdt.PointText(lit)
+		litText := testutil.RandPoint(rand, MAX_POINT)
+		lit := crdt.PointText(litText)
+		gen.Values = append(gen.Values, PredicateLiteral(lit))
 	}
 
 	return gen

@@ -83,16 +83,14 @@ func TestPlaceholders(t *testing.T) {
 								OpCode: PREDICATE,
 								Predicate: QueryPredicate{
 									FunctionName: "str_eq",
-									Keys:         []crdt.EntryName{specialFeature},
-									Literals:     []crdt.PointText{fourWheeler},
+									Values:       []PredicateValue{PredicateKey(specialFeature), PredicateLiteral(fourWheeler)},
 								},
 							},
 							QueryWhere{
 								OpCode: PREDICATE,
 								Predicate: QueryPredicate{
 									FunctionName: "str_glob",
-									Keys:         []crdt.EntryName{driverEntry},
-									Literals:     []crdt.PointText{driverName},
+									Values:       []PredicateValue{PredicateKey(driverEntry), PredicateLiteral(driverName)},
 								},
 							},
 						},
@@ -110,25 +108,31 @@ func TestPlaceholders(t *testing.T) {
 	}
 }
 
-//
-// func TestLimitPlaceholder(t *testing.T) {
-// 	t.FailNow()
-// }
-//
-// func TestPredicateKeyPlaceholder(t *testing.T) {
-// 	t.FailNow()
-// }
-//
-// func TestPredicateLiteralPlaceholder(t *testing.T) {
-// 	t.FailNow()
-// }
-
 func TestInvalidPlaceholder(t *testing.T) {
-	// Count not match
-	// Type not match
-	t.FailNow()
-}
+	const tableName = crdt.TableName("The table")
+	const driverName = crdt.PointText("Mr Fast")
+	const fourWheeler = crdt.PointText("4wd")
+	const theLimit string = "5"
 
-func TestLongTextPlaceholders(t *testing.T) {
-	t.FailNow()
+	placeholderTable := []placeholderTest{
+		placeholderTest{
+			source: "join ?? rows (@key=test,driver=?)",
+			values: []interface{}{tableName},
+		},
+		placeholderTest{
+			source: "join ?? rows (@key=test,driver=?)",
+			values: []interface{}{tableName, driverName, fourWheeler},
+		},
+		placeholderTest{
+			source: "select cars limit ?",
+			values: []interface{}{theLimit},
+		},
+	}
+
+	for _, test := range placeholderTable {
+		actual, err := Compile(test.source, test.values)
+
+		testutil.AssertNonNil(t, err)
+		testutil.AssertNil(t, actual)
+	}
 }

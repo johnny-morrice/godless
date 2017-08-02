@@ -152,18 +152,21 @@ func ReadQueryMessage(message *proto.QueryMessage) (*Query, error) {
 }
 
 func MakeQueryPredicateMessage(predicate QueryPredicate) *proto.QueryPredicateMessage {
+	lits := predicate.Literals()
+	keys := predicate.Keys()
+
 	message := &proto.QueryPredicateMessage{
 		FunctionName: predicate.FunctionName,
 		Userow:       predicate.IncludeRowKey,
-		Literals:     make([]string, len(predicate.Literals)),
-		Keys:         make([]string, len(predicate.Keys)),
+		Literals:     make([]string, len(lits)),
+		Keys:         make([]string, len(keys)),
 	}
 
-	for i, l := range predicate.Literals {
+	for i, l := range lits {
 		message.Literals[i] = string(l)
 	}
 
-	for i, k := range predicate.Keys {
+	for i, k := range keys {
 		message.Keys[i] = string(k)
 	}
 
@@ -316,14 +319,16 @@ func (decoder *queryMessageDecoder) decodeRowJoin(row *QueryRowJoin, message *pr
 func (decoder *queryMessageDecoder) decodePredicate(pred *QueryPredicate, message *proto.QueryPredicateMessage) {
 	pred.FunctionName = message.FunctionName
 
-	pred.Literals = make([]crdt.PointText, len(message.Literals))
-	for i, lit := range message.Literals {
-		pred.Literals[i] = crdt.PointText(lit)
+	pred.Values = make([]PredicateValue, len(message.Literals)+len(message.Keys))
+
+	for _, lit := range message.Literals {
+		predLit := PredicateLiteral(crdt.PointText(lit))
+		pred.Values = append(pred.Values, predLit)
 	}
 
-	pred.Keys = make([]crdt.EntryName, len(message.Keys))
-	for i, key := range message.Keys {
-		pred.Keys[i] = crdt.EntryName(key)
+	for _, key := range message.Keys {
+		predKey := PredicateKey(crdt.EntryName(key))
+		pred.Values = append(pred.Values, predKey)
 	}
 
 	pred.IncludeRowKey = message.Userow
