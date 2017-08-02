@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+
 	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/query"
 )
