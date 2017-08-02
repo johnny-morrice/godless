@@ -2,6 +2,7 @@ package query
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 
 	"github.com/johnny-morrice/godless/crdt"
@@ -34,6 +35,12 @@ type astVariable struct {
 	text          string
 	num           int
 }
+
+type byPosition []*astVariable
+
+func (a byPosition) Len() int           { return len(a) }
+func (a byPosition) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byPosition) Less(i, j int) bool { return a[i].position < a[j].position }
 
 func (astVar *astVariable) takeValue(val interface{}) error {
 	return astVar.taker.takeValue(astVar, val)
@@ -274,6 +281,8 @@ func (ast *QueryAST) insertPlaceholderValues(context CompileContext) error {
 	if len(ast.Placeholders) != len(context.Variables) {
 		return fmt.Errorf("Expected %d variables but received %d", len(ast.Placeholders), len(context.Variables))
 	}
+
+	sort.Sort(byPosition(ast.Placeholders))
 
 	for i, placeholder := range ast.Placeholders {
 		val := context.Variables[i]
