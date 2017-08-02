@@ -10,14 +10,15 @@ import (
 )
 
 type QueryAST struct {
-	Command    string
-	TableKey   astVariable
-	Select     QuerySelectAST `json:",omitempty"`
-	Join       QueryJoinAST   `json:",omitempty"`
-	PublicKeys []astVariable
+	Command      string
+	TableKey     *astVariable
+	Select       QuerySelectAST `json:",omitempty"`
+	Join         QueryJoinAST   `json:",omitempty"`
+	PublicKeys   []*astVariable
+	Placeholders []*astVariable
 
 	WhereStack     []*QueryWhereAST
-	lastRowJoinKey astVariable
+	lastRowJoinKey *astVariable
 	lastRowJoin    *QueryRowJoinAST
 }
 
@@ -31,23 +32,30 @@ type astVariable struct {
 	isPlaceholder bool
 	isKey         bool
 	text          string
+	num           int
 }
 
-func astLiteral(text string) astVariable {
-	return astVariable{
+func astLiteral(text string) *astVariable {
+	return &astVariable{
 		text: text,
 	}
 }
 
-func astKey(text string) astVariable {
-	return astVariable{
+func astKey(text string) *astVariable {
+	return &astVariable{
 		text:  text,
 		isKey: true,
 	}
 }
 
-func astKeyPlaceholder(position int) astVariable {
-	return astVariable{
+func astInteger(num int) *astVariable {
+	return &astVariable{
+		num: num,
+	}
+}
+
+func astKeyPlaceholder(position int) *astVariable {
+	return &astVariable{
 		validator:     isAstString{},
 		isKey:         true,
 		isPlaceholder: true,
@@ -55,16 +63,16 @@ func astKeyPlaceholder(position int) astVariable {
 	}
 }
 
-func astLiteralPlaceholder(position int) astVariable {
-	return astVariable{
+func astLiteralPlaceholder(position int) *astVariable {
+	return &astVariable{
 		validator:     isAstString{},
 		isPlaceholder: true,
 		position:      position,
 	}
 }
 
-func astIntegerPlaceholder(position int) astVariable {
-	return astVariable{
+func astIntegerPlaceholder(position int) *astVariable {
+	return &astVariable{
 		validator:     isAstInt{},
 		isPlaceholder: true,
 		position:      position,
@@ -87,32 +95,52 @@ func (isAstInt) isValid(val interface{}) bool {
 	return ok
 }
 
+func (ast *QueryAST) recordPlaceholder(placeholder *astVariable) {
+	if !placeholder.isPlaceholder {
+		panic(fmt.Sprintf("BUG Not a placeholder: %v", placeholder))
+	}
+
+	ast.Placeholders = append(ast.Placeholders, placeholder)
+}
+
 func (ast *QueryAST) SetTableNamePlaceholder(begin int) {
-	panic("not implemented")
+	ast.TableKey = astKeyPlaceholder(begin)
+	ast.recordPlaceholder(ast.TableKey)
 }
 
 func (ast *QueryAST) SetJoinRowKeyPlaceholder(begin int) {
-	panic("not implemented")
+	ast.lastRowJoin.RowKey = astKeyPlaceholder(begin)
+	ast.recordPlaceholder(ast.lastRowJoin.RowKey)
 }
 
 func (ast *QueryAST) SetJoinValuePlaceholder(begin int) {
-	panic("not implemented")
+	joinValue := QueryRowJoinValueAST{
+		Key:   ast.lastRowJoinKey,
+		Value: astLiteralPlaceholder(begin),
+	}
+	ast.lastRowJoin.Values = append(ast.lastRowJoin.Values, joinValue)
 }
 
 func (ast *QueryAST) SetJoinKeyPlaceholder(begin int) {
-	panic("not implemented")
+	ast.lastRowJoinKey = astKeyPlaceholder(begin)
+	ast.recordPlaceholder(ast.lastRowJoinKey)
 }
 
 func (ast *QueryAST) SetLimitPlaceholder(begin int) {
-	panic("not implemented")
+	ast.Select.Limit = astIntegerPlaceholder(begin)
+	ast.recordPlaceholder(ast.Select.Limit)
 }
 
 func (ast *QueryAST) AddPredicateKeyPlaceholder(begin int) {
-	panic("not implemented")
+	where := ast.peekWhere()
+	variable := astKeyPlaceholder(begin)
+	where.Predicate.Values = append(where.Predicate.Values, variable)
 }
 
 func (ast *QueryAST) AddPredicateLiteralPlaceholder(begin int) {
-	panic("not implemented")
+	where := ast.peekWhere()
+	variable := astLiteralPlaceholder(begin)
+	where.Predicate.Values = append(where.Predicate.Values, variable)
 }
 
 func (ast *QueryAST) AddCryptoKey(publicKey string) {
@@ -216,7 +244,7 @@ func (ast *QueryAST) SetTableName(key string) {
 }
 
 func (ast *QueryAST) SetLimit(limit string) {
-	ast.Select.Limit = limit
+	ast.Select.Limit = astLiteral(limit)
 }
 
 func (ast *QueryAST) Compile() (*Query, error) {
@@ -292,31 +320,33 @@ func (ast *QueryJoinAST) Compile() (QueryJoin, error) {
 }
 
 type QueryRowJoinAST struct {
-	RowKey astVariable
+	RowKey *astVariable
 	Values []QueryRowJoinValueAST `json:",omitempty"`
 }
 
 type QueryRowJoinValueAST struct {
-	Key   astVariable
-	Value astVariable
+	Key   *astVariable
+	Value *astVariable
 }
 
 type QuerySelectAST struct {
 	Where *QueryWhereAST `json:",omitempty"`
-	Limit string
+	Limit *astVariable
 }
 
 func (ast *QuerySelectAST) Compile() (QuerySelect, error) {
 	qselect := QuerySelect{}
 
-	if ast.Limit != "" {
-		limit, converr := strconv.ParseUint(ast.Limit, __BASE_10, __BITS_32)
+	if ast.Limit.text != "" {
+		limit, converr := strconv.ParseUint(ast.Limit.text, __BASE_10, __BITS_32)
 
 		if converr != nil {
 			return QuerySelect{}, errors.Wrap(converr, "BUG convert limit failed")
 		}
 
 		qselect.Limit = uint32(limit)
+	} else if ast.Limit.num != 0 {
+		qselect.Limit = uint32(ast.Limit.num)
 	}
 
 	if ast.Where != nil {
@@ -409,7 +439,7 @@ func (ast *QueryWhereAST) CompileClauses(out *QueryWhere) error {
 
 type QueryPredicateAST struct {
 	Command       string
-	Values        []astVariable
+	Values        []*astVariable
 	IncludeRowKey bool
 }
 
@@ -418,21 +448,19 @@ func (ast *QueryPredicateAST) Compile() (QueryPredicate, error) {
 
 	predicate.FunctionName = ast.Command
 
-	// FIXME implement.
-	// literals, err := unquoteAll(ast.Literals)
-	//
-	// if err != nil {
-	// 	return QueryPredicate{}, errors.Wrap(err, "Error compiling predicate")
-	// }
-	//
-	// pointLiterals := make([]crdt.PointText, len(literals))
-	//
-	// for i, lit := range ast.Literals {
-	// 	pointLiterals[i] = crdt.PointText(lit)
-	// }
+	predicate.Values = make([]PredicateValue, len(ast.Values))
 
-	// predicate.Keys = makeEntryNames(ast.Keys)
-	// predicate.Literals = pointLiterals
+	for i, val := range ast.Values {
+		var predVal PredicateValue
+		if val.isKey {
+			predVal = PredicateKey(crdt.EntryName(val.text))
+		} else {
+			predVal = PredicateLiteral(crdt.PointText(val.text))
+		}
+
+		predicate.Values[i] = predVal
+	}
+
 	predicate.IncludeRowKey = ast.IncludeRowKey
 
 	return predicate, nil
