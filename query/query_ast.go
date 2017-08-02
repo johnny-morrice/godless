@@ -22,17 +22,21 @@ type QueryAST struct {
 	lastRowJoin    *QueryRowJoinAST
 }
 
-type placeholderValidator interface {
-	isValid(value interface{}) bool
+type placeholderTaker interface {
+	takeValue(astVar *astVariable, val interface{}) error
 }
 
 type astVariable struct {
-	validator     placeholderValidator
+	taker         placeholderTaker
 	position      int
 	isPlaceholder bool
 	isKey         bool
 	text          string
 	num           int
+}
+
+func (astVar *astVariable) takeValue(val interface{}) error {
+	return astVar.taker.takeValue(astVar, val)
 }
 
 func astLiteral(text string) *astVariable {
@@ -56,7 +60,7 @@ func astInteger(num int) *astVariable {
 
 func astKeyPlaceholder(position int) *astVariable {
 	return &astVariable{
-		validator:     isAstString{},
+		taker:         isAstString{},
 		isKey:         true,
 		isPlaceholder: true,
 		position:      position,
@@ -65,7 +69,7 @@ func astKeyPlaceholder(position int) *astVariable {
 
 func astLiteralPlaceholder(position int) *astVariable {
 	return &astVariable{
-		validator:     isAstString{},
+		taker:         isAstString{},
 		isPlaceholder: true,
 		position:      position,
 	}
@@ -73,7 +77,7 @@ func astLiteralPlaceholder(position int) *astVariable {
 
 func astIntegerPlaceholder(position int) *astVariable {
 	return &astVariable{
-		validator:     isAstInt{},
+		taker:         isAstInt{},
 		isPlaceholder: true,
 		position:      position,
 	}
@@ -82,17 +86,29 @@ func astIntegerPlaceholder(position int) *astVariable {
 type isAstString struct {
 }
 
-func (isAstString) isValid(val interface{}) bool {
-	_, ok := val.(string)
-	return ok
+func (isAstString) takeValue(astVar *astVariable, val interface{}) error {
+	text, ok := val.(string)
+
+	if !ok {
+		return fmt.Errorf("%v was not string", val)
+	}
+
+	astVar.text = text
+	return nil
 }
 
 type isAstInt struct {
 }
 
-func (isAstInt) isValid(val interface{}) bool {
-	_, ok := val.(int)
-	return ok
+func (isAstInt) takeValue(astVar *astVariable, val interface{}) error {
+	num, ok := val.(int)
+
+	if !ok {
+		return fmt.Errorf("%v was not int", val)
+	}
+
+	astVar.num = num
+	return nil
 }
 
 func (ast *QueryAST) recordPlaceholder(placeholder *astVariable) {
@@ -247,7 +263,34 @@ func (ast *QueryAST) SetLimit(limit string) {
 	ast.Select.Limit = astLiteral(limit)
 }
 
-func (ast *QueryAST) Compile() (*Query, error) {
+type CompileContext struct {
+	Variables []interface{}
+}
+
+func (ast *QueryAST) insertPlaceholderValues(context CompileContext) error {
+	if len(ast.Placeholders) != len(context.Variables) {
+		return fmt.Errorf("Expected %d variables but received %d", len(ast.Placeholders), len(context.Variables))
+	}
+
+	for i, placeholder := range ast.Placeholders {
+		val := context.Variables[i]
+		err := placeholder.takeValue(val)
+
+		if err != nil {
+			return errors.Wrapf(err, "Error in Query variable at %d (%v)", i, val)
+		}
+	}
+
+	return nil
+}
+
+func (ast *QueryAST) Compile(context CompileContext) (*Query, error) {
+	err := ast.insertPlaceholderValues(context)
+
+	if err != nil {
+		return nil, err
+	}
+
 	query := &Query{}
 
 	switch ast.Command {

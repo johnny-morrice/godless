@@ -292,7 +292,10 @@ func Compile(source string, variables ...interface{}) (*Query, error) {
 
 	parser.Execute()
 
-	query, err := parser.QueryAST.Compile()
+	context := CompileContext{
+		Variables: variables,
+	}
+	query, err := parser.QueryAST.Compile(context)
 
 	if err != nil {
 		if log.CanLog(log.LOG_DEBUG) {
