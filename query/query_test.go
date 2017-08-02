@@ -13,7 +13,7 @@ import (
 )
 
 func init() {
-	log.SetLevel(log.LOG_DEBUG)
+	// log.SetLevel(log.LOG_DEBUG)
 }
 
 func TestParseQuery(t *testing.T) {

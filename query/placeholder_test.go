@@ -70,7 +70,7 @@ func TestPlaceholders(t *testing.T) {
 		},
 		placeholderTest{
 			source: "select cars where and(str_eq(??, ?), str_glob(??, ?)) limit ?",
-			values: []interface{}{string(specialFeature), string(fourWheeler), string(driverEntry), string(driverName), theLimit},
+			values: []interface{}{string(specialFeature), string(fourWheeler), string(driverEntry), string(driverName), int(theLimit)},
 			expected: &Query{
 				TableKey: carTable,
 				OpCode:   SELECT,

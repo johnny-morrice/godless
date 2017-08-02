@@ -566,13 +566,13 @@ func (p *QueryParser) Init() {
 												goto l6
 											}
 											position++
+											if !_rules[ruleMustSpacing]() {
+												goto l6
+											}
 											{
 												position10, tokenIndex10 := position, tokenIndex
 												{
 													position12 := position
-													if !_rules[ruleMustSpacing]() {
-														goto l11
-													}
 													{
 														position13 := position
 														{
@@ -1111,9 +1111,9 @@ func (p *QueryParser) Init() {
 		nil,
 		/* 15 WherePart <- <((&('s') CryptoKey) | (&('l') Limit) | (&('w') Where))> */
 		nil,
-		/* 16 Limit <- <('l' 'i' 'm' 'i' 't' (LimitText / LimitPlaceholder))> */
+		/* 16 Limit <- <('l' 'i' 'm' 'i' 't' MustSpacing (LimitText / LimitPlaceholder))> */
 		nil,
-		/* 17 LimitText <- <(MustSpacing <PositiveInteger> Action11)> */
+		/* 17 LimitText <- <(<PositiveInteger> Action11)> */
 		nil,
 		/* 18 LimitPlaceholder <- <(<LiteralPlaceholder> Action12)> */
 		nil,

@@ -23,8 +23,8 @@ JoinPointKeyPlaceholder <- < KeyPlaceholder > { p.SetJoinKeyPlaceholder(begin) }
 
 Select <- 'select' MustSpacing TableName (MustSpacing WherePart)*
 WherePart <- (Where / Limit / CryptoKey)
-Limit <- 'limit' ( LimitText / LimitPlaceholder)
-LimitText <- MustSpacing < PositiveInteger > { p.SetLimit(buffer[begin:end])}
+Limit <- 'limit' MustSpacing ( LimitText / LimitPlaceholder)
+LimitText <- < PositiveInteger > { p.SetLimit(buffer[begin:end])}
 LimitPlaceholder <- < LiteralPlaceholder > { p.SetLimitPlaceholder(begin) }
 
 CryptoKey <- 'signed' MustSpacing '"' < Key > '"' { p.AddCryptoKey(buffer[begin:end]) }

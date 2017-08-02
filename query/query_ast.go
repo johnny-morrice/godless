@@ -135,6 +135,7 @@ func (ast *QueryAST) SetJoinValuePlaceholder(begin int) {
 		Value: astLiteralPlaceholder(begin),
 	}
 	ast.lastRowJoin.Values = append(ast.lastRowJoin.Values, joinValue)
+	ast.recordPlaceholder(joinValue.Value)
 }
 
 func (ast *QueryAST) SetJoinKeyPlaceholder(begin int) {
@@ -151,12 +152,14 @@ func (ast *QueryAST) AddPredicateKeyPlaceholder(begin int) {
 	where := ast.peekWhere()
 	variable := astKeyPlaceholder(begin)
 	where.Predicate.Values = append(where.Predicate.Values, variable)
+	ast.recordPlaceholder(variable)
 }
 
 func (ast *QueryAST) AddPredicateLiteralPlaceholder(begin int) {
 	where := ast.peekWhere()
 	variable := astLiteralPlaceholder(begin)
 	where.Predicate.Values = append(where.Predicate.Values, variable)
+	ast.recordPlaceholder(variable)
 }
 
 func (ast *QueryAST) AddCryptoKey(publicKey string) {
