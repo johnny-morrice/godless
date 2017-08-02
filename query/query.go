@@ -246,7 +246,7 @@ func (pred QueryPredicate) Keys() []crdt.EntryName {
 	keys := make([]crdt.EntryName, 0, len(pred.Values))
 
 	for _, val := range pred.Values {
-		if !val.IsKey {
+		if val.IsKey {
 			keys = append(keys, val.Key)
 		}
 	}

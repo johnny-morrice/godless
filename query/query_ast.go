@@ -508,11 +508,17 @@ func (ast *QueryPredicateAST) Compile() (QueryPredicate, error) {
 	predicate.Values = make([]PredicateValue, len(ast.Values))
 
 	for i, val := range ast.Values {
+		unquoted, err := unquote(val.text)
+
+		if err != nil {
+			return QueryPredicate{}, errors.Wrap(err, "BUG error unquoting predicate")
+		}
+
 		var predVal PredicateValue
 		if val.isKey {
-			predVal = PredicateKey(crdt.EntryName(val.text))
+			predVal = PredicateKey(crdt.EntryName(unquoted))
 		} else {
-			predVal = PredicateLiteral(crdt.PointText(val.text))
+			predVal = PredicateLiteral(crdt.PointText(unquoted))
 		}
 
 		predicate.Values[i] = predVal

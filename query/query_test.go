@@ -7,13 +7,26 @@ import (
 	"testing"
 	"testing/quick"
 
+	"github.com/johnny-morrice/godless/crdt"
 	"github.com/johnny-morrice/godless/internal/testutil"
 	"github.com/johnny-morrice/godless/log"
 	"github.com/pkg/errors"
 )
 
 func init() {
-	// log.SetLevel(log.LOG_DEBUG)
+	log.SetLevel(log.LOG_DEBUG)
+}
+
+func TestPredicateKeysLiterals(t *testing.T) {
+	lit := PredicateLiteral("Hi")
+	key := PredicateKey("World")
+
+	pred := &QueryPredicate{
+		Values: []PredicateValue{lit, key},
+	}
+
+	testutil.AssertEquals(t, "Unexpected keys", []crdt.EntryName{"World"}, pred.Keys())
+	testutil.AssertEquals(t, "Unexpected literals", []crdt.PointText{"Hi"}, pred.Literals())
 }
 
 func TestParseQuery(t *testing.T) {
