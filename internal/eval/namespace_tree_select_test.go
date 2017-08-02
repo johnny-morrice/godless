@@ -74,7 +74,7 @@ func TestRowCriteria_findRows(t *testing.T) {
 			OpCode: query.PREDICATE,
 			Predicate: query.QueryPredicate{
 				FunctionName:  "str_eq",
-				Literals:      []crdt.PointText{"a"},
+				Values:        []query.PredicateValue{query.PredicateLiteral("a")},
 				IncludeRowKey: true,
 			},
 		},
@@ -82,8 +82,7 @@ func TestRowCriteria_findRows(t *testing.T) {
 			OpCode: query.PREDICATE,
 			Predicate: query.QueryPredicate{
 				FunctionName: "str_eq",
-				Literals:     []crdt.PointText{"world"},
-				Keys:         []crdt.EntryName{"bar"},
+				Values:       []query.PredicateValue{query.PredicateLiteral("world"), query.PredicateKey("bar")},
 			},
 		},
 	}

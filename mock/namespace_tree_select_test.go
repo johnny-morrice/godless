@@ -35,8 +35,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		OpCode: query.PREDICATE,
 		Predicate: query.QueryPredicate{
 			FunctionName: "str_eq",
-			Literals:     []crdt.PointText{"Hi"},
-			Keys:         []crdt.EntryName{"Entry A"},
+			Values:       []query.PredicateValue{query.PredicateLiteral("Hi"), query.PredicateKey("Entry A")},
 		},
 	}
 
@@ -44,8 +43,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		OpCode: query.PREDICATE,
 		Predicate: query.QueryPredicate{
 			FunctionName: "str_eq",
-			Literals:     []crdt.PointText{"Hi"},
-			Keys:         []crdt.EntryName{"Entry B"},
+			Values:       []query.PredicateValue{query.PredicateLiteral("Hi"), query.PredicateKey("Entry B")},
 		},
 	}
 
@@ -62,8 +60,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		OpCode: query.PREDICATE,
 		Predicate: query.QueryPredicate{
 			FunctionName: "str_eq",
-			Literals:     []crdt.PointText{"Apple"},
-			Keys:         []crdt.EntryName{"Entry C"},
+			Values:       []query.PredicateValue{query.PredicateLiteral("Apple"), query.PredicateKey("Entry C")},
 		},
 	}
 
@@ -71,8 +68,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		OpCode: query.PREDICATE,
 		Predicate: query.QueryPredicate{
 			FunctionName: "str_eq",
-			Literals:     []crdt.PointText{"Orange"},
-			Keys:         []crdt.EntryName{"Entry D"},
+			Values:       []query.PredicateValue{query.PredicateLiteral("Orange"), query.PredicateKey("Entry D")},
 		},
 	}
 
@@ -80,8 +76,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		OpCode: query.PREDICATE,
 		Predicate: query.QueryPredicate{
 			FunctionName: "str_eq",
-			Literals:     []crdt.PointText{"Train"},
-			Keys:         []crdt.EntryName{"Entry E"},
+			Values:       []query.PredicateValue{query.PredicateLiteral("Train"), query.PredicateKey("Entry E")},
 		},
 	}
 
@@ -89,8 +84,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		OpCode: query.PREDICATE,
 		Predicate: query.QueryPredicate{
 			FunctionName: "str_eq",
-			Literals:     []crdt.PointText{"Bus"},
-			Keys:         []crdt.EntryName{"Entry E"},
+			Values:       []query.PredicateValue{query.PredicateLiteral("Bus"), query.PredicateKey("Entry E")},
 		},
 	}
 
@@ -98,8 +92,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		OpCode: query.PREDICATE,
 		Predicate: query.QueryPredicate{
 			FunctionName: "str_eq",
-			Literals:     []crdt.PointText{"Boat"},
-			Keys:         []crdt.EntryName{"Entry E"},
+			Values:       []query.PredicateValue{query.PredicateLiteral("Boat"), query.PredicateKey("Entry E")},
 		},
 	}
 
@@ -108,7 +101,7 @@ func TestRunQuerySelectSuccess(t *testing.T) {
 		Predicate: query.QueryPredicate{
 			FunctionName:  "str_eq",
 			IncludeRowKey: true,
-			Literals:      []crdt.PointText{"Row F0"},
+			Values:        []query.PredicateValue{query.PredicateLiteral("Row F0")},
 		},
 	}
 
@@ -284,8 +277,7 @@ func TestRunQuerySelectFailure(t *testing.T) {
 				OpCode: query.PREDICATE,
 				Predicate: query.QueryPredicate{
 					FunctionName: "str_eq",
-					Literals:     []crdt.PointText{"Hi"},
-					Keys:         []crdt.EntryName{"Entry A"},
+					Values:       []query.PredicateValue{query.PredicateLiteral("Hi"), query.PredicateKey("Entry A")},
 				},
 			},
 		},
@@ -321,8 +313,7 @@ func TestRunQuerySelectInvalid(t *testing.T) {
 					OpCode: query.PREDICATE,
 					Predicate: query.QueryPredicate{
 						FunctionName: "str_eq",
-						Literals:     []crdt.PointText{"Hi"},
-						Keys:         []crdt.EntryName{"Entry A"},
+						Values:       []query.PredicateValue{query.PredicateLiteral("Hi"), query.PredicateKey("Entry A")},
 					},
 				},
 			},
@@ -334,8 +325,7 @@ func TestRunQuerySelectInvalid(t *testing.T) {
 				Where: query.QueryWhere{
 					Predicate: query.QueryPredicate{
 						FunctionName: "str_eq",
-						Literals:     []crdt.PointText{"Hi"},
-						Keys:         []crdt.EntryName{"Entry A"},
+						Values:       []query.PredicateValue{query.PredicateLiteral("Hi"), query.PredicateKey("Entry A")},
 					},
 				},
 			},
@@ -347,8 +337,7 @@ func TestRunQuerySelectInvalid(t *testing.T) {
 				Where: query.QueryWhere{
 					OpCode: query.PREDICATE,
 					Predicate: query.QueryPredicate{
-						Literals: []crdt.PointText{"Hi"},
-						Keys:     []crdt.EntryName{"Entry A"},
+						Values: []query.PredicateValue{query.PredicateLiteral("Hi"), query.PredicateKey("Entry A")},
 					},
 				},
 			},

@@ -357,9 +357,10 @@ func (eval *selectEvalTree) evalWhere(where *query.QueryWhere) *expr {
 func (eval *selectEvalTree) evalPred(where *query.QueryWhere) *expr {
 	pred := where.Predicate
 
-	literals := make([]string, len(pred.Literals))
+	predLits := pred.Literals()
+	literals := make([]string, len(predLits))
 
-	for i, lit := range pred.Literals {
+	for i, lit := range predLits {
 		literals[i] = string(lit)
 	}
 
@@ -369,7 +370,7 @@ func (eval *selectEvalTree) evalPred(where *query.QueryWhere) *expr {
 
 	entries := []crdt.Entry{}
 
-	for _, key := range pred.Keys {
+	for _, key := range pred.Keys() {
 		more, err := eval.row.GetEntry(key)
 
 		if err == nil {
