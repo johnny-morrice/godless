@@ -7,8 +7,15 @@ import (
 	"testing"
 	"testing/quick"
 
+	"github.com/davecgh/go-spew/spew"
+
 	"github.com/johnny-morrice/godless/internal/testutil"
+	"github.com/johnny-morrice/godless/log"
 )
+
+func init() {
+	log.SetLevel(log.LOG_DEBUG)
+}
 
 func (request Request) Generate(rand *rand.Rand, size int) reflect.Value {
 	gen := GenRequest(rand, size)
@@ -44,7 +51,13 @@ func requestEncodeOk(expected Request) bool {
 		return false
 	}
 
-	return expected.Equals(actual)
+	same := expected.Equals(actual)
+
+	if !same {
+		testutil.LogDiff(spew.Sprint(expected), spew.Sprint(actual))
+	}
+
+	return same
 }
 
 func TestRequestValidateSuccess(t *testing.T) {
