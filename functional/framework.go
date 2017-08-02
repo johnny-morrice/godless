@@ -84,19 +84,21 @@ func makeSelectReflects(size int) []api.Request {
 }
 
 func genSelectQuery(seq int) *query.Query {
-	// TODO use parametrised query.. once they exist :)
-	queryText := fmt.Sprintf("select factory where str_eq(foreman, \"Foreman %d\")", seq)
-	return forceCompile(queryText)
+	const queryText = "select factory where str_eq(foreman, ?)"
+	foreman := fmt.Sprintf("Foreman %d", seq)
+	return forceCompile(queryText, foreman)
 }
 
 func genJoinQuery(seq int) *query.Query {
 	// TODO use parametrised query.. once they exist :)
-	queryText := fmt.Sprintf("join factory rows (@key=factory%d, foreman=\"Foreman %d\")", seq, seq)
-	return forceCompile(queryText)
+	const queryText = "join factory rows (@key=??, foreman=?)"
+	factoryRow := fmt.Sprintf("factory%d", seq)
+	foreman := fmt.Sprintf("Foreman %d", seq)
+	return forceCompile(queryText, factoryRow, foreman)
 }
 
-func forceCompile(source string) *query.Query {
-	query, err := query.Compile(source)
+func forceCompile(source string, variables ...interface{}) *query.Query {
+	query, err := query.Compile(source, variables...)
 
 	if err != nil {
 		panic(err)
