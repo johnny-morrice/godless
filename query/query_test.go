@@ -12,6 +12,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+func init() {
+	log.SetLevel(log.LOG_DEBUG)
+}
+
 func TestParseQuery(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()

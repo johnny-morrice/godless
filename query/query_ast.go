@@ -380,16 +380,11 @@ type QuerySelectAST struct {
 func (ast *QuerySelectAST) Compile() (QuerySelect, error) {
 	qselect := QuerySelect{}
 
-	if ast.Limit.text != "" {
-		limit, converr := strconv.ParseUint(ast.Limit.text, __BASE_10, __BITS_32)
-
-		if converr != nil {
-			return QuerySelect{}, errors.Wrap(converr, "BUG convert limit failed")
+	if ast.Limit != nil {
+		err := ast.compileLimit(&qselect)
+		if err != nil {
+			errors.Wrap(err, "Select compile failed")
 		}
-
-		qselect.Limit = uint32(limit)
-	} else if ast.Limit.num != 0 {
-		qselect.Limit = uint32(ast.Limit.num)
 	}
 
 	if ast.Where != nil {
@@ -403,6 +398,22 @@ func (ast *QuerySelectAST) Compile() (QuerySelect, error) {
 	}
 
 	return qselect, nil
+}
+
+func (ast *QuerySelectAST) compileLimit(qselect *QuerySelect) error {
+	if ast.Limit.text != "" {
+		limit, converr := strconv.ParseUint(ast.Limit.text, __BASE_10, __BITS_32)
+
+		if converr != nil {
+			return errors.Wrap(converr, "BUG convert limit failed")
+		}
+
+		qselect.Limit = uint32(limit)
+	} else if ast.Limit.num != 0 {
+		qselect.Limit = uint32(ast.Limit.num)
+	}
+
+	return nil
 }
 
 type QueryWhereAST struct {

@@ -28,7 +28,7 @@ func TestPlaceholders(t *testing.T) {
 	placeholderTable := []placeholderTest{
 		placeholderTest{
 			source: "join ?? rows (@key=test)",
-			values: []interface{}{tableName},
+			values: []interface{}{string(tableName)},
 			expected: &Query{
 				TableKey: tableName,
 				OpCode:   JOIN,
@@ -43,7 +43,7 @@ func TestPlaceholders(t *testing.T) {
 		},
 		placeholderTest{
 			source: "select ??",
-			values: []interface{}{tableName},
+			values: []interface{}{string(tableName)},
 			expected: &Query{
 				TableKey: tableName,
 				OpCode:   SELECT,
@@ -51,7 +51,7 @@ func TestPlaceholders(t *testing.T) {
 		},
 		placeholderTest{
 			source: "join cars rows (@key=??, driver=?, ??=\"4wd\")",
-			values: []interface{}{rowName, driverName, specialFeature},
+			values: []interface{}{string(rowName), string(driverName), string(specialFeature)},
 			expected: &Query{
 				TableKey: carTable,
 				OpCode:   JOIN,
@@ -70,7 +70,7 @@ func TestPlaceholders(t *testing.T) {
 		},
 		placeholderTest{
 			source: "select cars where and(str_eq(??, ?), str_glob(??, ?)) limit ?",
-			values: []interface{}{specialFeature, fourWheeler, driverEntry, driverName, theLimit},
+			values: []interface{}{string(specialFeature), string(fourWheeler), string(driverEntry), string(driverName), theLimit},
 			expected: &Query{
 				TableKey: carTable,
 				OpCode:   SELECT,
@@ -100,11 +100,19 @@ func TestPlaceholders(t *testing.T) {
 		},
 	}
 
-	for _, test := range placeholderTable {
+	for i, test := range placeholderTable {
 		actual, err := Compile(test.source, test.values...)
 
-		testutil.AssertNil(t, err)
-		testutil.Assert(t, "Unexpected query", test.expected.Equals(actual))
+		if err != nil {
+			t.Error("Error at", i, ":", err)
+		}
+
+		if actual != nil {
+			testutil.Assert(t, "Unexpected query", test.expected.Equals(actual))
+		} else {
+			t.Error("actual was nil at", i)
+		}
+
 	}
 }
 
@@ -133,6 +141,8 @@ func TestInvalidPlaceholder(t *testing.T) {
 		actual, err := Compile(test.source, test.values)
 
 		testutil.AssertNonNil(t, err)
-		testutil.AssertNil(t, actual)
+		if actual != nil {
+			t.Error("actual was not nil")
+		}
 	}
 }

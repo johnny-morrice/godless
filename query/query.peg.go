@@ -928,7 +928,7 @@ func (p *QueryParser) Init() {
 							position55 := position
 							{
 								position56 := position
-								if !_rules[ruleLiteralPlaceholder]() {
+								if !_rules[ruleKeyPlaceholder]() {
 									goto l43
 								}
 								add(rulePegText, position56)
@@ -1093,7 +1093,7 @@ func (p *QueryParser) Init() {
 		},
 		/* 6 JoinRowKey <- <('@' 'k' 'e' 'y' Spacing '=' Spacing (JoinRowKeyValueText / JoinRowKeyValuePlaceholder))> */
 		nil,
-		/* 7 JoinRowKeyValuePlaceholder <- <(<LiteralPlaceholder> Action5)> */
+		/* 7 JoinRowKeyValuePlaceholder <- <(<KeyPlaceholder> Action5)> */
 		nil,
 		/* 8 JoinRowKeyValueText <- <((('@' '"' <Literal> '"') / <Key>) Action6)> */
 		nil,
