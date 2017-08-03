@@ -141,10 +141,8 @@ func (console Console) readEvalPrint() (bool, error) {
 
 func (console *Console) printResponseTables(resp api.Response, q *query.Query) {
 	if q.OpCode == query.SELECT {
-		console.printNamespaceTables(resp.Namespace)
+		FprintNamespaceTable(console.outputBuffer, resp)
 	}
-
-	console.printPath(resp.Path)
 }
 
 func (console *Console) printIndexTables(index crdt.Index) {
@@ -155,26 +153,23 @@ func (console *Console) printIndexTables(index crdt.Index) {
 	table := makeIndexTable(index)
 	table.fprint(console.outputBuffer)
 }
+func (console *Console) printf(format string, args ...interface{}) {
+	fmt.Fprintf(console.outputBuffer, format, args...)
+}
 
-func (console *Console) printNamespaceTables(namespace crdt.Namespace) {
-	if namespace.IsEmpty() {
-		console.printf("No results returned.\n")
+func FprintNamespaceTable(w io.Writer, resp api.Response) {
+	if resp.Namespace.IsEmpty() {
+		fmt.Fprintln(w, "No results returned.")
 		return
 	}
 
-	table := makeNamespaceTable(namespace)
-	table.fprint(console.outputBuffer)
-	console.printf("\nFound %d Namespace Entries.\n", table.countrows())
-}
+	table := makeNamespaceTable(resp.Namespace)
+	table.fprint(w)
+	fmt.Fprintf(w, "\nFound %d Namespace Entries.\n", table.countrows())
 
-func (console *Console) printPath(path crdt.IPFSPath) {
-	if !crdt.IsNilPath(path) {
-		fmt.Println(path)
+	if !crdt.IsNilPath(resp.Path) {
+		fmt.Println(resp.Path)
 	}
-}
-
-func (console *Console) printf(format string, args ...interface{}) {
-	fmt.Fprintf(console.outputBuffer, format, args...)
 }
 
 func makeIndexTable(index crdt.Index) *monospaceTable {
