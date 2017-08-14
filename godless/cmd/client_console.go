@@ -82,7 +82,8 @@ func openConsoleHistory(options *cli.TerminalOptions) *os.File {
 func init() {
 	queryCmd.AddCommand(clientConsoleCmd)
 
-	clientConsoleCmd.Flags().StringVar(&consoleHistoryFilePath, "history", __DEFAULT_CONSOLE_HISTORY, "Console history file")
+	defaultHistoryPath := homePath(__DEFAULT_CONSOLE_HISTORY)
+	clientConsoleCmd.Flags().StringVar(&consoleHistoryFilePath, "history", defaultHistoryPath, "Console history file")
 }
 
 const __DEFAULT_CONSOLE_HISTORY = ".godless_history"
