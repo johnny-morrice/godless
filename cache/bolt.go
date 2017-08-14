@@ -546,6 +546,11 @@ func putMessage(bucket *bolt.Bucket, key []byte, value pb.Message) error {
 
 func putCacheItem(bucket *bolt.Bucket, key []byte, value pb.Message) error {
 	keyText := string(key)
+
+	if isKeyPresent(bucket, key) {
+		return nil
+	}
+
 	valueBytes, err := pb.Marshal(value)
 
 	if err != nil {
@@ -603,6 +608,12 @@ func getCacheItemValue(bucket *bolt.Bucket, key []byte, value pb.Message) error 
 	}
 
 	return nil
+}
+
+func isKeyPresent(bucket *bolt.Bucket, key []byte) bool {
+	bkt := bucket.Bucket(key)
+	value := bucket.Get(key)
+	return bkt != nil || value != nil
 }
 
 func deslice64(bs []byte) int64 {
