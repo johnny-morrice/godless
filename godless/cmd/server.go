@@ -28,12 +28,13 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	lib "github.com/johnny-morrice/godless"
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/cache"
 	"github.com/johnny-morrice/godless/http"
 	"github.com/johnny-morrice/godless/log"
-	"github.com/spf13/cobra"
 )
 
 // serveCmd represents the serve command
@@ -78,6 +79,7 @@ func serve(cmd *cobra.Command) {
 	}
 
 	godless, err := lib.New(options)
+	defer shutdown(godless)
 
 	if err != nil {
 		die(err)
@@ -88,8 +90,6 @@ func serve(cmd *cobra.Command) {
 	for runError := range godless.Errors() {
 		log.Error("%s", runError.Error())
 	}
-
-	defer shutdown(godless)
 }
 
 var addr string
@@ -154,16 +154,19 @@ func getBoltFactoryInstance() *cache.BoltFactory {
 }
 
 func shutdownOnTrap(godless *lib.Godless) {
-	onTrap(func(signal os.Signal) {
+	installTrapHandler(func(signal os.Signal) {
 		log.Warn("Caught signal: %s", signal.String())
-		shutdown(godless)
+		go func() {
+			shutdown(godless)
+		}()
 	})
 }
 
-func onTrap(handler func(signal os.Signal)) {
+func installTrapHandler(handler func(signal os.Signal)) {
 	sigch := make(chan os.Signal, 1)
 	signal.Notify(sigch, os.Interrupt, os.Kill)
 	sig := <-sigch
+	signal.Reset(os.Interrupt, os.Kill)
 	handler(sig)
 }
 
@@ -176,12 +179,16 @@ func shutdown(godless *lib.Godless) {
 	os.Exit(0)
 }
 
+func homePath(relativePath string) string {
+	home := os.Getenv("HOME")
+	return path.Join(home, relativePath)
+}
+
 func init() {
 	storeCmd.AddCommand(serveCmd)
-	home := os.Getenv("HOME")
 
 	defaultLimit := runtime.NumCPU()
-	defaultBoltDb := path.Join(home, __DEFAULT_BOLT_DB_PATH_NAME)
+	defaultBoltDb := homePath(__DEFAULT_BOLT_DB_PATH_NAME)
 
 	serveCmd.PersistentFlags().StringVar(&addr, "address", __DEFAULT_LISTEN_ADDR, "Listen address for server")
 	serveCmd.PersistentFlags().DurationVar(&interval, "synctime", __DEFAULT_REPLICATION_INTERVAL, "Interval between peer replications")

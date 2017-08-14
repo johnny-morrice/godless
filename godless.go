@@ -66,6 +66,9 @@ type Options struct {
 	PublicServer bool
 	// WebService is optional.
 	WebService api.WebService
+	// Shutdown mechanism
+	shutdownLock         sync.Mutex
+	isShutdownInProgress bool
 }
 
 // Godless is a peer-to-peer database.  It shares structured data between peers, using IPFS as a backing store.
@@ -176,6 +179,14 @@ func (godless *Godless) Errors() <-chan error {
 
 // Shutdown stops all godless processes.  It waits for all processes to stop.
 func (godless *Godless) Shutdown() {
+	godless.shutdownLock.Lock()
+	defer godless.shutdownLock.Unlock()
+
+	if godless.isShutdownInProgress {
+		return
+	}
+
+	godless.isShutdownInProgress = true
 	godless.api.CloseAPI()
 
 	if godless.WebService != nil {
