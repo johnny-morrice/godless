@@ -261,6 +261,8 @@ func (rn *remoteNamespace) joinPeerIndex(links []crdt.Link) api.Response {
 	joined := crdt.EmptyIndex()
 
 	someFailed := false
+	updateHappened := false
+
 	for _, link := range links {
 		if !rn.IsPublicIndex {
 			log.Info("Verifying link...")
@@ -275,6 +277,17 @@ func (rn *remoteNamespace) joinPeerIndex(links []crdt.Link) api.Response {
 
 		peerAddr := link.Path()
 
+		myAddr, err := rn.getHead()
+
+		if err == nil {
+			if myAddr == peerAddr {
+				log.Debug("Skipping replication of %s", myAddr)
+				continue
+			}
+		} else {
+			log.Error("Could not get HEAD to prevent potentially useless replication of %s", peerAddr)
+		}
+
 		theirIndex, theirErr := rn.loadIndex(peerAddr)
 
 		if theirErr != nil {
@@ -284,6 +297,14 @@ func (rn *remoteNamespace) joinPeerIndex(links []crdt.Link) api.Response {
 		}
 
 		joined = joined.JoinIndex(theirIndex)
+		updateHappened = true
+	}
+
+	if !updateHappened {
+		log.Info("No replication necessary")
+		resp := api.RESPONSE_REPLICATE
+		resp.Msg = "Ok with no updates"
+		return resp
 	}
 
 	indexAddr, perr := rn.insertIndex(joined)
