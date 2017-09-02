@@ -156,5 +156,9 @@ func init() {
 	mockStoreServeCmd.PersistentFlags().DurationVar(&serverTimeout, "timeout", __DEFAULT_SERVER_TIMEOUT, "Timeout for serverside HTTP queries")
 	mockStoreServeCmd.PersistentFlags().IntVar(&apiQueueLength, "qlength", __DEFAULT_QUEUE_LENGTH, "API Priority queue length")
 	mockStoreServeCmd.PersistentFlags().IntVar(&bufferLength, "buffer", __DEFAULT_BUFFER_LENGTH, "Buffer length")
+	// BUG reusing this variable.
+	// Cobra doesn't wait till a command is run to insert the default value, it happens right away.
+	// We should create a parameter data structure for each command.
+	// There might be other variants of this bug lurking.
 	mockStoreServeCmd.PersistentFlags().StringVar(&testDatabaseFilePath, "dbpath", tempDbPath, "Embedded database file path")
 }

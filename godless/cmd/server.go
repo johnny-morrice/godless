@@ -182,6 +182,7 @@ func init() {
 
 	defaultBoltDb := homePath(__DEFAULT_BOLT_DB_PATH_NAME)
 
+	// TODO remove duplication with non-mock version.
 	serveCmd.PersistentFlags().StringVar(&addr, "address", __DEFAULT_LISTEN_ADDR, "Listen address for server")
 	serveCmd.PersistentFlags().DurationVar(&interval, "synctime", __DEFAULT_REPLICATION_INTERVAL, "Interval between peer replications")
 	serveCmd.PersistentFlags().DurationVar(&pulse, "pulse", __DEFAULT_PULSE, "Interval between writes to IPFS")
