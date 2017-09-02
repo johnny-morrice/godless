@@ -185,7 +185,6 @@ func init() {
 const __MEMORY_CACHE_TYPE = "memory"
 const __BOLT_CACHE_TYPE = "disk"
 
-const __DEFAULT_LOG_LEVEL = "debug"
 const __DEFAULT_BOLT_DB_PATH_NAME = ".godless.bolt"
 const __DEFAULT_EARLY_CONNECTION = false
 const __DEFAULT_SERVER_PUBLIC_STATUS = false

@@ -35,7 +35,10 @@ var RootCmd = &cobra.Command{
 	Use:   "godless",
 	Short: "A peer-to-peer database over IPFS",
 	Long: `Godless is a distributed NoSQL database using Consistent Replicated
-	Data Types and the Interplanetary File System..`,
+	Data Types and the Interplanetary File System.`,
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		log.SetLevel(getLogLevel())
+	},
 }
 
 var cfgFile string
@@ -68,7 +71,7 @@ func getLogLevel() log.LogLevel {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	RootCmd.PersistentFlags().StringVar(&logLevelText, "logLevel", __DEFAULT_LOG_LEVEL, "(debug|info|warn|error|nothing)")
+	RootCmd.PersistentFlags().StringVar(&logLevelText, "loglevel", __DEFAULT_LOG_LEVEL, "(debug|info|warn|error|nothing)")
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.godless.json)")
 }
 
@@ -89,4 +92,5 @@ func initConfig() {
 	}
 }
 
+const __DEFAULT_LOG_LEVEL = "INFO"
 const __CONFIG_FILE_NAME = ".godless"
