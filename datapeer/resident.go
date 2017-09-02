@@ -35,6 +35,10 @@ type residentMemoryStorage struct {
 }
 
 func MakeResidentMemoryStorage(options ResidentMemoryStorageOptions) api.ContentAddressableStorage {
+	if options.Hash == 0 {
+		options.Hash = crypto.MD5
+	}
+
 	return &residentMemoryStorage{
 		ResidentMemoryStorageOptions: options,
 		hashes: map[string][]byte{},

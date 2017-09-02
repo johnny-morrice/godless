@@ -21,6 +21,7 @@
 package cmd
 
 import (
+	gohttp "net/http"
 	"os"
 	"os/signal"
 	"path"
@@ -43,22 +44,27 @@ var serveCmd = &cobra.Command{
 	Long:  `A godless server listens to queries over HTTP.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		readKeysFromViper()
-		serve(cmd)
+		serve(serveOptions())
 	},
 }
 
-func serve(cmd *cobra.Command) {
-	client := http.MakeBackendHttpClient(serverTimeout)
+func serveOptions() lib.Options {
+	client := makeBackendClient()
 
-	queue := makePriorityQueue(cmd)
-	memimg, err := makeMemoryImage()
+	queue := makePriorityQueue()
+	memimg, err := makeBoltMemoryImage()
+
+	if err != nil {
+		die(err)
+	}
+
 	cache, err := makeBoltCache()
 
 	if err != nil {
 		die(err)
 	}
 
-	options := lib.Options{
+	return lib.Options{
 		IpfsServiceUrl:    ipfsService,
 		WebServiceAddr:    addr,
 		IndexHash:         hash,
@@ -74,7 +80,13 @@ func serve(cmd *cobra.Command) {
 		Cache:             cache,
 		MemoryImage:       memimg,
 	}
+}
 
+func makeBackendClient() *gohttp.Client {
+	return http.MakeBackendHttpClient(serverTimeout)
+}
+
+func serve(options lib.Options) {
 	godless, err := lib.New(options)
 	defer shutdown(godless)
 
@@ -106,13 +118,14 @@ func makeBoltCache() (api.Cache, error) {
 	return factory.MakeCache()
 }
 
-func makeMemoryImage() (api.MemoryImage, error) {
+func makeBoltMemoryImage() (api.MemoryImage, error) {
 	factory := getBoltFactoryInstance()
 	return factory.MakeMemoryImage()
 }
 
 func getBoltFactoryInstance() *cache.BoltFactory {
 	if boltFactory == nil {
+		log.Info("Using database file: '%s'", databaseFilePath)
 		options := cache.BoltOptions{
 			FilePath: databaseFilePath,
 			Mode:     0600,
@@ -146,7 +159,7 @@ func installTrapHandler(handler func(signal os.Signal)) {
 	handler(sig)
 }
 
-func makePriorityQueue(cmd *cobra.Command) api.RequestPriorityQueue {
+func makePriorityQueue() api.RequestPriorityQueue {
 	return cache.MakeResidentBufferQueue(apiQueueLength)
 }
 
@@ -169,7 +182,6 @@ func init() {
 
 	defaultBoltDb := homePath(__DEFAULT_BOLT_DB_PATH_NAME)
 
-	// TODO remove duplication with non-mock version.
 	serveCmd.PersistentFlags().StringVar(&addr, "address", __DEFAULT_LISTEN_ADDR, "Listen address for server")
 	serveCmd.PersistentFlags().DurationVar(&interval, "synctime", __DEFAULT_REPLICATION_INTERVAL, "Interval between peer replications")
 	serveCmd.PersistentFlags().DurationVar(&pulse, "pulse", __DEFAULT_PULSE, "Interval between writes to IPFS")
