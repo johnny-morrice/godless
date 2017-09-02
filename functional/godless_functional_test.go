@@ -109,7 +109,7 @@ func TestGodlessReplicateFunctional(t *testing.T) {
 }
 
 func BenchmarkGodlessRequestFunctionalWithoutCache(b *testing.B) {
-	log.SetLevel(log.LOG_ERROR)
+	log.SetLevel(log.ERROR)
 	godless, err := godlessWithoutCache()
 	if err != nil {
 		panic(err)

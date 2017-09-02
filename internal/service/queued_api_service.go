@@ -163,7 +163,7 @@ func (service *queuedApiService) replicate(request api.Request) (<-chan api.Resp
 
 func (service *queuedApiService) runQuery(request api.Request) (<-chan api.Response, error) {
 	query := request.Query
-	if log.CanLog(log.LOG_INFO) {
+	if log.CanLog(log.INFO) {
 		text, err := query.PrettyText()
 		if err == nil {
 			log.Info("api.APIService running query.Query:\n%s", text)

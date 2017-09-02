@@ -21,7 +21,6 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 	"os/signal"
 	"path"
@@ -49,13 +48,11 @@ var serveCmd = &cobra.Command{
 }
 
 func serve(cmd *cobra.Command) {
-	log.SetLevel(log.LOG_DEBUG)
-
 	client := http.MakeBackendHttpClient(serverTimeout)
 
 	queue := makePriorityQueue(cmd)
 	memimg, err := makeMemoryImage()
-	cache, err := makeCache(cmd)
+	cache, err := makeBoltCache()
 
 	if err != nil {
 		die(err)
@@ -98,36 +95,15 @@ var pulse time.Duration
 var earlyConnect bool
 var apiQueryLimit int
 var apiQueueLength int
-var memoryBufferLength int
+var bufferLength int
 var publicServer bool
 var serverTimeout time.Duration
-var cacheType string
 var databaseFilePath string
 var boltFactory *cache.BoltFactory
-
-func makeCache(cmd *cobra.Command) (api.Cache, error) {
-	switch cacheType {
-	case __MEMORY_CACHE_TYPE:
-		return makeMemoryCache()
-	case __BOLT_CACHE_TYPE:
-		return makeBoltCache()
-	default:
-		err := fmt.Errorf("Unknown cache: '%s'", cacheType)
-		cmd.Help()
-		die(err)
-	}
-
-	return nil, fmt.Errorf("Bug in makeCache")
-}
 
 func makeBoltCache() (api.Cache, error) {
 	factory := getBoltFactoryInstance()
 	return factory.MakeCache()
-}
-
-func makeMemoryCache() (api.Cache, error) {
-	memCache := cache.MakeResidentMemoryCache(memoryBufferLength, memoryBufferLength)
-	return memCache, nil
 }
 
 func makeMemoryImage() (api.MemoryImage, error) {
@@ -184,28 +160,32 @@ func homePath(relativePath string) string {
 	return path.Join(home, relativePath)
 }
 
+func defaultConcurrency() int {
+	return runtime.NumCPU()
+}
+
 func init() {
 	storeCmd.AddCommand(serveCmd)
 
-	defaultLimit := runtime.NumCPU()
 	defaultBoltDb := homePath(__DEFAULT_BOLT_DB_PATH_NAME)
 
+	// TODO remove duplication with non-mock version.
 	serveCmd.PersistentFlags().StringVar(&addr, "address", __DEFAULT_LISTEN_ADDR, "Listen address for server")
 	serveCmd.PersistentFlags().DurationVar(&interval, "synctime", __DEFAULT_REPLICATION_INTERVAL, "Interval between peer replications")
 	serveCmd.PersistentFlags().DurationVar(&pulse, "pulse", __DEFAULT_PULSE, "Interval between writes to IPFS")
 	serveCmd.PersistentFlags().BoolVar(&earlyConnect, "early", __DEFAULT_EARLY_CONNECTION, "Early check on IPFS API access")
-	serveCmd.PersistentFlags().IntVar(&apiQueryLimit, "concurrent", defaultLimit, "Number of simulataneous queries run by the API. limit < 0 for no restrictions.")
+	serveCmd.PersistentFlags().IntVar(&apiQueryLimit, "concurrent", defaultConcurrency(), "Number of simulataneous queries run by the API. limit < 0 for no restrictions.")
 	serveCmd.PersistentFlags().BoolVar(&publicServer, "public", __DEFAULT_SERVER_PUBLIC_STATUS, "Don't limit pubsub updates to the public key list")
 	serveCmd.PersistentFlags().DurationVar(&serverTimeout, "timeout", __DEFAULT_SERVER_TIMEOUT, "Timeout for serverside HTTP queries")
 	serveCmd.PersistentFlags().IntVar(&apiQueueLength, "qlength", __DEFAULT_QUEUE_LENGTH, "API Priority queue length")
-	serveCmd.PersistentFlags().StringVar(&cacheType, "cache", __DEFAULT_CACHE_TYPE, "Cache type (disk|memory)")
-	serveCmd.PersistentFlags().IntVar(&memoryBufferLength, "buffer", __DEFAULT_MEMORY_BUFFER_LENGTH, "Buffer length if using memory cache")
+	serveCmd.PersistentFlags().IntVar(&bufferLength, "buffer", __DEFAULT_BUFFER_LENGTH, "Buffer length")
 	serveCmd.PersistentFlags().StringVar(&databaseFilePath, "dbpath", defaultBoltDb, "Embedded database file path")
 }
 
 const __MEMORY_CACHE_TYPE = "memory"
 const __BOLT_CACHE_TYPE = "disk"
 
+const __DEFAULT_LOG_LEVEL = "debug"
 const __DEFAULT_BOLT_DB_PATH_NAME = ".godless.bolt"
 const __DEFAULT_EARLY_CONNECTION = false
 const __DEFAULT_SERVER_PUBLIC_STATUS = false
@@ -215,4 +195,4 @@ const __DEFAULT_SERVER_TIMEOUT = time.Minute * 10
 const __DEFAULT_QUEUE_LENGTH = 4096
 const __DEFAULT_PULSE = time.Second * 10
 const __DEFAULT_REPLICATION_INTERVAL = time.Minute
-const __DEFAULT_MEMORY_BUFFER_LENGTH = -1
+const __DEFAULT_BUFFER_LENGTH = -1

@@ -283,7 +283,7 @@ func Compile(source string, variables ...interface{}) (*Query, error) {
 	parser.Init()
 
 	if err := parser.Parse(); err != nil {
-		if log.CanLog(log.LOG_DEBUG) {
+		if log.CanLog(log.DEBUG) {
 			parser.PrintSyntaxTree()
 		}
 
@@ -298,7 +298,7 @@ func Compile(source string, variables ...interface{}) (*Query, error) {
 	query, err := parser.QueryAST.Compile(context)
 
 	if err != nil {
-		if log.CanLog(log.LOG_DEBUG) {
+		if log.CanLog(log.DEBUG) {
 			log.Debug("AST:\n\n%s\n\n", prettyPrintJson(parser.QueryAST))
 			parser.PrintSyntaxTree()
 		}

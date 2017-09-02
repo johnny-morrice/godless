@@ -14,7 +14,7 @@ import (
 )
 
 func init() {
-	log.SetLevel(log.LOG_DEBUG)
+	log.SetLevel(log.DEBUG)
 }
 
 func (request Request) Generate(rand *rand.Rand, size int) reflect.Value {

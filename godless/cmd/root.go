@@ -30,17 +30,16 @@ import (
 	"github.com/johnny-morrice/godless/log"
 )
 
-var cfgFile string
-
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
 	Use:   "godless",
-	Short: "A distributed database for IPFS",
+	Short: "A peer-to-peer database over IPFS",
 	Long: `Godless is a distributed NoSQL database using Consistent Replicated
-	Data Types and the Interplanetary File System.
-
-	It supports lazy loading of resources from remote IPFS peers.`,
+	Data Types and the Interplanetary File System..`,
 }
+
+var cfgFile string
+var logLevelText string
 
 // Execute adds all child commands to the root command sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
@@ -56,9 +55,20 @@ func die(err error) {
 	os.Exit(1)
 }
 
+func getLogLevel() log.LogLevel {
+	level, err := log.Parse(logLevelText)
+
+	if err != nil {
+		die(err)
+	}
+
+	return level
+}
+
 func init() {
 	cobra.OnInitialize(initConfig)
 
+	RootCmd.PersistentFlags().StringVar(&logLevelText, "logLevel", __DEFAULT_LOG_LEVEL, "(debug|info|warn|error|nothing)")
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.godless.json)")
 }
 

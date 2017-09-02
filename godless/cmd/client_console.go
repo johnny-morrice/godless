@@ -34,7 +34,7 @@ var clientConsoleCmd = &cobra.Command{
 	Short: "Godless terminal console",
 	Long:  `A REPL console for evaluating godless queries.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.SetLevel(log.LOG_WARN)
+		log.SetLevel(log.WARN)
 
 		options := cli.TerminalOptions{
 			Client: makeClient(),

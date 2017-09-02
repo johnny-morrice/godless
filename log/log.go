@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 
 	"github.com/davecgh/go-spew/spew"
 )
@@ -12,29 +13,49 @@ import (
 
 type LogLevel uint8
 
+func Parse(text string) (LogLevel, error) {
+	upperText := strings.ToUpper(text)
+	switch upperText {
+	case __DEBUG_TEXT:
+		return DEBUG, nil
+	case __INFO_TEXT:
+		return INFO, nil
+	case "WARNING":
+		fallthrough
+	case __WARN_TEXT:
+		return WARN, nil
+	case __ERROR_TEXT:
+		return ERROR, nil
+	case __NOTHING_TEXT:
+		return NOTHING, nil
+	}
+
+	return DEBUG, fmt.Errorf("Unknown log level: '%s'", text)
+}
+
 func (level LogLevel) String() string {
 	switch level {
-	case LOG_NOTHING:
-		return "NOTHING"
-	case LOG_DEBUG:
-		return "DEBUG"
-	case LOG_WARN:
-		return "WARN"
-	case LOG_ERROR:
-		return "ERROR"
-	case LOG_INFO:
-		return "INFO"
+	case NOTHING:
+		return __NOTHING_TEXT
+	case DEBUG:
+		return __DEBUG_TEXT
+	case WARN:
+		return __WARN_TEXT
+	case ERROR:
+		return __ERROR_TEXT
+	case INFO:
+		return __INFO_TEXT
 	default:
 		return strconv.Itoa(int(level))
 	}
 }
 
 const (
-	LOG_NOTHING = LogLevel(iota)
-	LOG_ERROR
-	LOG_WARN
-	LOG_INFO
-	LOG_DEBUG
+	NOTHING = LogLevel(iota)
+	ERROR
+	WARN
+	INFO
+	DEBUG
 )
 
 var __LOG_LEVEL LogLevel
@@ -49,26 +70,26 @@ func CanLog(level LogLevel) bool {
 }
 
 func Debug(msg string, args ...interface{}) {
-	if CanLog(LOG_DEBUG) {
-		logMsg(LOG_DEBUG.String(), msg, args...)
+	if CanLog(DEBUG) {
+		logMsg(DEBUG.String(), msg, args...)
 	}
 }
 
 func Info(msg string, args ...interface{}) {
-	if CanLog(LOG_INFO) {
-		logMsg(LOG_INFO.String(), msg, args...)
+	if CanLog(INFO) {
+		logMsg(INFO.String(), msg, args...)
 	}
 }
 
 func Warn(msg string, args ...interface{}) {
-	if CanLog(LOG_WARN) {
-		logMsg(LOG_WARN.String(), msg, args...)
+	if CanLog(WARN) {
+		logMsg(WARN.String(), msg, args...)
 	}
 }
 
 func Error(msg string, args ...interface{}) {
-	if CanLog(LOG_ERROR) {
-		logMsg(LOG_ERROR.String(), msg, args...)
+	if CanLog(ERROR) {
+		logMsg(ERROR.String(), msg, args...)
 	}
 }
 
@@ -82,3 +103,9 @@ func logMsg(level, msg string, args ...interface{}) {
 	spewDump := spew.Sprintf(format, args...)
 	log.Print(spewDump)
 }
+
+const __DEBUG_TEXT = "DEBUG"
+const __INFO_TEXT = "INFO"
+const __WARN_TEXT = "WARN"
+const __ERROR_TEXT = "ERROR"
+const __NOTHING_TEXT = "NOTHING"

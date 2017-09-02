@@ -38,7 +38,7 @@ var ipfsService string
 func init() {
 	RootCmd.AddCommand(storeCmd)
 
-	storeCmd.PersistentFlags().StringVar(&hash, "hash", "", "IPFS hash")
-	storeCmd.PersistentFlags().StringSliceVar(&topics, "topics", []string{}, "Comma separated list of pubsub topics")
-	storeCmd.PersistentFlags().StringVar(&ipfsService, "ipfs", "http://localhost:5001", "IPFS webservice URL")
+	mockStoreCmd.PersistentFlags().StringVar(&hash, "hash", "", "IPFS hash")
+	mockStoreCmd.PersistentFlags().StringSliceVar(&topics, "topics", []string{}, "Comma separated list of pubsub topics")
+	mockStoreCmd.PersistentFlags().StringVar(&ipfsService, "ipfs", "http://localhost:5001", "IPFS webservice URL")
 }

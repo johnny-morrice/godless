@@ -14,7 +14,7 @@ import (
 )
 
 func init() {
-	log.SetLevel(log.LOG_DEBUG)
+	log.SetLevel(log.DEBUG)
 }
 
 func TestPredicateKeysLiterals(t *testing.T) {

@@ -75,5 +75,5 @@ const TEST_SERVER_ADDR = "https://example.org"
 const TEST_COMMAND_ENDPOINT = "/api"
 
 func init() {
-	log.SetLevel(log.LOG_DEBUG)
+	log.SetLevel(log.DEBUG)
 }

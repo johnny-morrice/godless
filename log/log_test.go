@@ -4,15 +4,15 @@ import "testing"
 
 func TestCanLog(t *testing.T) {
 	table := map[LogLevel][]LogLevel{
-		LOG_NOTHING: []LogLevel{},
-		LOG_ERROR:   []LogLevel{LOG_ERROR},
-		LOG_WARN:    []LogLevel{LOG_ERROR, LOG_WARN},
-		LOG_INFO:    []LogLevel{LOG_ERROR, LOG_WARN, LOG_INFO},
-		LOG_DEBUG:   []LogLevel{LOG_ERROR, LOG_WARN, LOG_INFO, LOG_DEBUG},
+		NOTHING: []LogLevel{},
+		ERROR:   []LogLevel{ERROR},
+		WARN:    []LogLevel{ERROR, WARN},
+		INFO:    []LogLevel{ERROR, WARN, INFO},
+		DEBUG:   []LogLevel{ERROR, WARN, INFO, DEBUG},
 	}
 
 	userLogLevels := []LogLevel{
-		LOG_ERROR, LOG_WARN, LOG_INFO, LOG_DEBUG,
+		ERROR, WARN, INFO, DEBUG,
 	}
 
 	for current, permitted := range table {
