@@ -21,7 +21,6 @@
 package cmd
 
 import (
-	gohttp "net/http"
 	"os"
 	"os/signal"
 	"path"
@@ -49,16 +48,28 @@ var serveCmd = &cobra.Command{
 }
 
 func serveOptions() lib.Options {
-	client := makeBackendClient()
+	params := storeServerParams.Merge(storeParams)
+	addr := *params.String(__SERVER_ADDR_FLAG)
+	earlyConnect := *params.Bool(__SERVER_EARLY_FLAG)
+	interval := *params.Duration(__SERVER_SYNC_FLAG)
+	apiQueryLimit := *params.Int(__SERVER_CONCURRENT_FLAG)
+	publicServer := *params.Bool(__SERVER_PUBLIC_FLAG)
+	pulse := *params.Duration(__SERVER_PULSE_FLAG)
+	serverTimeout := *params.Duration(__SERVER_TIMEOUT_FLAG)
+	ipfsService := *params.String(__STORE_IPFS_FLAG)
+	hash := *params.String(__STORE_HASH_FLAG)
+	topics := *params.StringSlice(__STORE_TOPICS_FLAG)
 
-	queue := makePriorityQueue()
-	memimg, err := makeBoltMemoryImage()
+	client := http.MakeBackendHttpClient(serverTimeout)
+
+	queue := makePriorityQueue(storeServerParams)
+	memimg, err := makeBoltMemoryImage(storeServerParams)
 
 	if err != nil {
 		die(err)
 	}
 
-	cache, err := makeBoltCache()
+	cache, err := makeBoltCache(storeServerParams)
 
 	if err != nil {
 		die(err)
@@ -82,10 +93,6 @@ func serveOptions() lib.Options {
 	}
 }
 
-func makeBackendClient() *gohttp.Client {
-	return http.MakeBackendHttpClient(serverTimeout)
-}
-
 func serve(options lib.Options) {
 	godless, err := lib.New(options)
 	defer shutdown(godless)
@@ -101,30 +108,21 @@ func serve(options lib.Options) {
 	}
 }
 
-var addr string
-var interval time.Duration
-var pulse time.Duration
-var earlyConnect bool
-var apiQueryLimit int
-var apiQueueLength int
-var bufferLength int
-var publicServer bool
-var serverTimeout time.Duration
-var databaseFilePath string
-var boltFactory *cache.BoltFactory
-
-func makeBoltCache() (api.Cache, error) {
-	factory := getBoltFactoryInstance()
+func makeBoltCache(params *Parameters) (api.Cache, error) {
+	factory := getBoltFactoryInstance(params)
 	return factory.MakeCache()
 }
 
-func makeBoltMemoryImage() (api.MemoryImage, error) {
-	factory := getBoltFactoryInstance()
+func makeBoltMemoryImage(params *Parameters) (api.MemoryImage, error) {
+	factory := getBoltFactoryInstance(params)
 	return factory.MakeMemoryImage()
 }
 
-func getBoltFactoryInstance() *cache.BoltFactory {
+var boltFactory *cache.BoltFactory
+
+func getBoltFactoryInstance(params *Parameters) *cache.BoltFactory {
 	if boltFactory == nil {
+		databaseFilePath := *params.String(__SERVER_DATABASE_FLAG)
 		log.Info("Using database file: '%s'", databaseFilePath)
 		options := cache.BoltOptions{
 			FilePath: databaseFilePath,
@@ -159,7 +157,8 @@ func installTrapHandler(handler func(signal os.Signal)) {
 	handler(sig)
 }
 
-func makePriorityQueue() api.RequestPriorityQueue {
+func makePriorityQueue(params *Parameters) api.RequestPriorityQueue {
+	apiQueueLength := *params.Int(__SERVER_QUEUE_FLAG)
 	return cache.MakeResidentBufferQueue(apiQueueLength)
 }
 
@@ -177,28 +176,41 @@ func defaultConcurrency() int {
 	return runtime.NumCPU()
 }
 
+var storeServerParams *Parameters = &Parameters{}
+
 func init() {
 	storeCmd.AddCommand(serveCmd)
 
-	defaultBoltDb := homePath(__DEFAULT_BOLT_DB_PATH_NAME)
+	defaultBoltDb := homePath(__DEFAULT_BOLT_DB_FILENAME)
 
-	// TODO remove duplication with non-mock version.
-	serveCmd.PersistentFlags().StringVar(&addr, "address", __DEFAULT_LISTEN_ADDR, "Listen address for server")
-	serveCmd.PersistentFlags().DurationVar(&interval, "synctime", __DEFAULT_REPLICATION_INTERVAL, "Interval between peer replications")
-	serveCmd.PersistentFlags().DurationVar(&pulse, "pulse", __DEFAULT_PULSE, "Interval between writes to IPFS")
-	serveCmd.PersistentFlags().BoolVar(&earlyConnect, "early", __DEFAULT_EARLY_CONNECTION, "Early check on IPFS API access")
-	serveCmd.PersistentFlags().IntVar(&apiQueryLimit, "concurrent", defaultConcurrency(), "Number of simulataneous queries run by the API. limit < 0 for no restrictions.")
-	serveCmd.PersistentFlags().BoolVar(&publicServer, "public", __DEFAULT_SERVER_PUBLIC_STATUS, "Don't limit pubsub updates to the public key list")
-	serveCmd.PersistentFlags().DurationVar(&serverTimeout, "timeout", __DEFAULT_SERVER_TIMEOUT, "Timeout for serverside HTTP queries")
-	serveCmd.PersistentFlags().IntVar(&apiQueueLength, "qlength", __DEFAULT_QUEUE_LENGTH, "API Priority queue length")
-	serveCmd.PersistentFlags().IntVar(&bufferLength, "buffer", __DEFAULT_BUFFER_LENGTH, "Buffer length")
-	serveCmd.PersistentFlags().StringVar(&databaseFilePath, "dbpath", defaultBoltDb, "Embedded database file path")
+	addServerParams(serveCmd, storeServerParams, defaultBoltDb)
 }
 
-const __MEMORY_CACHE_TYPE = "memory"
-const __BOLT_CACHE_TYPE = "disk"
+func addServerParams(cmd *cobra.Command, params *Parameters, dbPath string) {
+	cmd.PersistentFlags().StringVar(params.String(__SERVER_ADDR_FLAG), __SERVER_ADDR_FLAG, __DEFAULT_LISTEN_ADDR, "Listen address for server")
+	cmd.PersistentFlags().DurationVar(params.Duration(__SERVER_SYNC_FLAG), __SERVER_SYNC_FLAG, __DEFAULT_REPLICATION_INTERVAL, "Interval between peer replications")
+	cmd.PersistentFlags().DurationVar(params.Duration(__SERVER_PULSE_FLAG), __SERVER_PULSE_FLAG, __DEFAULT_PULSE, "Interval between writes to IPFS")
+	cmd.PersistentFlags().BoolVar(params.Bool(__SERVER_EARLY_FLAG), __SERVER_EARLY_FLAG, __DEFAULT_EARLY_CONNECTION, "Early check on IPFS API access")
+	cmd.PersistentFlags().IntVar(params.Int(__SERVER_CONCURRENT_FLAG), __SERVER_CONCURRENT_FLAG, defaultConcurrency(), "Number of simulataneous queries run by the API. limit < 0 for no restrictions.")
+	cmd.PersistentFlags().BoolVar(params.Bool(__SERVER_PUBLIC_FLAG), __SERVER_PUBLIC_FLAG, __DEFAULT_SERVER_PUBLIC_STATUS, "Don't limit pubsub updates to the public key list")
+	cmd.PersistentFlags().DurationVar(params.Duration(__SERVER_TIMEOUT_FLAG), __SERVER_TIMEOUT_FLAG, __DEFAULT_SERVER_TIMEOUT, "Timeout for serverside HTTP queries")
+	cmd.PersistentFlags().IntVar(params.Int(__SERVER_QUEUE_FLAG), __SERVER_QUEUE_FLAG, __DEFAULT_QUEUE_LENGTH, "API Priority queue length")
+	cmd.PersistentFlags().IntVar(params.Int(__SERVER_BUFFER_FLAG), __SERVER_BUFFER_FLAG, __DEFAULT_BUFFER_LENGTH, "Buffer length")
+	cmd.PersistentFlags().StringVar(params.String(__SERVER_DATABASE_FLAG), __SERVER_DATABASE_FLAG, dbPath, "Embedded database file path")
+}
 
-const __DEFAULT_BOLT_DB_PATH_NAME = ".godless.bolt"
+const __SERVER_ADDR_FLAG = "address"
+const __SERVER_SYNC_FLAG = "synctime"
+const __SERVER_PULSE_FLAG = "pulse"
+const __SERVER_EARLY_FLAG = "early"
+const __SERVER_CONCURRENT_FLAG = "concurrent"
+const __SERVER_PUBLIC_FLAG = "public"
+const __SERVER_TIMEOUT_FLAG = "timeout"
+const __SERVER_QUEUE_FLAG = "qlength"
+const __SERVER_BUFFER_FLAG = "buffer"
+const __SERVER_DATABASE_FLAG = "dbpath"
+
+const __DEFAULT_BOLT_DB_FILENAME = ".godless.bolt"
 const __DEFAULT_EARLY_CONNECTION = false
 const __DEFAULT_SERVER_PUBLIC_STATUS = false
 const __DEFAULT_CACHE_TYPE = __BOLT_CACHE_TYPE

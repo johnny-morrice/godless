@@ -54,13 +54,14 @@ var clientConsoleCmd = &cobra.Command{
 	},
 }
 
-var consoleHistoryFilePath string
+var clientConsoleParams *Parameters = &Parameters{}
 
 func openOrCreate(filePath string) (*os.File, error) {
 	return os.OpenFile(filePath, os.O_RDWR|os.O_CREATE, 0600)
 }
 
 func openConsoleHistory(options *cli.TerminalOptions) *os.File {
+	consoleHistoryFilePath := *clientConsoleParams.String(__CONSOLE_HISTORY_FLAG)
 	if consoleHistoryFilePath != "" {
 		historyFile, err := openOrCreate(consoleHistoryFilePath)
 
@@ -81,7 +82,8 @@ func init() {
 	queryCmd.AddCommand(clientConsoleCmd)
 
 	defaultHistoryPath := homePath(__DEFAULT_CONSOLE_HISTORY)
-	clientConsoleCmd.Flags().StringVar(&consoleHistoryFilePath, "history", defaultHistoryPath, "Console history file")
+	clientConsoleCmd.Flags().StringVar(clientConsoleParams.String(__CONSOLE_HISTORY_FLAG), __CONSOLE_HISTORY_FLAG, defaultHistoryPath, "Console history file")
 }
 
 const __DEFAULT_CONSOLE_HISTORY = ".godless_history"
+const __CONSOLE_HISTORY_FLAG = "history"

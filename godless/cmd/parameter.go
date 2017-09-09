@@ -12,6 +12,42 @@ type Parameters struct {
 	durs      map[string]*time.Duration
 }
 
+func (p *Parameters) Merge(other *Parameters) *Parameters {
+	merged := &Parameters{}
+
+	merged.absorb(p)
+	merged.absorb(other)
+
+	return merged
+}
+
+func (p *Parameters) absorb(other *Parameters) {
+	for k, str := range other.strs {
+		ptr := p.String(k)
+		*ptr = *str
+	}
+
+	for k, sl := range other.strSlices {
+		ptr := p.StringSlice(k)
+		*ptr = *sl
+	}
+
+	for k, i := range other.ints {
+		ptr := p.Int(k)
+		*ptr = *i
+	}
+
+	for k, dur := range other.durs {
+		ptr := p.Duration(k)
+		*ptr = *dur
+	}
+
+	for k, b := range other.bools {
+		ptr := p.Bool(k)
+		*ptr = *b
+	}
+}
+
 func (p *Parameters) String(flagName string) *string {
 	if p.strs == nil {
 		p.strs = map[string]*string{}

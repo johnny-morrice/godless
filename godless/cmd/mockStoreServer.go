@@ -35,22 +35,33 @@ var mockStoreServeCmd = &cobra.Command{
 }
 
 func mockServeOptions(cmd *cobra.Command) lib.Options {
+	params := mockStoreParams.Merge(mockStoreServerParams)
+	serverTimeout := *params.Duration(__SERVER_TIMEOUT_FLAG)
+	addr := *params.String(__SERVER_ADDR_FLAG)
+	earlyConnect := *params.Bool(__SERVER_EARLY_FLAG)
+	interval := *params.Duration(__SERVER_SYNC_FLAG)
+	apiQueryLimit := *params.Int(__SERVER_CONCURRENT_FLAG)
+	publicServer := *params.Bool(__SERVER_PUBLIC_FLAG)
+	pulse := *params.Duration(__SERVER_PULSE_FLAG)
 	client := http.MakeBackendHttpClient(serverTimeout)
 
-	queue := makePriorityQueue()
-	memimg, err := makeMockMemoryImage(cmd)
+	hash := *params.String(__STORE_HASH_FLAG)
+	topics := *params.StringSlice(__STORE_TOPICS_FLAG)
+
+	queue := makePriorityQueue(mockStoreServerParams)
+	memimg, err := makeMockMemoryImage(cmd, mockStoreServerParams)
 
 	if err != nil {
 		die(err)
 	}
 
-	cache, err := makeMockCache(cmd)
+	cache, err := makeMockCache(cmd, mockStoreServerParams)
 
 	if err != nil {
 		die(err)
 	}
 
-	peer, err := makeMockDataPeer(cmd)
+	peer, err := makeMockDataPeer(cmd, mockStoreServerParams)
 
 	if err != nil {
 		die(err)
@@ -74,18 +85,21 @@ func mockServeOptions(cmd *cobra.Command) lib.Options {
 	}
 }
 
-func makeMockDataPeer(cmd *cobra.Command) (api.DataPeer, error) {
+func makeMockDataPeer(cmd *cobra.Command, params *Parameters) (api.DataPeer, error) {
+	testMode := *mockStoreServerParams.Bool(__MOCK_SERVER_TESTMODE_FLAG)
 	if testMode {
 		return makeMemoryDataPeer()
 	} else {
-		return makeIpfsDataPeer()
+		return makeIpfsDataPeer(params)
 	}
 }
 
-func makeIpfsDataPeer() (api.DataPeer, error) {
+func makeIpfsDataPeer(params *Parameters) (api.DataPeer, error) {
+	timeout := *params.Duration(__SERVER_TIMEOUT_FLAG)
+	ipfsService := *params.String(__STORE_IPFS_FLAG)
 	options := datapeer.IpfsWebServiceOptions{
 		Url:  ipfsService,
-		Http: makeBackendClient(),
+		Http: http.MakeBackendHttpClient(timeout),
 	}
 	peer := datapeer.MakeIpfsWebService(options)
 	return peer, nil
@@ -98,12 +112,13 @@ func makeMemoryDataPeer() (api.DataPeer, error) {
 	return peer, nil
 }
 
-func makeMockCache(cmd *cobra.Command) (api.Cache, error) {
+func makeMockCache(cmd *cobra.Command, params *Parameters) (api.Cache, error) {
+	cacheType := *params.String(__MOCK_SERVER_CACHETYPE_FLAG)
 	switch cacheType {
 	case __MEMORY_CACHE_TYPE:
-		return makeMemoryCache()
+		return makeMemoryCache(params)
 	case __BOLT_CACHE_TYPE:
-		return makeBoltCache()
+		return makeBoltCache(params)
 	}
 
 	err := fmt.Errorf("Unknown cache: '%s'", cacheType)
@@ -112,10 +127,11 @@ func makeMockCache(cmd *cobra.Command) (api.Cache, error) {
 	panic("BUG")
 }
 
-func makeMockMemoryImage(cmd *cobra.Command) (api.MemoryImage, error) {
+func makeMockMemoryImage(cmd *cobra.Command, params *Parameters) (api.MemoryImage, error) {
+	cacheType := *params.String(__MOCK_SERVER_CACHETYPE_FLAG)
 	switch cacheType {
 	case __MEMORY_CACHE_TYPE:
-		return makeBoltMemoryImage()
+		return makeBoltMemoryImage(params)
 	case __BOLT_CACHE_TYPE:
 		return makeResidentMemoryImage()
 	}
@@ -126,7 +142,8 @@ func makeMockMemoryImage(cmd *cobra.Command) (api.MemoryImage, error) {
 	panic("BUG")
 }
 
-func makeMemoryCache() (api.Cache, error) {
+func makeMemoryCache(params *Parameters) (api.Cache, error) {
+	bufferLength := *params.Int(__SERVER_BUFFER_FLAG)
 	memCache := cache.MakeResidentMemoryCache(bufferLength, bufferLength)
 	return memCache, nil
 }
@@ -135,9 +152,7 @@ func makeResidentMemoryImage() (api.MemoryImage, error) {
 	return cache.MakeResidentMemoryImage(), nil
 }
 
-var cacheType string
-var testMode bool
-var testDatabaseFilePath string
+var mockStoreServerParams *Parameters = &Parameters{}
 
 func init() {
 	mockStoreCmd.AddCommand(mockStoreServeCmd)
@@ -145,20 +160,12 @@ func init() {
 	// TODO implement temp path
 	tempDbPath := "/tmp/GODLESS_MOCK_DB.bolt"
 
-	mockStoreServeCmd.PersistentFlags().BoolVar(&testMode, "testmode", true, "Fake it till you make it")
-	mockStoreServeCmd.PersistentFlags().StringVar(&cacheType, "cachetype", __DEFAULT_CACHE_TYPE, "Cache type")
-	mockStoreServeCmd.PersistentFlags().StringVar(&addr, "address", __DEFAULT_LISTEN_ADDR, "Listen address for server")
-	mockStoreServeCmd.PersistentFlags().DurationVar(&interval, "synctime", __DEFAULT_REPLICATION_INTERVAL, "Interval between peer replications")
-	mockStoreServeCmd.PersistentFlags().DurationVar(&pulse, "pulse", __DEFAULT_PULSE, "Interval between writes to IPFS")
-	mockStoreServeCmd.PersistentFlags().BoolVar(&earlyConnect, "early", __DEFAULT_EARLY_CONNECTION, "Early check on IPFS API access")
-	mockStoreServeCmd.PersistentFlags().IntVar(&apiQueryLimit, "concurrent", defaultConcurrency(), "Number of simulataneous queries run by the API. limit < 0 for no restrictions.")
-	mockStoreServeCmd.PersistentFlags().BoolVar(&publicServer, "public", __DEFAULT_SERVER_PUBLIC_STATUS, "Don't limit pubsub updates to the public key list")
-	mockStoreServeCmd.PersistentFlags().DurationVar(&serverTimeout, "timeout", __DEFAULT_SERVER_TIMEOUT, "Timeout for serverside HTTP queries")
-	mockStoreServeCmd.PersistentFlags().IntVar(&apiQueueLength, "qlength", __DEFAULT_QUEUE_LENGTH, "API Priority queue length")
-	mockStoreServeCmd.PersistentFlags().IntVar(&bufferLength, "buffer", __DEFAULT_BUFFER_LENGTH, "Buffer length")
-	// BUG reusing this variable.
-	// Cobra doesn't wait till a command is run to insert the default value, it happens right away.
-	// We should create a parameter data structure for each command.
-	// There might be other variants of this bug lurking.
-	mockStoreServeCmd.PersistentFlags().StringVar(&testDatabaseFilePath, "dbpath", tempDbPath, "Embedded database file path")
+	mockStoreServeCmd.PersistentFlags().BoolVar(mockStoreServerParams.Bool(__MOCK_SERVER_TESTMODE_FLAG), __MOCK_SERVER_TESTMODE_FLAG, true, "Fake it till you make it")
+	mockStoreServeCmd.PersistentFlags().StringVar(mockStoreServerParams.String(__MOCK_SERVER_CACHETYPE_FLAG), __MOCK_SERVER_CACHETYPE_FLAG, __DEFAULT_CACHE_TYPE, "Cache type")
+	addServerParams(mockStoreCmd, mockStoreServerParams, tempDbPath)
 }
+
+const __MOCK_SERVER_TESTMODE_FLAG = "testmode"
+const __MOCK_SERVER_CACHETYPE_FLAG = "cachetype"
+const __MEMORY_CACHE_TYPE = "memory"
+const __BOLT_CACHE_TYPE = "disk"

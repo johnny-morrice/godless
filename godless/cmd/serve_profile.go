@@ -18,6 +18,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+// TODO The functionality provided by this file should be handled under the new
+// 'benchmark' command coming in 0.20.0.
+
 package cmd
 
 import (

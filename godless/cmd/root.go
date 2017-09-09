@@ -41,9 +41,6 @@ var RootCmd = &cobra.Command{
 	},
 }
 
-var cfgFile string
-var logLevelText string
-
 // Execute adds all child commands to the root command sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
@@ -59,6 +56,7 @@ func die(err error) {
 }
 
 func getLogLevel() log.LogLevel {
+	logLevelText := *rootParams.String(__ROOT_LOGLEVEL_FLAG)
 	level, err := log.Parse(logLevelText)
 
 	if err != nil {
@@ -68,15 +66,9 @@ func getLogLevel() log.LogLevel {
 	return level
 }
 
-func init() {
-	cobra.OnInitialize(initConfig)
-
-	RootCmd.PersistentFlags().StringVar(&logLevelText, "loglevel", __DEFAULT_LOG_LEVEL, "(debug|info|warn|error|nothing)")
-	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.godless.json)")
-}
-
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
+	cfgFile := *rootParams.String(__ROOT_CONFIG_FLAG)
 	if cfgFile != "" { // enable ability to specify config file via flag
 		viper.SetConfigFile(cfgFile)
 	} else {
@@ -92,5 +84,16 @@ func initConfig() {
 	}
 }
 
+var rootParams *Parameters = &Parameters{}
+
+func init() {
+	cobra.OnInitialize(initConfig)
+
+	RootCmd.PersistentFlags().StringVar(rootParams.String(__ROOT_LOGLEVEL_FLAG), __ROOT_LOGLEVEL_FLAG, __DEFAULT_LOG_LEVEL, "(debug|info|warn|error|nothing)")
+	RootCmd.PersistentFlags().StringVar(rootParams.String(__ROOT_CONFIG_FLAG), __ROOT_CONFIG_FLAG, "", "config file (default is $HOME/.godless.json)")
+}
+
 const __DEFAULT_LOG_LEVEL = "INFO"
 const __CONFIG_FILE_NAME = ".godless"
+const __ROOT_LOGLEVEL_FLAG = "loglevel"
+const __ROOT_CONFIG_FLAG = "config"

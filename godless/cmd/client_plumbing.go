@@ -50,6 +50,7 @@ var clientPlumbingCmd = &cobra.Command{
 
 		query := parseQuery()
 
+		dryrun := *clientPlumbingParams.Bool(__PLUMBING_DRYRUN_FLAG)
 		if dryrun {
 			return
 		}
@@ -65,16 +66,12 @@ var clientPlumbingCmd = &cobra.Command{
 	},
 }
 
-var source string
-var analyse bool
-var dryrun bool
-var queryBinary bool
-var reflect string
-var replicate string
+var clientPlumbingParams *Parameters = &Parameters{}
 
 func parseQuery() *query.Query {
 	var q *query.Query
 	var err error
+	source := *clientPlumbingParams.String(__PLUMBING_QUERY_FLAG)
 	if source != "" {
 		q, err = query.Compile(source)
 
@@ -83,6 +80,7 @@ func parseQuery() *query.Query {
 		}
 	}
 
+	analyse := *clientPlumbingParams.Bool(__PLUMBING_ANALYSE_FLAG)
 	if analyse && q == nil {
 		die(errors.New("Cannot analyse without query"))
 	}
@@ -99,8 +97,11 @@ func parseQuery() *query.Query {
 }
 
 func makeClient() api.Client {
+	timeout := *queryParams.Duration(__QUERY_TIMEOUT_FLAG)
+	serverAddr := *queryParams.String(__QUERY_SERVER_FLAG)
+
 	webClient := &gohttp.Client{
-		Timeout: queryTimeout,
+		Timeout: timeout,
 	}
 
 	options := http.ClientOptions{
@@ -119,6 +120,7 @@ func makeClient() api.Client {
 
 func outputResponse(response api.Response) {
 	var err error
+	queryBinary := *clientPlumbingParams.Bool(__PLUMBING_BINARY_FLAG)
 	if queryBinary {
 		err = api.EncodeResponse(response, os.Stdout)
 
@@ -138,6 +140,9 @@ func outputResponse(response api.Response) {
 }
 
 func validateClientPlumbingArgs(cmd *cobra.Command) {
+	source := *clientPlumbingParams.String(__PLUMBING_QUERY_FLAG)
+	reflect := *clientPlumbingParams.String(__PLUMBING_REFLECT_FLAG)
+	replicate := *clientPlumbingParams.String(__PLUMBING_REPLICATE_FLAG)
 	if source == "" && reflect == "" && replicate == "" {
 		err := cmd.Help()
 
@@ -149,6 +154,7 @@ func validateClientPlumbingArgs(cmd *cobra.Command) {
 
 func analyseQuery(query *query.Query) error {
 	format := "Query analysis for:\n\n%s\n\n%v\n\n"
+	source := *clientPlumbingParams.String(__PLUMBING_QUERY_FLAG)
 	fmt.Printf(format, source, query.Analyse())
 	fmt.Print("Syntax tree:\n\n\n")
 	query.Parser.PrintSyntaxTree()
@@ -156,6 +162,8 @@ func analyseQuery(query *query.Query) error {
 }
 
 func sendRequest(client api.Client, query *query.Query) (api.Response, error) {
+	reflect := *clientPlumbingParams.String(__PLUMBING_REFLECT_FLAG)
+	replicate := *clientPlumbingParams.String(__PLUMBING_REPLICATE_FLAG)
 	if query != nil {
 		request := api.MakeQueryRequest(query)
 		return client.Send(request)
@@ -185,6 +193,7 @@ func sendRequest(client api.Client, query *query.Query) (api.Response, error) {
 }
 
 func parseReflect() (api.ReflectionType, error) {
+	reflect := *clientPlumbingParams.String(__PLUMBING_REFLECT_FLAG)
 	switch reflect {
 	case "index":
 		return api.REFLECT_INDEX, nil
@@ -200,10 +209,17 @@ func parseReflect() (api.ReflectionType, error) {
 func init() {
 	queryCmd.AddCommand(clientPlumbingCmd)
 
-	clientPlumbingCmd.Flags().StringVar(&replicate, "replicate", "", "Replicate index from hash")
-	clientPlumbingCmd.Flags().StringVar(&reflect, "reflect", "", "Reflect on server state. (index|head|namespace)")
-	clientPlumbingCmd.Flags().BoolVar(&queryBinary, "binary", false, "Output protocol buffer binary")
-	clientPlumbingCmd.Flags().BoolVar(&dryrun, "dryrun", false, "Don't send query to server")
-	clientPlumbingCmd.Flags().StringVar(&source, "query", "", "Godless NoSQL query text")
-	clientPlumbingCmd.Flags().BoolVar(&analyse, "analyse", false, "Analyse query")
+	clientPlumbingCmd.Flags().StringVar(clientPlumbingParams.String(__PLUMBING_REPLICATE_FLAG), __PLUMBING_REPLICATE_FLAG, "", "Replicate index from hash")
+	clientPlumbingCmd.Flags().StringVar(clientPlumbingParams.String(__PLUMBING_REFLECT_FLAG), __PLUMBING_REFLECT_FLAG, "", "Reflect on server state. (index|head|namespace)")
+	clientPlumbingCmd.Flags().BoolVar(clientPlumbingParams.Bool(__PLUMBING_BINARY_FLAG), __PLUMBING_BINARY_FLAG, false, "Output protocol buffer binary")
+	clientPlumbingCmd.Flags().BoolVar(clientPlumbingParams.Bool(__PLUMBING_DRYRUN_FLAG), __PLUMBING_DRYRUN_FLAG, false, "Don't send query to server")
+	clientPlumbingCmd.Flags().StringVar(clientPlumbingParams.String(__PLUMBING_QUERY_FLAG), __PLUMBING_QUERY_FLAG, "", "Godless NoSQL query text")
+	clientPlumbingCmd.Flags().BoolVar(clientPlumbingParams.Bool(__PLUMBING_ANALYSE_FLAG), __PLUMBING_ANALYSE_FLAG, false, "Analyse query")
 }
+
+const __PLUMBING_REPLICATE_FLAG = "replicate"
+const __PLUMBING_REFLECT_FLAG = "reflect"
+const __PLUMBING_BINARY_FLAG = "binary"
+const __PLUMBING_DRYRUN_FLAG = "dryrun"
+const __PLUMBING_QUERY_FLAG = "query"
+const __PLUMBING_ANALYSE_FLAG = "analyse"

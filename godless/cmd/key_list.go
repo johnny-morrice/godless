@@ -35,6 +35,7 @@ var keyListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		readKeysFromViper()
 
+		listPrivateOnly := *keyListParams.Bool(__KEY_LIST_PRIVATE_FLAG)
 		if listPrivateOnly {
 			for _, priv := range keyStore.GetAllPrivateKeys() {
 				pub := priv.GetPublicKey()
@@ -61,10 +62,12 @@ func printKeyHash(pub crypto.PublicKey) {
 	fmt.Println(string(hash))
 }
 
-var listPrivateOnly bool
+var keyListParams *Parameters = &Parameters{}
 
 func init() {
 	keyCmd.AddCommand(keyListCmd)
 
-	keyListCmd.PersistentFlags().BoolVar(&listPrivateOnly, "private", false, "List private keys only")
+	keyListCmd.PersistentFlags().BoolVar(keyListParams.Bool(__KEY_LIST_PRIVATE_FLAG), __KEY_LIST_PRIVATE_FLAG, false, "List private keys only")
 }
+
+const __KEY_LIST_PRIVATE_FLAG = "private"

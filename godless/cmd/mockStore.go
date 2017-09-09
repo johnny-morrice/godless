@@ -23,11 +23,10 @@ var mockStoreCmd = &cobra.Command{
 	Short: "Mock versions of the `store` commands",
 }
 
+var mockStoreParams *Parameters = &Parameters{}
+
 func init() {
 	mockCmd.AddCommand(mockStoreCmd)
 
-	// TODO remove duplication with non-mock version.
-	storeCmd.PersistentFlags().StringVar(&hash, "hash", "", "IPFS hash")
-	storeCmd.PersistentFlags().StringSliceVar(&topics, "topics", []string{}, "Comma separated list of pubsub topics")
-	storeCmd.PersistentFlags().StringVar(&ipfsService, "ipfs", "http://localhost:5001", "IPFS webservice URL")
+	addStoreParams(mockStoreCmd, mockStoreParams)
 }

@@ -31,14 +31,20 @@ var storeCmd = &cobra.Command{
 	},
 }
 
-var hash string
-var topics []string
-var ipfsService string
+var storeParams *Parameters = &Parameters{}
 
 func init() {
 	RootCmd.AddCommand(storeCmd)
 
-	mockStoreCmd.PersistentFlags().StringVar(&hash, "hash", "", "IPFS hash")
-	mockStoreCmd.PersistentFlags().StringSliceVar(&topics, "topics", []string{}, "Comma separated list of pubsub topics")
-	mockStoreCmd.PersistentFlags().StringVar(&ipfsService, "ipfs", "http://localhost:5001", "IPFS webservice URL")
+	addStoreParams(storeCmd, storeParams)
 }
+
+func addStoreParams(cmd *cobra.Command, params *Parameters) {
+	cmd.PersistentFlags().StringVar(params.String(__STORE_HASH_FLAG), __STORE_HASH_FLAG, "", "IPFS hash")
+	cmd.PersistentFlags().StringSliceVar(params.StringSlice(__STORE_TOPICS_FLAG), __STORE_TOPICS_FLAG, []string{}, "Comma separated list of pubsub topics")
+	cmd.PersistentFlags().StringVar(params.String(__STORE_IPFS_FLAG), __STORE_IPFS_FLAG, "http://localhost:5001", "IPFS webservice URL")
+}
+
+const __STORE_HASH_FLAG = "hash"
+const __STORE_TOPICS_FLAG = "topics"
+const __STORE_IPFS_FLAG = "ipfs"

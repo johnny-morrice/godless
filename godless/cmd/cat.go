@@ -59,9 +59,7 @@ func catMessage(cmd *cobra.Command, streamer catStreamer) {
 	}
 }
 
-var filePath string
-var catBinaryOut bool
-var catBinaryIn bool
+var catParams *Parameters = &Parameters{}
 
 func drainInput(r io.ReadCloser) {
 	ioutil.ReadAll(r)
@@ -78,7 +76,8 @@ type catStreamer interface {
 }
 
 func catEncode(message pb.Message) error {
-	if catBinaryOut {
+	binaryOut := *catParams.Bool(__CAT_BINARY_OUT_FLAG)
+	if binaryOut {
 		bs, err := pb.Marshal(message)
 
 		if err != nil {
@@ -132,7 +131,8 @@ func catDecode(r io.Reader, message pb.Message) error {
 		return err
 	}
 
-	if catBinaryIn {
+	binaryIn := *catParams.Bool(__CAT_BINARY_IN_FLAG)
+	if binaryIn {
 		return pb.Unmarshal(bs, message)
 	}
 
@@ -140,6 +140,9 @@ func catDecode(r io.Reader, message pb.Message) error {
 }
 
 func catOpen() (io.ReadCloser, error) {
+	filePath := *catParams.String(__CAT_FILE_FLAG)
+	hash := *storeParams.String(__STORE_HASH_FLAG)
+	ipfsService := *storeParams.String(__STORE_IPFS_FLAG)
 	if hash != "" {
 		// I imagined I'd use the godless library for this, but cat
 		// is a low level tool so I guess ok to call IPFS directly.
@@ -153,6 +156,8 @@ func catOpen() (io.ReadCloser, error) {
 }
 
 func validateStoreCatArgs(cmd *cobra.Command) {
+	filePath := *catParams.String(__CAT_FILE_FLAG)
+	hash := *storeParams.String(__STORE_HASH_FLAG)
 	sourceCount := countNonEmpty([]string{filePath, hash})
 
 	if sourceCount == 0 {
@@ -185,7 +190,11 @@ func countNonEmpty(args []string) int {
 func init() {
 	storeCmd.AddCommand(catCmd)
 
-	catCmd.PersistentFlags().StringVar(&filePath, "file", "", "Filename")
-	catCmd.PersistentFlags().BoolVar(&catBinaryIn, "binaryInput", true, "Input is binary")
-	catCmd.PersistentFlags().BoolVar(&catBinaryOut, "binaryOutput", false, "Output is binary")
+	catCmd.PersistentFlags().StringVar(catParams.String(__CAT_FILE_FLAG), __CAT_FILE_FLAG, "", "Filename")
+	catCmd.PersistentFlags().BoolVar(catParams.Bool(__CAT_BINARY_IN_FLAG), __CAT_BINARY_IN_FLAG, true, "Input is binary")
+	catCmd.PersistentFlags().BoolVar(catParams.Bool(__CAT_BINARY_OUT_FLAG), __CAT_BINARY_OUT_FLAG, false, "Output is binary")
 }
+
+const __CAT_FILE_FLAG = "file"
+const __CAT_BINARY_IN_FLAG = "binaryInput"
+const __CAT_BINARY_OUT_FLAG = "binaryOutput"
