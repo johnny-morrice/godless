@@ -21,17 +21,11 @@
 package cmd
 
 import (
-	"os"
-	"os/signal"
-	"path"
-	"runtime"
 	"time"
 
 	"github.com/spf13/cobra"
 
 	lib "github.com/johnny-morrice/godless"
-	"github.com/johnny-morrice/godless/api"
-	"github.com/johnny-morrice/godless/cache"
 	"github.com/johnny-morrice/godless/http"
 	"github.com/johnny-morrice/godless/log"
 )
@@ -106,74 +100,6 @@ func serve(options lib.Options) {
 	for runError := range godless.Errors() {
 		log.Error("%s", runError.Error())
 	}
-}
-
-func makeBoltCache(params *Parameters) (api.Cache, error) {
-	factory := getBoltFactoryInstance(params)
-	return factory.MakeCache()
-}
-
-func makeBoltMemoryImage(params *Parameters) (api.MemoryImage, error) {
-	factory := getBoltFactoryInstance(params)
-	return factory.MakeMemoryImage()
-}
-
-var boltFactory *cache.BoltFactory
-
-func getBoltFactoryInstance(params *Parameters) *cache.BoltFactory {
-	if boltFactory == nil {
-		databaseFilePath := *params.String(__SERVER_DATABASE_FLAG)
-		log.Info("Using database file: '%s'", databaseFilePath)
-		options := cache.BoltOptions{
-			FilePath: databaseFilePath,
-			Mode:     0600,
-		}
-		factory, err := cache.MakeBoltFactory(options)
-
-		if err != nil {
-			die(err)
-		}
-
-		boltFactory = &factory
-	}
-
-	return boltFactory
-}
-
-func shutdownOnTrap(godless *lib.Godless) {
-	installTrapHandler(func(signal os.Signal) {
-		log.Warn("Caught signal: %s", signal.String())
-		go func() {
-			shutdown(godless)
-		}()
-	})
-}
-
-func installTrapHandler(handler func(signal os.Signal)) {
-	sigch := make(chan os.Signal, 1)
-	signal.Notify(sigch, os.Interrupt, os.Kill)
-	sig := <-sigch
-	signal.Reset(os.Interrupt, os.Kill)
-	handler(sig)
-}
-
-func makePriorityQueue(params *Parameters) api.RequestPriorityQueue {
-	apiQueueLength := *params.Int(__SERVER_QUEUE_FLAG)
-	return cache.MakeResidentBufferQueue(apiQueueLength)
-}
-
-func shutdown(godless *lib.Godless) {
-	godless.Shutdown()
-	os.Exit(0)
-}
-
-func homePath(relativePath string) string {
-	home := os.Getenv("HOME")
-	return path.Join(home, relativePath)
-}
-
-func defaultConcurrency() int {
-	return runtime.NumCPU()
 }
 
 var storeServerParams *Parameters = &Parameters{}

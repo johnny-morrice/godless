@@ -14,14 +14,9 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	lib "github.com/johnny-morrice/godless"
-	"github.com/johnny-morrice/godless/api"
-	"github.com/johnny-morrice/godless/cache"
-	"github.com/johnny-morrice/godless/datapeer"
 	"github.com/johnny-morrice/godless/http"
 )
 
@@ -49,19 +44,19 @@ func mockServeOptions(cmd *cobra.Command) lib.Options {
 	topics := *params.StringSlice(__STORE_TOPICS_FLAG)
 
 	queue := makePriorityQueue(mockStoreServerParams)
-	memimg, err := makeMockMemoryImage(cmd, mockStoreServerParams)
+	memimg, err := makeMemoryImage(cmd, mockStoreServerParams)
 
 	if err != nil {
 		die(err)
 	}
 
-	cache, err := makeMockCache(cmd, mockStoreServerParams)
+	cache, err := makeCache(cmd, mockStoreServerParams)
 
 	if err != nil {
 		die(err)
 	}
 
-	peer, err := makeMockDataPeer(cmd, mockStoreServerParams)
+	peer, err := makeDataPeer(cmd, mockStoreServerParams)
 
 	if err != nil {
 		die(err)
@@ -85,73 +80,6 @@ func mockServeOptions(cmd *cobra.Command) lib.Options {
 	}
 }
 
-func makeMockDataPeer(cmd *cobra.Command, params *Parameters) (api.DataPeer, error) {
-	testMode := *mockStoreServerParams.Bool(__MOCK_SERVER_TESTMODE_FLAG)
-	if testMode {
-		return makeMemoryDataPeer()
-	} else {
-		return makeIpfsDataPeer(params)
-	}
-}
-
-func makeIpfsDataPeer(params *Parameters) (api.DataPeer, error) {
-	timeout := *params.Duration(__SERVER_TIMEOUT_FLAG)
-	ipfsService := *params.String(__STORE_IPFS_FLAG)
-	options := datapeer.IpfsWebServiceOptions{
-		Url:  ipfsService,
-		Http: http.MakeBackendHttpClient(timeout),
-	}
-	peer := datapeer.MakeIpfsWebService(options)
-	return peer, nil
-}
-
-func makeMemoryDataPeer() (api.DataPeer, error) {
-	// Use default options
-	options := datapeer.ResidentMemoryStorageOptions{}
-	peer := datapeer.MakeResidentMemoryDataPeer(options)
-	return peer, nil
-}
-
-func makeMockCache(cmd *cobra.Command, params *Parameters) (api.Cache, error) {
-	cacheType := *params.String(__MOCK_SERVER_CACHETYPE_FLAG)
-	switch cacheType {
-	case __MEMORY_CACHE_TYPE:
-		return makeMemoryCache(params)
-	case __BOLT_CACHE_TYPE:
-		return makeBoltCache(params)
-	}
-
-	err := fmt.Errorf("Unknown cache: '%s'", cacheType)
-	cmd.Help()
-	die(err)
-	panic("BUG")
-}
-
-func makeMockMemoryImage(cmd *cobra.Command, params *Parameters) (api.MemoryImage, error) {
-	cacheType := *params.String(__MOCK_SERVER_CACHETYPE_FLAG)
-	switch cacheType {
-	case __MEMORY_CACHE_TYPE:
-		return makeBoltMemoryImage(params)
-	case __BOLT_CACHE_TYPE:
-		return makeResidentMemoryImage()
-	}
-
-	err := fmt.Errorf("Unknown cache: '%s'", cacheType)
-	cmd.Help()
-	die(err)
-	panic("BUG")
-}
-
-func makeMemoryCache(params *Parameters) (api.Cache, error) {
-	bufferLength := *params.Int(__SERVER_BUFFER_FLAG)
-	memCache := cache.MakeResidentMemoryCache(bufferLength, bufferLength)
-	return memCache, nil
-}
-
-func makeResidentMemoryImage() (api.MemoryImage, error) {
-	return cache.MakeResidentMemoryImage(), nil
-}
-
 var mockStoreServerParams *Parameters = &Parameters{}
 
 func init() {
@@ -161,7 +89,7 @@ func init() {
 	tempDbPath := "/tmp/GODLESS_MOCK_DB.bolt"
 
 	mockStoreServeCmd.PersistentFlags().BoolVar(mockStoreServerParams.Bool(__MOCK_SERVER_TESTMODE_FLAG), __MOCK_SERVER_TESTMODE_FLAG, true, "Fake it till you make it")
-	mockStoreServeCmd.PersistentFlags().StringVar(mockStoreServerParams.String(__MOCK_SERVER_CACHETYPE_FLAG), __MOCK_SERVER_CACHETYPE_FLAG, __DEFAULT_CACHE_TYPE, "Cache type")
+	mockStoreServeCmd.PersistentFlags().StringVar(mockStoreServerParams.String(__MOCK_SERVER_CACHETYPE_FLAG), __MOCK_SERVER_CACHETYPE_FLAG, __MEMORY_CACHE_TYPE, "Cache type")
 	addServerParams(mockStoreCmd, mockStoreServerParams, tempDbPath)
 }
 
