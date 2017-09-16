@@ -4,3 +4,4 @@ godless/godless
 nohup.out
 *.bolt
 .godless_history
+*.timelog

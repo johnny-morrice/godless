@@ -33,6 +33,21 @@ func addServerParams(cmd *cobra.Command, params *Parameters, dbPath string) {
 	cmd.PersistentFlags().StringVar(params.String(__SERVER_DATABASE_FLAG), __SERVER_DATABASE_FLAG, dbPath, "Embedded database file path")
 }
 
+func serve(options lib.Options) {
+	godless, err := lib.New(options)
+	defer shutdown(godless)
+
+	if err != nil {
+		die(err)
+	}
+
+	shutdownOnTrap(godless)
+
+	for runError := range godless.Errors() {
+		log.Error("%s", runError.Error())
+	}
+}
+
 func makeTempDbFile(directoryPrefix string) string {
 	tempDir, err := ioutil.TempDir(__TEMP_ROOT, directoryPrefix+"_")
 

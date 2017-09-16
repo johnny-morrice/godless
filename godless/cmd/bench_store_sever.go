@@ -21,11 +21,15 @@
 package cmd
 
 import (
+	"os"
+	"runtime/pprof"
+
 	"github.com/spf13/cobra"
 
 	lib "github.com/johnny-morrice/godless"
 	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/http"
+	"github.com/johnny-morrice/godless/log"
 )
 
 // benchStoreServerCmd represents the benchStoreServer command
@@ -35,8 +39,24 @@ var benchStoreServerCmd = &cobra.Command{
 
 	Run: func(cmd *cobra.Command, args []string) {
 		readKeysFromViper()
-		serve(benchServeOptions(cmd))
+		benchServe(benchServeOptions(cmd), benchStoreServerParams)
 	},
+}
+
+func benchServe(options lib.Options, params *Parameters) {
+	godless, err := lib.New(options)
+	defer shutdown(godless)
+
+	if err != nil {
+		die(err)
+	}
+
+	cpuProfileFile := startProfiling(params)
+	shutdownBenchmarkServerOnTrap(godless, cpuProfileFile)
+
+	for runError := range godless.Errors() {
+		log.Error("%s", runError.Error())
+	}
 }
 
 func benchServeOptions(cmd *cobra.Command) lib.Options {
@@ -93,6 +113,34 @@ func benchServeOptions(cmd *cobra.Command) lib.Options {
 	}
 }
 
+func startProfiling(params *Parameters) *os.File {
+	file, err := createCPUProfileFile(params)
+
+	if err != nil {
+		die(err)
+	}
+
+	pprof.StartCPUProfile(file)
+
+	return file
+}
+
+func createCPUProfileFile(params *Parameters) (*os.File, error) {
+	return os.Create(*params.String(__BENCH_CPU_PROFILE_FILE_FLAG))
+}
+
+func shutdownBenchmarkServerOnTrap(godless *lib.Godless, cpuProfileFile *os.File) {
+	installTrapHandler(func(signal os.Signal) {
+		go func() {
+			log.Warn("Caught signal: %s", signal.String())
+			pprof.StopCPUProfile()
+			cpuProfileFile.Close()
+			shutdown(godless)
+		}()
+
+	})
+}
+
 func makeBenchWebService(params *Parameters) api.WebService {
 	panic("not implemented")
 }
@@ -108,6 +156,14 @@ func init() {
 
 	dbPath := makeTempDbFile(__BENCH_DB_DIR_PREFIX)
 	addServerParams(benchStoreServerCmd, benchStoreServerParams, dbPath)
+
+	benchStoreServerCmd.PersistentFlags().StringVar(benchStoreServerParams.String(__BENCH_CPU_PROFILE_FILE_FLAG), __BENCH_CPU_PROFILE_FILE_FLAG, __DEFAULT_BENCH_CPU_PROFILE_FILE, "CPU profile output file")
+	benchStoreServerCmd.PersistentFlags().StringVar(benchStoreServerParams.String(__BENCH_PROFILE_DETAIL_FILE_FLAG), __BENCH_PROFILE_DETAIL_FILE_FLAG, __DEFAULT_BENCH_PROFILE_DETAIL_FILE, "Detailed profile output file")
 }
 
-const __BENCH_DB_DIR_PREFIX = "godless_bench_store_server"
+const __BENCH_CMD_NAME = "godless_bench_store_server"
+const __BENCH_DB_DIR_PREFIX = __BENCH_CMD_NAME
+const __BENCH_CPU_PROFILE_FILE_FLAG = "cpu-profile"
+const __BENCH_PROFILE_DETAIL_FILE_FLAG = "detail-profile"
+const __DEFAULT_BENCH_CPU_PROFILE_FILE = __BENCH_CMD_NAME + ".cpu.prof"
+const __DEFAULT_BENCH_PROFILE_DETAIL_FILE = __BENCH_CMD_NAME + "_profile_detail.timelog"

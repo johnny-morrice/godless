@@ -27,7 +27,6 @@ import (
 
 	lib "github.com/johnny-morrice/godless"
 	"github.com/johnny-morrice/godless/http"
-	"github.com/johnny-morrice/godless/log"
 )
 
 // serveCmd represents the serve command
@@ -84,21 +83,6 @@ func serveOptions() lib.Options {
 		PriorityQueue:     queue,
 		Cache:             cache,
 		MemoryImage:       memimg,
-	}
-}
-
-func serve(options lib.Options) {
-	godless, err := lib.New(options)
-	defer shutdown(godless)
-
-	if err != nil {
-		die(err)
-	}
-
-	shutdownOnTrap(godless)
-
-	for runError := range godless.Errors() {
-		log.Error("%s", runError.Error())
 	}
 }
 
