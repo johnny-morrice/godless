@@ -32,9 +32,9 @@ func TestWebServiceGetApiRequestHandler(t *testing.T) {
 	mock.EXPECT().Call(matchRequest(requestA)).Return(respch, nil)
 	mock.EXPECT().Call(matchRequest(requestB)).Return(nil, expectedError())
 
-	options := http.WebServiceOptions{
+	options := api.WebServiceOptions{
 		Api: mock,
-		Endpoints: http.Endpoints{
+		Endpoints: api.Endpoints{
 			CommandEndpoint: TEST_COMMAND_ENDPOINT,
 		},
 	}

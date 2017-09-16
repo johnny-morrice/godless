@@ -14,25 +14,24 @@ const API_ROOT = "/api"
 const QUERY_API_ROOT = "/query"
 const REFLECT_API_ROOT = "/reflect"
 
-type WebServiceOptions struct {
-	Endpoints
-	Api api.RequestService
-}
-
 type WebService struct {
-	WebServiceOptions
+	api.WebServiceOptions
 	stopch chan struct{}
 }
 
-func MakeWebService(options WebServiceOptions) api.WebService {
+func MakeWebService(options api.WebServiceOptions) api.WebService {
 	service := &WebService{
 		WebServiceOptions: options,
 		stopch:            make(chan struct{}),
 	}
 
-	service.UseDefaultEndpoints()
+	setDefaultEndpoints(&service.Endpoints)
 
 	return service
+}
+
+func (service *WebService) SetOptions(options api.WebServiceOptions) {
+	service.WebServiceOptions = options
 }
 
 func (service *WebService) Close() {

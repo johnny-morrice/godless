@@ -21,56 +21,61 @@
 package cmd
 
 import (
-	"time"
-
 	"github.com/spf13/cobra"
 
 	lib "github.com/johnny-morrice/godless"
+	"github.com/johnny-morrice/godless/api"
 	"github.com/johnny-morrice/godless/http"
-	"github.com/johnny-morrice/godless/log"
 )
 
-// serveCmd represents the serve command
-var serveCmd = &cobra.Command{
+// benchStoreServerCmd represents the benchStoreServer command
+var benchStoreServerCmd = &cobra.Command{
 	Use:   "server",
-	Short: "Run a Godless server",
-	Long:  `A godless server listens to queries over HTTP.`,
+	Short: "Benchmark `store server` command",
+
 	Run: func(cmd *cobra.Command, args []string) {
 		readKeysFromViper()
-		serve(serveOptions())
+		serve(benchServeOptions(cmd))
 	},
 }
 
-func serveOptions() lib.Options {
-	params := storeServerParams.Merge(storeParams)
+func benchServeOptions(cmd *cobra.Command) lib.Options {
+	params := benchStoreParams.Merge(benchStoreServerParams)
+	serverTimeout := *params.Duration(__SERVER_TIMEOUT_FLAG)
 	addr := *params.String(__SERVER_ADDR_FLAG)
 	earlyConnect := *params.Bool(__SERVER_EARLY_FLAG)
 	interval := *params.Duration(__SERVER_SYNC_FLAG)
 	apiQueryLimit := *params.Int(__SERVER_CONCURRENT_FLAG)
 	publicServer := *params.Bool(__SERVER_PUBLIC_FLAG)
 	pulse := *params.Duration(__SERVER_PULSE_FLAG)
-	serverTimeout := *params.Duration(__SERVER_TIMEOUT_FLAG)
-	ipfsService := *params.String(__STORE_IPFS_FLAG)
+	client := http.MakeBackendHttpClient(serverTimeout)
+
 	hash := *params.String(__STORE_HASH_FLAG)
 	topics := *params.StringSlice(__STORE_TOPICS_FLAG)
 
-	client := http.MakeBackendHttpClient(serverTimeout)
+	queue := makePriorityQueue(benchStoreServerParams)
+	webService := makeBenchWebService(benchStoreServerParams)
 
-	queue := makePriorityQueue(storeServerParams)
-	memimg, err := makeBoltMemoryImage(storeServerParams)
+	memimg, err := makeBoltMemoryImage(benchStoreServerParams)
 
 	if err != nil {
 		die(err)
 	}
 
-	cache, err := makeBoltCache(storeServerParams)
+	cache, err := makeBoltCache(benchStoreServerParams)
+
+	if err != nil {
+		die(err)
+	}
+
+	peer, err := makeBenchDataPeer(cmd, benchStoreServerParams)
 
 	if err != nil {
 		die(err)
 	}
 
 	return lib.Options{
-		IpfsServiceUrl:    ipfsService,
+		DataPeer:          peer,
 		WebServiceAddr:    addr,
 		IndexHash:         hash,
 		FailEarly:         earlyConnect,
@@ -84,52 +89,25 @@ func serveOptions() lib.Options {
 		PriorityQueue:     queue,
 		Cache:             cache,
 		MemoryImage:       memimg,
+		WebService:        webService,
 	}
 }
 
-func serve(options lib.Options) {
-	godless, err := lib.New(options)
-	defer shutdown(godless)
-
-	if err != nil {
-		die(err)
-	}
-
-	shutdownOnTrap(godless)
-
-	for runError := range godless.Errors() {
-		log.Error("%s", runError.Error())
-	}
+func makeBenchWebService(params *Parameters) api.WebService {
+	panic("not implemented")
 }
 
-var storeServerParams *Parameters = &Parameters{}
+func makeBenchDataPeer(cmd *cobra.Command, params *Parameters) (api.DataPeer, error) {
+	panic("not implemented")
+}
+
+var benchStoreServerParams *Parameters = &Parameters{}
 
 func init() {
-	storeCmd.AddCommand(serveCmd)
+	benchStoreCmd.AddCommand(benchStoreServerCmd)
 
-	defaultBoltDb := homePath(__DEFAULT_BOLT_DB_FILENAME)
-
-	addServerParams(serveCmd, storeServerParams, defaultBoltDb)
+	dbPath := makeTempDbFile(__BENCH_DB_DIR_PREFIX)
+	addServerParams(benchStoreServerCmd, benchStoreServerParams, dbPath)
 }
 
-const __SERVER_ADDR_FLAG = "address"
-const __SERVER_SYNC_FLAG = "synctime"
-const __SERVER_PULSE_FLAG = "pulse"
-const __SERVER_EARLY_FLAG = "early"
-const __SERVER_CONCURRENT_FLAG = "concurrent"
-const __SERVER_PUBLIC_FLAG = "public"
-const __SERVER_TIMEOUT_FLAG = "timeout"
-const __SERVER_QUEUE_FLAG = "qlength"
-const __SERVER_BUFFER_FLAG = "buffer"
-const __SERVER_DATABASE_FLAG = "dbpath"
-
-const __DEFAULT_BOLT_DB_FILENAME = ".godless.bolt"
-const __DEFAULT_EARLY_CONNECTION = false
-const __DEFAULT_SERVER_PUBLIC_STATUS = false
-const __DEFAULT_CACHE_TYPE = __BOLT_CACHE_TYPE
-const __DEFAULT_LISTEN_ADDR = "localhost:8085"
-const __DEFAULT_SERVER_TIMEOUT = time.Minute * 10
-const __DEFAULT_QUEUE_LENGTH = 4096
-const __DEFAULT_PULSE = time.Second * 10
-const __DEFAULT_REPLICATION_INTERVAL = time.Minute
-const __DEFAULT_BUFFER_LENGTH = -1
+const __BENCH_DB_DIR_PREFIX = "godless_bench_store_server"

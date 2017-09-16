@@ -320,11 +320,16 @@ func (godless *Godless) setupWebService() error {
 		return nil
 	}
 
-	options := http.WebServiceOptions{
+	options := api.WebServiceOptions{
 		Api: godless.api,
 	}
 
-	godless.WebService = http.MakeWebService(options)
+	if godless.WebService == nil {
+		godless.WebService = http.MakeWebService(options)
+	} else {
+		godless.WebService.SetOptions(options)
+	}
+
 	return nil
 }
 

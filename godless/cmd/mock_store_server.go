@@ -14,9 +14,6 @@
 package cmd
 
 import (
-	"io/ioutil"
-	"path"
-
 	"github.com/spf13/cobra"
 
 	lib "github.com/johnny-morrice/godless"
@@ -86,13 +83,7 @@ func mockServeOptions(cmd *cobra.Command) lib.Options {
 var mockStoreServerParams *Parameters = &Parameters{}
 
 func makeTestDbFile() string {
-	tempDir, err := ioutil.TempDir("/tmp", "godless_mock_store_server_")
-
-	if err != nil {
-		die(err)
-	}
-
-	return path.Join(tempDir, "godless.bolt")
+	return makeTempDbFile(__MOCK_DB_DIR_PREFIX)
 }
 
 func init() {
@@ -105,6 +96,7 @@ func init() {
 	addServerParams(mockStoreCmd, mockStoreServerParams, tempDbPath)
 }
 
+const __MOCK_DB_DIR_PREFIX = "godless_mock_store_server"
 const __MOCK_SERVER_TESTMODE_FLAG = "testmode"
 const __MOCK_SERVER_CACHETYPE_FLAG = "cachetype"
 const __MEMORY_CACHE_TYPE = "memory"

@@ -48,7 +48,7 @@ func testClientSendOnce(t *testing.T, rand *rand.Rand, size int) {
 
 	options := http.ClientOptions{
 		ServerAddr: TEST_SERVER_ADDR,
-		Endpoints: http.Endpoints{
+		Endpoints: api.Endpoints{
 			CommandEndpoint: TEST_COMMAND_ENDPOINT,
 		},
 	}

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/signal"
 	"path"
@@ -18,6 +19,29 @@ import (
 )
 
 // This file contains helpers for server initialisation.
+
+func addServerParams(cmd *cobra.Command, params *Parameters, dbPath string) {
+	cmd.PersistentFlags().StringVar(params.String(__SERVER_ADDR_FLAG), __SERVER_ADDR_FLAG, __DEFAULT_LISTEN_ADDR, "Listen address for server")
+	cmd.PersistentFlags().DurationVar(params.Duration(__SERVER_SYNC_FLAG), __SERVER_SYNC_FLAG, __DEFAULT_REPLICATION_INTERVAL, "Interval between peer replications")
+	cmd.PersistentFlags().DurationVar(params.Duration(__SERVER_PULSE_FLAG), __SERVER_PULSE_FLAG, __DEFAULT_PULSE, "Interval between writes to IPFS")
+	cmd.PersistentFlags().BoolVar(params.Bool(__SERVER_EARLY_FLAG), __SERVER_EARLY_FLAG, __DEFAULT_EARLY_CONNECTION, "Early check on IPFS API access")
+	cmd.PersistentFlags().IntVar(params.Int(__SERVER_CONCURRENT_FLAG), __SERVER_CONCURRENT_FLAG, defaultConcurrency(), "Number of simulataneous queries run by the API. limit < 0 for no restrictions.")
+	cmd.PersistentFlags().BoolVar(params.Bool(__SERVER_PUBLIC_FLAG), __SERVER_PUBLIC_FLAG, __DEFAULT_SERVER_PUBLIC_STATUS, "Don't limit pubsub updates to the public key list")
+	cmd.PersistentFlags().DurationVar(params.Duration(__SERVER_TIMEOUT_FLAG), __SERVER_TIMEOUT_FLAG, __DEFAULT_SERVER_TIMEOUT, "Timeout for serverside HTTP queries")
+	cmd.PersistentFlags().IntVar(params.Int(__SERVER_QUEUE_FLAG), __SERVER_QUEUE_FLAG, __DEFAULT_QUEUE_LENGTH, "API Priority queue length")
+	cmd.PersistentFlags().IntVar(params.Int(__SERVER_BUFFER_FLAG), __SERVER_BUFFER_FLAG, __DEFAULT_BUFFER_LENGTH, "Buffer length")
+	cmd.PersistentFlags().StringVar(params.String(__SERVER_DATABASE_FLAG), __SERVER_DATABASE_FLAG, dbPath, "Embedded database file path")
+}
+
+func makeTempDbFile(directoryPrefix string) string {
+	tempDir, err := ioutil.TempDir(__TEMP_ROOT, directoryPrefix+"_")
+
+	if err != nil {
+		die(err)
+	}
+
+	return path.Join(tempDir, __TEMP_DB_NAME)
+}
 
 func makeDataPeer(cmd *cobra.Command, params *Parameters) (api.DataPeer, error) {
 	testMode := *params.Bool(__MOCK_SERVER_TESTMODE_FLAG)
@@ -155,3 +179,6 @@ func homePath(relativePath string) string {
 func defaultConcurrency() int {
 	return runtime.NumCPU()
 }
+
+const __TEMP_ROOT = "/tmp"
+const __TEMP_DB_NAME = "godless.bolt"

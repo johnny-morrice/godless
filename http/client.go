@@ -13,7 +13,7 @@ import (
 )
 
 type ClientOptions struct {
-	Endpoints
+	api.Endpoints
 	ServerAddr string
 	Http       *gohttp.Client
 	Validator  api.RequestValidator
@@ -34,7 +34,7 @@ func MakeClient(options ClientOptions) (api.Client, error) {
 		return nil, errors.New("Expected ServerAddr")
 	}
 
-	client.UseDefaultEndpoints()
+	setDefaultEndpoints(&client.Endpoints)
 
 	if client.Http == nil {
 		client.Http = defaultHttpClient()
