@@ -316,10 +316,6 @@ func (godless *Godless) launchAPI() error {
 }
 
 func (godless *Godless) setupWebService() error {
-	if godless.WebService != nil {
-		return nil
-	}
-
 	options := api.WebServiceOptions{
 		Api: godless.api,
 	}

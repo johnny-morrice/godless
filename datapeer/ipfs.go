@@ -25,10 +25,16 @@ type ipfsWebService struct {
 }
 
 func MakeIpfsWebService(options IpfsWebServiceOptions) api.DataPeer {
+	if options.Url == "" {
+		panic("options.Url was empty")
+	}
+
 	return &ipfsWebService{IpfsWebServiceOptions: options}
 }
 
 func (client *ipfsWebService) Connect() error {
+	log.Info("Connecting to IPFS at '%s'", client.Url)
+
 	if client.PingTimeout == 0 {
 		client.PingTimeout = __DEFAULT_PING_TIMEOUT
 	}

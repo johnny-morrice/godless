@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"github.com/johnny-morrice/godless/api"
+	"github.com/johnny-morrice/godless/log"
 )
 
 type ProfilingDataPeer struct {
@@ -38,8 +39,10 @@ func (peer *ProfilingDataPeer) IsUp() bool {
 	var up bool
 	peer.withTimer(profileName, func() {
 		up = peer.Peer.IsUp()
+		log.Debug("Peer up? %v", up)
 	})
 
+	log.Debug("Returning up? %v", up)
 	return up
 }
 

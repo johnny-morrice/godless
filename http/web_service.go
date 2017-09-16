@@ -32,6 +32,7 @@ func MakeWebService(options api.WebServiceOptions) api.WebService {
 
 func (service *WebService) SetOptions(options api.WebServiceOptions) {
 	service.WebServiceOptions = options
+	setDefaultEndpoints(&service.Endpoints)
 }
 
 func (service *WebService) Close() {
@@ -44,7 +45,7 @@ func (service *WebService) GetApiRequestHandler() gohttp.Handler {
 
 func (service *WebService) handleApiRequest(rw gohttp.ResponseWriter, req *gohttp.Request) {
 	if !service.IsCommandEndpoint(req.URL) {
-		log.Info("Bad URL for ApiRequestHandler")
+		log.Error("Bad URL for ApiRequestHandler.  Expected '%s' but was '%s'", service.CommandEndpoint, req.URL.String())
 		rw.WriteHeader(NOT_FOUND)
 		return
 	}

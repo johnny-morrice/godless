@@ -70,6 +70,7 @@ func makeDataPeer(cmd *cobra.Command, params *Parameters) (api.DataPeer, error) 
 func makeIpfsDataPeer(params *Parameters) (api.DataPeer, error) {
 	timeout := *params.Duration(__SERVER_TIMEOUT_FLAG)
 	ipfsService := *params.String(__STORE_IPFS_FLAG)
+
 	options := datapeer.IpfsWebServiceOptions{
 		Url:  ipfsService,
 		Http: http.MakeBackendHttpClient(timeout),

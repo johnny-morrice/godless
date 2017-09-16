@@ -41,6 +41,8 @@ var benchStoreServerCmd = &cobra.Command{
 
 	Run: func(cmd *cobra.Command, args []string) {
 		readKeysFromViper()
+		// TODO parameter validation.
+
 		// FIXME Really messy how we're passing both the file and the profiler around...
 		detailProfiler, detailFile := makeDetailProfiler(benchStoreServerParams)
 		options := benchServeOptions(cmd, detailProfiler)
@@ -80,23 +82,23 @@ func benchServeOptions(cmd *cobra.Command, profiler api.Profiler) lib.Options {
 	hash := *params.String(__STORE_HASH_FLAG)
 	topics := *params.StringSlice(__STORE_TOPICS_FLAG)
 
-	queue := makePriorityQueue(benchStoreServerParams)
+	queue := makePriorityQueue(params)
 
-	webService := makeBenchWebService(benchStoreServerParams, profiler)
+	webService := makeBenchWebService(params, profiler)
 
-	memimg, err := makeBoltMemoryImage(benchStoreServerParams)
-
-	if err != nil {
-		die(err)
-	}
-
-	cache, err := makeBoltCache(benchStoreServerParams)
+	memimg, err := makeBoltMemoryImage(params)
 
 	if err != nil {
 		die(err)
 	}
 
-	peer, err := makeBenchDataPeer(cmd, benchStoreServerParams, profiler)
+	cache, err := makeBoltCache(params)
+
+	if err != nil {
+		die(err)
+	}
+
+	peer, err := makeBenchDataPeer(cmd, params, profiler)
 
 	if err != nil {
 		die(err)
