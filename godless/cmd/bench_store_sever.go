@@ -28,8 +28,10 @@ import (
 
 	lib "github.com/johnny-morrice/godless"
 	"github.com/johnny-morrice/godless/api"
+	"github.com/johnny-morrice/godless/datapeer"
 	"github.com/johnny-morrice/godless/http"
 	"github.com/johnny-morrice/godless/log"
+	"github.com/johnny-morrice/godless/prof"
 )
 
 // benchStoreServerCmd represents the benchStoreServer command
@@ -39,11 +41,14 @@ var benchStoreServerCmd = &cobra.Command{
 
 	Run: func(cmd *cobra.Command, args []string) {
 		readKeysFromViper()
-		benchServe(benchServeOptions(cmd), benchStoreServerParams)
+		// FIXME Really messy how we're passing both the file and the profiler around...
+		detailProfiler, detailFile := makeDetailProfiler(benchStoreServerParams)
+		options := benchServeOptions(cmd, detailProfiler)
+		benchServe(options, benchStoreServerParams, detailFile)
 	},
 }
 
-func benchServe(options lib.Options, params *Parameters) {
+func benchServe(options lib.Options, params *Parameters, detailFile *os.File) {
 	godless, err := lib.New(options)
 	defer shutdown(godless)
 
@@ -52,15 +57,17 @@ func benchServe(options lib.Options, params *Parameters) {
 	}
 
 	cpuProfileFile := startProfiling(params)
-	shutdownBenchmarkServerOnTrap(godless, cpuProfileFile)
+
+	shutdownBenchmarkServerOnTrap(godless, cpuProfileFile, detailFile)
 
 	for runError := range godless.Errors() {
 		log.Error("%s", runError.Error())
 	}
 }
 
-func benchServeOptions(cmd *cobra.Command) lib.Options {
+func benchServeOptions(cmd *cobra.Command, profiler api.Profiler) lib.Options {
 	params := benchStoreParams.Merge(benchStoreServerParams)
+
 	serverTimeout := *params.Duration(__SERVER_TIMEOUT_FLAG)
 	addr := *params.String(__SERVER_ADDR_FLAG)
 	earlyConnect := *params.Bool(__SERVER_EARLY_FLAG)
@@ -74,7 +81,8 @@ func benchServeOptions(cmd *cobra.Command) lib.Options {
 	topics := *params.StringSlice(__STORE_TOPICS_FLAG)
 
 	queue := makePriorityQueue(benchStoreServerParams)
-	webService := makeBenchWebService(benchStoreServerParams)
+
+	webService := makeBenchWebService(benchStoreServerParams, profiler)
 
 	memimg, err := makeBoltMemoryImage(benchStoreServerParams)
 
@@ -88,7 +96,7 @@ func benchServeOptions(cmd *cobra.Command) lib.Options {
 		die(err)
 	}
 
-	peer, err := makeBenchDataPeer(cmd, benchStoreServerParams)
+	peer, err := makeBenchDataPeer(cmd, benchStoreServerParams, profiler)
 
 	if err != nil {
 		die(err)
@@ -113,6 +121,18 @@ func benchServeOptions(cmd *cobra.Command) lib.Options {
 	}
 }
 
+func makeDetailProfiler(params *Parameters) (api.Profiler, *os.File) {
+	filePath := *params.String(__BENCH_PROFILE_DETAIL_FILE_FLAG)
+	file, err := os.Create(filePath)
+
+	if err != nil {
+		die(err)
+	}
+
+	profiler := prof.MakeWriterProfiler(file)
+	return profiler, file
+}
+
 func startProfiling(params *Parameters) *os.File {
 	file, err := createCPUProfileFile(params)
 
@@ -129,11 +149,13 @@ func createCPUProfileFile(params *Parameters) (*os.File, error) {
 	return os.Create(*params.String(__BENCH_CPU_PROFILE_FILE_FLAG))
 }
 
-func shutdownBenchmarkServerOnTrap(godless *lib.Godless, cpuProfileFile *os.File) {
+func shutdownBenchmarkServerOnTrap(godless *lib.Godless, cpuProfileFile *os.File, detailProfileFile *os.File) {
 	installTrapHandler(func(signal os.Signal) {
 		go func() {
 			log.Warn("Caught signal: %s", signal.String())
 			pprof.StopCPUProfile()
+			// FIXME handle Close() errors
+			detailProfileFile.Close()
 			cpuProfileFile.Close()
 			shutdown(godless)
 		}()
@@ -141,12 +163,25 @@ func shutdownBenchmarkServerOnTrap(godless *lib.Godless, cpuProfileFile *os.File
 	})
 }
 
-func makeBenchWebService(params *Parameters) api.WebService {
-	panic("not implemented")
+func makeBenchWebService(params *Parameters, profiler api.Profiler) api.WebService {
+	webService := http.MakeWebService(api.WebServiceOptions{})
+	profOptions := http.ProfilingWebServiceOptions{
+		WS:   webService,
+		Prof: profiler,
+	}
+	return http.MakeProfilingWebService(profOptions)
 }
 
-func makeBenchDataPeer(cmd *cobra.Command, params *Parameters) (api.DataPeer, error) {
-	panic("not implemented")
+func makeBenchDataPeer(cmd *cobra.Command, params *Parameters, profiler api.Profiler) (api.DataPeer, error) {
+	peer, err := makeIpfsDataPeer(params)
+
+	if err != nil {
+		return nil, err
+	}
+
+	profOptions := datapeer.ProfilingDataPeerOptions{Peer: peer, Prof: profiler}
+	profPeer := datapeer.MakeProfilingDataPeer(profOptions)
+	return profPeer, nil
 }
 
 var benchStoreServerParams *Parameters = &Parameters{}
