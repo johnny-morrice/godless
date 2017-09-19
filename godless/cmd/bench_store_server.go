@@ -142,7 +142,11 @@ func startProfiling(params *Parameters) *os.File {
 		die(err)
 	}
 
-	pprof.StartCPUProfile(file)
+	err = pprof.StartCPUProfile(file)
+
+	if err != nil {
+		die(err)
+	}
 
 	return file
 }
@@ -156,9 +160,18 @@ func shutdownBenchmarkServerOnTrap(godless *lib.Godless, cpuProfileFile *os.File
 		go func() {
 			log.Warn("Caught signal: %s", signal.String())
 			pprof.StopCPUProfile()
-			// FIXME handle Close() errors
-			detailProfileFile.Close()
+			err := detailProfileFile.Close()
+
+			if err != nil {
+				log.Error("Error closing Event Profile: %s", err.Error())
+			}
+
 			cpuProfileFile.Close()
+
+			if err != nil {
+				log.Error("Error closing CPU Profile: %s", err.Error())
+			}
+
 			shutdown(godless)
 		}()
 
