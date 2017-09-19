@@ -1,11 +1,17 @@
 package api
 
 import (
+	"io"
 	"sync"
 )
 
 type Profiler interface {
 	NewTimer(name string) ProfileTimer
+}
+
+type ProfileCloser interface {
+	Profiler
+	io.Closer
 }
 
 type ProfileTimer interface {

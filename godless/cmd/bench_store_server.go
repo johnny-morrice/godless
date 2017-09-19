@@ -43,14 +43,13 @@ var benchStoreServerCmd = &cobra.Command{
 		readKeysFromViper()
 		// TODO parameter validation.
 
-		// FIXME Really messy how we're passing both the file and the profiler around...
-		detailProfiler, detailFile := makeDetailProfiler(benchStoreServerParams)
-		options := benchServeOptions(cmd, detailProfiler)
-		benchServe(options, benchStoreServerParams, detailFile)
+		profiler := makeEventProfiler(benchStoreServerParams)
+		options := benchServeOptions(cmd, profiler)
+		benchServe(options, benchStoreServerParams, profiler)
 	},
 }
 
-func benchServe(options lib.Options, params *Parameters, detailFile *os.File) {
+func benchServe(options lib.Options, params *Parameters, profiler api.ProfileCloser) {
 	godless, err := lib.New(options)
 	defer shutdown(godless)
 
@@ -60,7 +59,7 @@ func benchServe(options lib.Options, params *Parameters, detailFile *os.File) {
 
 	cpuProfileFile := startProfiling(params)
 
-	shutdownBenchmarkServerOnTrap(godless, cpuProfileFile, detailFile)
+	shutdownBenchmarkServerOnTrap(godless, cpuProfileFile, profiler)
 
 	for runError := range godless.Errors() {
 		log.Error("%s", runError.Error())
@@ -123,7 +122,7 @@ func benchServeOptions(cmd *cobra.Command, profiler api.Profiler) lib.Options {
 	}
 }
 
-func makeDetailProfiler(params *Parameters) (api.Profiler, *os.File) {
+func makeEventProfiler(params *Parameters) api.ProfileCloser {
 	filePath := *params.String(__BENCH_PROFILE_DETAIL_FILE_FLAG)
 	file, err := os.Create(filePath)
 
@@ -131,8 +130,7 @@ func makeDetailProfiler(params *Parameters) (api.Profiler, *os.File) {
 		die(err)
 	}
 
-	profiler := prof.MakeWriterProfiler(file)
-	return profiler, file
+	return prof.MakeWriterProfiler(file)
 }
 
 func startProfiling(params *Parameters) *os.File {
@@ -155,15 +153,15 @@ func createCPUProfileFile(params *Parameters) (*os.File, error) {
 	return os.Create(*params.String(__BENCH_CPU_PROFILE_FILE_FLAG))
 }
 
-func shutdownBenchmarkServerOnTrap(godless *lib.Godless, cpuProfileFile *os.File, detailProfileFile *os.File) {
+func shutdownBenchmarkServerOnTrap(godless *lib.Godless, cpuProfileFile *os.File, profiler api.ProfileCloser) {
 	installTrapHandler(func(signal os.Signal) {
 		go func() {
 			log.Warn("Caught signal: %s", signal.String())
 			pprof.StopCPUProfile()
-			err := detailProfileFile.Close()
+			err := profiler.Close()
 
 			if err != nil {
-				log.Error("Error closing Event Profile: %s", err.Error())
+				log.Error("Error closing Event Profiler: %s", err.Error())
 			}
 
 			cpuProfileFile.Close()
@@ -216,4 +214,4 @@ const __BENCH_DB_DIR_PREFIX = __BENCH_CMD_NAME
 const __BENCH_CPU_PROFILE_FILE_FLAG = "cpu-profile"
 const __BENCH_PROFILE_DETAIL_FILE_FLAG = "detail-profile"
 const __DEFAULT_BENCH_CPU_PROFILE_FILE = __BENCH_CMD_NAME + ".cpu.prof"
-const __DEFAULT_BENCH_PROFILE_DETAIL_FILE = __BENCH_CMD_NAME + "_profile_detail.timelog"
+const __DEFAULT_BENCH_PROFILE_DETAIL_FILE = __BENCH_CMD_NAME + "event_profile.log"

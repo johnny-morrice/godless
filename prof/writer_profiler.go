@@ -16,8 +16,9 @@ type WriterProfiler struct {
 	writer io.Writer
 }
 
-func MakeWriterProfiler(writer io.Writer) api.Profiler {
+func MakeWriterProfiler(writer io.Writer) api.ProfileCloser {
 	return &WriterProfiler{writer: writer}
+
 }
 
 func (profiler *WriterProfiler) NewTimer(name string) api.ProfileTimer {
@@ -25,6 +26,16 @@ func (profiler *WriterProfiler) NewTimer(name string) api.ProfileTimer {
 		name:     name,
 		profiler: profiler,
 	}
+}
+
+func (profiler *WriterProfiler) Close() error {
+	closer, ok := profiler.writer.(io.Closer)
+
+	if ok {
+		return closer.Close()
+	}
+
+	return nil
 }
 
 func (profiler *WriterProfiler) writeEventDuration(name string, duration time.Duration) {
